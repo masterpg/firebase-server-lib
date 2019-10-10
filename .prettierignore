@@ -1,0 +1,15 @@
+*.css
+*.pcss
+.eslintrc.js
+.idea/
+dist/
+docs/_book/
+json-server.js
+node_modules/
+package.json
+patches/
+postcss.config.js
+public/
+tsconfig.json
+vue.config.js
+yarn.lock

@@ -1,0 +1,92 @@
+Index: src/views/product-admin-view/index.vue
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/views/product-admin-view/index.vue	(date 1546738607000)
++++ src/views/product-admin-view/index.vue	(date 1546739077000)
+@@ -1,14 +1,80 @@
+-<style scoped></style>
++<style scoped>
++@import '../../styles/placeholder/typography.css';
++
++.title-text {
++  @extend %comm-font-title;
++}
++
++.product-item {
++  padding: 12px;
++
++  & .title {
++    @extend %comm-font-subhead1;
++  }
++
++  & .detail {
++    @extend %comm-font-body1;
++    color: var(--app-secondary-text-color);
++  }
++}
++</style>
+ 
+ <template>
+-  <div>product-admin-view</div>
++  <div class="layout vertical" :class="{ 'comm-ma-48': f_pc, 'comm-ma-24': f_tab, 'comm-ma-12': f_sp }">
++    <div>
++      <div class="layout horizontal center">
++        <div class="title-text">{{ $t('products') }}</div>
++      </div>
++      <hr style="width: 100%;" />
++      <div v-for="(product, index) in m_products" class="layout horizontal center product-item">
++        <div class="layout vertical center-justified">
++          <div class="title">{{ product.title }}</div>
++          <div class="detail">
++            <span>{{ $t('price') }}</span> &mdash; {{ product.price | currency }},&nbsp; <span>{{ $t('stock') }}</span> &mdash;
++            {{ product.inventory }}
++          </div>
++        </div>
++        <div class="flex"></div>
++      </div>
++    </div>
++  </div>
+ </template>
+ 
+ <script lang="ts">
+-import { Component } from 'vue-property-decorator';
+ import { BaseComponent } from '@/base/component';
++import { Component } from 'vue-property-decorator';
++import { Product } from '@/stores';
+ import { mixins } from 'vue-class-component';
+ 
+ @Component
+-export default class ProductAdminView extends mixins(BaseComponent) {}
++export default class ProductAdminView extends mixins(BaseComponent) {
++  //----------------------------------------------------------------------
++  //
++  //  Variables
++  //
++  //----------------------------------------------------------------------
++
++  get m_products(): Product[] {
++    return this.$stores.product.allProducts;
++  }
++
++  //----------------------------------------------------------------------
++  //
++  //  Lifecycle hooks
++  //
++  //----------------------------------------------------------------------
++
++  created() {}
++}
+ </script>
++
++<i18n>
++en:
++  products: "Products"
++  price: "Price"
++  stock: "Stock"
++ja:
++  products: "商品一覧"
++  price: "価格"
++  stock: "在庫"
++</i18n>

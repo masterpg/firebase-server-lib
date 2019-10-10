@@ -1,0 +1,47 @@
+Index: test/stores/product-store/index.ts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- test/stores/product-store/index.ts	(date 1546739683000)
++++ test/stores/product-store/index.ts	(date 1546739718000)
+@@ -61,4 +61,39 @@
+     await productStore.getAllProducts();
+     assert.deepEqual(productStore.allProducts, NEW_API_PRODUCTS);
+   });
++
++  test('updateProduct() - 一般ケース', async () => {
++    // 対象の商品に更新データを設定
++    const PRODUCT_ID = '1';
++    const product = productStore.getProductById(PRODUCT_ID);
++    if (!product) throw new Error(`Product \`${PRODUCT_ID}\` was not found.`);
++    product.title = 'aaa';
++    product.price = 111;
++    product.inventory = 222;
++
++    // モック処理の設定
++    const stateProduct = {} as Product;
++    td.replace(productStore, 'm_getStateProductById');
++    td.when(productStore.m_getStateProductById(PRODUCT_ID)).thenReturn(stateProduct);
++    td.replace(shopAPI, 'updateProduct');
++
++    // 商品の更新を実行
++    await productStore.updateProduct(product);
++
++    // Stateの商品と引数の商品の内容が一致することを検証
++    // (Stateの商品に引数の商品の内容が反映されるため)
++    assert.deepEqual(stateProduct, product);
++    // `ShopAPI#updateProduct()`が呼び出されたことを検証
++    td.verify(shopAPI.updateProduct(product));
++  });
++
++  test('updateProduct() - 存在しない商品を指定した場合', async () => {
++    // 対象の商品に更新データを設定
++    const product = productStore.getProductById('1') as Product;
++    product.id = '9876';
++    // 商品の更新を実行
++    await productStore.updateProduct(product);
++    // 何も問題は起きない
++    assert(true);
++  });
+ });

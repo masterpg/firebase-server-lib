@@ -1,0 +1,28 @@
+enum StorageNodeType {
+  File
+  Dir
+}
+
+type StorageNode {
+  nodeType: StorageNodeType!
+  name: String!
+  dir: String!
+  path: String!
+}
+
+input SignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+type Mutation {
+  createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
+  removeUserStorageFiles(filePaths: [String!]!): [StorageNode!]!
+  removeUserStorageDir(dirPath: String!): [StorageNode!]!
+}
+
+type Query {
+  userStorageBasePath: String!
+  userStorageDirNodes(dirPath: String): [StorageNode!]!
+  signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+}

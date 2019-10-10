@@ -1,0 +1,277 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CompTreeView buildTree() ベーシックケース 1`] = `
+<div
+  class="child-container"
+  style="min-width: 0px;"
+>
+  <div
+    class="main"
+  >
+    <div
+      class="item-container layout horizontal center eldest"
+    >
+      <div
+        class="icon-container"
+      >
+        <q-icon
+          class="toggle-icon rotate-90"
+          color="grey-6"
+          name="arrow_right"
+          size="26px"
+        />
+      </div>
+       
+      <div
+        class="icon-container"
+      >
+        <svg
+          class="dot"
+          height="6px"
+          width="6px"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <circle
+            cx="3"
+            cy="3"
+            fill="#9b9b9b"
+            r="3"
+            stroke-width="0"
+          />
+        </svg>
+      </div>
+      <span
+        class="item"
+      >
+        Node1
+      </span>
+    </div>
+     
+    <div
+      class="child-container opened"
+      style="height: 0px;"
+    >
+      <div
+        class="main"
+      >
+        <div
+          class="item-container layout horizontal center"
+        >
+          <div
+            class="icon-container"
+          >
+            <q-icon
+              class="toggle-icon rotate-90"
+              color="grey-6"
+              name="arrow_right"
+              size="26px"
+            />
+          </div>
+           
+          <div
+            class="icon-container"
+          >
+            <svg
+              class="dot"
+              height="6px"
+              width="6px"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+            >
+              <circle
+                cx="3"
+                cy="3"
+                fill="#9b9b9b"
+                r="3"
+                stroke-width="0"
+              />
+            </svg>
+          </div>
+          <span
+            class="item"
+          >
+            Node1_1
+          </span>
+        </div>
+         
+        <div
+          class="child-container opened"
+          style="height: 0px;"
+        >
+          <div
+            class="main"
+          >
+            <div
+              class="item-container layout horizontal center"
+            >
+              <div
+                class="icon-container"
+              >
+                <q-icon
+                  name=""
+                  size="26px"
+                />
+              </div>
+               
+              <div
+                class="icon-container"
+              >
+                <q-icon
+                  color=""
+                  name="inbox"
+                  size="24px"
+                />
+              </div>
+              <span
+                class="item selected"
+              >
+                Node1_1_1
+              </span>
+            </div>
+             
+            <div
+              class="child-container"
+            />
+          </div>
+          <div
+            class="main"
+          >
+            <div
+              class="item-container layout horizontal center"
+            >
+              <div
+                class="icon-container"
+              >
+                <q-icon
+                  name=""
+                  size="26px"
+                />
+              </div>
+               
+              <div
+                class="icon-container"
+              >
+                <svg
+                  class="dot"
+                  height="6px"
+                  width="6px"
+                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns:xlink="http://www.w3.org/1999/xlink"
+                >
+                  <circle
+                    cx="3"
+                    cy="3"
+                    fill="#9b9b9b"
+                    r="3"
+                    stroke-width="0"
+                  />
+                </svg>
+              </div>
+              <span
+                class="item unselectable"
+              >
+                Node1_1_2
+              </span>
+            </div>
+             
+            <div
+              class="child-container"
+            />
+          </div>
+          <div
+            class="main"
+          >
+            <div
+              class="item-container layout horizontal center"
+            >
+              <div
+                class="icon-container"
+              >
+                <q-icon
+                  name=""
+                  size="26px"
+                />
+              </div>
+               
+              <div
+                class="icon-container"
+              >
+                <svg
+                  class="dot"
+                  height="6px"
+                  width="6px"
+                  xmlns="http://www.w3.org/2000/svg"
+                  xmlns:xlink="http://www.w3.org/1999/xlink"
+                >
+                  <circle
+                    cx="3"
+                    cy="3"
+                    fill="#9b9b9b"
+                    r="3"
+                    stroke-width="0"
+                  />
+                </svg>
+              </div>
+              <span
+                class="item"
+              >
+                Node1_1_3
+              </span>
+            </div>
+             
+            <div
+              class="child-container"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="main"
+  >
+    <div
+      class="item-container layout horizontal center"
+    >
+      <div
+        class="icon-container"
+      >
+        <q-icon
+          name=""
+          size="26px"
+        />
+      </div>
+       
+      <div
+        class="icon-container"
+      >
+        <svg
+          class="dot"
+          height="6px"
+          width="6px"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+        >
+          <circle
+            cx="3"
+            cy="3"
+            fill="#9b9b9b"
+            r="3"
+            stroke-width="0"
+          />
+        </svg>
+      </div>
+      <span
+        class="item"
+      >
+        Node2
+      </span>
+    </div>
+     
+    <div
+      class="child-container"
+    />
+  </div>
+</div>
+`;

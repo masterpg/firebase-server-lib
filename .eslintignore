@@ -1,0 +1,8 @@
+.idea/
+dist/
+docs/
+functions/lib/
+functions/node_modules/
+functions/src/gql.schema.ts
+node_module/
+patches/

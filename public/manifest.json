@@ -1,0 +1,20 @@
+{
+  "name": "vue-base-project",
+  "short_name": "vue-base-project",
+  "icons": [
+    {
+      "src": "img/icons/app/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icons/app/favicon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#4DBA87"
+}
