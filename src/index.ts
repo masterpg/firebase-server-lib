@@ -1,134 +1,28 @@
-import 'animate.css/animate.css'
+import 'reflect-metadata'
+import * as express from 'express'
+import * as functions from 'firebase-functions'
+import { AppModule } from './app.module'
+import { ExpressAdapter } from '@nestjs/platform-express'
+import { NestFactory } from '@nestjs/core'
+import { ValidationPipe } from '@nestjs/common'
+import { config } from './base/config'
+import { initFirebaseApp } from './base/firebase'
 
-import '@/index.styl'
+initFirebaseApp()
 
-// TODO JetBrainsIDE使用時の開発補助コード
-// import '@/views/abc-page/index.vue'
-// import '@/views/error404-page/index.vue'
-// import '@/views/shop-page/index.vue'
-// import '@/views/demo/comp-tree-view-page/index.vue'
+const server = express()
 
-import {
-  ClosePopup,
-  Dialog,
-  Loading,
-  Notify,
-  QAvatar,
-  QBar,
-  QBtn,
-  QCard,
-  QCardActions,
-  QCardSection,
-  QCheckbox,
-  QDialog,
-  QDrawer,
-  QExpansionItem,
-  QForm,
-  QHeader,
-  QIcon,
-  QImg,
-  QInput,
-  QItem,
-  QItemLabel,
-  QItemSection,
-  QLayout,
-  QLinearProgress,
-  QList,
-  QMenu,
-  QPage,
-  QPageContainer,
-  QScrollArea,
-  QSeparator,
-  QSpace,
-  QSplitter,
-  QToolbar,
-  QToolbarTitle,
-  QTooltip,
-  Quasar,
-  Ripple,
-} from 'quasar'
-import { i18n, initI18n } from '@/base/i18n'
-import AppPage from '@/index.vue'
-import Component from 'vue-class-component'
-import Vue from 'vue'
-import { currency } from '@/currency'
-import { initConfig } from '@/base/config'
-import { initGQL } from '@/gql'
-import { initLogic } from '@/logic'
-import { initREST } from '@/rest'
-import { initServiceWorker } from '@/base/service-worker'
-import { initStore } from '@/store'
-import { initUtils } from '@/base/utils'
-import { vueRouter } from '@/base/router'
-
-Component.registerHooks(['beforeRouteEnter', 'beforeRouteLeave', 'beforeRouteUpdate'])
-
-Vue.use(Quasar, {
-  components: {
-    QAvatar,
-    QBar,
-    QBtn,
-    QCard,
-    QCardActions,
-    QCardSection,
-    QCheckbox,
-    QDialog,
-    QDrawer,
-    QExpansionItem,
-    QForm,
-    QHeader,
-    QIcon,
-    QImg,
-    QInput,
-    QItem,
-    QItemLabel,
-    QItemSection,
-    QLayout,
-    QLinearProgress,
-    QList,
-    QMenu,
-    QPage,
-    QPageContainer,
-    QScrollArea,
-    QSeparator,
-    QSpace,
-    QSplitter,
-    QToolbar,
-    QToolbarTitle,
-    QTooltip,
-  },
-  config: {
-    notify: {},
-    loading: {},
-  },
-  directives: {
-    ClosePopup,
-    Ripple,
-  },
-  plugins: {
-    Dialog,
-    Loading,
-    Notify,
-  },
-})
-
-async function init() {
-  initUtils()
-  initConfig()
-  initServiceWorker()
-  initREST()
-  initGQL()
-  initStore()
-  initLogic()
-  await initI18n()
-
-  Vue.filter('currency', currency)
-
-  new Vue({
-    el: '#app',
-    router: vueRouter,
-    render: h => h(AppPage),
-    i18n,
+const createNestServer = async (expressInstance: express.Express) => {
+  const httpAdapter = new ExpressAdapter(expressInstance)
+  const app = await NestFactory.create(AppModule, httpAdapter, {
+    logger: ['error', 'warn'],
   })
+  // app.useGlobalPipes(new ValidationPipe())
+  return app.init()
 }
-init()
+
+createNestServer(server)
+  // .then(v => console.log('Nest Ready'))
+  .catch(err => console.error('Nest broken', err))
+
+export const api = functions.region(config.functions.region).https.onRequest(server)

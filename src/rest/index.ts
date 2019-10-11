@@ -1,14 +1,9 @@
-import { RESTFacade } from '@/rest/types'
-import { RESTFacadeImpl } from '@/rest/facade'
+import { Module } from '@nestjs/common'
+import { RESTCartModule } from './modules/cart'
+import { RESTProductModule } from './modules/product'
+import { RESTStorageModule } from './modules/storage'
 
-export let rest: RESTFacade
-
-export function initREST(restFacade?: RESTFacade): void {
-  if (restFacade) {
-    rest = restFacade
-  } else {
-    rest = new RESTFacadeImpl()
-  }
-}
-
-export * from '@/rest/types'
+@Module({
+  imports: [RESTProductModule, RESTCartModule, RESTStorageModule],
+})
+export class RESTContainerModule {}
