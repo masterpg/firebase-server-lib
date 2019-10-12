@@ -1,0 +1,17 @@
+.idea/
+coverage/
+node_modules/
+screenshots/
+*.log
+*.tmp
+~$*
+.runtimeconfig.json
+serviceAccountKey.json
+
+/lib/**/*.js.map
+
+/sample/functions/lib
+
+/src/**/*.js.map
+
+/tests/**/*.js.map

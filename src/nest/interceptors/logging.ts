@@ -1,8 +1,8 @@
 import { CallHandler, ExecutionContext, Inject, NestInterceptor } from '@nestjs/common'
-import { LoggingLatencyTimer, LoggingServiceDI } from '../../services/base'
+import { LoggingLatencyTimer, LoggingServiceDI } from '../services/logging'
 import { APP_INTERCEPTOR } from '@nestjs/core'
 import { Observable } from 'rxjs'
-import { getAllExecutionContext } from '../utils'
+import { getAllExecutionContext } from '../base'
 import { tap } from 'rxjs/operators'
 
 class LoggingInterceptor implements NestInterceptor {

@@ -1,23 +1,22 @@
-import * as functions from 'firebase-functions'
-import { SUPPORTED_REGIONS } from 'firebase-functions'
+import { SUPPORTED_REGIONS, config as _config } from 'firebase-functions'
 
 export const config = new (class {
   functions = new (class {
     get region(): typeof SUPPORTED_REGIONS[number] {
-      return functions.config().functions.region || ''
+      return _config().functions.region || ''
     }
   })()
 
   readonly storage = new (class {
     get bucket(): string {
-      return functions.config().storage.bucket || ''
+      return _config().storage.bucket || ''
     }
   })()
 
   readonly cors = new (class {
     get whitelist(): string[] {
-      if (functions.config().cors) {
-        const whitelist = functions.config().cors.whitelist || ''
+      if (_config().cors) {
+        const whitelist = _config().cors.whitelist || ''
         return whitelist.split(',').map((item: string) => item.trim())
       }
       return []
@@ -27,8 +26,8 @@ export const config = new (class {
   readonly role = new (class {
     readonly app = new (class {
       get admins(): string[] {
-        if (functions.config().role && functions.config().role.app) {
-          const admins = functions.config().role.app.admins || ''
+        if (_config().role && _config().role.app) {
+          const admins = _config().role.app.admins || ''
           return admins.split(',').map((item: string) => item.trim())
         }
         return []

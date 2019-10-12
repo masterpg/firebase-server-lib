@@ -1,7 +1,8 @@
-import { AuthServiceDI, LoggingLatencyTimer, LoggingServiceDI } from '../../services/base'
 import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common'
+import { LoggingLatencyTimer, LoggingServiceDI } from '../services/logging'
+import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
-import { getAllExecutionContext } from '../utils'
+import { getAllExecutionContext } from '../base'
 
 @Injectable()
 export class UserGuard implements CanActivate {

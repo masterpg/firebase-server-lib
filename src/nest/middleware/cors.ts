@@ -1,6 +1,6 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
-import { CORSServiceDI } from '../../services/base'
+import { CORSServiceDI } from '../services/cors'
 
 @Injectable()
 export class CORSMiddleware implements NestMiddleware {

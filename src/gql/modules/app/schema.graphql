@@ -1,3 +1,0 @@
-type Query {
-  customToken: String!
-}
