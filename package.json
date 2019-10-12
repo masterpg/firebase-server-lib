@@ -1,19 +1,27 @@
 {
-  "name": "functions",
-  "scripts": {
-    "lint": "cd .. && ./scripts/lint.sh functions",
-    "build": "rm -rf lib && node scripts/gql.builder.js && tsc && cp ./src/serviceAccountKey.json ./lib",
-    "serve": "npm run build && ./functions.config.dev.sh && firebase functions:config:get > .runtimeconfig.json && (tsc --watch & node scripts/gql.builder.js --watch & firebase serve --only functions --port=5010)",
-    "test": "npm run build && ./functions.config.dev.sh && jest --runInBand",
-    "deploy": "./functions.config.prod.sh && firebase deploy --only functions",
-    "shell": "npm run build && ./functions.config.dev.sh && firebase functions:config:get > .runtimeconfig.json && firebase functions:shell",
-    "start": "npm run shell",
-    "logs": "firebase functions:log"
+  "name": "web-server-lib",
+  "version": "0.0.1",
+  "license": "BSD-3-Clause",
+  "author": "masterpg",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/masterpg/web-server-lib.git"
   },
+  "files": [
+    "lib"
+  ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "engines": {
     "node": "10"
   },
-  "main": "lib/index.js",
+  "scripts": {
+    "build": "rm -rf lib && tsc --declaration",
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "lint": "./scripts/lint.sh"
+  },
   "dependencies": {
     "@google-cloud/logging": "^5.3.1",
     "@nestjs/common": "^6.7.2",
@@ -22,9 +30,7 @@
     "@nestjs/platform-express": "^6.7.2",
     "apollo-server-express": "^2.9.4",
     "class-transformer": "^0.2.3",
-    "class-validator": "^0.10.1",
     "convert-hrtime": "^3.0.0",
-    "cookie-parser": "^1.4.4",
     "dayjs": "^1.8.16",
     "firebase-admin": "^8.6.0",
     "firebase-functions": "^3.2.0",
@@ -35,9 +41,8 @@
     "graphql-type-json": "^0.3.0",
     "lodash": "^4.17.15",
     "reflect-metadata": "^0.1.13",
-    "rimraf": "^3.0.0",
-    "rxjs": "^6.5.3",
-    "vary": "^1.1.2"
+    "vary": "^1.1.2",
+    "web-base-lib": "https://github.com/masterpg/web-base-lib.git"
   },
   "devDependencies": {
     "@nestjs/testing": "^6.7.2",
@@ -45,12 +50,17 @@
     "@types/jest": "^24.0.18",
     "@types/supertest": "^2.0.8",
     "@types/vary": "^1.1.0",
+    "@typescript-eslint/eslint-plugin": "^2.3.3",
+    "@typescript-eslint/parser": "^2.3.3",
     "chokidar": "^3.1.1",
+    "eslint": "^6.5.1",
+    "eslint-config-prettier": "^6.4.0",
+    "eslint-plugin-prettier": "^3.1.1",
     "glob": "^7.1.4",
     "jest": "^24.9.0",
+    "prettier": "^1.18.2",
     "supertest": "^4.0.2",
     "ts-jest": "^24.1.0",
     "typescript": "^3.6.3"
-  },
-  "private": true
+  }
 }
