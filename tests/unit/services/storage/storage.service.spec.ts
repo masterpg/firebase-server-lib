@@ -1,12 +1,17 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { SignedUploadUrlInput, StorageNode, StorageNodeType, StorageServiceDI, TestServiceDI } from '../../../../../src/services/business'
-import { FirestoreServiceDI } from '../../../../../src/services/base'
-import { InputValidationError } from '../../../../../src/base/validator'
+import {
+  FirestoreServiceDI,
+  SignedUploadUrlInput,
+  StorageNode,
+  StorageNodeType,
+  StorageServiceDI,
+  TestServiceDI,
+  config,
+  initFirebaseApp,
+} from '../../../../src'
 import { Test } from '@nestjs/testing'
-import { config } from '../../../../../src/base/config'
-import { initFirebaseApp } from '../../../../../src/base/firebase'
-import { removeBothEndsSlash } from '../../../../../src/base/utils'
+import { removeBothEndsSlash } from 'web-base-lib'
 
 jest.setTimeout(25000)
 initFirebaseApp()
@@ -14,23 +19,23 @@ initFirebaseApp()
 const GENERAL_USER = { uid: 'taro.yamada' }
 const TEST_FILES_DIR = 'test-files'
 
-async function existsNodes(nodes: StorageNode[], basePath: string = ''): Promise<void> {
+async function existsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
   const bucket = admin.storage().bucket()
   for (const node of nodes) {
     let nodePath = basePath ? `${removeBothEndsSlash(basePath)}/${node.path}` : node.path
     nodePath += node.nodeType === StorageNodeType.Dir ? '/' : ''
-    let gcsNode = bucket.file(nodePath)
+    const gcsNode = bucket.file(nodePath)
     const exists = (await gcsNode.exists())[0]
     expect(exists).toBeTruthy()
   }
 }
 
-async function notExistsNodes(nodes: StorageNode[], basePath: string = ''): Promise<void> {
+async function notExistsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
   const bucket = admin.storage().bucket()
   for (const node of nodes) {
     let nodePath = basePath ? `${removeBothEndsSlash(basePath)}/${node.path}` : node.path
     nodePath += node.nodeType === StorageNodeType.Dir ? '/' : ''
-    let gcsNode = bucket.file(nodePath)
+    const gcsNode = bucket.file(nodePath)
     const exists = (await gcsNode.exists())[0]
     expect(exists).toBeFalsy()
   }

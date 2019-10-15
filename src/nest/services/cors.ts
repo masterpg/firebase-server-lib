@@ -300,11 +300,24 @@ class DevCORSService extends CORSService {
   }
 }
 
+@Injectable()
+class TestCORSService extends CORSService {
+  protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {}
+}
+
 export namespace CORSServiceDI {
   export const symbol = Symbol(CORSService.name)
   export const provider = {
     provide: symbol,
-    useClass: process.env.NODE_ENV === 'production' ? ProdCORSService : DevCORSService,
+    useClass: (() => {
+      if (process.env.NODE_ENV === 'production') {
+        return ProdCORSService
+      } else if (process.env.NODE_ENV === 'test') {
+        return TestCORSService
+      } else {
+        return DevCORSService
+      }
+    })(),
   }
   export type type = CORSService
 }

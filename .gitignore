@@ -8,10 +8,10 @@ screenshots/
 .runtimeconfig.json
 serviceAccountKey.json
 
-/lib/**/*.js.map
+example/functions/lib
 
-/sample/functions/lib
+lib/**/*.js.map
 
-/src/**/*.js.map
+src/**/*.js.map
 
-/tests/**/*.js.map
+tests/**/*.js.map

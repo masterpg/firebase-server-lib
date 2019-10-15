@@ -1,0 +1,11 @@
+scalar JSON
+scalar JSONObject
+
+type Product {
+  id: ID!
+  name: String!
+}
+
+type Query {
+  products: [Product!]!
+}

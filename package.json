@@ -18,9 +18,10 @@
   },
   "scripts": {
     "build": "rm -rf lib && tsc --declaration",
-    "test": "jest --runInBand",
-    "test:coverage": "jest --runInBand --coverage",
-    "lint": "./scripts/lint.sh"
+    "serve": "npm --prefix ./example/functions run serve",
+    "test": "npm run build && node ./lib/gql.generator.js tests/tools tests/tools && ./jest.setup.sh && jest --runInBand",
+    "test:coverage": "npm run test -- --coverage",
+    "lint": "./node_modules/web-base-lib/scripts/lint.sh"
   },
   "dependencies": {
     "@google-cloud/logging": "^5.3.1",
@@ -29,12 +30,14 @@
     "@nestjs/graphql": "^6.5.1",
     "@nestjs/platform-express": "^6.7.2",
     "apollo-server-express": "^2.9.4",
+    "chokidar": "^3.1.1",
     "class-transformer": "^0.2.3",
     "convert-hrtime": "^3.0.0",
     "dayjs": "^1.8.16",
     "firebase-admin": "^8.6.0",
     "firebase-functions": "^3.2.0",
     "firebase-tools": "^7.4.0",
+    "glob": "^7.1.4",
     "graphql": "^14.5.8",
     "graphql-subscriptions": "^1.1.0",
     "graphql-toolkit": "^0.5.15",
@@ -42,7 +45,8 @@
     "lodash": "^4.17.15",
     "reflect-metadata": "^0.1.13",
     "vary": "^1.1.2",
-    "web-base-lib": "https://github.com/masterpg/web-base-lib.git"
+    "web-base-lib": "https://github.com/masterpg/web-base-lib.git",
+    "yargs": "^14.2.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^6.7.2",
@@ -50,13 +54,12 @@
     "@types/jest": "^24.0.18",
     "@types/supertest": "^2.0.8",
     "@types/vary": "^1.1.0",
+    "@types/yargs": "^13.0.3",
     "@typescript-eslint/eslint-plugin": "^2.3.3",
     "@typescript-eslint/parser": "^2.3.3",
-    "chokidar": "^3.1.1",
     "eslint": "^6.5.1",
     "eslint-config-prettier": "^6.4.0",
     "eslint-plugin-prettier": "^3.1.1",
-    "glob": "^7.1.4",
     "jest": "^24.9.0",
     "prettier": "^1.18.2",
     "supertest": "^4.0.2",
