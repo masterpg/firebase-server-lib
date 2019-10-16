@@ -1,0 +1,41 @@
+{
+  "name": "web-server-lib-functions",
+  "private": true,
+  "engines": {
+    "node": "10"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "lint": "cd ../.. && npm run lint -- example/functions",
+    "build:lib": "../../node_modules/.bin/tsc --declaration --project ../../tsconfig.json --outDir ./node_modules/web-server-lib/lib",
+    "build:gql": "node ./node_modules/web-server-lib/lib/gql.setup.js src lib",
+    "build": "rm -rf lib && npm run build:lib && npm run build:gql && tsc && cp ./serviceAccountKey.json ./lib",
+    "serve": "npm run build && ./functions.config.dev.sh && (npm run build:lib -- --watch & tsc --watch & npm run build:gql -- --watch & firebase serve --only functions --port=5010)",
+    "test": "npm run build && ./functions.config.dev.sh && jest --runInBand",
+    "test:coverage": "npm run test -- --coverage",
+    "deploy": "./functions.config.prod.sh && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "@nestjs/common": "^6.7.2",
+    "@nestjs/core": "^6.7.2",
+    "@nestjs/graphql": "^6.5.1",
+    "@nestjs/platform-express": "^6.7.2",
+    "apollo-server-express": "^2.9.4",
+    "firebase-admin": "^8.6.0",
+    "firebase-functions": "^3.2.0",
+    "graphql": "^14.5.8",
+    "graphql-subscriptions": "^1.1.0",
+    "lodash": "^4.17.15",
+    "reflect-metadata": "^0.1.13",
+    "web-server-lib": "https://github.com/masterpg/web-server-lib.git"
+  },
+  "devDependencies": {
+    "@types/graphql-type-json": "^0.3.2",
+    "@types/jest": "^24.0.18",
+    "@types/supertest": "^2.0.8",
+    "jest": "^24.9.0",
+    "supertest": "^4.0.2",
+    "ts-jest": "^24.1.0",
+    "typescript": "^3.6.3"
+  }
+}

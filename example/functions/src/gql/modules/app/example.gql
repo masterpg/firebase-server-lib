@@ -1,0 +1,6 @@
+query GetCustomToken {
+  customToken
+}
+{
+  "authorization": "Bearer {\"uid\":\"taro.yamada\"}"
+}

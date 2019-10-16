@@ -1,0 +1,11 @@
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "GetCustomToken",
+  "query": "query GetCustomToken { customToken }",
+  "variables": {}
+}
+
+###

@@ -1,0 +1,105 @@
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "GetUserStorageBasePath",
+  "query": "query GetUserStorageBasePath { userStorageBasePath }",
+  "variables": {}
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "GetUserStorageDirNodes",
+  "query": "query GetUserStorageDirNodes { userStorageDirNodes { nodeType name dir path } }",
+  "variables": {}
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "GetUserStorageDirNodes",
+  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirNodes(dirPath: $dirPath) { nodeType name dir path } }",
+  "variables": {
+    "dirPath": "dir1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "CreateUserStorageDirs",
+  "query": "mutation CreateUserStorageDirs($dirPaths: [String!]!) { createUserStorageDirs(dirPaths: $dirPaths) { nodeType name dir path } }",
+  "variables": {
+    "dirPaths": [
+      "dir1/dir1_1",
+      "dir1/dir1_1/dir1_1_1",
+      "dir1/dir1_1/dir1_1_2",
+      "dir2/dir2_1"
+    ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "RemoveUserStorageFileNodes",
+  "query": "mutation RemoveUserStorageFileNodes($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) { nodeType name dir path } }",
+  "variables": {
+    "filePaths": [
+      "docs/fileA.txt"
+    ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+{
+  "operationName": "RemoveUserStorageDirNodes",
+  "query": "mutation RemoveUserStorageDirNodes($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path } }",
+  "variables": {
+    "dirPath": "dir1/dir1_1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada", "isAppAdmin": true}
+
+{
+  "operationName": "GetSignedUploadUrls",
+  "query": "query GetSignedUploadUrls($inputs: [SignedUploadUrlInput!]!) { signedUploadUrls(inputs: $inputs) }",
+  "variables": {
+    "inputs": [
+      {
+        "filePath": "images/family.png",
+        "contentType": "image/png"
+      }
+    ]
+  }
+}
+
+###

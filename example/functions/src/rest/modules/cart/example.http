@@ -1,0 +1,64 @@
+GET {{host}}/api/rest/cartItems
+Authorization: Bearer {"uid": "taro.yamada"}
+
+###
+
+GET {{host}}/api/rest/cartItems/cartItem1
+Authorization: Bearer {"uid": "taro.yamada"}
+
+###
+
+DELETE {{host}}/api/rest/cartItems
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+[
+  "cartItem1",
+  "cartItem2"
+]
+
+###
+
+POST {{host}}/api/rest/cartItems
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+[
+  {
+    "productId": "product1",
+    "title": "iPad 4 Mini",
+    "price": 500.01,
+    "quantity": 1
+  },
+  {
+    "productId": "product2",
+    "title": "Fire HD 8 Tablet",
+    "price": 80.99,
+    "quantity": 2
+  }
+]
+
+###
+
+PUT {{host}}/api/rest/cartItems
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+[
+  {
+    "id": "cartItem1",
+    "quantity": 1
+  },
+  {
+    "id": "cartItem2",
+    "quantity": 2
+  }
+]
+
+###
+
+PUT {{host}}/api/rest/cartItems/checkout
+Content-Type: application/json
+Authorization: Bearer {"uid": "taro.yamada"}
+
+###

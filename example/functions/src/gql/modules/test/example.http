@@ -1,0 +1,116 @@
+POST {{host}}/api/gql
+Content-Type: application/json
+
+{
+  "operationName": "PutTestData",
+  "query": "mutation PutTestData($inputs: [PutTestDataInput!]!) { putTestData(inputs: $inputs) }",
+  "variables": {
+    "inputs": [
+      {
+        "collectionName": "products",
+        "collectionRecords": [
+          {
+            "id": "product1",
+            "title": "iPad 4 Mini",
+            "price": 500.01,
+            "stock": 3
+          },
+          {
+            "id": "product2",
+            "title": "Fire HD 8 Tablet",
+            "price": 80.99,
+            "stock": 5
+          },
+          {
+            "id": "product3",
+            "title": "MediaPad T5 10",
+            "price": 150.8,
+            "stock": 10
+          }
+        ]
+      },
+      {
+        "collectionName": "cart",
+        "collectionRecords": [
+          {
+            "id": "cartItem1",
+            "uid": "taro.yamada",
+            "productId": "product1",
+            "title": "iPad 4 Mini",
+            "price": 500.01,
+            "quantity": 1
+          },
+          {
+            "id": "cartItem2",
+            "uid": "taro.yamada",
+            "productId": "product2",
+            "title": "Fire HD 8 Tablet",
+            "price": 80.99,
+            "quantity": 2
+          }
+        ]
+      },
+      {
+        "collectionName": "persons",
+        "collectionRecords": [
+          {
+            "id": "yamamoto_taro",
+            "first": "Taro",
+            "last": "Yamamoto",
+            "phones": [
+              {
+                "id": "yamamoto_taro_phone1",
+                "carrier": "docomo",
+                "number": "090-9999-9999"
+              },
+              {
+                "id": "yamamoto_taro_phone2",
+                "carrier": "au",
+                "number": "080-8888-8888"
+              }
+            ],
+            "hobbies": [
+              "programming",
+              "movie watching"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+
+{
+  "operationName": "GetTestSignedUploadUrls",
+  "query": "query GetTestSignedUploadUrls { testSignedUploadUrls(inputs: [{filePath: \"images/family.png\", contentType: \"image/png\"}]) }",
+  "variables": {}
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+
+{
+  "operationName": "RemoveTestStorageFiles",
+  "query": "mutation RemoveTestStorageFiles { removeTestStorageFiles(filePaths: [\"docs/fileA.png\"]) }",
+  "variables": {}
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+
+{
+  "operationName": "RemoveTestStorageDir",
+  "query": "mutation RemoveTestStorageDir { removeTestStorageDir(dirPath: \"dir1/dir1_1\") }",
+  "variables": {}
+}
+
+###

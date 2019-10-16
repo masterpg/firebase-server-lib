@@ -1,0 +1,41 @@
+type CartItem {
+  id: ID!
+  uid: ID!
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+}
+
+input AddCartItemInput {
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+}
+
+input UpdateCartItemInput {
+  id: ID!
+  quantity: Int!
+}
+
+type EditCartItemResponse {
+  id: ID!
+  uid: ID!
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+  product: Product!
+}
+
+type Mutation {
+  addCartItems(inputs: [AddCartItemInput!]!): [EditCartItemResponse!]!
+  updateCartItems(inputs: [UpdateCartItemInput!]!): [EditCartItemResponse!]!
+  removeCartItems(ids: [ID!]!): [EditCartItemResponse!]!
+  checkoutCart: Boolean!
+}
+
+type Query {
+  cartItems(ids: [ID!]): [CartItem!]!
+}

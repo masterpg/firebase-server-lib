@@ -1,0 +1,152 @@
+query GetCartItems {
+  cartItems {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+  }
+}
+
+mutation AddCartItems($inputs: [AddCartItemInput!]!) {
+  addCartItems(inputs: $inputs) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+    product {
+      id
+      stock
+    }
+  }
+}
+{
+  "inputs": [
+    {
+      "productId": "product1",
+      "title": "iPad 4 Mini",
+      "price": 500.01,
+      "quantity": 1
+    },
+    {
+      "productId": "product2",
+      "title": "Fire HD 8 Tablet",
+      "price": 80.99,
+      "quantity": 2
+    }
+  ]
+}
+
+mutation AddCartItems {
+  addCartItems(inputs: [
+    {
+      productId: "product1"
+      title: "iPad 4 Mini"
+      price: 500.01
+      quantity: 1
+    },
+    {
+      productId: "product2"
+      title: "Fire HD 8 Tablet"
+      price: 80.99
+      quantity: 2
+    }
+  ]) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+    product {
+      id
+      stock
+    }
+  }
+}
+
+mutation UpdateCartItems {
+  updateCartItems(inputs: [
+    {
+      id: "cartItem1"
+      quantity: 1
+    },
+    {
+      id: "cartItem2"
+      quantity: 2
+    }
+  ]) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+    product {
+      id
+      stock
+    }
+  }
+}
+
+mutation UpdateCartItems($inputs: [UpdateCartItemInput!]!) {
+  updateCartItems(inputs: $inputs) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+    product {
+      id
+      stock
+    }
+  }
+}
+{
+  "inputs": [
+    {
+      "id": "cartItem1",
+      "quantity": 1
+    },
+    {
+      "id": "cartItem2",
+      "quantity": 2
+    }
+  ]
+}
+
+mutation RemoveCartItems {
+  removeCartItems(ids: [
+    "cartItem1"
+    "cartItem2"
+  ]) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+  }
+}
+
+mutation RemoveCartItems($ids: [ID!]!) {
+  removeCartItems(ids: $ids) {
+    id
+    uid
+    productId
+    title
+    price
+    quantity
+  }
+}
+{
+  "ids": ["cartItem1", "cartItem2"]
+}
+
+mutation CheckoutCart {
+  checkoutCart
+}
