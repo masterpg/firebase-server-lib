@@ -7540,7 +7540,7 @@ wcwidth@^1.0.1:
 
 "web-server-lib@https://github.com/masterpg/web-server-lib.git":
   version "0.0.1"
-  resolved "https://github.com/masterpg/web-server-lib.git#7714fcf155c48c7e26062cfca883f99deca690d1"
+  resolved "https://github.com/masterpg/web-server-lib.git#d1d29fff29b94a29a26e27c3e020f7c3cb58a243"
   dependencies:
     "@google-cloud/logging" "^5.3.1"
     "@nestjs/common" "^6.7.2"
