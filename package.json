@@ -18,9 +18,10 @@
   },
   "scripts": {
     "build": "rm -rf lib && tsc --declaration",
-    "serve": "npm --prefix ./example/functions run serve",
-    "test": "npm run build && node ./lib/gql.generator.js tests/tools tests/tools && ./jest.setup.sh && jest --runInBand",
+    "test:pre": "npm run build && node ./lib/gql.generator.js tests/tools tests/tools && ./jest.setup.sh",
+    "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
+    "serve": "npm --prefix ./example/functions run serve",
     "lint": "./node_modules/web-base-lib/scripts/lint.sh"
   },
   "dependencies": {

@@ -14,5 +14,6 @@ export interface IQuery {
     products(): Product[] | Promise<Product[]>;
 }
 
+export type DateTime = any;
 export type JSON = any;
 export type JSONObject = any;

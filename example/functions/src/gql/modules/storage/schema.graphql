@@ -1,3 +1,5 @@
+scalar DateTime
+
 enum StorageNodeType {
   File
   Dir
@@ -8,6 +10,8 @@ type StorageNode {
   name: String!
   dir: String!
   path: String!
+  created: DateTime
+  updated: DateTime
 }
 
 input SignedUploadUrlInput {

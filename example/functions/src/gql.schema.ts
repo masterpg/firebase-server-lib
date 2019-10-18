@@ -91,7 +91,10 @@ export interface StorageNode {
     name: string;
     dir: string;
     path: string;
+    created?: DateTime;
+    updated?: DateTime;
 }
 
+export type DateTime = any;
 export type JSON = any;
 export type JSONObject = any;

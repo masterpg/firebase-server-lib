@@ -5,9 +5,12 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import { Injectable, Req, Res } from '@nestjs/common'
+import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
+import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
-import { Injectable } from '@nestjs/common'
+const dayjs = require('dayjs')
 
 export enum StorageNodeType {
   File = 'File',
@@ -19,6 +22,8 @@ export interface StorageNode {
   name: string
   dir: string
   path: string
+  created?: Dayjs
+  updated?: Dayjs
 }
 
 export class SignedUploadUrlInput {
@@ -28,6 +33,12 @@ export class SignedUploadUrlInput {
 
 export interface GCSStorageNode extends StorageNode {
   gcsNode?: File
+}
+
+export interface UploadDataItem {
+  data: string | Buffer
+  path: string
+  contentType: string
 }
 
 @Injectable()
@@ -44,17 +55,81 @@ class StorageService {
    */
   async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[]): Promise<StorageNode[]> {
     const bucket = admin.storage().bucket()
-    const promises: Promise<StorageNode>[] = []
+
+    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       promises.push(
         bucket.upload(uploadItem.localFilePath, { destination: uploadItem.toFilePath }).then(response => {
           const file = response[0]
           const metadata = response[1]
-          return this.toStorageNode(file)
+          const fileNode = this.toStorageNode(file)
+          uploadedFileMap[fileNode.path] = this.toStorageNode(file)
         })
       )
     }
-    return Promise.all(promises)
+    await Promise.all(promises)
+
+    return uploadList.reduce<StorageNode[]>((result, item) => {
+      result.push(uploadedFileMap[removeStartSlash(item.toFilePath)])
+      return result
+    }, [])
+  }
+
+  /**
+   * 指定されたデータをファイルとしてCloud Storageへアップロードします。
+   * @param uploadList
+   */
+  async uploadAsFiles(uploadList: UploadDataItem[]): Promise<StorageNode[]> {
+    const bucket = admin.storage().bucket()
+
+    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const promises: Promise<void>[] = []
+    for (const uploadItem of uploadList) {
+      promises.push(
+        (async () => {
+          const gcsFileNode = bucket.file(uploadItem.path)
+          await gcsFileNode.save(uploadItem.data, { contentType: uploadItem.contentType })
+          const fileNode = this.toStorageNode(gcsFileNode)
+          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode)
+        })()
+      )
+    }
+    await Promise.all(promises)
+
+    return uploadList.reduce<StorageNode[]>((result, item) => {
+      result.push(uploadedFileMap[removeStartSlash(item.path)])
+      return result
+    }, [])
+  }
+
+  /**
+   * クライアントから指定されたファイルをレスポンスします。
+   * @param req
+   * @param res
+   * @param filePath
+   */
+  async sendFile(@Req() req: Request, @Res() res: Response, filePath: string): Promise<Response> {
+    const bucket = admin.storage().bucket()
+    const file = bucket.file(filePath)
+    const exists = (await file.exists())[0]
+    if (!exists) {
+      return res.sendStatus(404)
+    }
+
+    const lastModified = dayjs(file.metadata.updated).toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return res.sendStatus(304)
+    }
+
+    res.setHeader('Last-Modified', lastModified)
+    res.setHeader('Content-Type', file.metadata.contentType)
+    const fileStream = file.createReadStream()
+
+    fileStream.pipe(res)
+    return res
   }
 
   /**
@@ -340,6 +415,8 @@ class StorageService {
       name,
       dir: removeStartSlash(dir),
       path: removeStartSlash(nodePath),
+      created: dayjs(gcsNode.metadata.timeCreated),
+      updated: dayjs(gcsNode.metadata.updated),
     }
   }
 
@@ -347,12 +424,17 @@ class StorageService {
    * 指定されたディレクトリパスをStorageNodeのディレクトリノードへ変換します。
    * @param dirPath
    */
-  toDirStorageNode(dirPath: string) {
+  toDirStorageNode(dirPath: string): StorageNode {
     const dirPathSegments = dirPath.split('/')
     const name = dirPathSegments[dirPathSegments.length - 1]
     const dir = dirPathSegments.slice(0, dirPathSegments.length - 1).join('/')
 
-    return { nodeType: StorageNodeType.Dir, name, dir, path: dirPathSegments.join('/') }
+    return {
+      nodeType: StorageNodeType.Dir,
+      name,
+      dir,
+      path: dirPathSegments.join('/'),
+    }
   }
 
   /**

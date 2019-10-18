@@ -37,3 +37,4 @@ export declare function getGqlModuleBaseOptions(scanPath: string): {
     resolvers: IResolvers | Array<IResolvers>;
 };
 export * from './decorators/context';
+export * from './scalars/date-time';

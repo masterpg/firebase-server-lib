@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { Request, Response } from 'express';
+import { Dayjs } from 'dayjs';
 import { File } from '@google-cloud/storage';
 export declare enum StorageNodeType {
     File = "File",
@@ -8,6 +11,8 @@ export interface StorageNode {
     name: string;
     dir: string;
     path: string;
+    created?: Dayjs;
+    updated?: Dayjs;
 }
 export declare class SignedUploadUrlInput {
     filePath: string;
@@ -15,6 +20,11 @@ export declare class SignedUploadUrlInput {
 }
 export interface GCSStorageNode extends StorageNode {
     gcsNode?: File;
+}
+export interface UploadDataItem {
+    data: string | Buffer;
+    path: string;
+    contentType: string;
 }
 declare class StorageService {
     /**
@@ -25,6 +35,18 @@ declare class StorageService {
         localFilePath: string;
         toFilePath: string;
     }[]): Promise<StorageNode[]>;
+    /**
+     * 指定されたデータをファイルとしてCloud Storageへアップロードします。
+     * @param uploadList
+     */
+    uploadAsFiles(uploadList: UploadDataItem[]): Promise<StorageNode[]>;
+    /**
+     * クライアントから指定されたファイルをレスポンスします。
+     * @param req
+     * @param res
+     * @param filePath
+     */
+    sendFile(req: Request, res: Response, filePath: string): Promise<Response>;
     /**
      * Cloud Storageから指定されたディレクトリのノード一覧を取得します。
      *
@@ -162,12 +184,7 @@ declare class StorageService {
      * 指定されたディレクトリパスをStorageNodeのディレクトリノードへ変換します。
      * @param dirPath
      */
-    toDirStorageNode(dirPath: string): {
-        nodeType: StorageNodeType;
-        name: string;
-        dir: string;
-        path: string;
-    };
+    toDirStorageNode(dirPath: string): StorageNode;
     /**
      * ノード配列をディレクトリ階層に従ってソートします。
      * @param nodes

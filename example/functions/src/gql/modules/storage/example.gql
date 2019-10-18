@@ -8,8 +8,11 @@ query GetUserStorageDirNodes {
     name
     dir
     path
+    created
+    updated
   }
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 query GetUserStorageDirNodes {
   userStorageDirNodes(dirPath: "dir1") {
@@ -17,8 +20,11 @@ query GetUserStorageDirNodes {
     name
     dir
     path
+    created
+    updated
   }
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 query GetUserStorageDirNodes($dirPath: String) {
   userStorageDirNodes(dirPath: $dirPath) {
@@ -26,11 +32,14 @@ query GetUserStorageDirNodes($dirPath: String) {
     name
     dir
     path
+    created
+    updated
   }
 }
 {
   "dirPath": "dir1"
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation CreateUserStorageDirs {
   createUserStorageDirs(dirPaths: ["dir1/dir1_1"]) {
@@ -38,8 +47,11 @@ mutation CreateUserStorageDirs {
     name
     dir
     path
+    created
+    updated
   }
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation CreateUserStorageDirs($dirPaths: [String!]!) {
   createUserStorageDirs(dirPaths: $dirPaths) {
@@ -47,6 +59,8 @@ mutation CreateUserStorageDirs($dirPaths: [String!]!) {
     name
     dir
     path
+    created
+    updated
   }
 }
 {
@@ -57,6 +71,7 @@ mutation CreateUserStorageDirs($dirPaths: [String!]!) {
     "dir2/dir2_1"
   ]
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation RemoveUserStorageFileNodes {
   removeUserStorageFiles(filePaths: ["docs/fileA.txt"]) {
@@ -64,8 +79,11 @@ mutation RemoveUserStorageFileNodes {
     name
     dir
     path
+    created
+    updated
   }
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation RemoveUserStorageFileNodes($filePaths: [String!]!) {
   removeUserStorageFiles(filePaths: $filePaths) {
@@ -73,11 +91,14 @@ mutation RemoveUserStorageFileNodes($filePaths: [String!]!) {
     name
     dir
     path
+    created
+    updated
   }
 }
 {
   "filePaths": ["docs/fileA.txt"]
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation RemoveUserStorageDirNodes {
   removeUserStorageDir(dirPath: "dir1/dir1_1") {
@@ -85,8 +106,11 @@ mutation RemoveUserStorageDirNodes {
     name
     dir
     path
+    created
+    updated
   }
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 mutation RemoveUserStorageDirNodes($dirPath: String!) {
   removeUserStorageDir(dirPath: $dirPath) {
@@ -94,17 +118,21 @@ mutation RemoveUserStorageDirNodes($dirPath: String!) {
     name
     dir
     path
+    created
+    updated
   }
 }
 {
   "dirPath": "dir1/dir1_1"
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\"}" }
 
 query GetSignedUploadUrls {
   signedUploadUrls(inputs: [
     { filePath: "images/family.png", contentType: "image/png" }
   ])
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\", \"isAppAdmin\": true}" }
 
 query GetSignedUploadUrls($inputs: [SignedUploadUrlInput!]!) {
   signedUploadUrls(inputs: $inputs)
@@ -117,3 +145,4 @@ query GetSignedUploadUrls($inputs: [SignedUploadUrlInput!]!) {
     }
   ]
 }
+{ "authorization": "Bearer {\"uid\": \"taro.yamada\", \"isAppAdmin\": true}" }

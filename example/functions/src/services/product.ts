@@ -7,7 +7,8 @@ class ProductService {
   async findList(ids?: string[]): Promise<Product[]> {
     const db = admin.firestore()
     if (ids && ids.length) {
-      const promises: Promise<Product | undefined>[] = []
+      const productMap: { [id: string]: Product } = {}
+      const promises: Promise<void>[] = []
       for (const id of ids) {
         promises.push(
           (async () => {
@@ -16,20 +17,12 @@ class ProductService {
               .doc(id)
               .get()
             if (doc.exists) {
-              return { id: doc.id, ...doc.data() } as Product
+              productMap[doc.id] = { id: doc.id, ...doc.data() } as Product
             }
-            return undefined
           })()
         )
       }
-
-      const productMap = (await Promise.all(promises)).reduce(
-        (result, product) => {
-          if (product) result[product.id] = product
-          return result
-        },
-        {} as { [id: string]: Product }
-      )
+      await Promise.all(promises)
 
       return ids.reduce<Product[]>((result, id) => {
         const product = productMap[id]

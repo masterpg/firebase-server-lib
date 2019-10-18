@@ -37,7 +37,8 @@ class CartService {
     const db = admin.firestore()
 
     if (ids && ids.length) {
-      const promises: Promise<CartItem | undefined>[] = []
+      const itemMap: { [id: string]: CartItem } = {}
+      const promises: Promise<void>[] = []
       for (const id of ids) {
         promises.push(
           (async () => {
@@ -46,29 +47,18 @@ class CartService {
               .doc(id)
               .get()
             if (doc.exists) {
-              return { id: doc.id, ...doc.data() } as CartItem
+              itemMap[doc.id] = { id: doc.id, ...doc.data() } as CartItem
             }
-            return undefined
           })()
         )
       }
+      await Promise.all(promises)
 
-      const itemMap = (await Promise.all(promises)).reduce(
-        (result, item) => {
-          if (item && item.uid === user.uid) {
-            result[item.id] = item
-          }
-          return result
-        },
-        {} as { [id: string]: CartItem }
-      )
-
-      const result: CartItem[] = []
-      for (const id of ids) {
+      return ids.reduce<CartItem[]>((result, id) => {
         const item = itemMap[id]
-        if (item) result.push(itemMap[id])
-      }
-      return result
+        item && result.push(item)
+        return result
+      }, [])
     } else {
       const items: CartItem[] = []
       const snapshot = await db

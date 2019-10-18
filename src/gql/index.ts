@@ -109,3 +109,4 @@ export function getGqlModuleBaseOptions(
 }
 
 export * from './decorators/context'
+export * from './scalars/date-time'

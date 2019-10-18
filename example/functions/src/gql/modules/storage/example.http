@@ -16,7 +16,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 {
   "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes { userStorageDirNodes { nodeType name dir path } }",
+  "query": "query GetUserStorageDirNodes { userStorageDirNodes { nodeType name dir path created updated } }",
   "variables": {}
 }
 
@@ -28,7 +28,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 {
   "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirNodes(dirPath: $dirPath) { nodeType name dir path } }",
+  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirNodes(dirPath: $dirPath) { nodeType name dir path created updated } }",
   "variables": {
     "dirPath": "dir1"
   }
@@ -42,7 +42,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 {
   "operationName": "CreateUserStorageDirs",
-  "query": "mutation CreateUserStorageDirs($dirPaths: [String!]!) { createUserStorageDirs(dirPaths: $dirPaths) { nodeType name dir path } }",
+  "query": "mutation CreateUserStorageDirs($dirPaths: [String!]!) { createUserStorageDirs(dirPaths: $dirPaths) { nodeType name dir path created updated } }",
   "variables": {
     "dirPaths": [
       "dir1/dir1_1",
@@ -61,7 +61,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 {
   "operationName": "RemoveUserStorageFileNodes",
-  "query": "mutation RemoveUserStorageFileNodes($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) { nodeType name dir path } }",
+  "query": "mutation RemoveUserStorageFileNodes($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) { nodeType name dir path created updated } }",
   "variables": {
     "filePaths": [
       "docs/fileA.txt"
@@ -77,7 +77,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 {
   "operationName": "RemoveUserStorageDirNodes",
-  "query": "mutation RemoveUserStorageDirNodes($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path } }",
+  "query": "mutation RemoveUserStorageDirNodes($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
   "variables": {
     "dirPath": "dir1/dir1_1"
   }
