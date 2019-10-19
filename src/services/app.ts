@@ -1,14 +1,11 @@
 import * as admin from 'firebase-admin'
 import { IdToken } from '../nest'
 import { Injectable } from '@nestjs/common'
-import { config } from '../base'
 
 @Injectable()
 class AppService {
   async customToken(user: IdToken): Promise<string> {
-    const token = await admin.auth().createCustomToken(user.uid, {
-      isAppAdmin: config.role.app.admins.includes(user.email),
-    })
+    const token = await admin.auth().createCustomToken(user.uid, user.customClaims || {})
     return token
   }
 }

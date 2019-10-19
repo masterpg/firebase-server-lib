@@ -18,11 +18,12 @@
   },
   "scripts": {
     "build": "rm -rf lib && tsc --declaration",
-    "test:pre": "npm run build && node ./lib/gql.generator.js tests/tools tests/tools && ./jest.setup.sh",
+    "test:pre": "npm run build && ./functions.env.test.sh && node ./lib/tools/gql.generate.schema.js tests/tools tests/tools",
     "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
     "serve": "npm --prefix ./example/functions run serve",
-    "lint": "./node_modules/web-base-lib/scripts/lint.sh"
+    "lint": "./node_modules/web-base-lib/scripts/lint.sh",
+    "env": "./functions.env.test.sh && node ./lib/tools/setup.test.users.js"
   },
   "dependencies": {
     "@google-cloud/logging": "^5.3.1",
@@ -31,6 +32,7 @@
     "@nestjs/graphql": "^6.5.1",
     "@nestjs/platform-express": "^6.7.2",
     "apollo-server-express": "^2.9.4",
+    "async-exit-hook": "^2.0.1",
     "chokidar": "^3.1.1",
     "class-transformer": "^0.2.3",
     "convert-hrtime": "^3.0.0",

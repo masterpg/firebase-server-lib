@@ -24,7 +24,7 @@ const request = require('supertest')
 jest.setTimeout(25000)
 initFirebaseApp()
 
-const GENERAL_USER = { uid: 'taro.yamada' }
+const GENERAL_USER = { uid: 'yamada.one' }
 const TEST_FILES_DIR = 'test-files'
 
 async function existsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {

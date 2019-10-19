@@ -7,6 +7,12 @@ export const config = new (class {
     }
   })()
 
+  readonly app = new (class {
+    get credential(): string {
+      return _config().app.credential || ''
+    }
+  })()
+
   readonly storage = new (class {
     get bucket(): string {
       return _config().storage.bucket || ''
@@ -21,17 +27,5 @@ export const config = new (class {
       }
       return []
     }
-  })()
-
-  readonly role = new (class {
-    readonly app = new (class {
-      get admins(): string[] {
-        if (_config().role && _config().role.app) {
-          const admins = _config().role.app.admins || ''
-          return admins.split(',').map((item: string) => item.trim())
-        }
-        return []
-      }
-    })()
   })()
 })()
