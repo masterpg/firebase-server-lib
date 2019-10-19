@@ -34,7 +34,7 @@ Content-Type: application/json
         "collectionRecords": [
           {
             "id": "cartItem1",
-            "uid": "taro.yamada",
+            "uid": "yamada.one",
             "productId": "product1",
             "title": "iPad 4 Mini",
             "price": 500.01,
@@ -42,7 +42,7 @@ Content-Type: application/json
           },
           {
             "id": "cartItem2",
-            "uid": "taro.yamada",
+            "uid": "yamada.one",
             "productId": "product2",
             "title": "Fire HD 8 Tablet",
             "price": 80.99,

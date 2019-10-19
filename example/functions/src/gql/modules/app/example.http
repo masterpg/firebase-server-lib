@@ -1,6 +1,6 @@
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "GetCustomToken",

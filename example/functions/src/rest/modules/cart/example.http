@@ -1,16 +1,16 @@
 GET {{host}}/api/rest/cartItems
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 ###
 
 GET {{host}}/api/rest/cartItems/cartItem1
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 ###
 
 DELETE {{host}}/api/rest/cartItems
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 [
   "cartItem1",
@@ -21,7 +21,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/rest/cartItems
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 [
   {
@@ -42,7 +42,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 PUT {{host}}/api/rest/cartItems
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 [
   {
@@ -59,6 +59,6 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 PUT {{host}}/api/rest/cartItems/checkout
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 ###

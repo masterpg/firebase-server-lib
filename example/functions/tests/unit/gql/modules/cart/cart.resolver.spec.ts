@@ -7,7 +7,7 @@ jest.setTimeout(25000)
 initFirebaseApp()
 
 const authorizationHeader = {
-  Authorization: `Bearer {"uid": "taro.yamada"}`,
+  Authorization: `Bearer {"uid": "yamada.one"}`,
 }
 
 describe('CartResolver', () => {

@@ -108,7 +108,7 @@ describe('StorageResolver', () => {
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
         headers: {
-          Authorization: 'Bearer {"uid": "taro.yamada", "isAppAdmin": false}',
+          Authorization: 'Bearer {"uid": "kanri.one", "isAppAdmin": false}',
         },
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)

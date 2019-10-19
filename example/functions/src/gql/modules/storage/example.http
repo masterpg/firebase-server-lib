@@ -1,6 +1,6 @@
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "GetUserStorageBasePath",
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -24,7 +24,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -38,7 +38,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "CreateUserStorageDirs",
@@ -57,7 +57,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "RemoveUserStorageFileNodes",
@@ -73,7 +73,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "RemoveUserStorageDirNodes",
@@ -87,7 +87,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada", "isAppAdmin": true}
+Authorization: Bearer {"uid": "kanri.one", "isAppAdmin": true}
 
 {
   "operationName": "GetSignedUploadUrls",

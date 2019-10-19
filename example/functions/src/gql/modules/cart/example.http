@@ -1,6 +1,6 @@
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "GetCartItems",
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "RemoveCartItems",
@@ -28,7 +28,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "AddCartItems",
@@ -55,7 +55,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "UpdateCartItems",
@@ -78,7 +78,7 @@ Authorization: Bearer {"uid": "taro.yamada"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "taro.yamada"}
+Authorization: Bearer {"uid": "yamada.one"}
 
 {
   "operationName": "CheckoutCart",

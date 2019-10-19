@@ -6,7 +6,7 @@ const cloneDeep = require('lodash/cloneDeep')
 jest.setTimeout(25000)
 initFirebaseApp()
 
-const GENERAL_USER = { uid: 'taro.yamada' }
+const GENERAL_USER = { uid: 'yamada.one' }
 
 const PRODUCTS: Product[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
@@ -280,7 +280,7 @@ describe('CartService', () => {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
           collectionRecords: CART_ITEMS.map(item => {
-            return { ...item, uid: 'taro.yamada.xxx' }
+            return { ...item, uid: 'yamada.one.xxx' }
           }),
         },
       ])
@@ -407,7 +407,7 @@ describe('CartService', () => {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
           collectionRecords: CART_ITEMS.map(item => {
-            return { ...item, uid: 'taro.yamada.xxx' }
+            return { ...item, uid: 'yamada.one.xxx' }
           }),
         },
       ])
