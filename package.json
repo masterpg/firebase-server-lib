@@ -22,7 +22,7 @@
     "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
     "serve": "npm --prefix ./example/functions run serve",
-    "lint": "./node_modules/web-base-lib/scripts/lint.sh",
+    "lint": "./node_modules/web-base-lib/tools/lint.sh",
     "env": "./functions.env.test.sh && node ./lib/tools/setup.test.users.js"
   },
   "dependencies": {
