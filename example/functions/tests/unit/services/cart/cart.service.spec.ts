@@ -1,5 +1,5 @@
 import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, Product, ProductServiceDI } from '../../../../src/services'
-import { FirestoreServiceDI, InputValidationError, TestServiceDI, ValidationErrors, initFirebaseApp } from 'web-server-lib'
+import { FirestoreServiceDI, InputValidationError, TestServiceDI, ValidationErrors, initFirebaseApp } from 'firebase-server-lib'
 import { Test } from '@nestjs/testing'
 const cloneDeep = require('lodash/cloneDeep')
 

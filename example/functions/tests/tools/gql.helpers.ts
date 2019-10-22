@@ -1,5 +1,5 @@
 import { Response } from 'supertest'
-import { config } from 'web-server-lib'
+import { config } from 'firebase-server-lib'
 const request = require('supertest')
 
 export function requestGQL(

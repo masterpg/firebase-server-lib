@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
-import { config, initFirebaseApp } from 'web-server-lib'
+import { config, initFirebaseApp } from 'firebase-server-lib'
 import { AppModule } from './app.module'
 import { Express } from 'express'
 import { ExpressAdapter } from '@nestjs/platform-express'

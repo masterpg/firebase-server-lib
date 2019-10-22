@@ -1,4 +1,4 @@
-import { DateTimeScalar, getGqlModuleBaseOptions } from 'web-server-lib'
+import { DateTimeScalar, getGqlModuleBaseOptions } from 'firebase-server-lib'
 import { GqlModuleOptions, GraphQLModule } from '@nestjs/graphql'
 import { GQLAppModule } from './modules/app'
 import { GQLCartModule } from './modules/cart'

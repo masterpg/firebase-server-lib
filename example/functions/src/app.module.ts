@@ -1,4 +1,12 @@
-import { AuthServiceDI, CORSGuardDI, CORSMiddleware, CORSServiceDI, FirestoreServiceDI, LoggingInterceptorDI, LoggingServiceDI } from 'web-server-lib'
+import {
+  AuthServiceDI,
+  CORSGuardDI,
+  CORSMiddleware,
+  CORSServiceDI,
+  FirestoreServiceDI,
+  LoggingInterceptorDI,
+  LoggingServiceDI,
+} from 'firebase-server-lib'
 import { Global, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { GQLContainerModule } from './gql'
 import { RESTContainerModule } from './rest'

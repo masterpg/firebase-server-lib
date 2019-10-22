@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import { CartItem, EditCartItemResponse, Product, AddCartItemInput as _AddCartItemInput, UpdateCartItemInput as _UpdateCartItemInput } from './types'
 import { DocumentReference, Transaction } from '@google-cloud/firestore'
 import { ForbiddenException, Injectable } from '@nestjs/common'
-import { InputValidationError, WriteReadyObserver, validate } from 'web-server-lib'
+import { InputValidationError, WriteReadyObserver, validate } from 'firebase-server-lib'
 import { IsPositive } from 'class-validator'
 const assign = require('lodash/assign')
 

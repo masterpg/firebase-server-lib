@@ -1,6 +1,6 @@
 import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, UpdateCartItemInput } from '../../../services'
 import { Body, Controller, Delete, Get, Inject, Module, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
-import { IdToken, User, UserGuard } from 'web-server-lib'
+import { IdToken, User, UserGuard } from 'firebase-server-lib'
 
 @Controller('rest/cartItems')
 @UseGuards(UserGuard)

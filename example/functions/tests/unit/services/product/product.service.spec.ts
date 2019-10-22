@@ -1,4 +1,4 @@
-import { FirestoreServiceDI, TestServiceDI, initFirebaseApp } from 'web-server-lib'
+import { FirestoreServiceDI, TestServiceDI, initFirebaseApp } from 'firebase-server-lib'
 import { Product, ProductServiceDI } from '../../../../src/services'
 import { Test } from '@nestjs/testing'
 

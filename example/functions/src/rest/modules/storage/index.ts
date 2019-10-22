@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { StorageServiceDI } from 'web-server-lib'
+import { StorageServiceDI } from 'firebase-server-lib'
 
 @Controller('storage')
 export class StorageController {

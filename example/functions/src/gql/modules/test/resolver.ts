@@ -1,5 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { PutTestDataInput, TestServiceDI, TestSignedUploadUrlInput } from 'web-server-lib'
+import { PutTestDataInput, TestServiceDI, TestSignedUploadUrlInput } from 'firebase-server-lib'
 import { Inject } from '@nestjs/common'
 
 @Resolver()

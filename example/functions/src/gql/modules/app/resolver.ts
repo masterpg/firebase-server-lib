@@ -1,4 +1,4 @@
-import { AppServiceDI, IdToken, User, UserGuard } from 'web-server-lib'
+import { AppServiceDI, IdToken, User, UserGuard } from 'firebase-server-lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Query, Resolver } from '@nestjs/graphql'
 

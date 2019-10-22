@@ -1,6 +1,6 @@
 import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, UpdateCartItemInput } from '../../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { IdToken, User, UserGuard } from 'web-server-lib'
+import { IdToken, User, UserGuard } from 'firebase-server-lib'
 import { Inject, UseGuards } from '@nestjs/common'
 
 @Resolver('CartItem')

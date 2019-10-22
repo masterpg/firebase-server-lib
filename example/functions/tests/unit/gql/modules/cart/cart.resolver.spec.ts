@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { AppModule } from '../../../../../src/app.module'
-import { initFirebaseApp } from 'web-server-lib'
+import { initFirebaseApp } from 'firebase-server-lib'
 import { verifyNotSignInCase } from '../../../../tools/gql.helpers'
 
 jest.setTimeout(25000)

@@ -10,7 +10,7 @@ import {
   StorageServiceDI,
   User,
   UserGuard,
-} from 'web-server-lib'
+} from 'firebase-server-lib'
 import { Inject, UseGuards } from '@nestjs/common'
 
 @Resolver('StorageNode')
