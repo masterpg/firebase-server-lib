@@ -13,8 +13,8 @@ import {
   initFirebaseApp,
 } from '../../../../src'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockBaseAppModule } from '../../../tools/app.modules'
-import { MockRESTContainerModule } from '../../../tools/rest.modules'
+import { MockBaseAppModule } from '../../../helpers/app.modules'
+import { MockRESTContainerModule } from '../../../helpers/rest.modules'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 import { removeBothEndsSlash } from 'web-base-lib'

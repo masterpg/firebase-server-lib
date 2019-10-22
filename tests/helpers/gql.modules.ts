@@ -12,7 +12,7 @@ export class MockProductResolver {
   }
 }
 
-const baseOptions = getGqlModuleBaseOptions('tests/tools')
+const baseOptions = getGqlModuleBaseOptions('tests/helpers')
 
 @Module({
   providers: [DateTimeScalar, MockProductResolver],

@@ -1,8 +1,8 @@
 import { CORSGuardDI, config, initFirebaseApp } from '../../../../src'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockCORSBaseAppModule } from '../../../tools/app.modules'
-import { MockGQLContainerModule } from '../../../tools/gql.modules'
-import { MockRESTContainerModule } from '../../../tools/rest.modules'
+import { MockCORSBaseAppModule } from '../../../helpers/app.modules'
+import { MockGQLContainerModule } from '../../../helpers/gql.modules'
+import { MockRESTContainerModule } from '../../../helpers/rest.modules'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 const request = require('supertest')

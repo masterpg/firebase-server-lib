@@ -19,7 +19,7 @@
   },
   "scripts": {
     "build": "rm -rf lib && tsc --declaration && tsc --project ./tsconfig.tools.json",
-    "test:pre": "npm run build && ./functions.env.test.sh && node ./tools/gql.generate.schema.js tests/tools tests/tools",
+    "test:pre": "npm run build && ./functions.env.test.sh && node ./tools/gql.generate.schema.js ./tests/helpers ./tests/helpers",
     "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
     "serve": "npm --prefix ./example/functions run serve",
