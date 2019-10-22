@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { setupSchema } from '../gql'
+import { setupSchema } from '../lib/gql'
 
 const argv = require('yargs').argv
 const srcPath = argv._[0] as string

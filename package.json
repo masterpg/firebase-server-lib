@@ -9,7 +9,8 @@
     "url": "https://github.com/masterpg/web-server-lib.git"
   },
   "files": [
-    "lib"
+    "lib",
+    "tools"
   ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -17,13 +18,13 @@
     "node": "10"
   },
   "scripts": {
-    "build": "rm -rf lib && tsc --declaration",
-    "test:pre": "npm run build && ./functions.env.test.sh && node ./lib/tools/gql.generate.schema.js tests/tools tests/tools",
+    "build": "rm -rf lib && tsc --declaration && tsc --project ./tsconfig.tools.json",
+    "test:pre": "npm run build && ./functions.env.test.sh && node ./tools/gql.generate.schema.js tests/tools tests/tools",
     "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
     "serve": "npm --prefix ./example/functions run serve",
     "lint": "./node_modules/web-base-lib/tools/lint.sh",
-    "env": "./functions.env.test.sh && node ./lib/tools/setup.test.users.js"
+    "env": "./functions.env.test.sh && node ./tools/setup.test.users.js"
   },
   "dependencies": {
     "@google-cloud/logging": "^5.3.1",

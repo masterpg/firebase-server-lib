@@ -2,8 +2,10 @@
 lib/
 node_module/
 
-example/functions/lib
+example/functions/lib/
 example/functions/node_modules/
 example/functions/src/gql.schema.ts
 
 tests/tools/gql.schema.ts
+
+tools/*.js

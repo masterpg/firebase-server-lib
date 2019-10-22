@@ -15,3 +15,5 @@ lib/**/*.js.map
 src/**/*.js.map
 
 tests/**/*.js.map
+
+tools/**/*.js.map

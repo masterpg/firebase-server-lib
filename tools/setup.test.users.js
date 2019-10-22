@@ -2,7 +2,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const admin = require("firebase-admin");
-const firebase_1 = require("../base/firebase");
+const base_1 = require("../lib/base");
 const exitHook = require('async-exit-hook');
 const users = [
     {
@@ -24,7 +24,7 @@ const users = [
     },
 ];
 exitHook((callback) => {
-    firebase_1.initFirebaseApp();
+    base_1.initFirebaseApp();
     const promises = [];
     for (const user of users) {
         promises.push((async () => {

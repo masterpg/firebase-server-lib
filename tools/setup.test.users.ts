@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as admin from 'firebase-admin'
-import { initFirebaseApp } from '../base/firebase'
+import { initFirebaseApp } from '../lib/base'
 const exitHook = require('async-exit-hook')
 
 const users = [
