@@ -3069,7 +3069,7 @@ firebase-functions@^3.2.0:
 
 "firebase-server-lib@https://github.com/masterpg/firebase-server-lib.git":
   version "0.0.1"
-  resolved "https://github.com/masterpg/firebase-server-lib.git#10cf0e0ee06cc7a2075b77259458e12e57427283"
+  resolved "https://github.com/masterpg/firebase-server-lib.git#fa87a3fd8243cd3dca6fcd465ab8d710cb17452a"
   dependencies:
     "@google-cloud/logging" "^5.3.1"
     "@nestjs/common" "^6.7.2"
