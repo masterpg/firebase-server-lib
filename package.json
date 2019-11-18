@@ -8,66 +8,16 @@
     "type": "git",
     "url": "https://github.com/masterpg/firebase-server-lib.git"
   },
-  "files": [
-    "lib",
-    "tools"
-  ],
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
   "engines": {
     "node": "10"
   },
   "scripts": {
-    "build": "rm -rf lib && tsc --declaration && tsc --project ./tsconfig.tools.json",
-    "test:pre": "npm run build && ./functions.env.test.sh && node ./tools/gql.generate.schema.js ./tests/helpers ./tests/helpers",
-    "test": "npm run test:pre && jest --runInBand",
+    "build": "npm --prefix ./functions run build",
+    "test": "npm --prefix ./functions run test",
     "test:coverage": "npm run test -- --coverage",
-    "serve": "npm --prefix ./example/functions run serve",
-    "lint": "./node_modules/web-base-lib/tools/lint.sh",
-    "env": "./functions.env.test.sh && node ./tools/setup.test.users.js"
-  },
-  "dependencies": {
-    "@google-cloud/logging": "^5.3.1",
-    "@nestjs/common": "^6.7.2",
-    "@nestjs/core": "^6.7.2",
-    "@nestjs/graphql": "^6.5.1",
-    "@nestjs/platform-express": "^6.7.2",
-    "apollo-server-express": "^2.9.4",
-    "async-exit-hook": "^2.0.1",
-    "chokidar": "^3.1.1",
-    "class-transformer": "^0.2.3",
-    "convert-hrtime": "^3.0.0",
-    "dayjs": "^1.8.16",
-    "firebase-admin": "^8.6.0",
-    "firebase-functions": "^3.2.0",
-    "firebase-tools": "^7.4.0",
-    "glob": "^7.1.4",
-    "graphql": "^14.5.8",
-    "graphql-subscriptions": "^1.1.0",
-    "graphql-toolkit": "^0.5.15",
-    "graphql-type-json": "^0.3.0",
-    "lodash": "^4.17.15",
-    "reflect-metadata": "^0.1.13",
-    "vary": "^1.1.2",
-    "web-base-lib": "https://github.com/masterpg/web-base-lib.git",
-    "yargs": "^14.2.0"
-  },
-  "devDependencies": {
-    "@nestjs/testing": "^6.7.2",
-    "@types/graphql-type-json": "^0.3.2",
-    "@types/jest": "^24.0.18",
-    "@types/supertest": "^2.0.8",
-    "@types/vary": "^1.1.0",
-    "@types/yargs": "^13.0.3",
-    "@typescript-eslint/eslint-plugin": "^2.3.3",
-    "@typescript-eslint/parser": "^2.3.3",
-    "eslint": "^6.5.1",
-    "eslint-config-prettier": "^6.4.0",
-    "eslint-plugin-prettier": "^3.1.1",
-    "jest": "^24.9.0",
-    "prettier": "^1.18.2",
-    "supertest": "^4.0.2",
-    "ts-jest": "^24.1.0",
-    "typescript": "^3.6.3"
+    "serve": "npm --prefix ./functions run serve",
+    "lint": "npm --prefix ./functions run lint",
+    "env": "npm --prefix ./functions run env",
+    "deploy": "npm --prefix ./functions run deploy"
   }
 }

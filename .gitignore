@@ -1,19 +1,18 @@
+*.log
+*.tmp
+~$*
+
 .idea/
 coverage/
 node_modules/
 screenshots/
-*.log
-*.tmp
-~$*
 .runtimeconfig.json
 serviceAccountKey.json
 
-example/functions/lib
+functions/dist/
 
-lib/**/*.js.map
+functions/src**/*.js.map
 
-src/**/*.js.map
+functions/tests/**/*.js.map
 
-tests/**/*.js.map
-
-tools/**/*.js.map
+functions/tools/**/*.js.map
