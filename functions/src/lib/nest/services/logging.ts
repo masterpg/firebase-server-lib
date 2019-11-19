@@ -107,12 +107,15 @@ abstract class LoggingService {
   //----------------------------------------------------------------------
 
   log(loggingSource: LoggingSource): void {
-    const { logName, res, error, metadata, data } = loggingSource
+    const { logName, req, res, error, metadata, data } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
     if (!error) {
       merge(realMetadata, {
         severity: 100, // DEBUG
+        labels: {
+          execution_id: req.header('Function-Execution-Id'),
+        },
         httpRequest: {
           responseSize: parseInt(res.get('Content-Length')),
         },
@@ -264,8 +267,6 @@ class ProdLoggingService extends LoggingService {
 @Injectable()
 class DevLoggingService extends LoggingService {
   log(loggingSource: LoggingSource): void {
-    super.log(loggingSource)
-
     const { latencyTimer, error } = loggingSource
     const functionName = this.getBaseMetadata(loggingSource).resource.labels.function_name
     const detail = {
