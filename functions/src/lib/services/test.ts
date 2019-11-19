@@ -110,6 +110,9 @@ class TestService {
     await this.firestoreService.deepDeleteCollection(collectionName)
   }
 
+  /**
+   * @deprecated
+   */
   private async m_deleteCollectionWithFirebaseTools(collectionName: string): Promise<void> {
     await firebaseTools.firestore.delete(collectionName, {
       project: process.env.GCLOUD_PROJECT,
