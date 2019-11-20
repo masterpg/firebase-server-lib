@@ -5,7 +5,7 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { Injectable, Req, Res } from '@nestjs/common'
+import { Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
@@ -41,8 +41,7 @@ export interface UploadDataItem {
   contentType: string
 }
 
-@Injectable()
-class StorageService {
+export abstract class BaseStorageService {
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -565,13 +564,4 @@ class StorageService {
     }
     return result
   }
-}
-
-export namespace StorageServiceDI {
-  export const symbol = Symbol(StorageService.name)
-  export const provider = {
-    provide: symbol,
-    useClass: StorageService,
-  }
-  export type type = StorageService
 }

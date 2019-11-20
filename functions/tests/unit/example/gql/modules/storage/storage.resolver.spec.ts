@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { requestGQL, verifyNotSignInCase } from '../../../../../helpers/gql.helpers'
+import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example/gql'
 import { AppModule } from '../../../../../../src/example/app.module'
 import { initFirebaseApp } from '../../../../../../src/lib'
 
@@ -28,7 +28,8 @@ describe('StorageResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -42,13 +43,14 @@ describe('StorageResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
   describe('createUserStorageDirs', () => {
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, {
+      const response = await requestGQL(app, {
         query: `
           mutation CreateUserStorageDirs {
             createUserStorageDirs(dirPaths: [
@@ -57,6 +59,7 @@ describe('StorageResolver', () => {
           }
         `,
       })
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -72,7 +75,8 @@ describe('StorageResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -86,7 +90,8 @@ describe('StorageResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -102,7 +107,8 @@ describe('StorageResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
 
     it('アプリケーション管理者でない場合', async () => {

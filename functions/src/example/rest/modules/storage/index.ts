@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { StorageServiceDI } from '../../../../lib'
+import { StorageServiceDI } from '../../../services/storage'
 
 @Controller('storage')
 export class StorageController {

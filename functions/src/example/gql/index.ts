@@ -2,9 +2,9 @@ import { DateTimeScalar, getGqlModuleBaseOptions } from '../../lib'
 import { GqlModuleOptions, GraphQLModule } from '@nestjs/graphql'
 import { GQLAppModule } from './modules/app'
 import { GQLCartModule } from './modules/cart'
+import { GQLDevUtilsModule } from './modules/dev'
 import { GQLProductModule } from './modules/product'
 import { GQLStorageModule } from './modules/storage'
-import { GQLTestModule } from './modules/test'
 import { Module } from '@nestjs/common'
 const merge = require('lodash/merge')
 
@@ -21,7 +21,7 @@ if (process.env.NODE_ENV !== 'production') {
     playground: true,
     introspection: true,
   })
-  imports.push(GQLTestModule)
+  imports.push(GQLDevUtilsModule)
 }
 
 @Module({

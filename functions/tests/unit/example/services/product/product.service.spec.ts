@@ -1,5 +1,5 @@
-import { FirestoreServiceDI, TestServiceDI, initFirebaseApp } from '../../../../../src/lib'
-import { Product, ProductServiceDI } from '../../../../../src/example/services'
+import { DevUtilsServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
+import { FirestoreServiceDI, initFirebaseApp } from '../../../../../src/lib'
 import { Test } from '@nestjs/testing'
 
 jest.setTimeout(25000)
@@ -13,20 +13,20 @@ const PRODUCTS: Product[] = [
 
 describe('ProductService', () => {
   let productService: ProductServiceDI.type
-  let testService: TestServiceDI.type
+  let devUtilsService: DevUtilsServiceDI.type
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FirestoreServiceDI.provider, ProductServiceDI.provider, TestServiceDI.provider],
+      providers: [FirestoreServiceDI.provider, ProductServiceDI.provider, DevUtilsServiceDI.provider],
     }).compile()
 
     productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
-    testService = module.get<TestServiceDI.type>(TestServiceDI.symbol)
+    devUtilsService = module.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
   })
 
   describe('findList', () => {
     it('商品IDを指定しない場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
 
       const actual = await productService.findList()
 
@@ -34,7 +34,7 @@ describe('ProductService', () => {
     })
 
     it('商品IDを1つ指定した場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
       const product = PRODUCTS[0]
 
       const actual = await productService.findList([product.id])
@@ -43,7 +43,7 @@ describe('ProductService', () => {
     })
 
     it('商品IDの配列を指定した場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
       const ids = [PRODUCTS[0].id, PRODUCTS[1].id]
 
       const actual = await productService.findList(ids)
@@ -52,14 +52,14 @@ describe('ProductService', () => {
     })
 
     it('存在しない商品IDを指定した場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
       const actual = await productService.findList(['productXXX'])
 
       expect(actual.length).toBe(0)
     })
 
     it('一部存在しない商品IDを指定した場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
       const ids = ['productXXX', PRODUCTS[0].id]
 
       const actual = await productService.findList(ids)
@@ -68,7 +68,7 @@ describe('ProductService', () => {
     })
 
     it('全て存在しない商品IDを指定した場合', async () => {
-      await testService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
+      await devUtilsService.putTestData([{ collectionName: 'products', collectionRecords: PRODUCTS }])
       const ids = ['productXXX', 'productYYY']
 
       const actual = await productService.findList(ids)

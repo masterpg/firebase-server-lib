@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing'
+import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example/gql'
 import { AppModule } from '../../../../../../src/example/app.module'
 import { initFirebaseApp } from '../../../../../../src/lib'
-import { verifyNotSignInCase } from '../../../../../helpers/gql.helpers'
 
 jest.setTimeout(25000)
 initFirebaseApp()
@@ -32,7 +32,8 @@ describe('CartResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -48,7 +49,8 @@ describe('CartResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -69,7 +71,8 @@ describe('CartResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -85,7 +88,8 @@ describe('CartResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 
@@ -99,7 +103,8 @@ describe('CartResolver', () => {
     }
 
     it('サインインしていない場合', async () => {
-      return verifyNotSignInCase(app, gql)
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
     })
   })
 })

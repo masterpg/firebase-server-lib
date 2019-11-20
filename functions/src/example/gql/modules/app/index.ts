@@ -1,5 +1,5 @@
 import { AppResolver } from './resolver'
-import { AppServiceDI } from '../../../../lib'
+import { AppServiceDI } from '../../../services/app'
 import { Module } from '@nestjs/common'
 
 @Module({

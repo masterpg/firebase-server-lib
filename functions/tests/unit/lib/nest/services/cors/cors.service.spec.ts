@@ -1,8 +1,6 @@
+import { MockCORSBaseAppModule, MockGQLContainerModule, MockRESTContainerModule } from '../../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { config, initFirebaseApp } from '../../../../../../src/lib'
-import { MockCORSBaseAppModule } from '../../../../../helpers/app.modules'
-import { MockGQLContainerModule } from '../../../../../helpers/gql.modules'
-import { MockRESTContainerModule } from '../../../../../helpers/rest.modules'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 const request = require('supertest')

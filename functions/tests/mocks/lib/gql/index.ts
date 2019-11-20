@@ -1,7 +1,7 @@
-import { DateTimeScalar, getGqlModuleBaseOptions } from '../../src/lib'
+import { DateTimeScalar, getGqlModuleBaseOptions } from '../../../../src/lib/gql'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { Module } from '@nestjs/common'
-import { Product } from './gql.schema'
+import { Product } from '../services/types'
 const merge = require('lodash/merge')
 
 @Resolver('Product')
@@ -12,7 +12,7 @@ export class MockProductResolver {
   }
 }
 
-const baseOptions = getGqlModuleBaseOptions('tests/helpers')
+const baseOptions = getGqlModuleBaseOptions('tests/mocks/lib/gql')
 
 @Module({
   providers: [DateTimeScalar, MockProductResolver],

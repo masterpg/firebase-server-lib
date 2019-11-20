@@ -1,4 +1,4 @@
-import { CORSMiddleware, CORSServiceDI, FirestoreServiceDI, LoggingInterceptorDI, LoggingServiceDI } from '../../src/lib'
+import { CORSMiddleware, CORSServiceDI, FirestoreServiceDI, LoggingInterceptorDI, LoggingServiceDI } from '../../../src/lib'
 import { Global, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 
 @Global()

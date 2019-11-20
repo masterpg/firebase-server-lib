@@ -1,6 +1,7 @@
-import { AppServiceDI, IdToken, User, UserGuard } from '../../../../lib'
+import { IdToken, User, UserGuard } from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Query, Resolver } from '@nestjs/graphql'
+import { AppServiceDI } from '../../../services/app'
 
 @Resolver()
 export class AppResolver {

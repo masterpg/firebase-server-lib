@@ -1,5 +1,13 @@
-import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, Product, ProductServiceDI } from '../../../../../src/example/services'
-import { FirestoreServiceDI, InputValidationError, TestServiceDI, ValidationErrors, initFirebaseApp } from '../../../../../src/lib'
+import {
+  AddCartItemInput,
+  CartItem,
+  CartServiceDI,
+  DevUtilsServiceDI,
+  EditCartItemResponse,
+  Product,
+  ProductServiceDI,
+} from '../../../../../src/example/services'
+import { FirestoreServiceDI, InputValidationError, ValidationErrors, initFirebaseApp } from '../../../../../src/lib'
 import { Test } from '@nestjs/testing'
 const cloneDeep = require('lodash/cloneDeep')
 
@@ -34,23 +42,23 @@ const CART_ITEMS: CartItem[] = [
 ]
 
 describe('CartService', () => {
-  let testService: TestServiceDI.type
+  let devUtilsService: DevUtilsServiceDI.type
   let cartService: CartServiceDI.type
   let productService: ProductServiceDI.type
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FirestoreServiceDI.provider, TestServiceDI.provider, CartServiceDI.provider, ProductServiceDI.provider],
+      providers: [FirestoreServiceDI.provider, DevUtilsServiceDI.provider, CartServiceDI.provider, ProductServiceDI.provider],
     }).compile()
 
-    testService = module.get<TestServiceDI.type>(TestServiceDI.symbol)
+    devUtilsService = module.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     cartService = module.get<CartServiceDI.type>(CartServiceDI.symbol)
     productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
   })
 
   describe('findList', () => {
     it('カートアイテムIDを指定しない場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -61,7 +69,7 @@ describe('CartService', () => {
     })
 
     it('カートアイテムIDを1つ指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -73,7 +81,7 @@ describe('CartService', () => {
     })
 
     it('カートアイテムIDを複数指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -85,7 +93,7 @@ describe('CartService', () => {
     })
 
     it('一部存在しない商品IDを指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -97,7 +105,7 @@ describe('CartService', () => {
     })
 
     it('全て存在しない商品IDを指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -109,7 +117,7 @@ describe('CartService', () => {
     })
 
     it('存在しないカートアイテムIDを指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -127,7 +135,7 @@ describe('CartService', () => {
     }) as AddCartItemInput[]
 
     it('ベーシックケース', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
@@ -162,7 +170,7 @@ describe('CartService', () => {
     })
 
     it('存在しない商品を指定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: [] },
         { collectionName: 'cart', collectionRecords: [] },
       ])
@@ -180,7 +188,7 @@ describe('CartService', () => {
     })
 
     it('既に存在するカートアイテムを追加しようとした場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -197,7 +205,7 @@ describe('CartService', () => {
     })
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
@@ -215,7 +223,7 @@ describe('CartService', () => {
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
@@ -234,7 +242,7 @@ describe('CartService', () => {
     })
 
     it('トランザクションが効いているか検証', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
@@ -261,7 +269,7 @@ describe('CartService', () => {
 
   describe('updateList', () => {
     it('ベーシックケース', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -289,7 +297,7 @@ describe('CartService', () => {
     })
 
     it('自ユーザー以外のカートアイテムを変更しようとした場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         {
           collectionName: 'cart',
@@ -314,7 +322,7 @@ describe('CartService', () => {
     })
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -333,7 +341,7 @@ describe('CartService', () => {
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -352,7 +360,7 @@ describe('CartService', () => {
     })
 
     it('トランザクションが効いているか検証', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -380,7 +388,7 @@ describe('CartService', () => {
 
   describe('removeList', () => {
     it('ベーシックケース', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -416,7 +424,7 @@ describe('CartService', () => {
     })
 
     it('自ユーザー以外のカートアイテムを削除しようとした場合', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         {
           collectionName: 'cart',
@@ -439,7 +447,7 @@ describe('CartService', () => {
     })
 
     it('トランザクションが効いているか検証', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
@@ -466,7 +474,7 @@ describe('CartService', () => {
 
   describe('checkout', () => {
     it('ベーシックケース', async () => {
-      await testService.putTestData([
+      await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])

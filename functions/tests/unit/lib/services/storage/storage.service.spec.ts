@@ -6,15 +6,12 @@ import {
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeType,
-  StorageServiceDI,
-  TestServiceDI,
   UploadDataItem,
   config,
   initFirebaseApp,
 } from '../../../../../src/lib'
+import { MockBaseAppModule, MockDevUtilsServiceDI, MockRESTContainerModule, MockStorageServiceDI } from '../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockBaseAppModule } from '../../../../helpers/app.modules'
-import { MockRESTContainerModule } from '../../../../helpers/rest.modules'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 import { removeBothEndsSlash } from 'web-base-lib'
@@ -50,16 +47,16 @@ async function notExistsNodes(nodes: StorageNode[], basePath = ''): Promise<void
 }
 
 describe('StorageService', () => {
-  let storageService: StorageServiceDI.type
-  let testService: TestServiceDI.type
+  let storageService: MockStorageServiceDI.type
+  let devUtilsService: MockDevUtilsServiceDI.type
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [TestServiceDI.provider, FirestoreServiceDI.provider, StorageServiceDI.provider],
+      providers: [MockDevUtilsServiceDI.provider, FirestoreServiceDI.provider, MockStorageServiceDI.provider],
     }).compile()
 
-    storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
-    testService = module.get<TestServiceDI.type>(TestServiceDI.symbol)
+    storageService = module.get<MockStorageServiceDI.type>(MockStorageServiceDI.symbol)
+    devUtilsService = module.get<MockDevUtilsServiceDI.type>(MockDevUtilsServiceDI.symbol)
 
     await storageService.removeStorageDir(`${TEST_FILES_DIR}`)
     await storageService.removeStorageDir(`${storageService.getUserStorageDirPath(GENERAL_USER)}/`)

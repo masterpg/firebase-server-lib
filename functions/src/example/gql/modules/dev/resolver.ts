@@ -1,31 +1,32 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { PutTestDataInput, TestServiceDI, TestSignedUploadUrlInput } from '../../../../lib'
+import { PutTestDataInput, TestSignedUploadUrlInput } from '../../../../lib'
+import { DevUtilsServiceDI } from '../../../services'
 import { Inject } from '@nestjs/common'
 
 @Resolver()
-export class TestResolver {
-  constructor(@Inject(TestServiceDI.symbol) protected readonly testService: TestServiceDI.type) {}
+export class DevUtilsResolver {
+  constructor(@Inject(DevUtilsServiceDI.symbol) protected readonly devUtilsService: DevUtilsServiceDI.type) {}
 
   @Mutation()
   async putTestData(@Args('inputs') inputs: PutTestDataInput[]): Promise<boolean> {
-    await this.testService.putTestData(inputs)
+    await this.devUtilsService.putTestData(inputs)
     return true
   }
 
   @Query()
   async testSignedUploadUrls(@Args('inputs') inputs: TestSignedUploadUrlInput[]): Promise<string[]> {
-    return await this.testService.getTestSignedUploadUrls(inputs)
+    return await this.devUtilsService.getTestSignedUploadUrls(inputs)
   }
 
   @Mutation()
   async removeTestStorageFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
-    await this.testService.removeTestStorageFiles(filePaths)
+    await this.devUtilsService.removeTestStorageFiles(filePaths)
     return true
   }
 
   @Mutation()
   async removeTestStorageDir(@Args('dirPath') dirPath: string): Promise<boolean> {
-    await this.testService.removeTestStorageDir(dirPath)
+    await this.devUtilsService.removeTestStorageDir(dirPath)
     return true
   }
 }

@@ -1,10 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { Inject, Injectable } from '@nestjs/common'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { DocumentReference } from '@google-cloud/firestore'
 import { File } from '@google-cloud/storage'
 import { FirestoreServiceDI } from '../nest'
+import { Inject } from '@nestjs/common'
 import { JSONObject } from './types'
 const firebaseTools = require('firebase-tools')
 
@@ -18,8 +18,7 @@ export interface TestSignedUploadUrlInput {
   contentType?: string
 }
 
-@Injectable()
-class TestService {
+export abstract class BaseDevUtilsService {
   constructor(@Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -180,13 +179,4 @@ class TestService {
   private m_isObject(value: any): boolean {
     return value instanceof Object && !(value instanceof Array)
   }
-}
-
-export namespace TestServiceDI {
-  export const symbol = Symbol(TestService.name)
-  export const provider = {
-    provide: symbol,
-    useClass: TestService,
-  }
-  export type type = TestService
 }

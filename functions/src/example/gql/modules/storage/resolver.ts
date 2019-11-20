@@ -1,17 +1,7 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import {
-  AuthRoleType,
-  GQLContext,
-  GQLCtx,
-  IdToken,
-  Roles,
-  SignedUploadUrlInput,
-  StorageNode,
-  StorageServiceDI,
-  User,
-  UserGuard,
-} from '../../../../lib'
+import { AuthRoleType, GQLContext, GQLCtx, IdToken, Roles, SignedUploadUrlInput, StorageNode, User, UserGuard } from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
+import { StorageServiceDI } from '../../../services/storage'
 
 @Resolver('StorageNode')
 export class StorageResolver {
