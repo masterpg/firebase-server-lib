@@ -41,6 +41,5 @@ export class CartController {
 
 @Module({
   controllers: [CartController],
-  providers: [CartServiceDI.provider],
 })
 export class RESTCartModule {}

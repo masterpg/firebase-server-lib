@@ -7,7 +7,8 @@ import {
   Product,
   ProductServiceDI,
 } from '../../../../../src/example/services'
-import { FirestoreServiceDI, InputValidationError, ValidationErrors, initFirebaseApp } from '../../../../../src/lib'
+import { InputValidationError, ValidationErrors, initFirebaseApp } from '../../../../../src/lib'
+import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
 const cloneDeep = require('lodash/cloneDeep')
 
@@ -48,7 +49,7 @@ describe('CartService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FirestoreServiceDI.provider, DevUtilsServiceDI.provider, CartServiceDI.provider, ProductServiceDI.provider],
+      imports: [AppBaseModule],
     }).compile()
 
     devUtilsService = module.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)

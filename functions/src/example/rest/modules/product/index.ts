@@ -19,6 +19,5 @@ export class ProductController {
 
 @Module({
   controllers: [ProductController],
-  providers: [ProductServiceDI.provider],
 })
 export class RESTProductModule {}

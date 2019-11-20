@@ -1,6 +1,7 @@
 import { DevUtilsServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
-import { FirestoreServiceDI, initFirebaseApp } from '../../../../../src/lib'
+import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
+import { initFirebaseApp } from '../../../../../src/lib'
 
 jest.setTimeout(25000)
 initFirebaseApp()
@@ -17,7 +18,7 @@ describe('ProductService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [FirestoreServiceDI.provider, ProductServiceDI.provider, DevUtilsServiceDI.provider],
+      imports: [AppBaseModule],
     }).compile()
 
     productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
