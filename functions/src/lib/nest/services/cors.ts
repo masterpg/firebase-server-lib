@@ -1,6 +1,6 @@
 import * as vary from 'vary'
+import { HttpLoggingData, HttpLoggingServiceDI, LoggingLatencyTimer } from './logging'
 import { Inject, Injectable } from '@nestjs/common'
-import { LoggingData, LoggingLatencyTimer, LoggingServiceDI } from './logging'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
 import { config } from '../../base'
@@ -30,7 +30,7 @@ abstract class CORSService {
   //
   //----------------------------------------------------------------------
 
-  constructor(@Inject(LoggingServiceDI.symbol) protected readonly loggingService: LoggingServiceDI.type) {}
+  constructor(@Inject(HttpLoggingServiceDI.symbol) protected readonly loggingService: HttpLoggingServiceDI.type) {}
 
   //----------------------------------------------------------------------
   //
@@ -258,7 +258,7 @@ abstract class CORSService {
     })
   }
 
-  protected getErrorData(req: Request, options: CORSOptions): Partial<LoggingData> {
+  protected getErrorData(req: Request, options: CORSOptions): Partial<HttpLoggingData> {
     return {
       error: {
         message: 'Not allowed by CORS.',

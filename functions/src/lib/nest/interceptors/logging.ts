@@ -1,12 +1,12 @@
 import { CallHandler, ExecutionContext, Inject, NestInterceptor } from '@nestjs/common'
-import { LoggingLatencyTimer, LoggingServiceDI } from '../services/logging'
+import { HttpLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { APP_INTERCEPTOR } from '@nestjs/core'
 import { Observable } from 'rxjs'
 import { getAllExecutionContext } from '../base'
 import { tap } from 'rxjs/operators'
 
 class LoggingInterceptor implements NestInterceptor {
-  constructor(@Inject(LoggingServiceDI.symbol) protected readonly loggingService: LoggingServiceDI.type) {}
+  constructor(@Inject(HttpLoggingServiceDI.symbol) protected readonly loggingService: HttpLoggingServiceDI.type) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const { req, res, info } = getAllExecutionContext(context)

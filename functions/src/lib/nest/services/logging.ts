@@ -19,17 +19,6 @@ const merge = require('lodash/merge')
 //
 //========================================================================
 
-export interface LoggingSource {
-  req: Request
-  res: Response
-  latencyTimer?: LoggingLatencyTimer
-  logName?: string
-  info?: GraphQLResolveInfo
-  error?: Error
-  metadata?: Partial<LoggingMetadata>
-  data?: Partial<LoggingData>
-}
-
 export interface LoggingLatencyData {
   seconds: number
   nanos: number
@@ -67,12 +56,23 @@ export class LoggingLatencyTimer {
   }
 }
 
-export interface LoggingMetadata extends LogEntry {
-  resource: LoggingResourceData
+export interface HttpLoggingSource {
+  req: Request
+  res: Response
+  latencyTimer?: LoggingLatencyTimer
+  logName?: string
+  info?: GraphQLResolveInfo
+  error?: Error
+  metadata?: Partial<HttpLoggingMetadata>
+  data?: Partial<HttpLoggingData>
+}
+
+export interface HttpLoggingMetadata extends LogEntry {
+  resource: HttpLoggingResourceData
   httpRequest: IHttpRequest
 }
 
-export interface LoggingResourceData extends IMonitoredResource {
+export interface HttpLoggingResourceData extends IMonitoredResource {
   type: string
   labels: {
     function_name: string
@@ -80,7 +80,7 @@ export interface LoggingResourceData extends IMonitoredResource {
   }
 }
 
-export interface LoggingData {
+export interface HttpLoggingData {
   gql?: any
   uid?: string
   error?: {
@@ -91,7 +91,7 @@ export interface LoggingData {
 
 const DEFAULT_LOG_NAME = 'api'
 
-abstract class LoggingService {
+abstract class HttpLoggingService {
   //----------------------------------------------------------------------
   //
   //  Variables
@@ -106,7 +106,7 @@ abstract class LoggingService {
   //
   //----------------------------------------------------------------------
 
-  log(loggingSource: LoggingSource): void {
+  log(loggingSource: HttpLoggingSource): void {
     const { logName, req, res, error, metadata, data } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
@@ -166,7 +166,7 @@ abstract class LoggingService {
     res: Response
     info?: GraphQLResolveInfo
     latencyTimer?: LoggingLatencyTimer
-  }): LoggingMetadata {
+  }): HttpLoggingMetadata {
     const { req, info } = loggingSource
     return {
       resource: this.m_getResourceData(loggingSource),
@@ -174,10 +174,10 @@ abstract class LoggingService {
     }
   }
 
-  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; error?: Error }): LoggingData {
+  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; error?: Error }): HttpLoggingData {
     const { req, info, error } = loggingSource
 
-    const data = {} as LoggingData
+    const data = {} as HttpLoggingData
 
     if (info) {
       data.gql = req.body
@@ -207,7 +207,7 @@ abstract class LoggingService {
     return data
   }
 
-  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | LoggingData) {
+  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HttpLoggingData) {
     let targetLog = this.m_logMap[logName]
     if (!targetLog) {
       targetLog = new Logging().log(logName)
@@ -217,7 +217,7 @@ abstract class LoggingService {
     return targetLog.write(entry)
   }
 
-  private m_getResourceData(loggingSource: { req: Request; info?: GraphQLResolveInfo }): LoggingResourceData {
+  private m_getResourceData(loggingSource: { req: Request; info?: GraphQLResolveInfo }): HttpLoggingResourceData {
     const { req, info } = loggingSource
     return {
       type: 'cloud_function',
@@ -251,7 +251,7 @@ abstract class LoggingService {
 //========================================================================
 
 @Injectable()
-class ProdLoggingService extends LoggingService {
+class ProdHttpLoggingService extends HttpLoggingService {
   getFunctionNameByRequest(req: Request): string {
     // 例: function_name = "api/rest/hello"
     // ・req.baseUrl: "/rest"
@@ -265,8 +265,8 @@ class ProdLoggingService extends LoggingService {
 }
 
 @Injectable()
-class DevLoggingService extends LoggingService {
-  log(loggingSource: LoggingSource): void {
+class DevHttpLoggingService extends HttpLoggingService {
+  log(loggingSource: HttpLoggingSource): void {
     const { latencyTimer, error } = loggingSource
     const functionName = this.getBaseMetadata(loggingSource).resource.labels.function_name
     const detail = {
@@ -299,8 +299,8 @@ class DevLoggingService extends LoggingService {
 }
 
 @Injectable()
-class TestLoggingService extends LoggingService {
-  log(loggingSource: LoggingSource): void {}
+class TestHttpLoggingService extends HttpLoggingService {
+  log(loggingSource: HttpLoggingSource): void {}
 
   protected getFunctionNameByRequest(req: Request): string {
     return ''
@@ -311,19 +311,19 @@ class TestLoggingService extends LoggingService {
   }
 }
 
-export namespace LoggingServiceDI {
-  export const symbol = Symbol(LoggingService.name)
+export namespace HttpLoggingServiceDI {
+  export const symbol = Symbol(HttpLoggingService.name)
   export const provider = {
     provide: symbol,
     useClass: (() => {
       if (process.env.NODE_ENV === 'production') {
-        return ProdLoggingService
+        return ProdHttpLoggingService
       } else if (process.env.NODE_ENV === 'test') {
-        return TestLoggingService
+        return TestHttpLoggingService
       } else {
-        return DevLoggingService
+        return DevHttpLoggingService
       }
     })(),
   }
-  export type type = LoggingService
+  export type type = HttpLoggingService
 }

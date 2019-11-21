@@ -1,10 +1,10 @@
-import { CORSMiddleware, CORSServiceDI, FirestoreServiceDI, LoggingInterceptorDI, LoggingServiceDI } from '../../../src/lib'
+import { CORSMiddleware, CORSServiceDI, FirestoreServiceDI, HttpLoggingServiceDI, LoggingInterceptorDI } from '../../../src/lib'
 import { Global, MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 
 @Global()
 @Module({
-  providers: [LoggingServiceDI.provider, FirestoreServiceDI.provider, LoggingInterceptorDI.provider],
-  exports: [LoggingServiceDI.provider, FirestoreServiceDI.provider],
+  providers: [HttpLoggingServiceDI.provider, FirestoreServiceDI.provider, LoggingInterceptorDI.provider],
+  exports: [HttpLoggingServiceDI.provider, FirestoreServiceDI.provider],
 })
 export class MockBaseAppModule {}
 
