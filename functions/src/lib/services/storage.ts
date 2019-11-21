@@ -5,12 +5,17 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import * as uuidv4 from 'uuid/v4'
 import { Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
+import { IdToken } from '../nest'
+import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
+
+type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
 
 export enum StorageNodeType {
   File = 'File',
@@ -166,7 +171,7 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPath
    */
-  async getUserStorageDirNodes(user: { uid: string }, dirPath?: string): Promise<StorageNode[]> {
+  async getUserStorageDirNodes(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
     return this.getStorageDirNodes(dirPath, userDirPath)
   }
@@ -216,7 +221,7 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPaths
    */
-  async createUserStorageDirs(user: { uid: string }, dirPaths: string[]): Promise<StorageNode[]> {
+  async createUserStorageDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
     return this.createStorageDirs(dirPaths, userDirPath)
   }
@@ -271,7 +276,7 @@ export abstract class BaseStorageService {
    * @param user
    * @param filePaths
    */
-  async removeUserStorageFiles(user: { uid: string }, filePaths: string[]): Promise<StorageNode[]> {
+  async removeUserStorageFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
     return this.removeStorageFiles(filePaths, userDirPath)
   }
@@ -318,7 +323,7 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPath
    */
-  async removeUserStorageDir(user: { uid: string }, dirPath: string): Promise<StorageNode[]> {
+  async removeUserStorageDir(user: StorageUser, dirPath: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
     return this.removeStorageDir(dirPath, userDirPath)
   }
@@ -470,11 +475,35 @@ export abstract class BaseStorageService {
   }
 
   /**
-   * ユーザーディレクトリのパスを取得します。
+   * Cloud Storageのユーザーディレクトリのパスを取得します。
    * @param user
    */
-  getUserStorageDirPath(user: { uid: string }): string {
-    return `users/${user.uid}`
+  getUserStorageDirPath(user: StorageUser): string {
+    if ((user as IdToken).storageDir) {
+      return `users/${(user as IdToken).storageDir}`
+    } else if ((user as UserRecord).customClaims) {
+      const customClaims = (user as UserRecord).customClaims!
+      const storageDir = (customClaims as any).storageDir
+      if (storageDir) {
+        return storageDir ? `users/${storageDir}` : ''
+      }
+    }
+    throw new Error(`User (uid: "${user.uid}") does not have a storage directory assigned.`)
+  }
+
+  /**
+   * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
+   * @param user
+   */
+  async assignUserStorageDir(user: UserRecord): Promise<void> {
+    // 既に割り当てられている場合は終了
+    if (user.customClaims && (user.customClaims as any).storageDir) return
+
+    // ユーザークレームに"storageDir"というプロパティを追加
+    // このプロパティに設定される値がユーザーディレクトリとなる
+    await admin.auth().setCustomUserClaims(user.uid, {
+      storageDir: uuidv4(),
+    })
   }
 
   /**

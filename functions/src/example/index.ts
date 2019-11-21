@@ -5,15 +5,18 @@ import { config, initFirebaseApp } from '../lib'
 import { AppModule } from './app.module'
 import { Express } from 'express'
 import { ExpressAdapter } from '@nestjs/platform-express'
+import { HandlersServiceDI } from './services'
+import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 
 initFirebaseApp()
 
 const server = express()
+let app: INestApplication
 
 const createNestServer = async (expressInstance: Express) => {
   const httpAdapter = new ExpressAdapter(expressInstance)
-  const app = await NestFactory.create(AppModule, httpAdapter, {
+  app = await NestFactory.create(AppModule, httpAdapter, {
     logger: ['error', 'warn'],
   })
   return app.init()
@@ -24,3 +27,13 @@ createNestServer(server)
   .catch(err => console.error('Nest broken', err))
 
 export const api = functions.region(config.functions.region).https.onRequest(server)
+
+export const onCreateUser = functions.auth.user().onCreate(async (user, context) => {
+  const handlers = app.get(HandlersServiceDI.symbol) as HandlersServiceDI.type
+  await handlers.onCreateUser(user, context)
+})
+
+export const onDeleteUser = functions.auth.user().onDelete(async (user, context) => {
+  const handlers = app.get(HandlersServiceDI.symbol) as HandlersServiceDI.type
+  await handlers.onDeleteUser(user, context)
+})

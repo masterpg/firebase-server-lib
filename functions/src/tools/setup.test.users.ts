@@ -12,6 +12,7 @@ const users = [
     password: 'passpass',
     displayName: '山田 一郎',
     disabled: false,
+    customUserClaims: { storageDir: 'yamada.one' },
   },
   {
     uid: 'kanri.one',
@@ -20,7 +21,7 @@ const users = [
     password: 'passpass',
     displayName: '管理 一郎',
     disabled: false,
-    customUserClaims: { isAppAdmin: true },
+    customUserClaims: { storageDir: 'kanri.one', isAppAdmin: true },
   },
 ]
 

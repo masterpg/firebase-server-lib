@@ -17,11 +17,12 @@ import { Response } from 'supertest'
 import { removeBothEndsSlash } from 'web-base-lib'
 const dayjs = require('dayjs')
 const request = require('supertest')
+const cloneDeep = require('lodash/cloneDeep')
 
 jest.setTimeout(25000)
 initFirebaseApp()
 
-const GENERAL_USER = { uid: 'yamada.one' }
+const GENERAL_USER = { uid: 'yamada.one', storageDir: 'yamada.one' }
 const TEST_FILES_DIR = 'test-files'
 
 async function existsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
@@ -607,6 +608,12 @@ describe('StorageService', () => {
       await notExistsNodes(actual)
     })
 
+    it('存在しないディレクトリを指定した場合', async () => {
+      const actual = await storageService.removeStorageDir(`${TEST_FILES_DIR}/h1`)
+
+      expect(actual.length).toBe(0)
+    })
+
     it('dirPathの先頭に"/"を付与', async () => {
       const uploadList = [
         {
@@ -885,9 +892,53 @@ describe('StorageService', () => {
   })
 
   describe('getUserStorageDirPath', () => {
-    it('ベーシックケース', async () => {
+    it('ベーシックケース - user.storageDir', async () => {
       const actual = storageService.getUserStorageDirPath(GENERAL_USER)
-      expect(actual).toBe(`users/${GENERAL_USER.uid}`)
+      expect(actual).toBe(`users/${GENERAL_USER.storageDir}`)
+    })
+
+    it('ベーシックケース - user.customClaims.storageDir', async () => {
+      const user = {
+        uid: GENERAL_USER.uid,
+        customClaims: {
+          storageDir: GENERAL_USER.storageDir,
+        },
+      }
+
+      const actual = storageService.getUserStorageDirPath(user)
+      expect(actual).toBe(`users/${user.customClaims.storageDir}`)
+    })
+
+    it('user.storageDirが設定されていない場合', async () => {
+      const user = cloneDeep(GENERAL_USER)
+      user.storageDir = undefined
+
+      let actual!: Error
+      try {
+        storageService.getUserStorageDirPath(user)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual).toBeDefined()
+    })
+
+    it('user.customClaims.storageDirが設定されていない場合', async () => {
+      const user = {
+        uid: GENERAL_USER.uid,
+        customClaims: {
+          storageDir: undefined,
+        },
+      }
+
+      let actual!: Error
+      try {
+        storageService.getUserStorageDirPath(user)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual).toBeDefined()
     })
   })
 

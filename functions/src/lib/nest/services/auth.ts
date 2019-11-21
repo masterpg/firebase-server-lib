@@ -10,6 +10,7 @@ import { Request } from 'express'
 
 export interface IdToken extends admin.auth.DecodedIdToken {
   isAppAdmin?: string
+  storageDir?: string
 }
 
 export enum AuthRoleType {
