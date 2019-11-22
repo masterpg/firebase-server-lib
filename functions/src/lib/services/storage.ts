@@ -501,9 +501,11 @@ export abstract class BaseStorageService {
 
     // ユーザークレームに"storageDir"というプロパティを追加
     // このプロパティに設定される値がユーザーディレクトリとなる
+    const storageDir = uuidv4()
     await admin.auth().setCustomUserClaims(user.uid, {
-      storageDir: uuidv4(),
+      storageDir,
     })
+    ;(user.customClaims as any).storageDir = storageDir
   }
 
   /**

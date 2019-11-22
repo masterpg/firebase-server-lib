@@ -1,12 +1,12 @@
-import * as convertHrtime from 'convert-hrtime'
 import * as path from 'path'
 import { HttpException, Injectable } from '@nestjs/common'
-import { InputValidationError, ValidationErrors, config } from '../../base'
+import { InputValidationError, ValidationErrors, config } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
-import { IdToken } from './auth'
+import { IdToken } from '../auth'
 import { LogEntry } from '@google-cloud/logging/build/src/entry'
+import { LoggingLatencyTimer } from './base'
 import { google } from '@google-cloud/logging/build/proto/logging'
 import IHttpRequest = google.logging.type.IHttpRequest
 import IMonitoredResource = google.api.IMonitoredResource
@@ -18,43 +18,6 @@ const merge = require('lodash/merge')
 //  Basis
 //
 //========================================================================
-
-export interface LoggingLatencyData {
-  seconds: number
-  nanos: number
-}
-
-export class LoggingLatencyTimer {
-  private m_startTime: [number, number] = [0, 0]
-
-  private m_diff: convertHrtime.HRTime = { seconds: 0, milliseconds: 0, nanoseconds: 0 }
-
-  get diff() {
-    return this.m_diff
-  }
-
-  private m_data: LoggingLatencyData = { seconds: 0, nanos: 0 }
-
-  get data(): LoggingLatencyData {
-    return this.m_data
-  }
-
-  start(): LoggingLatencyTimer {
-    this.m_startTime = process.hrtime()
-    this.m_diff = { seconds: 0, milliseconds: 0, nanoseconds: 0 }
-    this.m_data = { seconds: 0, nanos: 0 }
-    return this
-  }
-
-  stop(): LoggingLatencyTimer {
-    this.m_diff = convertHrtime(process.hrtime(this.m_startTime))
-    this.m_data = {
-      seconds: Math.floor(this.diff.seconds),
-      nanos: this.diff.nanoseconds - Math.floor(this.diff.seconds) * 1e9,
-    }
-    return this
-  }
-}
 
 export interface HttpLoggingSource {
   req: Request
@@ -82,7 +45,9 @@ export interface HttpLoggingResourceData extends IMonitoredResource {
 
 export interface HttpLoggingData {
   gql?: any
-  uid?: string
+  user?: {
+    uid: string
+  }
   error?: {
     message: string
     detail?: any
@@ -107,7 +72,7 @@ abstract class HttpLoggingService {
   //----------------------------------------------------------------------
 
   log(loggingSource: HttpLoggingSource): void {
-    const { logName, req, res, error, metadata, data } = loggingSource
+    const { logName, req, res, error, metadata } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
     if (!error) {
@@ -126,16 +91,13 @@ abstract class HttpLoggingService {
       })
     }
 
-    const realData = this.getData(loggingSource)
+    const data = this.getData(loggingSource)
 
     if (metadata) {
       merge(realMetadata, metadata)
     }
-    if (data) {
-      merge(realData, data)
-    }
 
-    this.m_writeLog(logName ? logName : DEFAULT_LOG_NAME, realMetadata, realData)
+    this.m_writeLog(logName ? logName : DEFAULT_LOG_NAME, realMetadata, data)
   }
 
   getFunctionName(loggingSource: { req: Request; info?: GraphQLResolveInfo }): string {
@@ -174,37 +136,43 @@ abstract class HttpLoggingService {
     }
   }
 
-  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; error?: Error }): HttpLoggingData {
-    const { req, info, error } = loggingSource
+  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; data?: Partial<HttpLoggingData>; error?: Error }): HttpLoggingData {
+    const { req, info, data, error } = loggingSource
 
-    const data = {} as HttpLoggingData
+    const result = {} as HttpLoggingData
 
     if (info) {
-      data.gql = req.body
+      result.gql = req.body
     }
 
     const user = (req as any).__idToken as IdToken | undefined
     if (user) {
-      data.uid = user.uid
+      result.user = {
+        uid: user.uid,
+      }
     }
 
     if (error) {
       if (error instanceof HttpException) {
-        data.error = {
+        result.error = {
           message: (error.getResponse() as any).message,
         }
       } else {
-        data.error = {
+        result.error = {
           message: error.message,
         }
       }
 
       if (error instanceof ValidationErrors || error instanceof InputValidationError) {
-        data.error.detail = error.detail
+        result.error.detail = error.detail
       }
     }
 
-    return data
+    if (data) {
+      merge(result, data)
+    }
+
+    return result
   }
 
   private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HttpLoggingData) {

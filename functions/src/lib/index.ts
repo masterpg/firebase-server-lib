@@ -1,10 +1,22 @@
-import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, HttpLoggingServiceDI } from './nest'
+import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, HandlerLoggingServiceDI, HttpLoggingServiceDI } from './nest'
 import { Global, Module } from '@nestjs/common'
 
 @Global()
 @Module({
-  providers: [CORSServiceDI.provider, AuthServiceDI.provider, HttpLoggingServiceDI.provider, FirestoreServiceDI.provider],
-  exports: [CORSServiceDI.provider, AuthServiceDI.provider, HttpLoggingServiceDI.provider, FirestoreServiceDI.provider],
+  providers: [
+    CORSServiceDI.provider,
+    AuthServiceDI.provider,
+    HttpLoggingServiceDI.provider,
+    HandlerLoggingServiceDI.provider,
+    FirestoreServiceDI.provider,
+  ],
+  exports: [
+    CORSServiceDI.provider,
+    AuthServiceDI.provider,
+    HttpLoggingServiceDI.provider,
+    HandlerLoggingServiceDI.provider,
+    FirestoreServiceDI.provider,
+  ],
 })
 export class LibBaseModule {}
 
