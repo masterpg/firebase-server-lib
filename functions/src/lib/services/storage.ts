@@ -64,7 +64,7 @@ export abstract class BaseStorageService {
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       promises.push(
-        bucket.upload(uploadItem.localFilePath, { destination: uploadItem.toFilePath }).then(response => {
+        bucket.upload(uploadItem.localFilePath, { destination: removeBothEndsSlash(uploadItem.toFilePath) }).then(response => {
           const file = response[0]
           const metadata = response[1]
           const fileNode = this.toStorageNode(file)
@@ -196,6 +196,7 @@ export abstract class BaseStorageService {
   async createStorageDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
     const bucket = admin.storage().bucket()
     const result: StorageNode[] = []
+    basePath = removeBothEndsSlash(basePath)
 
     const promises: Promise<void>[] = []
     for (const dirPath of this.splitHierarchicalDirPaths(...dirPaths)) {
