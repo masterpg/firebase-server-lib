@@ -7,13 +7,14 @@ import {
   Product,
   ProductServiceDI,
 } from '../../../../../src/example/services'
-import { InputValidationError, ValidationErrors, initFirebaseApp } from '../../../../../src/lib'
+import { InputValidationError, ValidationErrors } from '../../../../../src/lib'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
+import { initLibTestApp } from '../../../../helpers/lib'
 const cloneDeep = require('lodash/cloneDeep')
 
 jest.setTimeout(25000)
-initFirebaseApp()
+initLibTestApp()
 
 const GENERAL_USER = { uid: 'yamada.one' }
 

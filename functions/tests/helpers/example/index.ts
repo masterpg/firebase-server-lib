@@ -1,5 +1,5 @@
 import { Response } from 'supertest'
-import { config } from '../../../src/lib'
+import { config } from '../../../src/example/base'
 const request = require('supertest')
 
 export function requestGQL(

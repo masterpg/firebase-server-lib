@@ -1,15 +1,16 @@
 import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
-import { config, initFirebaseApp } from '../lib'
 import { AppModule } from './app.module'
 import { Express } from 'express'
 import { ExpressAdapter } from '@nestjs/platform-express'
 import { HandlersServiceDI } from './services'
 import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
+import { config } from './base'
+import { initApp } from './initializer'
 
-initFirebaseApp()
+initApp()
 
 const server = express()
 let app: INestApplication

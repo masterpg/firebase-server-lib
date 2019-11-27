@@ -13,6 +13,7 @@ import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
 import { IdToken } from '../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
+import { config } from '../base'
 const dayjs = require('dayjs')
 
 type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
@@ -480,13 +481,14 @@ export abstract class BaseStorageService {
    * @param user
    */
   getUserStorageDirPath(user: StorageUser): string {
+    const usersDir = config.storage.usersDir
     if ((user as IdToken).storageDir) {
-      return `users/${(user as IdToken).storageDir}`
+      return `${usersDir}/${(user as IdToken).storageDir}`
     } else if ((user as UserRecord).customClaims) {
       const customClaims = (user as UserRecord).customClaims!
       const storageDir = (customClaims as any).storageDir
       if (storageDir) {
-        return storageDir ? `users/${storageDir}` : ''
+        return storageDir ? `${usersDir}/${storageDir}` : ''
       }
     }
     throw new Error(`User (uid: "${user.uid}") does not have a storage directory assigned.`)

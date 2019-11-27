@@ -1,10 +1,10 @@
 import { DevUtilsServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
-import { initFirebaseApp } from '../../../../../src/lib'
+import { initLibTestApp } from '../../../../helpers/lib'
 
 jest.setTimeout(25000)
-initFirebaseApp()
+initLibTestApp()
 
 const PRODUCTS: Product[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },

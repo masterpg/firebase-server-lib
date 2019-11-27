@@ -1,12 +1,14 @@
-import { CORSGuardDI, config, initFirebaseApp } from '../../../../../../src/lib'
 import { MockCORSBaseAppModule, MockGQLContainerModule, MockRESTContainerModule } from '../../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
+import { CORSGuardDI } from '../../../../../../src/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
+import { config } from '../../../../../../src/lib/base'
+import { initLibTestApp } from '../../../../../helpers/lib'
 const request = require('supertest')
 
 jest.setTimeout(25000)
-initFirebaseApp()
+initLibTestApp()
 
 @Module({
   providers: [CORSGuardDI.provider],

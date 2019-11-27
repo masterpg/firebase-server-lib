@@ -10,7 +10,7 @@
     "watch:gql": "npm run build:gql -- --watch",
     "build": "rm -rf dist && npm run build:gql && tsc --project ./tsconfig.build.json && cp ./src/example/serviceAccountKey.json ./dist/example",
     "serve": "npm run build && ./functions.env.dev.sh && (npm run watch:gql & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --port=5010)",
-    "test:pre": "node ./tools/gql.generate.schema.js ./tests/mocks/lib ./tests/mocks/lib && ./functions.env.test.sh",
+    "test:pre": "node ./tools/gql.generate.schema.js ./tests/mocks/lib ./tests/mocks/lib && ./functions.env.test.sh && cp ./src/example/serviceAccountKey.json ./dist/example",
     "test": "npm run test:pre && jest --runInBand",
     "test:coverage": "npm run test -- --coverage",
     "env": "./functions.env.dev.sh && node ./dist/tools/setup.test.users.js",

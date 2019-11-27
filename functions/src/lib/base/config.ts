@@ -1,31 +1,62 @@
 import { SUPPORTED_REGIONS, config as _config } from 'firebase-functions'
+const merge = require('lodash/merge')
 
-export const config = new (class {
-  functions = new (class {
-    get region(): typeof SUPPORTED_REGIONS[number] {
-      return _config().functions.region || ''
-    }
-  })()
+export interface FunctionsConfig {
+  readonly credential: string
+  readonly region: typeof SUPPORTED_REGIONS[number]
+}
 
-  readonly app = new (class {
-    get credential(): string {
-      return _config().app.credential || ''
-    }
-  })()
+export interface StorageConfig {
+  readonly bucket: string
+  readonly usersDir: string
+}
 
-  readonly storage = new (class {
-    get bucket(): string {
-      return _config().storage.bucket || ''
-    }
-  })()
+export interface CORSConfig {
+  readonly whitelist: string[]
+}
 
-  readonly cors = new (class {
-    get whitelist(): string[] {
-      if (_config().cors) {
-        const whitelist = _config().cors.whitelist || ''
-        return whitelist.split(',').map((item: string) => item.trim())
-      }
-      return []
+export class LibConfig {
+  constructor(
+    params: {
+      functions?: Partial<FunctionsConfig>
+      storage?: Partial<StorageConfig>
+      cors?: Partial<CORSConfig>
+    } = {}
+  ) {
+    this.functions = merge(
+      {
+        credential: _config().functions.credential || '',
+        region: _config().functions.region || '',
+      } as FunctionsConfig,
+      params.functions || {}
+    )
+
+    this.storage = merge(
+      {
+        bucket: _config().storage.bucket || '',
+        usersDir: 'users',
+      } as StorageConfig,
+      params.storage || {}
+    )
+
+    let whitelist: string[] = []
+    if (_config().cors) {
+      const str = _config().cors.whitelist || ''
+      whitelist = str.split(',').map((item: string) => item.trim())
     }
-  })()
-})()
+    this.cors = merge(
+      {
+        whitelist,
+      } as CORSConfig,
+      params.cors || {}
+    )
+  }
+
+  readonly functions: FunctionsConfig
+
+  readonly storage: StorageConfig
+
+  readonly cors: CORSConfig
+}
+
+export const config = new LibConfig()

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example/gql'
+import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
-import { initFirebaseApp } from '../../../../../../src/lib'
+import { initApp } from '../../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
-initFirebaseApp()
+initApp()
 
 describe('StorageResolver', () => {
   let app: any

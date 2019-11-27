@@ -1,26 +1,20 @@
 import * as admin from 'firebase-admin'
 import * as fs from 'fs'
 import * as path from 'path'
-import {
-  FirestoreServiceDI,
-  SignedUploadUrlInput,
-  StorageNode,
-  StorageNodeType,
-  UploadDataItem,
-  config,
-  initFirebaseApp,
-} from '../../../../../src/lib'
+import { FirestoreServiceDI, SignedUploadUrlInput, StorageNode, StorageNodeType, UploadDataItem } from '../../../../../src/lib'
 import { MockBaseAppModule, MockDevUtilsServiceDI, MockRESTContainerModule, MockStorageServiceDI } from '../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
+import { config } from '../../../../../src/lib/base'
+import { initLibTestApp } from '../../../../helpers/lib'
 import { removeBothEndsSlash } from 'web-base-lib'
 const dayjs = require('dayjs')
 const request = require('supertest')
 const cloneDeep = require('lodash/cloneDeep')
 
 jest.setTimeout(25000)
-initFirebaseApp()
+initLibTestApp()
 
 const GENERAL_USER = { uid: 'yamada.one', storageDir: 'yamada.one' }
 const TEST_FILES_DIR = 'test-files'

@@ -20,7 +20,61 @@ import { Global, Module } from '@nestjs/common'
 })
 export class LibBaseModule {}
 
-export * from './base'
-export * from './gql'
-export * from './nest'
-export * from './services'
+export {
+  CORSConfig,
+  FunctionsConfig,
+  InputValidationError,
+  LibConfig,
+  StorageConfig,
+  ValidationErrors,
+  WriteReadyObserver,
+  initFirebaseApp,
+  validate,
+  validateSync,
+} from './base'
+
+export { DateTimeScalar, GQLCtx, getGqlModuleBaseOptions, getTypeDefs } from './gql'
+
+export {
+  AuthRoleType,
+  AuthServiceDI,
+  AuthValidateResult,
+  CORSGuardDI,
+  CORSMiddleware,
+  CORSServiceDI,
+  FirestoreServiceDI,
+  GQLContext,
+  HandlerLoggingData,
+  HandlerLoggingMetadata,
+  HandlerLoggingResourceData,
+  HandlerLoggingServiceDI,
+  HandlerLoggingSource,
+  HttpLoggingData,
+  HttpLoggingMetadata,
+  HttpLoggingResourceData,
+  HttpLoggingServiceDI,
+  HttpLoggingSource,
+  IdToken,
+  LoggingInterceptorDI,
+  LoggingLatencyData,
+  LoggingLatencyTimer,
+  Roles,
+  User,
+  UserGuard,
+  getAllExecutionContext,
+} from './nest'
+
+export {
+  BaseAppService,
+  BaseDevUtilsService,
+  BaseStorageService,
+  GCSStorageNode,
+  JSON,
+  JSONObject,
+  PutTestDataInput,
+  SignedUploadUrlInput,
+  StorageNode,
+  StorageNodeType,
+  TestSignedUploadUrlInput,
+  UploadDataItem,
+} from './services'
