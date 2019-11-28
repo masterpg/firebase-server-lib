@@ -1,5 +1,5 @@
 import { LibConfig } from '../../lib'
 
-class ServerConfig extends LibConfig {}
+class AppConfig extends LibConfig {}
 
-export const config = new ServerConfig()
+export const config = new AppConfig()

@@ -37,6 +37,10 @@ export interface UpdateCartItemInput {
     quantity: number;
 }
 
+export interface AppConfigResponse {
+    usersDir: string;
+}
+
 export interface CartItem {
     id: string;
     uid: string;
@@ -77,11 +81,11 @@ export interface Product {
 }
 
 export interface IQuery {
+    appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    userStorageBasePath(): string | Promise<string>;
     userStorageDirNodes(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
 }

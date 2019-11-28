@@ -18,21 +18,6 @@ describe('StorageResolver', () => {
     await app.init()
   })
 
-  describe('userStorageBasePath', () => {
-    const gql = {
-      query: `
-        query GetUserStorageBasePath {
-          userStorageBasePath
-        }
-      `,
-    }
-
-    it('サインインしていない場合', async () => {
-      const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
-    })
-  })
-
   describe('userStorageDirNodes', () => {
     const gql = {
       query: `

@@ -1,3 +1,7 @@
+query GetAppConfig {
+  appConfig { usersDir }
+}
+
 query GetCustomToken {
   customToken
 }

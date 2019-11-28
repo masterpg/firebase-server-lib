@@ -26,7 +26,6 @@ type Mutation {
 }
 
 type Query {
-  userStorageBasePath: String!
   userStorageDirNodes(dirPath: String): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
 }

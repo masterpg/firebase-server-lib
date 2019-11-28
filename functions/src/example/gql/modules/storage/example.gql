@@ -1,7 +1,3 @@
-query GetUserStorageBasePath {
-  userStorageBasePath
-}
-
 query GetUserStorageDirNodes {
   userStorageDirNodes {
     nodeType

@@ -46,7 +46,7 @@ abstract class AuthService {
 
     let idToken: IdToken
     try {
-      idToken = await this.decodeToken(encodedIdToken)
+      idToken = await this.decodeIdToken(encodedIdToken)
     } catch (err) {
       return {
         result: false,
@@ -83,7 +83,7 @@ abstract class AuthService {
 
     let decodedIdToken: IdToken
     try {
-      decodedIdToken = await this.decodeToken(idToken)
+      decodedIdToken = await this.decodeIdToken(idToken)
     } catch (err) {
       return
     }
@@ -97,7 +97,7 @@ abstract class AuthService {
   //
   //----------------------------------------------------------------------
 
-  protected abstract decodeToken(idToken: string): Promise<IdToken>
+  protected abstract decodeIdToken(idToken: string): Promise<IdToken>
 
   private m_getIdToken(req: Request): string {
     // 認証リクエストがFirebase IDトークンを持っているかチェック
@@ -128,7 +128,7 @@ abstract class AuthService {
 
 @Injectable()
 class ProdAuthService extends AuthService {
-  protected async decodeToken(idToken: string): Promise<IdToken> {
+  protected async decodeIdToken(idToken: string): Promise<IdToken> {
     const decodedIdToken = await admin.auth().verifyIdToken(idToken)
     return decodedIdToken
   }
@@ -136,7 +136,7 @@ class ProdAuthService extends AuthService {
 
 @Injectable()
 class DevAuthService extends AuthService {
-  protected async decodeToken(idToken: string): Promise<IdToken> {
+  protected async decodeIdToken(idToken: string): Promise<IdToken> {
     let decodedIdToken: IdToken
     try {
       decodedIdToken = await admin.auth().verifyIdToken(idToken)

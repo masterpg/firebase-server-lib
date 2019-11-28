@@ -3,18 +3,6 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "yamada.one"}
 
 {
-  "operationName": "GetUserStorageBasePath",
-  "query": "query GetUserStorageBasePath { userStorageBasePath }",
-  "variables": {}
-}
-
-###
-
-POST {{host}}/api/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
-
-{
   "operationName": "GetUserStorageDirNodes",
   "query": "query GetUserStorageDirNodes { userStorageDirNodes { nodeType name dir path created updated } }",
   "variables": {}

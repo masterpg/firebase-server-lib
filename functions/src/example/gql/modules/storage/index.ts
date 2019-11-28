@@ -10,12 +10,6 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(UserGuard)
-  async userStorageBasePath(@User() user: IdToken): Promise<string> {
-    return this.storageService.getUserStorageDirPath(user)
-  }
-
-  @Query()
-  @UseGuards(UserGuard)
   async userStorageDirNodes(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
     return this.storageService.getUserStorageDirNodes(user, dirPath)
   }

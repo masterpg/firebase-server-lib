@@ -1,3 +1,11 @@
+type AppConfigResponse {
+  usersDir: String!
+}
+
+type Query {
+  appConfig: AppConfigResponse!
+}
+
 type Query {
   customToken: String!
 }

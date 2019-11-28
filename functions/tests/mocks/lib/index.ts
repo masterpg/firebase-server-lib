@@ -1,5 +1,6 @@
 export * from './gql'
 export * from './rest'
+export * from './services/app'
 export * from './services/dev'
 export * from './services/storage'
 export * from './services/types'

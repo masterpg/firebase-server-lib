@@ -1,5 +1,16 @@
 POST {{host}}/api/gql
 Content-Type: application/json
+
+{
+  "operationName": "GetAppConfig",
+  "query": "query GetAppConfig { appConfig { usersDir } }",
+  "variables": {}
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
 Authorization: Bearer {"uid": "yamada.one"}
 
 {
