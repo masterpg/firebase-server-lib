@@ -38,7 +38,8 @@ export class SignedUploadUrlInput {
 }
 
 export interface GCSStorageNode extends StorageNode {
-  gcsNode?: File
+  exists: boolean
+  gcsNode: File
 }
 
 export interface UploadDataItem {
@@ -57,19 +58,22 @@ export abstract class BaseStorageService {
   /**
    * ローカルファイルをCloud Storageへアップロードします。
    * @param uploadList
+   * @param basePath
    */
-  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[]): Promise<StorageNode[]> {
+  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[], basePath = ''): Promise<StorageNode[]> {
     const bucket = admin.storage().bucket()
+    basePath = removeBothEndsSlash(basePath)
 
     const uploadedFileMap: { [path: string]: StorageNode } = {}
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
+      const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
       promises.push(
-        bucket.upload(uploadItem.localFilePath, { destination: removeBothEndsSlash(uploadItem.toFilePath) }).then(response => {
+        bucket.upload(uploadItem.localFilePath, { destination }).then(response => {
           const file = response[0]
           const metadata = response[1]
-          const fileNode = this.toStorageNode(file)
-          uploadedFileMap[fileNode.path] = this.toStorageNode(file)
+          const fileNode = this.toStorageNode(file, basePath)
+          uploadedFileMap[fileNode.path] = fileNode
         })
       )
     }
@@ -310,7 +314,7 @@ export abstract class BaseStorageService {
     // Cloud Storageから取得したノードを削除
     const promises: Promise<StorageNode>[] = []
     for (const node of Object.values(nodeMap)) {
-      if (node.gcsNode) {
+      if (node.exists) {
         promises.push(node.gcsNode.delete().then(() => node))
       }
     }
@@ -358,6 +362,44 @@ export abstract class BaseStorageService {
 
   /**
    * Cloud Storageからノードを取得します。
+   * @param nodePath
+   *   ファイルまたはディレクトリのパスを指定します。
+   *   ディレクトリパスを指定する場合は末尾に"/"を付与するよう注意してください。
+   * @param basePath
+   */
+  async getStorageNode(nodePath: string, basePath = ''): Promise<GCSStorageNode> {
+    nodePath = removeStartSlash(nodePath)
+    basePath = removeBothEndsSlash(basePath)
+
+    const bucket = admin.storage().bucket()
+    const gcsNodePath = path.join(basePath, nodePath)
+    const gcsNode = bucket.file(gcsNodePath)
+    const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
+    node.exists = (await gcsNode.exists())[0]
+    node.gcsNode = gcsNode
+    return node
+  }
+
+  /**
+   * Cloud Storageからディレクトリノードを取得します。
+   * @param dirPath
+   * @param basePath
+   */
+  async getStorageDirNode(dirPath: string, basePath = ''): Promise<GCSStorageNode> {
+    return this.getStorageNode(path.join(dirPath, '/'), basePath)
+  }
+
+  /**
+   * Cloud Storageからファイルノードを取得します。
+   * @param filePath
+   * @param basePath
+   */
+  async getStorageFileNode(filePath: string, basePath = ''): Promise<GCSStorageNode> {
+    return this.getStorageNode(removeEndSlash(filePath), basePath)
+  }
+
+  /**
+   * Cloud Storageからノードを取得します。
    * `dirPath`を指定すると、このディレクトリパス配下のノードを取得します。
    * @param dirPath
    * @param basePath
@@ -384,6 +426,7 @@ export abstract class BaseStorageService {
         continue
       }
       const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
+      node.exists = true
       node.gcsNode = gcsNode
       result[node.path] = node
     }
@@ -527,17 +570,21 @@ export abstract class BaseStorageService {
    * @param nodeMap
    * @param basePath
    */
-  padVirtualDirNode(nodeMap: { [path: string]: StorageNode }, basePath?: string): void {
-    basePath = removeEndSlash(basePath)
+  padVirtualDirNode(nodeMap: { [path: string]: GCSStorageNode }, basePath?: string): void {
+    basePath = removeBothEndsSlash(basePath)
     // 指定された全ノードの階層的なディレクトリパスを取得
     const dirPaths = Object.values(nodeMap).map(node => node.dir)
     const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths)
 
     // 親ディレクトリがない場合、仮想的にディレクトリを作成して穴埋めする
+    const bucket = admin.storage().bucket()
     for (const dirPath of hierarchicalDirPaths) {
       if (basePath && !dirPath.startsWith(basePath)) continue
       if (nodeMap[dirPath]) continue
-      nodeMap[dirPath] = this.toDirStorageNode(dirPath)
+      const dirNode = this.toDirStorageNode(dirPath) as GCSStorageNode
+      dirNode.exists = false
+      dirNode.gcsNode = bucket.file(dirPath)
+      nodeMap[dirPath] = dirNode
     }
   }
 
