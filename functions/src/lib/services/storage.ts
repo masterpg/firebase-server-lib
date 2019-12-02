@@ -147,9 +147,11 @@ export abstract class BaseStorageService {
    * 引数が次のように指定された場合、
    *   + dirPath: "photos"
    *   + basePath: "home"
+   *
    * 次のようなノードが取得されます。
    *   + "home/photos/family.png"
    *   + "home/photos/children.png"
+   *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + "photos/family.png"
    *   + "photos/children.png"
@@ -188,9 +190,11 @@ export abstract class BaseStorageService {
    *   + dirPaths[0]: "photos"
    *   + dirPaths[1]: "docs"
    *   + basePath: "home"
+   *
    * 次のディレクトリが作成されます。
    *   + "home/photos"
    *   + "home/docs"
+   *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + "photos"
    *   + "docs"
@@ -239,9 +243,11 @@ export abstract class BaseStorageService {
    *   + filePaths[0]: "photos/family.png"
    *   + filePaths[1]: "photos/children.png"
    *   + basePath: "home"
+   *
    * 次のファイルが削除されます。
    *   + "home/photos/family.png"
    *   + "home/photos/children.png"
+   *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + "photos/family.png"
    *   + "photos/children.png"
@@ -293,10 +299,12 @@ export abstract class BaseStorageService {
    * 引数が次のように指定された場合、
    *   + dirPath: "photos"
    *   + basePath: "home"
+   *
    * 次のようなディレクトリ、ファイルが削除されます。
    *   + "home/photos"
    *   + "home/photos/family.png"
    *   + "home/photos/children.png"
+   *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + "photos"
    *   + "photos/family.png"
@@ -332,6 +340,259 @@ export abstract class BaseStorageService {
   async removeUserStorageDir(user: StorageUser, dirPath: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
     return this.removeStorageDir(dirPath, userDirPath)
+  }
+
+  /**
+   * Cloud Storageのディレクトリを指定されたディレクトリへ移動します。
+   *
+   * 引数が次のように指定された場合、
+   *   + dirNode: "photos"
+   *   + toDirPath: "archives/photos"
+   *   + basePath: "home"
+   *
+   * 次のようなディレクトリの移動が行われます。
+   *
+   *   + 移動元: "home/photos"
+   *   + 移動先: "home/archives/photos"
+   *
+   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + "archives/photos"
+   *   + "archives/photos/20190101"
+   *   + "archives/photos/20190101/family1.png"
+   *
+   * 移動元ディレクトリまたは移動先ディレクトリがない場合は移動は行われず、空配列が返されます。
+   *
+   * @param fromDirPath
+   * @param toDirPath
+   * @param basePath
+   */
+  async moveStorageDirNode(fromDirPath: string, toDirPath: string, basePath = ''): Promise<StorageNode[]> {
+    fromDirPath = removeBothEndsSlash(fromDirPath)
+    toDirPath = removeBothEndsSlash(toDirPath)
+    basePath = removeBothEndsSlash(basePath)
+
+    // 移動先ディレクトリが移動元のサブディレクトリでないことを確認
+    // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
+    //               → to: aaa/zzz/ccc/bbb [OK]
+    if (toDirPath.startsWith(fromDirPath)) {
+      return []
+    }
+
+    // 移動元ディレクトリ配下のノードを取得
+    const nodeMap = await this.getStorageNodeMap(fromDirPath, basePath)
+    const dirNode = nodeMap[fromDirPath]
+    if (!dirNode || !dirNode.exists) {
+      return []
+    }
+    // 親ディレクトリの穴埋め
+    this.padVirtualDirNode(nodeMap, fromDirPath)
+    // 移動元ディレクトリと配下のノードは別処理を行うのでnodeMapからは削除
+    delete nodeMap[fromDirPath]
+
+    // 移動先ディレクトリの存在確認
+    const toDirParentPath = path.join(path.dirname(toDirPath), '/')
+    const toDirParentNode = await this.getStorageDirNode(toDirParentPath, basePath)
+    if (!toDirParentNode.exists) {
+      return []
+    }
+
+    const result: StorageNode[] = []
+
+    // 移動元ディレクトリの移動処理
+    {
+      const newDirNodePath = path.join(toDirPath, '/')
+      await dirNode.gcsNode!.move(path.join(basePath, newDirNodePath))
+      const movedNode = (await this.getStorageDirNode(newDirNodePath, basePath))!
+      result.push(movedNode!)
+    }
+
+    // 移動元ディレクトリ配下のノードの移動処理
+    for (const node of Object.values(nodeMap)) {
+      // 移動元ノードのパスを移動先のパスへ変換
+      const reg = new RegExp(`^${fromDirPath}`)
+      const newNodePath = node.path.replace(reg, toDirPath)
+      // 移動ノードがディレクトリの場合
+      if (node.nodeType === StorageNodeType.Dir) {
+        // ディレクトリが存在する場合、そのディレクトリを移動
+        if (node.exists) {
+          await node.gcsNode!.move(path.join(basePath, newNodePath, '/'))
+          const movedNode = await this.getStorageDirNode(newNodePath, basePath)
+          result.push(movedNode!)
+        }
+        // ディレクトリが存在しない場合、ディレクトリを移動先に作成
+        else {
+          const createdNode = (await this.createStorageDirs([newNodePath], basePath))[0]
+          result.push(createdNode)
+        }
+      }
+      // ノードがファイルの場合
+      else {
+        await node.gcsNode!.move(path.join(basePath, newNodePath))
+        const movedNode = await this.getStorageFileNode(newNodePath, basePath)
+        result.push(movedNode!)
+      }
+    }
+
+    // 移動を行ったノード一覧をソート
+    this.sortStorageNodes(result)
+
+    return result
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリを指定されたディレクトリへ移動します。
+   * 移動元ディレクトリまたは移動先ディレクトリがない場合は移動は行われず、空配列が返されます。
+   * @param user
+   * @param dirPath
+   * @param toDirPath
+   */
+  async moveUserStorageDirNode(user: StorageUser, dirPath: string, toDirPath: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserStorageDirPath(user)
+    return this.moveStorageDirNode(dirPath, toDirPath, userDirPath)
+  }
+
+  /**
+   * Cloud Storageのファイルを指定されたディレクトリへ移動します。
+   *
+   * 引数が次のように指定された場合、
+   *   + filePath: "photos/family.png"
+   *   + toFilePath: "archives/family.png"
+   *   + basePath: "home"
+   *
+   * 次のようなファイルの移動が行われます。
+   *
+   *   + 移動元: "home/photos/family.png"
+   *   + 移動先: "home/archives/family.png"
+   *
+   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + "archives/family.png"
+   *
+   * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
+   *
+   * @param filePath
+   * @param toFilePath
+   * @param basePath
+   */
+  async moveStorageFileNode(filePath: string, toFilePath: string, basePath = ''): Promise<StorageNode | undefined> {
+    filePath = removeBothEndsSlash(filePath)
+    toFilePath = removeBothEndsSlash(toFilePath)
+    basePath = removeBothEndsSlash(basePath)
+
+    // 移動元ファイルの存在確認
+    const fileNode = await this.getStorageNode(filePath, basePath)
+    if (!fileNode.exists) {
+      return
+    }
+
+    // 移動先ディレクトリの存在確認
+    const toDirPath = path.join(path.dirname(toFilePath), '/')
+    const toDirNode = await this.getStorageNode(toDirPath, basePath)
+    if (!toDirNode.exists) {
+      return
+    }
+
+    // ファイルの移動
+    await fileNode.gcsNode!.move(path.join(basePath, toFilePath))
+
+    return this.getStorageNode(toFilePath, basePath)
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリ配下にあるファイルを指定されたディレクトリへ移動します。
+   * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
+   * @param user
+   * @param filePath
+   * @param toDirPath
+   */
+  async moveUserStorageFileNode(user: StorageUser, filePath: string, toDirPath: string): Promise<StorageNode | undefined> {
+    const userDirPath = this.getUserStorageDirPath(user)
+    return this.moveStorageFileNode(filePath, toDirPath, userDirPath)
+  }
+
+  /**
+   * Cloud Storageのディレクトリの名前変更を行います。
+   *
+   * 引数が次のように指定された場合、
+   *   + dirNode: "photos"
+   *   + newName: "my-photos"
+   *   + basePath: "home"
+   *
+   * 次のようなディレクトリの名前変更が行われます。
+   *
+   *   + 移動元: "home/photos"
+   *   + 移動先: "home/my-photos"
+   *
+   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + "my-photos"
+   *   + "my-photos/20190101"
+   *   + "my-photos/20190101/family1.png"
+   *
+   * リネームするディレクトリがない場合はリネームは行われず、空配列が返されます。
+   *
+   * @param dirPath
+   * @param newName
+   * @param basePath
+   */
+  async renameStorageDirNode(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
+    dirPath = removeBothEndsSlash(dirPath)
+
+    const reg = new RegExp(`${path.basename(dirPath)}$`)
+    const toDirPath = dirPath.replace(reg, newName)
+    return this.moveStorageDirNode(dirPath, toDirPath, basePath)
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリ配下にあるディレクトリのリネームを行います。
+   * リネームするディレクトリがない場合はリネームは行われず、空配列が返されます。
+   * @param user
+   * @param dirPath
+   * @param newName
+   */
+  async renameUserStorageDirNode(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserStorageDirPath(user)
+    return this.renameStorageDirNode(dirPath, newName, userDirPath)
+  }
+
+  /**
+   * Cloud Storageのファイルの名前変更を行います。
+   *
+   * 引数が次のように指定された場合、
+   *   + filePath: "photos/family.png"
+   *   + newName: "my-family.png"
+   *   + basePath: "home"
+   *
+   * 次のような名前変更が行われます。
+   *
+   *   + 移動元: "home/photos/family.png"
+   *   + 移動先: "home/photos/my-family.png"
+   *
+   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + "photos/my-family.png"
+   *
+   * リネームするファイルがない場合は移動は行われず、戻り値は何も返しません。
+   *
+   * @param filePath
+   * @param newName
+   * @param basePath
+   */
+  async renameStorageFileNode(filePath: string, newName: string, basePath = ''): Promise<StorageNode | undefined> {
+    filePath = removeBothEndsSlash(filePath)
+
+    const reg = new RegExp(`${path.basename(filePath)}$`)
+    const toFilePath = filePath.replace(reg, newName)
+    return this.moveStorageFileNode(filePath, toFilePath, basePath)
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリ配下にあるファイルのリネームを行います。
+   * リネームするファイルがない場合はリネームは行われず、戻り値は何も返しません。
+   * @param user
+   * @param filePath
+   * @param newName
+   */
+  async renameUserStorageFileNode(user: StorageUser, filePath: string, newName: string): Promise<StorageNode | undefined> {
+    const userDirPath = this.getUserStorageDirPath(user)
+    return this.renameStorageFileNode(filePath, newName, userDirPath)
   }
 
   /**
@@ -441,13 +702,17 @@ export abstract class BaseStorageService {
    * 引数が次のような場合:
    *   + `gcsNode`のパス: users/[USER_ID]/images/family.png
    *   + `basePath`: users/[USER_ID]
+   *
    * `gcsNode`のパスから基準パスが除去され、戻り値のノードパスは次のようになります:
    *   + images/family.png
    *
-   * @param gcsNode Cloud Storageのノードを指定
+   * @param gcsNode
+   *   Cloud Storageのノードを指定。
+   *   このノードはCloud Storageから取得したものが渡されることを前提としています。
+   *   クライアント側でパスから生成したノード渡さないように注意してください。
    * @param basePath 基準パスを指定
    */
-  toStorageNode(gcsNode: File, basePath = ''): StorageNode {
+  toStorageNode(gcsNode: File, basePath = ''): GCSStorageNode {
     let nodePath = removeBothEndsSlash(gcsNode.name)
     if (basePath) {
       basePath = removeBothEndsSlash(basePath)
@@ -468,6 +733,8 @@ export abstract class BaseStorageService {
       path: removeStartSlash(nodePath),
       created: dayjs(gcsNode.metadata.timeCreated),
       updated: dayjs(gcsNode.metadata.updated),
+      exists: true,
+      gcsNode: gcsNode,
     }
   }
 
