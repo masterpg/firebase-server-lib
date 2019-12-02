@@ -221,9 +221,9 @@ abstract class HttpLoggingService {
 @Injectable()
 class ProdHttpLoggingService extends HttpLoggingService {
   getFunctionNameByRequest(req: Request): string {
-    // 例: function_name = "api/rest/hello"
-    // ・req.baseUrl: "/rest"
-    // ・req.path: "/hello"
+    // 例: function_name = 'api/rest/hello'
+    // ・req.baseUrl: '/rest'
+    // ・req.path: '/hello'
     return removeBothEndsSlash(path.join('api', req.baseUrl, req.path))
   }
 
@@ -251,9 +251,9 @@ class DevHttpLoggingService extends HttpLoggingService {
   }
 
   getFunctionNameByRequest(req: Request): string {
-    // 例: function_name = "api/rest/hello"
-    // ・req.baseUrl: " /vue-base-project-7295/asia-northeast1/api/rest"
-    // ・req.path: "/hello"
+    // 例: function_name = 'api/rest/hello'
+    // ・req.baseUrl: '/vue-base-project-7295/asia-northeast1/api/rest'
+    // ・req.path: '/hello'
     const matched = `${req.baseUrl}${req.path}`.match(/\/api\/.*[^/]/)
     if (matched) {
       return removeBothEndsSlash(matched[0])

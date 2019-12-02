@@ -107,7 +107,7 @@ describe('CORSService', () => {
           .send(gqlRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
-          // ここではGraphQLライブラリにより"*"が設定される。
+          // ここではGraphQLライブラリにより'*'が設定される。
           // つまりRESTツール等でアクセスすれば結果を取得できることを意味する。
           // ただしプリフライトリクエストでは空文字が設定されるので、ブラウザのJSでは結果を取得できない。
           // ※ ブラウザは本来のリクエストの前にプリフライトリクエストを送信する
