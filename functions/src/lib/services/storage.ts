@@ -145,16 +145,16 @@ export abstract class BaseStorageService {
    * Cloud Storageから指定されたディレクトリのノード一覧を取得します。
    *
    * 引数が次のように指定された場合、
-   *   + dirPath: "photos"
-   *   + basePath: "home"
+   *   + dirPath: 'photos'
+   *   + basePath: 'home'
    *
    * 次のようなノードが取得されます。
-   *   + "home/photos/family.png"
-   *   + "home/photos/children.png"
+   *   + 'home/photos/family.png'
+   *   + 'home/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "photos/family.png"
-   *   + "photos/children.png"
+   *   + 'photos/family.png'
+   *   + 'photos/children.png'
    *
    * @param dirPath
    * @param basePath
@@ -187,17 +187,17 @@ export abstract class BaseStorageService {
    * Cloud Storageのディレクトリを作成します。
    *
    * 引数が次のように指定された場合、
-   *   + dirPaths[0]: "photos"
-   *   + dirPaths[1]: "docs"
-   *   + basePath: "home"
+   *   + dirPaths[0]: 'photos'
+   *   + dirPaths[1]: 'docs'
+   *   + basePath: 'home'
    *
    * 次のディレクトリが作成されます。
-   *   + "home/photos"
-   *   + "home/docs"
+   *   + 'home/photos'
+   *   + 'home/docs'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "photos"
-   *   + "docs"
+   *   + 'photos'
+   *   + 'docs'
    *
    * @param dirPaths
    * @param basePath
@@ -240,17 +240,17 @@ export abstract class BaseStorageService {
    * Cloud Storageからファイルノードを削除します。
    *
    * 引数が次のように指定された場合、
-   *   + filePaths[0]: "photos/family.png"
-   *   + filePaths[1]: "photos/children.png"
-   *   + basePath: "home"
+   *   + filePaths[0]: 'photos/family.png'
+   *   + filePaths[1]: 'photos/children.png'
+   *   + basePath: 'home'
    *
    * 次のファイルが削除されます。
-   *   + "home/photos/family.png"
-   *   + "home/photos/children.png"
+   *   + 'home/photos/family.png'
+   *   + 'home/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "photos/family.png"
-   *   + "photos/children.png"
+   *   + 'photos/family.png'
+   *   + 'photos/children.png'
    *
    * @param filePaths
    * @param basePath
@@ -297,18 +297,18 @@ export abstract class BaseStorageService {
    * Cloud Storageから指定されたディレクトリを含め配下のノードを削除します。
    *
    * 引数が次のように指定された場合、
-   *   + dirPath: "photos"
-   *   + basePath: "home"
+   *   + dirPath: 'photos'
+   *   + basePath: 'home'
    *
    * 次のようなディレクトリ、ファイルが削除されます。
-   *   + "home/photos"
-   *   + "home/photos/family.png"
-   *   + "home/photos/children.png"
+   *   + 'home/photos'
+   *   + 'home/photos/family.png'
+   *   + 'home/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "photos"
-   *   + "photos/family.png"
-   *   + "photos/children.png"
+   *   + 'photos'
+   *   + 'photos/family.png'
+   *   + 'photos/children.png'
    *
    * @param dirPath
    * @param basePath
@@ -346,21 +346,21 @@ export abstract class BaseStorageService {
    * Cloud Storageのディレクトリを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
-   *   + dirNode: "photos"
-   *   + toDirPath: "archives/photos"
-   *   + basePath: "home"
+   *   + dirNode: 'photos'
+   *   + toDirPath: 'archives/photos'
+   *   + basePath: 'home'
    *
    * 次のようなディレクトリの移動が行われます。
    *
-   *   + 移動元: "home/photos"
-   *   + 移動先: "home/archives/photos"
+   *   + 移動元: 'home/photos'
+   *   + 移動先: 'home/archives/photos'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "archives/photos"
-   *   + "archives/photos/20190101"
-   *   + "archives/photos/20190101/family1.png"
+   *   + 'archives/photos'
+   *   + 'archives/photos/20190101'
+   *   + 'archives/photos/20190101/family1.png'
    *
-   * 移動元ディレクトリまたは移動先ディレクトリがない場合は移動は行われず、空配列が返されます。
+   * 移動元ディレクトリまたは移動先ディレクトリがない場合は例外がスローされます。
    *
    * @param fromDirPath
    * @param toDirPath
@@ -375,14 +375,14 @@ export abstract class BaseStorageService {
     // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
     //               → to: aaa/zzz/ccc/bbb [OK]
     if (toDirPath.startsWith(fromDirPath)) {
-      return []
+      throw new Error(`The destination directory is its own subdirectory: '${fromDirPath}' -> '${toDirPath}'`)
     }
 
     // 移動元ディレクトリ配下のノードを取得
     const nodeMap = await this.getStorageNodeMap(fromDirPath, basePath)
     const dirNode = nodeMap[fromDirPath]
     if (!dirNode || !dirNode.exists) {
-      return []
+      throw new Error(`The source directory does not exist: '${fromDirPath}'`)
     }
     // 親ディレクトリの穴埋め
     this.padVirtualDirNode(nodeMap, fromDirPath)
@@ -393,7 +393,7 @@ export abstract class BaseStorageService {
     const toDirParentPath = path.join(path.dirname(toDirPath), '/')
     const toDirParentNode = await this.getStorageDirNode(toDirParentPath, basePath)
     if (!toDirParentNode.exists) {
-      return []
+      throw new Error(`The destination directory does not exist: '${toDirParentNode.path}'`)
     }
 
     const result: StorageNode[] = []
@@ -455,17 +455,17 @@ export abstract class BaseStorageService {
    * Cloud Storageのファイルを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
-   *   + filePath: "photos/family.png"
-   *   + toFilePath: "archives/family.png"
-   *   + basePath: "home"
+   *   + filePath: 'photos/family.png'
+   *   + toFilePath: 'archives/family.png'
+   *   + basePath: 'home'
    *
    * 次のようなファイルの移動が行われます。
    *
-   *   + 移動元: "home/photos/family.png"
-   *   + 移動先: "home/archives/family.png"
+   *   + 移動元: 'home/photos/family.png'
+   *   + 移動先: 'home/archives/family.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "archives/family.png"
+   *   + 'archives/family.png'
    *
    * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
    *
@@ -481,14 +481,14 @@ export abstract class BaseStorageService {
     // 移動元ファイルの存在確認
     const fileNode = await this.getStorageNode(filePath, basePath)
     if (!fileNode.exists) {
-      return
+      throw new Error(`The source file does not exist: '${fileNode.path}'`)
     }
 
     // 移動先ディレクトリの存在確認
     const toDirPath = path.join(path.dirname(toFilePath), '/')
     const toDirNode = await this.getStorageNode(toDirPath, basePath)
     if (!toDirNode.exists) {
-      return
+      throw new Error(`The destination directory does not exist: '${toDirNode.path}'`)
     }
 
     // ファイルの移動
@@ -513,19 +513,19 @@ export abstract class BaseStorageService {
    * Cloud Storageのディレクトリの名前変更を行います。
    *
    * 引数が次のように指定された場合、
-   *   + dirNode: "photos"
-   *   + newName: "my-photos"
-   *   + basePath: "home"
+   *   + dirNode: 'photos'
+   *   + newName: 'my-photos'
+   *   + basePath: 'home'
    *
    * 次のようなディレクトリの名前変更が行われます。
    *
-   *   + 移動元: "home/photos"
-   *   + 移動先: "home/my-photos"
+   *   + 移動元: 'home/photos'
+   *   + 移動先: 'home/my-photos'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "my-photos"
-   *   + "my-photos/20190101"
-   *   + "my-photos/20190101/family1.png"
+   *   + 'my-photos'
+   *   + 'my-photos/20190101'
+   *   + 'my-photos/20190101/family1.png'
    *
    * リネームするディレクトリがない場合はリネームは行われず、空配列が返されます。
    *
@@ -557,17 +557,17 @@ export abstract class BaseStorageService {
    * Cloud Storageのファイルの名前変更を行います。
    *
    * 引数が次のように指定された場合、
-   *   + filePath: "photos/family.png"
-   *   + newName: "my-family.png"
-   *   + basePath: "home"
+   *   + filePath: 'photos/family.png'
+   *   + newName: 'my-family.png'
+   *   + basePath: 'home'
    *
    * 次のような名前変更が行われます。
    *
-   *   + 移動元: "home/photos/family.png"
-   *   + 移動先: "home/photos/my-family.png"
+   *   + 移動元: 'home/photos/family.png'
+   *   + 移動先: 'home/photos/my-family.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + "photos/my-family.png"
+   *   + 'photos/my-family.png'
    *
    * リネームするファイルがない場合は移動は行われず、戻り値は何も返しません。
    *
@@ -625,7 +625,7 @@ export abstract class BaseStorageService {
    * Cloud Storageからノードを取得します。
    * @param nodePath
    *   ファイルまたはディレクトリのパスを指定します。
-   *   ディレクトリパスを指定する場合は末尾に"/"を付与するよう注意してください。
+   *   ディレクトリパスを指定する場合は末尾に'/'を付与するよう注意してください。
    * @param basePath
    */
   async getStorageNode(nodePath: string, basePath = ''): Promise<GCSStorageNode> {
@@ -763,7 +763,7 @@ export abstract class BaseStorageService {
     nodes.sort((a, b) => {
       // ソート用文字列(strA, strB)の説明:
       //   ノードがファイルの場合、同じ階層にあるディレクトリより順位を下げるために
-      //   大きな文字コード"0xffff"を付加している。これにより同一階層のファイルと
+      //   大きな文字コード'0xffff'を付加している。これにより同一階層のファイルと
       //   ディレクトリを比較した際、ファイルの方が文字的に大きいと判断され、下の方へ
       //   配置されることになる。
 
@@ -801,7 +801,7 @@ export abstract class BaseStorageService {
         return storageDir ? `${usersDir}/${storageDir}` : ''
       }
     }
-    throw new Error(`User (uid: "${user.uid}") does not have a storage directory assigned.`)
+    throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
   }
 
   /**
@@ -812,7 +812,7 @@ export abstract class BaseStorageService {
     // 既に割り当てられている場合は終了
     if (user.customClaims && (user.customClaims as any).storageDir) return
 
-    // ユーザークレームに"storageDir"というプロパティを追加
+    // ユーザークレームに'storageDir'というプロパティを追加
     // このプロパティに設定される値がユーザーディレクトリとなる
     const storageDir = uuidv4()
     await admin.auth().setCustomUserClaims(user.uid, {
@@ -824,15 +824,15 @@ export abstract class BaseStorageService {
   /**
    * 親ディレクトリがない場合、仮想的にディレクトリを作成して穴埋めします。
    * このようなことを行う理由として、Cloud Storageは親ディレクトリが存在しないことがあるためです。
-   * 例えば、"aaa/bbb/family.png"の場合、"aaa/bbb/"というディレクトリがない場合があります。
+   * 例えば、'aaa/bbb/family.png'の場合、'aaa/bbb/'というディレクトリがない場合があります。
    * このように親ディレクトリがない場合、仮想的にディレクトリを作成して穴埋めします。
    *
    * `basePath`は基準パスで、このパスより上位のディレクトリは作成しません。
-   * 例えば、"aaa/bbb/ccc/family.png"というノードがあり、ディレクトリが存在しないとします。
-   * この条件で`basePath`に"aaa/bbb"を指定すると次のようにディレクトリノードが作成されます。
-   * + "aaa" ← 基準パスより上なので作成されない
-   * + "aaa/bbb" ← 作成される
-   * + "aaa/bbb/ccc" ← 作成される
+   * 例えば、'aaa/bbb/ccc/family.png'というノードがあり、ディレクトリが存在しないとします。
+   * この条件で`basePath`に'aaa/bbb'を指定すると次のようにディレクトリノードが作成されます。
+   * + 'aaa' ← 基準パスより上なので作成されない
+   * + 'aaa/bbb' ← 作成される
+   * + 'aaa/bbb/ccc' ← 作成される
    *
    * @param nodeMap
    * @param basePath
@@ -858,8 +858,8 @@ export abstract class BaseStorageService {
   /**
    * 指定されたディレクトリパスを階層的に分割します。
    *
-   * 例: "aaa/bbb/ccc"が指定された場合、
-   *    ["aaa", "aaa/bbb", "aaa/bbb/ccc"]を返します。
+   * 例: 'aaa/bbb/ccc'が指定された場合、
+   *    ['aaa', 'aaa/bbb', 'aaa/bbb/ccc']を返します。
    *
    * @param dirPaths
    */

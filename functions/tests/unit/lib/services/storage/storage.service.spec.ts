@@ -27,7 +27,7 @@ const TEST_FILES_DIR = 'test-files'
 async function existsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
   const bucket = admin.storage().bucket()
   for (const node of nodes) {
-    // ディレクトリの末尾が"/"でないことを検証
+    // ディレクトリの末尾が'/'でないことを検証
     expect(node.dir.endsWith('/')).toBeFalsy()
     // node.path が ｢node.dir + node.name｣ と一致することを検証
     expect(node.path).toBe(path.join(node.dir, node.name))
@@ -48,7 +48,7 @@ async function existsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
 async function notExistsNodes(nodes: StorageNode[], basePath = ''): Promise<void> {
   const bucket = admin.storage().bucket()
   for (const node of nodes) {
-    // ディレクトリの末尾が"/"でないことを検証
+    // ディレクトリの末尾が'/'でないことを検証
     expect(node.dir.endsWith('/')).toBeFalsy()
     // node.path が ｢node.dir + node.name｣ と一致することを検証
     expect(node.path).toBe(path.join(node.dir, node.name))
@@ -165,9 +165,9 @@ describe('StorageService', () => {
       expect(toDirNodes[1].path).toBe(`${TEST_FILES_DIR}/fileA.txt`)
     })
 
-    it('単一ファイルをアップロード - toFilePathの先頭に"/"を付与', async () => {
+    it(`単一ファイルをアップロード - toFilePathの先頭に'/'を付与`, async () => {
       const localFilePath = `${__dirname}/${TEST_FILES_DIR}/fileA.txt`
-      const toFilePath = `/${TEST_FILES_DIR}/fileA.txt` // ← 先頭に"/"を付与
+      const toFilePath = `/${TEST_FILES_DIR}/fileA.txt` // ← 先頭に'/'を付与
 
       const actual = await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
 
@@ -203,11 +203,11 @@ describe('StorageService', () => {
       expect(toDirNodes[1].path).toBe(`${TEST_FILES_DIR}/fileA.txt`)
     })
 
-    it('単一ファイルをアップロード - basePathの先頭・末尾に"/"を付与', async () => {
+    it(`単一ファイルをアップロード - basePathの先頭・末尾に'/'を付与`, async () => {
       const localFilePath = `${__dirname}/${TEST_FILES_DIR}/fileA.txt`
       const toFilePath = `fileA.txt`
 
-      // basePathの先頭・末尾に"/"を付与
+      // basePathの先頭・末尾に'/'を付与
       const actual = await storageService.uploadLocalFiles([{ localFilePath, toFilePath }], `/${TEST_FILES_DIR}/`)
 
       expect(actual[0].nodeType).toBe(StorageNodeType.File)
@@ -356,7 +356,7 @@ describe('StorageService', () => {
       expect(actual[0].path).toBe(`b1`)
       expect(actual[1].path).toBe(`b1/b11`)
       expect(actual[2].path).toBe(`b1/b11/fileA.txt`)
-      // "fileC.txt"は取得されない
+      // 'fileC.txt'は取得されない
     })
 
     it('basePathを指定した場合 - dirPathが空の場合', async () => {
@@ -382,11 +382,11 @@ describe('StorageService', () => {
       expect(actual[0].path).toBe(`b1`)
       expect(actual[1].path).toBe(`b1/b11`)
       expect(actual[2].path).toBe(`b1/b11/fileA.txt`)
-      // "fileC.txt"は取得される
+      // 'fileC.txt'は取得される
       expect(actual[3].path).toBe(`fileC.txt`)
     })
 
-    it('dirPath、basePathの先頭・末尾に"/"を付与', async () => {
+    it(`dirPath、basePathの先頭・末尾に'/'を付与`, async () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -395,7 +395,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.getStorageDirNodes('/b1/', `/${TEST_FILES_DIR}/`)
 
       expect(actual.length).toBe(3)
@@ -486,8 +486,8 @@ describe('StorageService', () => {
       await existsNodes(actual, `${TEST_FILES_DIR}`)
     })
 
-    it('dirPaths、basePathの先頭・末尾に"/"を付与', async () => {
-      // パスの先頭・末尾に"/"を付与
+    it(`dirPaths、basePathの先頭・末尾に'/'を付与`, async () => {
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.createStorageDirs([`/d3/`, `/d1/d11/`, `/d1/d12/`, `/d2/d21/`], `/${TEST_FILES_DIR}/`)
 
       expect(actual.length).toBe(6)
@@ -539,7 +539,7 @@ describe('StorageService', () => {
       await notExistsNodes(actual)
     })
 
-    it('filePaths、basePathの先頭に"/"を付与', async () => {
+    it(`filePaths、basePathの先頭に'/'を付与`, async () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -552,7 +552,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭に"/"を付与
+      // パスの先頭に'/'を付与
       const actual = await storageService.removeStorageFiles([`/${TEST_FILES_DIR}/f1/fileA.txt`, `/${TEST_FILES_DIR}/f2/fileB.txt`])
 
       expect(actual.length).toBe(2)
@@ -669,7 +669,7 @@ describe('StorageService', () => {
       expect(actual.length).toBe(0)
     })
 
-    it('dirPathの先頭・末尾に"/"を付与', async () => {
+    it(`dirPathの先頭・末尾に'/'を付与`, async () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -682,7 +682,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.removeStorageDir(`/${TEST_FILES_DIR}/h1/`)
 
       expect(actual.length).toBe(2)
@@ -792,7 +792,7 @@ describe('StorageService', () => {
       await notExistsNodes([fromDirNode], `${TEST_FILES_DIR}`)
     })
 
-    it('basePathを指定した場合 - fromDirPath、toDirPath、basePathの先頭・末尾に"/"を付与', async () => {
+    it(`basePathを指定した場合 - fromDirPath、toDirPath、basePathの先頭・末尾に'/'を付与`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1/i11`, `${TEST_FILES_DIR}/i2`])
 
@@ -805,7 +805,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const fromDirNode = await storageService.getStorageDirNode(`/i1/`, `/${TEST_FILES_DIR}/`)
       const actual = await storageService.moveStorageDirNode(fromDirNode.path, `/i2/i1/`, `/${TEST_FILES_DIR}/`)
 
@@ -826,7 +826,7 @@ describe('StorageService', () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
-          // "i11"といディレクトリは存在しないがアップロードはできる
+          // 'i11'といディレクトリは存在しないがアップロードはできる
           toFilePath: `${TEST_FILES_DIR}/i1/i11/fileA.txt`,
         },
       ]
@@ -857,10 +857,15 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
-      const actual = await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i2/i1`)
+      let actual: Error
+      try {
+        const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
+        await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i2/i1`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual.length).toBe(0)
+      expect(actual!.message).toBe(`The source directory does not exist: '${TEST_FILES_DIR}/i1'`)
     })
 
     it('移動先ディレクトリが存在しない場合', async () => {
@@ -877,10 +882,15 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
-      const actual = await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i2/i1`)
+      let actual: Error
+      try {
+        const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
+        await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i2/i1`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual.length).toBe(0)
+      expect(actual!.message).toBe(`The destination directory does not exist: '${TEST_FILES_DIR}/i2'`)
     })
 
     it('移動先ディレクトリが移動元のサブディレクトリの場合', async () => {
@@ -896,13 +906,18 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
-      const actual = await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i1/aaa/bbb/i1`)
+      let actual: Error
+      try {
+        const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/i1`)
+        await storageService.moveStorageDirNode(fromDirNode.path, `${TEST_FILES_DIR}/i1/aaa/bbb/i1`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual.length).toBe(0)
+      expect(actual!.message).toBe(`The destination directory is its own subdirectory: '${TEST_FILES_DIR}/i1' -> '${TEST_FILES_DIR}/i1/aaa/bbb/i1'`)
     })
 
-    it('移動先ディレクトリが移動元のサブディレクトリの場合 - fromDirPath、toDirPathの先頭・末尾に"/"を付与', async () => {
+    it(`移動先ディレクトリが移動元のサブディレクトリの場合 - fromDirPath、toDirPathの先頭・末尾に'/'を付与`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1`, `${TEST_FILES_DIR}/i2`])
 
@@ -915,11 +930,16 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
-      const fromDirNode = await storageService.getStorageDirNode(`/${TEST_FILES_DIR}/i1/`)
-      const actual = await storageService.moveStorageDirNode(fromDirNode.path, `/${TEST_FILES_DIR}/i1/aaa/bbb/i1/`)
+      let actual: Error
+      try {
+        // パスの先頭・末尾に'/'を付与
+        const fromDirNode = await storageService.getStorageDirNode(`/${TEST_FILES_DIR}/i1/`)
+        await storageService.moveStorageDirNode(fromDirNode.path, `/${TEST_FILES_DIR}/i1/aaa/bbb/i1/`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual.length).toBe(0)
+      expect(actual!.message).toBe(`The destination directory is its own subdirectory: '${TEST_FILES_DIR}/i1' -> '${TEST_FILES_DIR}/i1/aaa/bbb/i1'`)
     })
   })
 
@@ -974,10 +994,15 @@ describe('StorageService', () => {
     })
 
     it('移動元ファイルがない場合', async () => {
-      const fromFileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt`)
-      const actual = await storageService.moveStorageFileNode(fromFileNode.path, `${TEST_FILES_DIR}/i2/fileA.txt`)
+      let actual: Error
+      try {
+        const fromFileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt`)
+        await storageService.moveStorageFileNode(fromFileNode.path, `${TEST_FILES_DIR}/i2/fileA.txt`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual).toBeUndefined
+      expect(actual!.message).toBe(`The source file does not exist: '${TEST_FILES_DIR}/i1/fileA.txt'`)
     })
 
     it('移動先ディレクトリがない場合', async () => {
@@ -993,10 +1018,15 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const fromFileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt`)
-      const actual = await storageService.moveStorageFileNode(fromFileNode.path, `${TEST_FILES_DIR}/i2/fileA.txt`)
+      let actual: Error
+      try {
+        const fromFileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt`)
+        await storageService.moveStorageFileNode(fromFileNode.path, `${TEST_FILES_DIR}/i2/fileA.txt`)
+      } catch (err) {
+        actual = err
+      }
 
-      expect(actual).toBeUndefined
+      expect(actual!.message).toBe(`The destination directory does not exist: '${TEST_FILES_DIR}/i2'`)
     })
 
     it('basePathを指定した場合', async () => {
@@ -1019,7 +1049,7 @@ describe('StorageService', () => {
       await notExistsNodes([fromFileNode], `${TEST_FILES_DIR}`)
     })
 
-    it('filePath、toFilePath、basePathの先頭・末尾に"/"を付与した場合', async () => {
+    it(`filePath、toFilePath、basePathの先頭・末尾に'/'を付与した場合`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1`, `${TEST_FILES_DIR}/i2`])
 
@@ -1031,7 +1061,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const fromFileNode = await storageService.getStorageFileNode(`/i1/fileA.txt/`, `/${TEST_FILES_DIR}/`)
       const actual = await storageService.moveStorageFileNode(fromFileNode.path, `/i2/fileA.txt/`, `/${TEST_FILES_DIR}/`)
 
@@ -1114,7 +1144,7 @@ describe('StorageService', () => {
       await notExistsNodes([dirNode], `${TEST_FILES_DIR}`)
     })
 
-    it('basePathを指定した場合 - パスの先頭・末尾に"/"を付与', async () => {
+    it(`basePathを指定した場合 - パスの先頭・末尾に'/'を付与`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1/i11`])
 
@@ -1127,7 +1157,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const dirNode = await storageService.getStorageDirNode(`/i1/`, `/${TEST_FILES_DIR}/`)
       const actual = await storageService.renameStorageDirNode(dirNode.path, `i2`, `/${TEST_FILES_DIR}/`)
 
@@ -1141,14 +1171,14 @@ describe('StorageService', () => {
 
     it('ディレクトリパスにディレクトリ名と同じディレクトリがあった場合', async () => {
       // ディレクトリを作成
-      // あえて"i1/i1"というディレクトリを作成
+      // あえて'i1/i1'というディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1/i1`])
 
       // 作成したディレクトリにファイルをアップロード
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
-          // あえて"i1/i1"というディレクトリにファイルを配置
+          // あえて'i1/i1'というディレクトリにファイルを配置
           toFilePath: `${TEST_FILES_DIR}/i1/i1/fileA.txt`,
         },
       ]
@@ -1215,13 +1245,6 @@ describe('StorageService', () => {
       await notExistsNodes([fromFileNode])
     })
 
-    it('リネーム元ファイルがない場合', async () => {
-      const fileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt`)
-      const actual = await storageService.renameStorageFileNode(fileNode.path, `fileB.txt`)
-
-      expect(actual).toBeUndefined
-    })
-
     it('basePathを指定', async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1`])
@@ -1243,7 +1266,7 @@ describe('StorageService', () => {
       await notExistsNodes([fileNode], `${TEST_FILES_DIR}`)
     })
 
-    it('basePathを指定 - パスの先頭・末尾に"/"を付与', async () => {
+    it(`basePathを指定 - パスの先頭・末尾に'/'を付与`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1`])
 
@@ -1256,7 +1279,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const fileNode = await storageService.getStorageFileNode(`/i1/fileA.txt/`, `/${TEST_FILES_DIR}/`)
       const actual = await storageService.renameStorageFileNode(fileNode.path, 'fileB.txt', `/${TEST_FILES_DIR}/`)
 
@@ -1267,14 +1290,14 @@ describe('StorageService', () => {
 
     it('ファイルパスにファイル名と同じディレクトリがあった場合', async () => {
       // ディレクトリを作成
-      // あえて"i1/fileA.txt"というディレクトリを作成
+      // あえて'i1/fileA.txt'というディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/i1/fileA.txt`])
 
       // 作成したディレクトリにファイルをアップロード
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
-          // あえて"i1/fileA.txt"というディレクトリに"fileA.txt"というファイルを配置
+          // あえて'i1/fileA.txt'というディレクトリに'fileA.txt'というファイルを配置
           toFilePath: `${TEST_FILES_DIR}/i1/fileA.txt/fileA.txt`,
         },
       ]
@@ -1283,8 +1306,8 @@ describe('StorageService', () => {
       const fileNode = await storageService.getStorageFileNode(`${TEST_FILES_DIR}/i1/fileA.txt/fileA.txt`)
       const actual = await storageService.renameStorageFileNode(fileNode.path, 'fileB.txt')
 
-      // "fileA.txt"というディレクトリ名は変わらず、
-      // "fileA.txt"が"fileB.txt"に名前変更されたことを確認
+      // 'fileA.txt'というディレクトリ名は変わらず、
+      // 'fileA.txt'が'fileB.txt'に名前変更されたことを確認
       expect(actual!.path).toBe(`${TEST_FILES_DIR}/i1/fileA.txt/fileB.txt`)
       await existsNodes([actual!])
       await notExistsNodes([fileNode])
@@ -1398,7 +1421,7 @@ describe('StorageService', () => {
       expect(actual[`k1/fileB.txt`].exists).toBeTruthy()
     })
 
-    it('dirPath、basePathの先頭・末尾に"/"を付与した場合', async () => {
+    it(`dirPath、basePathの先頭・末尾に'/'を付与した場合`, async () => {
       // ディレクトリを作成せずファイルをアップロード
       const uploadList = [
         {
@@ -1412,7 +1435,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.getStorageNodeMap(`/k1/`, `/${TEST_FILES_DIR}/`)
 
       expect(Object.keys(actual).length).toBe(2)
@@ -1442,7 +1465,7 @@ describe('StorageService', () => {
       await existsNodes([actual], `${TEST_FILES_DIR}`)
     })
 
-    it('ディレクトリの取得 - basePathを指定 - パスの先頭・末尾に"/"を付与', async () => {
+    it(`ディレクトリの取得 - basePathを指定 - パスの先頭・末尾に'/'を付与`, async () => {
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/k1`])
 
       const actual = await storageService.getStorageNode(`/k1/`, `/${TEST_FILES_DIR}/`)
@@ -1452,14 +1475,14 @@ describe('StorageService', () => {
       await existsNodes([actual], `${TEST_FILES_DIR}`)
     })
 
-    it('ディレクトリの取得 - 引数のパス指定で末尾に"/"を付与しない場合', async () => {
+    it(`ディレクトリの取得 - 引数のパス指定で末尾に'/'を付与しない場合`, async () => {
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/k1`])
 
-      // 末尾に"/"を付与しない
+      // 末尾に'/'を付与しない
       const actual = await storageService.getStorageNode(`${TEST_FILES_DIR}/k1`)
 
       expect(actual.path).toBe(`${TEST_FILES_DIR}/k1`)
-      // 末尾に"/"を付与しなかったので存在しなことになってしまう
+      // 末尾に'/'を付与しなかったので存在しなことになってしまう
       expect(actual.exists).toBeFalsy()
     })
 
@@ -1495,7 +1518,7 @@ describe('StorageService', () => {
       await existsNodes([actual], `${TEST_FILES_DIR}`)
     })
 
-    it('ファイルの取得 - basePathを指定 - パスの先頭・末尾に"/"を付与', async () => {
+    it(`ファイルの取得 - basePathを指定 - パスの先頭・末尾に'/'を付与`, async () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -1504,7 +1527,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.getStorageNode(`/k1/fileA.txt`, `/${TEST_FILES_DIR}/`)
 
       expect(actual.path).toBe(`k1/fileA.txt`)
@@ -1524,10 +1547,10 @@ describe('StorageService', () => {
       await existsNodes([actual])
     })
 
-    it('dirPathの先頭・末尾に"/"を付与', async () => {
+    it(`dirPathの先頭・末尾に'/'を付与`, async () => {
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/k1`])
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       const actual = await storageService.getStorageDirNode(`/${TEST_FILES_DIR}/k1/`)
 
       expect(actual.path).toBe(`${TEST_FILES_DIR}/k1`)
@@ -1553,7 +1576,7 @@ describe('StorageService', () => {
       await existsNodes([actual])
     })
 
-    it('filePathの先頭に"/"を付与', async () => {
+    it(`filePathの先頭に'/'を付与`, async () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -1562,7 +1585,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      // パスの先頭に"/"を付与
+      // パスの先頭に'/'を付与
       const actual = await storageService.getStorageFileNode(`/${TEST_FILES_DIR}/k1/fileA.txt`)
 
       expect(actual.path).toBe(`${TEST_FILES_DIR}/k1/fileA.txt`)
@@ -1816,7 +1839,7 @@ describe('StorageService', () => {
       expect(actual[`${TEST_FILES_DIR}/p1/p12/fileB.txt`].exists).toBeTruthy()
     })
 
-    it('basePathの先頭・末尾に"/"を付与', async () => {
+    it(`basePathの先頭・末尾に'/'を付与`, async () => {
       // ファイルのアップロード
       const uploadList = [
         {
@@ -1827,7 +1850,7 @@ describe('StorageService', () => {
       await storageService.uploadLocalFiles(uploadList)
       const actual = await storageService.getStorageNodeMap(`${TEST_FILES_DIR}`)
 
-      // パスの先頭・末尾に"/"を付与
+      // パスの先頭・末尾に'/'を付与
       storageService.padVirtualDirNode(actual, `/${TEST_FILES_DIR}/p1/`)
 
       expect(Object.keys(actual).length).toBe(2)
