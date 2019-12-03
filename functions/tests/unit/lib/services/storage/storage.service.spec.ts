@@ -1667,22 +1667,57 @@ describe('StorageService', () => {
       expect(actual.name).toBe(`m1`)
       expect(actual.dir).toBe(`${TEST_FILES_DIR}`)
       expect(actual.path).toBe(`${TEST_FILES_DIR}/m1`)
-      expect(actual.created).toBeUndefined()
-      expect(actual.updated).toBeUndefined()
+      expect(actual.created).toEqual(dayjs(0))
+      expect(actual.updated).toEqual(dayjs(0))
     })
   })
 
   describe('sortStorageNodes', () => {
     it('昇順でソート', async () => {
-      const m1: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm1', dir: '', path: 'm1' }
-      const m11: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm11', dir: 'm1', path: 'm1/m11' }
-      const fileA: StorageNode = { nodeType: StorageNodeType.File, name: 'fileA.txt', dir: 'm1/m11', path: 'm1/m11/fileA.txt' }
-      const m12: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm12', dir: 'm1', path: 'm1/m12' }
-      const fileB: StorageNode = { nodeType: StorageNodeType.File, name: 'fileB.txt', dir: 'm1/m12', path: 'm1/m12/fileB.txt' }
-      const m2: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm2', dir: '', path: 'm2' }
-      const fileC: StorageNode = { nodeType: StorageNodeType.File, name: 'fileC.txt', dir: 'm2', path: 'm2/fileC.txt' }
-      const fileD: StorageNode = { nodeType: StorageNodeType.File, name: 'fileD.txt', dir: '', path: 'fileD.txt' }
-      const fileE: StorageNode = { nodeType: StorageNodeType.File, name: 'fileE.txt', dir: '', path: 'fileE.txt' }
+      const m1: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm1', dir: '', path: 'm1', created: dayjs(0), updated: dayjs(0) }
+      const m11: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm11', dir: 'm1', path: 'm1/m11', created: dayjs(0), updated: dayjs(0) }
+      const fileA: StorageNode = {
+        nodeType: StorageNodeType.File,
+        name: 'fileA.txt',
+        dir: 'm1/m11',
+        path: 'm1/m11/fileA.txt',
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
+      const m12: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm12', dir: 'm1', path: 'm1/m12', created: dayjs(0), updated: dayjs(0) }
+      const fileB: StorageNode = {
+        nodeType: StorageNodeType.File,
+        name: 'fileB.txt',
+        dir: 'm1/m12',
+        path: 'm1/m12/fileB.txt',
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
+      const m2: StorageNode = { nodeType: StorageNodeType.Dir, name: 'm2', dir: '', path: 'm2', created: dayjs(0), updated: dayjs(0) }
+      const fileC: StorageNode = {
+        nodeType: StorageNodeType.File,
+        name: 'fileC.txt',
+        dir: 'm2',
+        path: 'm2/fileC.txt',
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
+      const fileD: StorageNode = {
+        nodeType: StorageNodeType.File,
+        name: 'fileD.txt',
+        dir: '',
+        path: 'fileD.txt',
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
+      const fileE: StorageNode = {
+        nodeType: StorageNodeType.File,
+        name: 'fileE.txt',
+        dir: '',
+        path: 'fileE.txt',
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
 
       const nodes = [fileA, fileB, fileC, fileE, fileD, m1, m2, m11, m12]
       storageService.sortStorageNodes(nodes)

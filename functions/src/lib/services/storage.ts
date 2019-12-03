@@ -28,8 +28,8 @@ export interface StorageNode {
   name: string
   dir: string
   path: string
-  created?: Dayjs
-  updated?: Dayjs
+  created: Dayjs
+  updated: Dayjs
 }
 
 export class SignedUploadUrlInput {
@@ -752,6 +752,8 @@ export abstract class BaseStorageService {
       name,
       dir,
       path: dirPathSegments.join('/'),
+      created: dayjs(0),
+      updated: dayjs(0),
     }
   }
 
