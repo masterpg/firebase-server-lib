@@ -237,6 +237,55 @@ export abstract class BaseStorageService {
   }
 
   /**
+   * Cloud Storageから指定されたディレクトリを含め配下のノードを削除します。
+   *
+   * 引数が次のように指定された場合、
+   *   + dirPath: 'photos'
+   *   + basePath: 'home'
+   *
+   * 次のようなディレクトリ、ファイルが削除されます。
+   *   + 'home/photos'
+   *   + 'home/photos/family.png'
+   *   + 'home/photos/children.png'
+   *
+   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + 'photos'
+   *   + 'photos/family.png'
+   *   + 'photos/children.png'
+   *
+   * @param dirPath
+   * @param basePath
+   */
+  async removeStorageDir(dirPath: string, basePath = ''): Promise<StorageNode[]> {
+    // Cloud Storageから指定されたディレクトリのノードを取得
+    const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
+    // 親ディレクトリの穴埋め
+    this.padVirtualDirNode(nodeMap, dirPath)
+
+    // Cloud Storageから取得したノードを削除
+    const promises: Promise<StorageNode>[] = []
+    for (const node of Object.values(nodeMap)) {
+      if (node.exists) {
+        promises.push(node.gcsNode.delete().then(() => node))
+      }
+    }
+    const nodes = await Promise.all(promises)
+
+    this.sortStorageNodes(nodes)
+    return nodes
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリ配下にあるファイルを削除します。。
+   * @param user
+   * @param dirPath
+   */
+  async removeUserStorageDir(user: StorageUser, dirPath: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserStorageDirPath(user)
+    return this.removeStorageDir(dirPath, userDirPath)
+  }
+
+  /**
    * Cloud Storageからファイルノードを削除します。
    *
    * 引数が次のように指定された場合、
@@ -294,55 +343,6 @@ export abstract class BaseStorageService {
   }
 
   /**
-   * Cloud Storageから指定されたディレクトリを含め配下のノードを削除します。
-   *
-   * 引数が次のように指定された場合、
-   *   + dirPath: 'photos'
-   *   + basePath: 'home'
-   *
-   * 次のようなディレクトリ、ファイルが削除されます。
-   *   + 'home/photos'
-   *   + 'home/photos/family.png'
-   *   + 'home/photos/children.png'
-   *
-   * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + 'photos'
-   *   + 'photos/family.png'
-   *   + 'photos/children.png'
-   *
-   * @param dirPath
-   * @param basePath
-   */
-  async removeStorageDir(dirPath: string, basePath = ''): Promise<StorageNode[]> {
-    // Cloud Storageから指定されたディレクトリのノードを取得
-    const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
-    // 親ディレクトリの穴埋め
-    this.padVirtualDirNode(nodeMap, dirPath)
-
-    // Cloud Storageから取得したノードを削除
-    const promises: Promise<StorageNode>[] = []
-    for (const node of Object.values(nodeMap)) {
-      if (node.exists) {
-        promises.push(node.gcsNode.delete().then(() => node))
-      }
-    }
-    const nodes = await Promise.all(promises)
-
-    this.sortStorageNodes(nodes)
-    return nodes
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリ配下にあるファイルを削除します。。
-   * @param user
-   * @param dirPath
-   */
-  async removeUserStorageDir(user: StorageUser, dirPath: string): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.removeStorageDir(dirPath, userDirPath)
-  }
-
-  /**
    * Cloud Storageのディレクトリを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
@@ -366,7 +366,7 @@ export abstract class BaseStorageService {
    * @param toDirPath
    * @param basePath
    */
-  async moveStorageDirNode(fromDirPath: string, toDirPath: string, basePath = ''): Promise<StorageNode[]> {
+  async moveStorageDir(fromDirPath: string, toDirPath: string, basePath = ''): Promise<StorageNode[]> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     basePath = removeBothEndsSlash(basePath)
@@ -446,9 +446,9 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param toDirPath
    */
-  async moveUserStorageDirNode(user: StorageUser, dirPath: string, toDirPath: string): Promise<StorageNode[]> {
+  async moveUserStorageDir(user: StorageUser, dirPath: string, toDirPath: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageDirNode(dirPath, toDirPath, userDirPath)
+    return this.moveStorageDir(dirPath, toDirPath, userDirPath)
   }
 
   /**
@@ -473,7 +473,7 @@ export abstract class BaseStorageService {
    * @param toFilePath
    * @param basePath
    */
-  async moveStorageFileNode(filePath: string, toFilePath: string, basePath = ''): Promise<StorageNode | undefined> {
+  async moveStorageFile(filePath: string, toFilePath: string, basePath = ''): Promise<StorageNode> {
     filePath = removeBothEndsSlash(filePath)
     toFilePath = removeBothEndsSlash(toFilePath)
     basePath = removeBothEndsSlash(basePath)
@@ -504,9 +504,9 @@ export abstract class BaseStorageService {
    * @param filePath
    * @param toDirPath
    */
-  async moveUserStorageFileNode(user: StorageUser, filePath: string, toDirPath: string): Promise<StorageNode | undefined> {
+  async moveUserStorageFile(user: StorageUser, filePath: string, toDirPath: string): Promise<StorageNode> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageFileNode(filePath, toDirPath, userDirPath)
+    return this.moveStorageFile(filePath, toDirPath, userDirPath)
   }
 
   /**
@@ -533,12 +533,12 @@ export abstract class BaseStorageService {
    * @param newName
    * @param basePath
    */
-  async renameStorageDirNode(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
+  async renameStorageDir(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
     dirPath = removeBothEndsSlash(dirPath)
 
     const reg = new RegExp(`${path.basename(dirPath)}$`)
     const toDirPath = dirPath.replace(reg, newName)
-    return this.moveStorageDirNode(dirPath, toDirPath, basePath)
+    return this.moveStorageDir(dirPath, toDirPath, basePath)
   }
 
   /**
@@ -548,9 +548,9 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param newName
    */
-  async renameUserStorageDirNode(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
+  async renameUserStorageDir(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.renameStorageDirNode(dirPath, newName, userDirPath)
+    return this.renameStorageDir(dirPath, newName, userDirPath)
   }
 
   /**
@@ -575,12 +575,12 @@ export abstract class BaseStorageService {
    * @param newName
    * @param basePath
    */
-  async renameStorageFileNode(filePath: string, newName: string, basePath = ''): Promise<StorageNode | undefined> {
+  async renameStorageFile(filePath: string, newName: string, basePath = ''): Promise<StorageNode> {
     filePath = removeBothEndsSlash(filePath)
 
     const reg = new RegExp(`${path.basename(filePath)}$`)
     const toFilePath = filePath.replace(reg, newName)
-    return this.moveStorageFileNode(filePath, toFilePath, basePath)
+    return this.moveStorageFile(filePath, toFilePath, basePath)
   }
 
   /**
@@ -590,9 +590,9 @@ export abstract class BaseStorageService {
    * @param filePath
    * @param newName
    */
-  async renameUserStorageFileNode(user: StorageUser, filePath: string, newName: string): Promise<StorageNode | undefined> {
+  async renameUserStorageFile(user: StorageUser, filePath: string, newName: string): Promise<StorageNode> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.renameStorageFileNode(filePath, newName, userDirPath)
+    return this.renameStorageFile(filePath, newName, userDirPath)
   }
 
   /**

@@ -71,6 +71,17 @@ export interface IMutation {
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageDir(dirPath: string): StorageNode[] | Promise<StorageNode[]>;
+    moveUserStorageDir(dirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
+    moveUserStorageFile(filePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
+    renameUserStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
+    renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
+    createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    removeStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    removeStorageDir(dirPath: string): StorageNode[] | Promise<StorageNode[]>;
+    moveStorageDir(dirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
+    moveStorageFile(filePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
+    renameStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
+    renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
 }
 
 export interface Product {
@@ -88,6 +99,7 @@ export interface IQuery {
     products(ids?: string[]): Product[] | Promise<Product[]>;
     userStorageDirNodes(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
+    storageDirNodes(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
 }
 
 export interface StorageNode {

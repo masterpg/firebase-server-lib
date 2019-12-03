@@ -1,6 +1,6 @@
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "yamada.one"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -26,7 +26,7 @@ Authorization: Bearer {"uid": "yamada.one"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
   "operationName": "CreateUserStorageDirs",
@@ -45,14 +45,28 @@ Authorization: Bearer {"uid": "yamada.one"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
-  "operationName": "RemoveUserStorageFileNodes",
-  "query": "mutation RemoveUserStorageFileNodes($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) { nodeType name dir path created updated } }",
+  "operationName": "RemoveUserStorageDir",
+  "query": "mutation RemoveUserStorageDi($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "dir1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
+
+{
+  "operationName": "RemoveUserStorageFiles",
+  "query": "mutation RemoveUserStorageFiles($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) { nodeType name dir path created updated } }",
   "variables": {
     "filePaths": [
-      "docs/fileA.txt"
+      "dir1/dir1_1/fileA.txt"
     ]
   }
 }
@@ -61,13 +75,14 @@ Authorization: Bearer {"uid": "yamada.one"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "yamada.one"}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
-  "operationName": "RemoveUserStorageDirNodes",
-  "query": "mutation RemoveUserStorageDirNodes($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "operationName": "MoveUserStorageDir",
+  "query": "mutation MoveUserStorageDir($dirPath: String!, $toDirPath: String!) { moveUserStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
   "variables": {
-    "dirPath": "dir1/dir1_1"
+    "dirPath": "dir1/dir1_1",
+    "toDirPath": "dir1/dir1_X"
   }
 }
 
@@ -75,7 +90,52 @@ Authorization: Bearer {"uid": "yamada.one"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "kanri.one", "isAppAdmin": true}
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
+
+{
+  "operationName": "MoveUserStorageFile",
+  "query": "mutation MoveUserStorageFile($filePath: String!, $toFilePath: String!) { moveUserStorageFile(filePath: $filePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
+  "variables": {
+    "filePath": "dir1/fileA.txt",
+    "toFilePath": "dir1/dir1_1/fileA.txt"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
+
+{
+  "operationName": "RenameUserStorageDir",
+  "query": "mutation RenameUserStorageDir($dirPath: String!, $newName: String!) { renameUserStorageDir(dirPath: $dirPath, newName: $newName) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "dir1/dir1_1",
+    "newName": "dir1_X"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
+
+{
+  "operationName": "RenameUserStorageFile",
+  "query": "mutation RenameUserStorageFile($filePath: String!, $newName: String!) { renameUserStorageFile(filePath: $filePath, newName: $newName) { nodeType name dir path created updated } }",
+  "variables": {
+    "filePath": "dir1/fileA.txt",
+    "newName": "fileB.txt"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
 
 {
   "operationName": "GetSignedUploadUrls",
@@ -87,6 +147,129 @@ Authorization: Bearer {"uid": "kanri.one", "isAppAdmin": true}
         "contentType": "image/png"
       }
     ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "GetStorageDirNodes",
+  "query": "query GetStorageDirNodes($dirPath: String) { storageDirNodes(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "test-files/dir1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "CreateStorageDirs",
+  "query": "mutation CreateStorageDirs($dirPaths: [String!]!) { createStorageDirs(dirPaths: $dirPaths) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPaths": [
+      "test-files/dir1/dir1_1",
+      "test-files/dir1/dir1_1/dir1_1_1",
+      "test-files/dir1/dir1_1/dir1_1_2",
+      "test-files/dir2/dir2_1"
+    ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "RemoveStorageDirNodes",
+  "query": "mutation RemoveStorageDirNodes($dirPath: String!) { removeStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "test-files/dir1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "RemoveStorageFiles",
+  "query": "mutation RemoveStorageFiles($filePaths: [String!]!) { removeStorageFiles(filePaths: $filePaths) { nodeType name dir path created updated } }",
+  "variables": {
+    "filePaths": [
+      "test-files/dir1/fileA.txt"
+    ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "MoveStorageDir",
+  "query": "mutation MoveStorageDir($dirPath: String!, $toDirPath: String!) { moveStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "test-files/dir1/dir1_1",
+    "toDirPath": "test-files/dir1/dir1_X"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "MoveStorageFile",
+  "query": "mutation MoveStorageFile($filePath: String!, $toFilePath: String!) { moveStorageFile(filePath: $filePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
+  "variables": {
+    "filePath": "test-files/dir1/fileA.txt",
+    "toFilePath": "test-files/dir1/dir1_1/fileA.txt"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "RenameStorageDir",
+  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!) { renameStorageDir(dirPath: $dirPath, newName: $newName) { nodeType name dir path created updated } }",
+  "variables": {
+    "dirPath": "test-files/dir1/dir1_1",
+    "newName": "dir1_X"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
+
+{
+  "operationName": "RenameStorageFile",
+  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { nodeType name dir path created updated } }",
+  "variables": {
+    "filePath": "test-files/dir1/fileA.txt",
+    "newName": "fileB.txt"
   }
 }
 

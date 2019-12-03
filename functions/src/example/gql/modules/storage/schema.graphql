@@ -23,9 +23,22 @@ type Mutation {
   createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeUserStorageFiles(filePaths: [String!]!): [StorageNode!]!
   removeUserStorageDir(dirPath: String!): [StorageNode!]!
+  moveUserStorageDir(dirPath: String!, toDirPath: String!): [StorageNode!]!
+  moveUserStorageFile(filePath: String!, toFilePath: String!): StorageNode!
+  renameUserStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
+  renameUserStorageFile(filePath: String!, newName: String!): StorageNode!
+
+  createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
+  removeStorageFiles(filePaths: [String!]!): [StorageNode!]!
+  removeStorageDir(dirPath: String!): [StorageNode!]!
+  moveStorageDir(dirPath: String!, toDirPath: String!): [StorageNode!]!
+  moveStorageFile(filePath: String!, toFilePath: String!): StorageNode!
+  renameStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
+  renameStorageFile(filePath: String!, newName: String!): StorageNode!
 }
 
 type Query {
   userStorageDirNodes(dirPath: String): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+  storageDirNodes(dirPath: String): [StorageNode!]!
 }
