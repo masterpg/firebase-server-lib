@@ -48,10 +48,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
-  "operationName": "RemoveUserStorageDir",
-  "query": "mutation RemoveUserStorageDi($dirPath: String!) { removeUserStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "operationName": "RemoveUserStorageDirs",
+  "query": "mutation RemoveUserStorageDirs($dirPaths: [String!]!) { removeUserStorageDirs(dirPaths: $dirPaths) { nodeType name dir path created updated } }",
   "variables": {
-    "dirPath": "dir1"
+    "dirPaths": ["dir1"]
   }
 }
 
@@ -190,10 +190,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmin": true}
 
 {
-  "operationName": "RemoveStorageDirNodes",
-  "query": "mutation RemoveStorageDirNodes($dirPath: String!) { removeStorageDir(dirPath: $dirPath) { nodeType name dir path created updated } }",
+  "operationName": "RemoveStorageDirs",
+  "query": "mutation RemoveStorageDirs($dirPaths: [String!]!) { removeStorageDirs(dirPaths: $dirPaths) { nodeType name dir path created updated } }",
   "variables": {
-    "dirPath": "test-files/dir1"
+    "dirPaths": ["test-files/dir1"]
   }
 }
 

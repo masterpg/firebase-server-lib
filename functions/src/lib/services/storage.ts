@@ -253,36 +253,46 @@ export abstract class BaseStorageService {
    *   + 'photos/family.png'
    *   + 'photos/children.png'
    *
-   * @param dirPath
+   * @param dirPaths
    * @param basePath
    */
-  async removeStorageDir(dirPath: string, basePath = ''): Promise<StorageNode[]> {
-    // Cloud Storageから指定されたディレクトリのノードを取得
-    const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
-    // 親ディレクトリの穴埋め
-    this.padVirtualDirNode(nodeMap, dirPath)
+  async removeStorageDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
+    const remove = async (dirPath: string, basePath = '') => {
+      // Cloud Storageから指定されたディレクトリのノードを取得
+      const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
+      // 親ディレクトリの穴埋め
+      this.padVirtualDirNode(nodeMap, dirPath)
 
-    // Cloud Storageから取得したノードを削除
-    const promises: Promise<StorageNode>[] = []
-    for (const node of Object.values(nodeMap)) {
-      if (node.exists) {
-        promises.push(node.gcsNode.delete().then(() => node))
+      // Cloud Storageから取得したノードを削除
+      const promises: Promise<StorageNode>[] = []
+      for (const node of Object.values(nodeMap)) {
+        if (node.exists) {
+          promises.push(node.gcsNode.delete().then(() => node))
+        }
       }
+      return await Promise.all(promises)
     }
-    const nodes = await Promise.all(promises)
 
-    this.sortStorageNodes(nodes)
-    return nodes
+    const result: StorageNode[] = []
+
+    for (const dirPath of dirPaths) {
+      const nodes = await remove(dirPath, basePath)
+      result.push(...nodes)
+    }
+
+    this.sortStorageNodes(result)
+
+    return result
   }
 
   /**
    * Cloud Storageのユーザーディレクトリ配下にあるファイルを削除します。。
    * @param user
-   * @param dirPath
+   * @param dirPaths
    */
-  async removeUserStorageDir(user: StorageUser, dirPath: string): Promise<StorageNode[]> {
+  async removeUserStorageDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.removeStorageDir(dirPath, userDirPath)
+    return this.removeStorageDirs(dirPaths, userDirPath)
   }
 
   /**

@@ -202,29 +202,29 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('removeUserStorageDir', () => {
+  describe('removeUserStorageDirs', () => {
     const gql = {
       query: `
-        mutation RemoveUserStorageDirNodes($dirPath: String!) {
-          removeUserStorageDir(dirPath: $dirPath) {
+        mutation RemoveUserStorageDirs($dirPaths: [String!]!) {
+          removeUserStorageDirs(dirPaths: $dirPaths) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1.path,
+        dirPaths: [dir1.path],
       },
     }
 
     it('疎通確認', async () => {
-      const removeUserStorageDir = td.replace(storageService, 'removeUserStorageDir')
-      td.when(removeUserStorageDir(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1, dir1_1, dir1_2])
+      const removeUserStorageDirs = td.replace(storageService, 'removeUserStorageDirs')
+      td.when(removeUserStorageDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
       })
 
-      expect(response.body.data.removeUserStorageDir).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
+      expect(response.body.data.removeUserStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
     })
 
     it('サインインしていない場合', async () => {
@@ -509,29 +509,29 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('removeStorageDir', () => {
+  describe('removeStorageDirs', () => {
     const gql = {
       query: `
-        mutation RemoveStorageDirNodes($dirPath: String!) {
-          removeStorageDir(dirPath: $dirPath) {
+        mutation RemoveStorageDirNodes($dirPaths: [String!]!) {
+          removeStorageDirs(dirPaths: $dirPaths) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1.path,
+        dirPaths: [dir1.path],
       },
     }
 
     it('疎通確認', async () => {
-      const removeStorageDir = td.replace(storageService, 'removeStorageDir')
-      td.when(removeStorageDir(dir1.path)).thenResolve([dir1, dir1_1, dir1_2])
+      const removeStorageDirs = td.replace(storageService, 'removeStorageDirs')
+      td.when(removeStorageDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
       })
 
-      expect(response.body.data.removeStorageDir).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
+      expect(response.body.data.removeStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
     })
 
     it('サインインしていない場合', async () => {

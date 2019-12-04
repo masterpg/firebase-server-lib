@@ -22,8 +22,8 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(UserGuard)
-  async removeUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string): Promise<StorageNode[]> {
-    return this.storageService.removeUserStorageDir(user, dirPath)
+  async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.removeUserStorageDirs(user, dirPaths)
   }
 
   @Mutation()
@@ -81,8 +81,8 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async removeStorageDir(@Args('dirPath') dirPath: string): Promise<StorageNode[]> {
-    return this.storageService.removeStorageDir(dirPath)
+  async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.removeStorageDirs(dirPaths)
   }
 
   @Mutation()

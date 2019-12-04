@@ -69,15 +69,15 @@ export interface IMutation {
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    removeUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeUserStorageDir(dirPath: string): StorageNode[] | Promise<StorageNode[]>;
     moveUserStorageDir(dirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
     moveUserStorageFile(filePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
     renameUserStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
     renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    removeStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeStorageDir(dirPath: string): StorageNode[] | Promise<StorageNode[]>;
     moveStorageDir(dirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
     moveStorageFile(filePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
     renameStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
@@ -107,8 +107,8 @@ export interface StorageNode {
     name: string;
     dir: string;
     path: string;
-    created?: DateTime;
-    updated?: DateTime;
+    created: DateTime;
+    updated: DateTime;
 }
 
 export type DateTime = any;
