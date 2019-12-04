@@ -267,14 +267,14 @@ describe('StorageResolver', () => {
   describe('moveUserStorageDir', () => {
     const gql = {
       query: `
-        mutation MoveUserStorageDir($dirPath: String!, $toDirPath: String!) {
-          moveUserStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) {
+        mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) {
+          moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1_1.path,
+        fromDirPath: dir1_1.path,
         toDirPath: dir1_2.path,
       },
     }
@@ -299,14 +299,14 @@ describe('StorageResolver', () => {
   describe('moveUserStorageFile', () => {
     const gql = {
       query: `
-        mutation MoveUserStorageFile($filePath: String!, $toFilePath: String!) {
-          moveUserStorageFile(filePath: $filePath, toFilePath: $toFilePath) {
+        mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
+          moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        filePath: dir1_1_fileA.path,
+        fromFilePath: dir1_1_fileA.path,
         toFilePath: dir1_2_fileA.path,
       },
     }
@@ -588,14 +588,14 @@ describe('StorageResolver', () => {
   describe('moveStorageDir', () => {
     const gql = {
       query: `
-        mutation MoveStorageDir($dirPath: String!, $toDirPath: String!) {
-          moveStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) {
+        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
+          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1_1.path,
+        fromDirPath: dir1_1.path,
         toDirPath: dir1_2.path,
       },
     }
@@ -627,14 +627,14 @@ describe('StorageResolver', () => {
   describe('moveStorageFile', () => {
     const gql = {
       query: `
-        mutation MoveStorageFile($filePath: String!, $toFilePath: String!) {
-          moveStorageFile(filePath: $filePath, toFilePath: $toFilePath) {
+        mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
+          moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
             nodeType name dir path created updated
           }
         }
       `,
       variables: {
-        filePath: dir1_1_fileA.path,
+        fromFilePath: dir1_1_fileA.path,
         toFilePath: dir1_2_fileA.path,
       },
     }

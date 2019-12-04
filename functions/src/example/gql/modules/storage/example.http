@@ -79,9 +79,9 @@ Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
   "operationName": "MoveUserStorageDir",
-  "query": "mutation MoveUserStorageDir($dirPath: String!, $toDirPath: String!) { moveUserStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
+  "query": "mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) { moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
   "variables": {
-    "dirPath": "dir1/dir1_1",
+    "fromDirPath": "dir1/dir1_1",
     "toDirPath": "dir1/dir1_X"
   }
 }
@@ -94,9 +94,9 @@ Authorization: Bearer {"uid": "yamada.one", "storageDir": "yamada.one"}
 
 {
   "operationName": "MoveUserStorageFile",
-  "query": "mutation MoveUserStorageFile($filePath: String!, $toFilePath: String!) { moveUserStorageFile(filePath: $filePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
+  "query": "mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) { moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
   "variables": {
-    "filePath": "dir1/fileA.txt",
+    "fromFilePath": "dir1/fileA.txt",
     "toFilePath": "dir1/dir1_1/fileA.txt"
   }
 }
@@ -221,9 +221,9 @@ Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmi
 
 {
   "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($dirPath: String!, $toDirPath: String!) { moveStorageDir(dirPath: $dirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
+  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) { nodeType name dir path created updated } }",
   "variables": {
-    "dirPath": "test-files/dir1/dir1_1",
+    "fromDirPath": "test-files/dir1/dir1_1",
     "toDirPath": "test-files/dir1/dir1_X"
   }
 }
@@ -236,9 +236,9 @@ Authorization: Bearer {"uid": "kanri.one", "storageDir": "kanri.one", "isAppAdmi
 
 {
   "operationName": "MoveStorageFile",
-  "query": "mutation MoveStorageFile($filePath: String!, $toFilePath: String!) { moveStorageFile(filePath: $filePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
+  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { nodeType name dir path created updated } }",
   "variables": {
-    "filePath": "test-files/dir1/fileA.txt",
+    "fromFilePath": "test-files/dir1/fileA.txt",
     "toFilePath": "test-files/dir1/dir1_1/fileA.txt"
   }
 }

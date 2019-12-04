@@ -23,16 +23,16 @@ type Mutation {
   createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeUserStorageFiles(filePaths: [String!]!): [StorageNode!]!
-  moveUserStorageDir(dirPath: String!, toDirPath: String!): [StorageNode!]!
-  moveUserStorageFile(filePath: String!, toFilePath: String!): StorageNode!
+  moveUserStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
+  moveUserStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameUserStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
   renameUserStorageFile(filePath: String!, newName: String!): StorageNode!
 
   createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeStorageFiles(filePaths: [String!]!): [StorageNode!]!
-  moveStorageDir(dirPath: String!, toDirPath: String!): [StorageNode!]!
-  moveStorageFile(filePath: String!, toFilePath: String!): StorageNode!
+  moveStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
+  moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
 }

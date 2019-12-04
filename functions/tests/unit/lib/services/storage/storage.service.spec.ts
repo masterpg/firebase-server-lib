@@ -935,7 +935,7 @@ describe('StorageService', () => {
 
     it('移動先ディレクトリが存在しない場合', async () => {
       // ディレクトリを作成
-      // (移動先ディレクトリは作成しない)
+      // (移動先ディレクトリ'd2'は作成しない)
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
@@ -947,15 +947,40 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
+      // 存在しない'd2'配下へ'd1'を移動させる
       let actual: Error
       try {
-        const fromDirNode = await storageService.getStorageDirNode(`${TEST_FILES_DIR}/d1`)
-        await storageService.moveStorageDir(fromDirNode.path, `${TEST_FILES_DIR}/d2/d1`)
+        const fromDirNode = await storageService.getStorageDirNode(`d1`, `${TEST_FILES_DIR}`)
+        await storageService.moveStorageDir(fromDirNode.path, `d2/d1`, `${TEST_FILES_DIR}`)
       } catch (err) {
         actual = err
       }
 
       expect(actual!.message).toBe(`The destination directory does not exist: '${TEST_FILES_DIR}/d2'`)
+    })
+
+    it('移動先ディレクトリが存在しない場合 - ルートディレクトリ(アプリケーションまたはユーザーディレクトリ)直下へ移動する場合', async () => {
+      // ディレクトリを作成
+      await storageService.createStorageDirs([`${TEST_FILES_DIR}/d1/d2`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/d2/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // ルートディレクトリ(アプリケーションまたはユーザーディレクトリ)直下へ移動
+      const fromDirNode = await storageService.getStorageDirNode(`d1/d2`, `${TEST_FILES_DIR}`)
+      const actual = await storageService.moveStorageDir(fromDirNode.path, `d2`, `${TEST_FILES_DIR}`)
+
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d2`)
+      expect(actual[1].path).toBe(`d2/fileA.txt`)
+      await existsNodes(actual, `${TEST_FILES_DIR}`)
+      await notExistsNodes([fromDirNode], `${TEST_FILES_DIR}`)
     })
 
     it('移動先ディレクトリが移動元のサブディレクトリの場合', async () => {
@@ -1114,7 +1139,7 @@ describe('StorageService', () => {
       await notExistsNodes([fromFileNode], `${TEST_FILES_DIR}`)
     })
 
-    it(`filePath、toFilePath、basePathの先頭・末尾に'/'を付与した場合`, async () => {
+    it(`fromFilePath、toFilePath、basePathの先頭・末尾に'/'を付与した場合`, async () => {
       // ディレクトリを作成
       await storageService.createStorageDirs([`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
 

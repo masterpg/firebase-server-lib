@@ -356,7 +356,7 @@ export abstract class BaseStorageService {
    * Cloud Storageのディレクトリを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
-   *   + dirNode: 'photos'
+   *   + fromDirPath: 'photos'
    *   + toDirPath: 'archives/photos'
    *   + basePath: 'home'
    *
@@ -385,14 +385,16 @@ export abstract class BaseStorageService {
     // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
     //               → to: aaa/zzz/ccc/bbb [OK]
     if (toDirPath.startsWith(fromDirPath)) {
-      throw new Error(`The destination directory is its own subdirectory: '${fromDirPath}' -> '${toDirPath}'`)
+      throw new Error(
+        `The destination directory is its own subdirectory: '${path.join(basePath, fromDirPath)}' -> '${path.join(basePath, toDirPath)}'`
+      )
     }
 
     // 移動元ディレクトリ配下のノードを取得
     const nodeMap = await this.getStorageNodeMap(fromDirPath, basePath)
     const dirNode = nodeMap[fromDirPath]
     if (!dirNode || !dirNode.exists) {
-      throw new Error(`The source directory does not exist: '${fromDirPath}'`)
+      throw new Error(`The source directory does not exist: '${path.join(basePath, fromDirPath)}'`)
     }
     // 親ディレクトリの穴埋め
     this.padVirtualDirNode(nodeMap, fromDirPath)
@@ -400,10 +402,13 @@ export abstract class BaseStorageService {
     delete nodeMap[fromDirPath]
 
     // 移動先ディレクトリの存在確認
-    const toDirParentPath = path.join(path.dirname(toDirPath), '/')
-    const toDirParentNode = await this.getStorageDirNode(toDirParentPath, basePath)
-    if (!toDirParentNode.exists) {
-      throw new Error(`The destination directory does not exist: '${toDirParentNode.path}'`)
+    // (アプリケーションまたはユーザーディレクトリ直下へ移動する場合は確認しない)
+    if (path.dirname(toDirPath) !== '.') {
+      const toDirParentPath = path.join(path.dirname(toDirPath), '/')
+      const toDirParentNode = await this.getStorageDirNode(toDirParentPath, basePath)
+      if (!toDirParentNode.exists) {
+        throw new Error(`The destination directory does not exist: '${path.join(basePath, toDirParentNode.path)}'`)
+      }
     }
 
     const result: StorageNode[] = []
@@ -453,19 +458,19 @@ export abstract class BaseStorageService {
    * Cloud Storageのユーザーディレクトリを指定されたディレクトリへ移動します。
    * 移動元ディレクトリまたは移動先ディレクトリがない場合は移動は行われず、空配列が返されます。
    * @param user
-   * @param dirPath
+   * @param fromDirPath
    * @param toDirPath
    */
-  async moveUserStorageDir(user: StorageUser, dirPath: string, toDirPath: string): Promise<StorageNode[]> {
+  async moveUserStorageDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageDir(dirPath, toDirPath, userDirPath)
+    return this.moveStorageDir(fromDirPath, toDirPath, userDirPath)
   }
 
   /**
    * Cloud Storageのファイルを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
-   *   + filePath: 'photos/family.png'
+   *   + fromFilePath: 'photos/family.png'
    *   + toFilePath: 'archives/family.png'
    *   + basePath: 'home'
    *
@@ -479,26 +484,26 @@ export abstract class BaseStorageService {
    *
    * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
    *
-   * @param filePath
+   * @param fromFilePath
    * @param toFilePath
    * @param basePath
    */
-  async moveStorageFile(filePath: string, toFilePath: string, basePath = ''): Promise<StorageNode> {
-    filePath = removeBothEndsSlash(filePath)
+  async moveStorageFile(fromFilePath: string, toFilePath: string, basePath = ''): Promise<StorageNode> {
+    fromFilePath = removeBothEndsSlash(fromFilePath)
     toFilePath = removeBothEndsSlash(toFilePath)
     basePath = removeBothEndsSlash(basePath)
 
     // 移動元ファイルの存在確認
-    const fileNode = await this.getStorageNode(filePath, basePath)
+    const fileNode = await this.getStorageNode(fromFilePath, basePath)
     if (!fileNode.exists) {
-      throw new Error(`The source file does not exist: '${fileNode.path}'`)
+      throw new Error(`The source file does not exist: '${path.join(basePath, fileNode.path)}'`)
     }
 
     // 移動先ディレクトリの存在確認
     const toDirPath = path.join(path.dirname(toFilePath), '/')
     const toDirNode = await this.getStorageNode(toDirPath, basePath)
     if (!toDirNode.exists) {
-      throw new Error(`The destination directory does not exist: '${toDirNode.path}'`)
+      throw new Error(`The destination directory does not exist: '${path.join(basePath, toDirNode.path)}'`)
     }
 
     // ファイルの移動
@@ -511,12 +516,12 @@ export abstract class BaseStorageService {
    * Cloud Storageのユーザーディレクトリ配下にあるファイルを指定されたディレクトリへ移動します。
    * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
    * @param user
-   * @param filePath
+   * @param fromFilePath
    * @param toDirPath
    */
-  async moveUserStorageFile(user: StorageUser, filePath: string, toDirPath: string): Promise<StorageNode> {
+  async moveUserStorageFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<StorageNode> {
     const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageFile(filePath, toDirPath, userDirPath)
+    return this.moveStorageFile(fromFilePath, toDirPath, userDirPath)
   }
 
   /**

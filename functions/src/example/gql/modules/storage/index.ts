@@ -34,14 +34,22 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(UserGuard)
-  async moveUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
-    return this.storageService.moveUserStorageDir(user, dirPath, toDirPath)
+  async moveUserStorageDir(
+    @User() user: IdToken,
+    @Args('fromDirPath') fromDirPath: string,
+    @Args('toDirPath') toDirPath: string
+  ): Promise<StorageNode[]> {
+    return this.storageService.moveUserStorageDir(user, fromDirPath, toDirPath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
-  async moveUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return this.storageService.moveUserStorageFile(user, filePath, toFilePath)
+  async moveUserStorageFile(
+    @User() user: IdToken,
+    @Args('fromFilePath') fromFilePath: string,
+    @Args('toFilePath') toFilePath: string
+  ): Promise<StorageNode> {
+    return this.storageService.moveUserStorageFile(user, fromFilePath, toFilePath)
   }
 
   @Mutation()
@@ -95,15 +103,15 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageDir(@Args('dirPath') dirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
-    return this.storageService.moveStorageDir(dirPath, toDirPath)
+  async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
+    return this.storageService.moveStorageDir(fromDirPath, toDirPath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageFile(@Args('filePath') filePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return this.storageService.moveStorageFile(filePath, toFilePath)
+  async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
+    return this.storageService.moveStorageFile(fromFilePath, toFilePath)
   }
 
   @Mutation()
