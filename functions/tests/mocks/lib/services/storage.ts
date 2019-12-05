@@ -1,14 +1,22 @@
 import { BaseStorageService } from '../../../../src/lib/services'
 import { Injectable } from '@nestjs/common'
 
+type MockStorageService = BaseStorageService & {
+  toStorageNode: BaseStorageService['toStorageNode']
+  toDirStorageNode: BaseStorageService['toDirStorageNode']
+  sortStorageNodes: BaseStorageService['sortStorageNodes']
+  padVirtualDirNode: BaseStorageService['padVirtualDirNode']
+  splitHierarchicalDirPaths: BaseStorageService['splitHierarchicalDirPaths']
+}
+
 @Injectable()
-class MockStorageService extends BaseStorageService {}
+class MockStorageServiceImpl extends BaseStorageService {}
 
 export namespace MockStorageServiceDI {
-  export const symbol = Symbol(MockStorageService.name)
+  export const symbol = Symbol(MockStorageServiceImpl.name)
   export const provider = {
     provide: symbol,
-    useClass: MockStorageService,
+    useClass: MockStorageServiceImpl,
   }
   export type type = MockStorageService
 }

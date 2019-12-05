@@ -151,19 +151,19 @@ describe('StorageResolver', () => {
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
-    // it('疎通確認', async () => {
-    //   const getUserStorageDirNodes = td.replace(storageService, 'getUserStorageDirNodes')
-    //   td.when(getUserStorageDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
-    //
-    //   const response = await requestGQL(app, gql, {
-    //     headers: Object.assign({}, generalAuthHeader),
-    //   })
-    //
-    //   expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
-    //   const explanation = td.explain(getUserStorageDirNodes)
-    //   expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
-    //   expect(explanation.calls[0].args[1]).toBe(dir1.path)
-    // })
+    it('疎通確認 - td.explain()バージョン', async () => {
+      const getUserStorageDirNodes = td.replace(storageService, 'getUserStorageDirNodes')
+      td.when(getUserStorageDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, generalAuthHeader),
+      })
+
+      expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
+      const explanation = td.explain(getUserStorageDirNodes)
+      expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(explanation.calls[0].args[1]).toBe(dir1.path)
+    })
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)

@@ -56,92 +56,6 @@ export abstract class BaseStorageService {
   //----------------------------------------------------------------------
 
   /**
-   * ローカルファイルをCloud Storageへアップロードします。
-   * @param uploadList
-   * @param basePath
-   */
-  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[], basePath = ''): Promise<StorageNode[]> {
-    const bucket = admin.storage().bucket()
-    basePath = removeBothEndsSlash(basePath)
-
-    const uploadedFileMap: { [path: string]: StorageNode } = {}
-    const promises: Promise<void>[] = []
-    for (const uploadItem of uploadList) {
-      const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
-      promises.push(
-        bucket.upload(uploadItem.localFilePath, { destination }).then(response => {
-          const file = response[0]
-          const metadata = response[1]
-          const fileNode = this.toStorageNode(file, basePath)
-          uploadedFileMap[fileNode.path] = fileNode
-        })
-      )
-    }
-    await Promise.all(promises)
-
-    return uploadList.reduce<StorageNode[]>((result, item) => {
-      result.push(uploadedFileMap[removeStartSlash(item.toFilePath)])
-      return result
-    }, [])
-  }
-
-  /**
-   * 指定されたデータをファイルとしてCloud Storageへアップロードします。
-   * @param uploadList
-   */
-  async uploadAsFiles(uploadList: UploadDataItem[]): Promise<StorageNode[]> {
-    const bucket = admin.storage().bucket()
-
-    const uploadedFileMap: { [path: string]: StorageNode } = {}
-    const promises: Promise<void>[] = []
-    for (const uploadItem of uploadList) {
-      promises.push(
-        (async () => {
-          const gcsFileNode = bucket.file(uploadItem.path)
-          await gcsFileNode.save(uploadItem.data, { contentType: uploadItem.contentType })
-          const fileNode = this.toStorageNode(gcsFileNode)
-          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode)
-        })()
-      )
-    }
-    await Promise.all(promises)
-
-    return uploadList.reduce<StorageNode[]>((result, item) => {
-      result.push(uploadedFileMap[removeStartSlash(item.path)])
-      return result
-    }, [])
-  }
-
-  /**
-   * クライアントから指定されたファイルをレスポンスします。
-   * @param req
-   * @param res
-   * @param filePath
-   */
-  async sendFile(@Req() req: Request, @Res() res: Response, filePath: string): Promise<Response> {
-    const bucket = admin.storage().bucket()
-    const file = bucket.file(filePath)
-    const exists = (await file.exists())[0]
-    if (!exists) {
-      return res.sendStatus(404)
-    }
-
-    const lastModified = dayjs(file.metadata.updated).toString()
-    const ifModifiedSinceStr = req.header('If-Modified-Since')
-    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
-    if (lastModified === ifModifiedSince) {
-      return res.sendStatus(304)
-    }
-
-    res.setHeader('Last-Modified', lastModified)
-    res.setHeader('Content-Type', file.metadata.contentType)
-    const fileStream = file.createReadStream()
-
-    fileStream.pipe(res)
-    return res
-  }
-
-  /**
    * Cloud Storageから指定されたディレクトリのノード一覧を取得します。
    *
    * 引数が次のように指定された場合、
@@ -711,6 +625,133 @@ export abstract class BaseStorageService {
   }
 
   /**
+   * クライアントから指定されたファイルをレスポンスします。
+   * @param req
+   * @param res
+   * @param filePath
+   */
+  async sendFile(@Req() req: Request, @Res() res: Response, filePath: string): Promise<Response> {
+    const bucket = admin.storage().bucket()
+    const file = bucket.file(filePath)
+    const exists = (await file.exists())[0]
+    if (!exists) {
+      return res.sendStatus(404)
+    }
+
+    const lastModified = dayjs(file.metadata.updated).toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return res.sendStatus(304)
+    }
+
+    res.setHeader('Last-Modified', lastModified)
+    res.setHeader('Content-Type', file.metadata.contentType)
+    const fileStream = file.createReadStream()
+
+    fileStream.pipe(res)
+    return res
+  }
+
+  /**
+   * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
+   * @param user
+   */
+  async assignUserStorageDir(user: UserRecord): Promise<void> {
+    // 既に割り当てられている場合は終了
+    if (user.customClaims && (user.customClaims as any).storageDir) return
+
+    // ユーザークレームに'storageDir'というプロパティを追加
+    // このプロパティに設定される値がユーザーディレクトリとなる
+    const storageDir = uuidv4()
+    await admin.auth().setCustomUserClaims(user.uid, {
+      storageDir,
+    })
+    ;(user.customClaims as any).storageDir = storageDir
+  }
+
+  /**
+   * Cloud Storageのユーザーディレクトリのパスを取得します。
+   * @param user
+   */
+  getUserStorageDirPath(user: StorageUser): string {
+    const usersDir = config.storage.usersDir
+    if ((user as IdToken).storageDir) {
+      return `${usersDir}/${(user as IdToken).storageDir}`
+    } else if ((user as UserRecord).customClaims) {
+      const customClaims = (user as UserRecord).customClaims!
+      const storageDir = (customClaims as any).storageDir
+      if (storageDir) {
+        return storageDir ? `${usersDir}/${storageDir}` : ''
+      }
+    }
+    throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
+  }
+
+  /**
+   * ローカルファイルをCloud Storageへアップロードします。
+   * @param uploadList
+   * @param basePath
+   */
+  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[], basePath = ''): Promise<StorageNode[]> {
+    const bucket = admin.storage().bucket()
+    basePath = removeBothEndsSlash(basePath)
+
+    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const promises: Promise<void>[] = []
+    for (const uploadItem of uploadList) {
+      const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
+      promises.push(
+        bucket.upload(uploadItem.localFilePath, { destination }).then(response => {
+          const file = response[0]
+          const metadata = response[1]
+          const fileNode = this.toStorageNode(file, basePath)
+          uploadedFileMap[fileNode.path] = fileNode
+        })
+      )
+    }
+    await Promise.all(promises)
+
+    return uploadList.reduce<StorageNode[]>((result, item) => {
+      result.push(uploadedFileMap[removeStartSlash(item.toFilePath)])
+      return result
+    }, [])
+  }
+
+  /**
+   * 指定されたデータをファイルとしてCloud Storageへアップロードします。
+   * @param uploadList
+   */
+  async uploadAsFiles(uploadList: UploadDataItem[]): Promise<StorageNode[]> {
+    const bucket = admin.storage().bucket()
+
+    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const promises: Promise<void>[] = []
+    for (const uploadItem of uploadList) {
+      promises.push(
+        (async () => {
+          const gcsFileNode = bucket.file(uploadItem.path)
+          await gcsFileNode.save(uploadItem.data, { contentType: uploadItem.contentType })
+          const fileNode = this.toStorageNode(gcsFileNode)
+          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode)
+        })()
+      )
+    }
+    await Promise.all(promises)
+
+    return uploadList.reduce<StorageNode[]>((result, item) => {
+      result.push(uploadedFileMap[removeStartSlash(item.path)])
+      return result
+    }, [])
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  /**
    * Cloud Storageから取得したノードをStorageNodeへ変換します。
    *
    * `basePath`が指定された場合、`gcsNode`のパスから基準パスが除去されます。
@@ -727,7 +768,7 @@ export abstract class BaseStorageService {
    *   クライアント側でパスから生成したノード渡さないように注意してください。
    * @param basePath 基準パスを指定
    */
-  toStorageNode(gcsNode: File, basePath = ''): GCSStorageNode {
+  protected toStorageNode(gcsNode: File, basePath = ''): GCSStorageNode {
     let nodePath = removeBothEndsSlash(gcsNode.name)
     if (basePath) {
       basePath = removeBothEndsSlash(basePath)
@@ -757,7 +798,7 @@ export abstract class BaseStorageService {
    * 指定されたディレクトリパスをStorageNodeのディレクトリノードへ変換します。
    * @param dirPath
    */
-  toDirStorageNode(dirPath: string): StorageNode {
+  protected toDirStorageNode(dirPath: string): StorageNode {
     const dirPathSegments = dirPath.split('/')
     const name = dirPathSegments[dirPathSegments.length - 1]
     const dir = dirPathSegments.slice(0, dirPathSegments.length - 1).join('/')
@@ -776,7 +817,7 @@ export abstract class BaseStorageService {
    * ノード配列をディレクトリ階層に従ってソートします。
    * @param nodes
    */
-  sortStorageNodes(nodes: StorageNode[]): void {
+  protected sortStorageNodes(nodes: StorageNode[]): void {
     nodes.sort((a, b) => {
       // ソート用文字列(strA, strB)の説明:
       //   ノードがファイルの場合、同じ階層にあるディレクトリより順位を下げるために
@@ -804,41 +845,6 @@ export abstract class BaseStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリのパスを取得します。
-   * @param user
-   */
-  getUserStorageDirPath(user: StorageUser): string {
-    const usersDir = config.storage.usersDir
-    if ((user as IdToken).storageDir) {
-      return `${usersDir}/${(user as IdToken).storageDir}`
-    } else if ((user as UserRecord).customClaims) {
-      const customClaims = (user as UserRecord).customClaims!
-      const storageDir = (customClaims as any).storageDir
-      if (storageDir) {
-        return storageDir ? `${usersDir}/${storageDir}` : ''
-      }
-    }
-    throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
-  }
-
-  /**
-   * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
-   * @param user
-   */
-  async assignUserStorageDir(user: UserRecord): Promise<void> {
-    // 既に割り当てられている場合は終了
-    if (user.customClaims && (user.customClaims as any).storageDir) return
-
-    // ユーザークレームに'storageDir'というプロパティを追加
-    // このプロパティに設定される値がユーザーディレクトリとなる
-    const storageDir = uuidv4()
-    await admin.auth().setCustomUserClaims(user.uid, {
-      storageDir,
-    })
-    ;(user.customClaims as any).storageDir = storageDir
-  }
-
-  /**
    * 親ディレクトリがない場合、仮想的にディレクトリを作成して穴埋めします。
    * このようなことを行う理由として、Cloud Storageは親ディレクトリが存在しないことがあるためです。
    * 例えば、'aaa/bbb/family.png'の場合、'aaa/bbb/'というディレクトリがない場合があります。
@@ -854,7 +860,7 @@ export abstract class BaseStorageService {
    * @param nodeMap
    * @param basePath
    */
-  padVirtualDirNode(nodeMap: { [path: string]: GCSStorageNode }, basePath?: string): void {
+  protected padVirtualDirNode(nodeMap: { [path: string]: GCSStorageNode }, basePath?: string): void {
     basePath = removeBothEndsSlash(basePath)
     // 指定された全ノードの階層的なディレクトリパスを取得
     const dirPaths = Object.values(nodeMap).map(node => node.dir)
@@ -880,7 +886,7 @@ export abstract class BaseStorageService {
    *
    * @param dirPaths
    */
-  splitHierarchicalDirPaths(...dirPaths: string[]): string[] {
+  protected splitHierarchicalDirPaths(...dirPaths: string[]): string[] {
     const set: Set<string> = new Set<string>()
 
     for (const dirPath of dirPaths) {
@@ -909,7 +915,7 @@ export abstract class BaseStorageService {
    *   + dir1/dir1-1/dir1-1-2
    *   + dir2/dir2-1/dir2-1-1
    */
-  summarizeDirPaths(dirPaths: string[]): string[] {
+  protected summarizeDirPaths(dirPaths: string[]): string[] {
     const pushMaxDirPathToArray = (array: string[], newDirPath: string) => {
       for (let i = 0; i < array.length; i++) {
         const dirPath = array[i]
