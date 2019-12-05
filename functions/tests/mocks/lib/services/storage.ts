@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common'
 
 type MockStorageService = BaseStorageService & {
   toStorageNode: BaseStorageService['toStorageNode']
-  toDirStorageNode: BaseStorageService['toDirStorageNode']
+  toStorageNodeByDir: BaseStorageService['toStorageNodeByDir']
   sortStorageNodes: BaseStorageService['sortStorageNodes']
   padVirtualDirNode: BaseStorageService['padVirtualDirNode']
   splitHierarchicalDirPaths: BaseStorageService['splitHierarchicalDirPaths']

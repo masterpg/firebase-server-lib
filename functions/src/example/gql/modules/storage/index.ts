@@ -11,25 +11,25 @@ export class StorageResolver {
   @Query()
   @UseGuards(UserGuard)
   async userStorageDirNodes(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getUserStorageDirNodes(user, dirPath)
+    return this.storageService.getUserDirNodes(user, dirPath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   async createUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createUserStorageDirs(user, dirPaths)
+    return this.storageService.createUserDirs(user, dirPaths)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeUserStorageDirs(user, dirPaths)
+    return this.storageService.removeUserDirs(user, dirPaths)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   async removeUserStorageFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeUserStorageFiles(user, filePaths)
+    return this.storageService.removeUserFiles(user, filePaths)
   }
 
   @Mutation()
@@ -39,7 +39,7 @@ export class StorageResolver {
     @Args('fromDirPath') fromDirPath: string,
     @Args('toDirPath') toDirPath: string
   ): Promise<StorageNode[]> {
-    return this.storageService.moveUserStorageDir(user, fromDirPath, toDirPath)
+    return this.storageService.moveUserDir(user, fromDirPath, toDirPath)
   }
 
   @Mutation()
@@ -49,19 +49,19 @@ export class StorageResolver {
     @Args('fromFilePath') fromFilePath: string,
     @Args('toFilePath') toFilePath: string
   ): Promise<StorageNode> {
-    return this.storageService.moveUserStorageFile(user, fromFilePath, toFilePath)
+    return this.storageService.moveUserFile(user, fromFilePath, toFilePath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   async renameUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode[]> {
-    return this.storageService.renameUserStorageDir(user, dirPath, newName)
+    return this.storageService.renameUserDir(user, dirPath, newName)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameUserStorageFile(user, filePath, newName)
+    return this.storageService.renameUserFile(user, filePath, newName)
   }
 
   @Query()
@@ -76,56 +76,56 @@ export class StorageResolver {
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async storageDirNodes(@Args('dirPath') dirPath: string): Promise<StorageNode[]> {
-    return this.storageService.getStorageDirNodes(dirPath)
+    return this.storageService.getDirNodes(dirPath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async createStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createStorageDirs(dirPaths)
+    return this.storageService.createDirs(dirPaths)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeStorageDirs(dirPaths)
+    return this.storageService.removeDirs(dirPaths)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async removeStorageFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeStorageFiles(filePaths)
+    return this.storageService.removeFiles(filePaths)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
-    return this.storageService.moveStorageDir(fromDirPath, toDirPath)
+    return this.storageService.moveDir(fromDirPath, toDirPath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return this.storageService.moveStorageFile(fromFilePath, toFilePath)
+    return this.storageService.moveFile(fromFilePath, toFilePath)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode[]> {
-    return this.storageService.renameStorageDir(dirPath, newName)
+    return this.storageService.renameDir(dirPath, newName)
   }
 
   @Mutation()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameStorageFile(filePath, newName)
+    return this.storageService.renameFile(filePath, newName)
   }
 }
 

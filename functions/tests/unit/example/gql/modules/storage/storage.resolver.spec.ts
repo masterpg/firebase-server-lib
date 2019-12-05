@@ -141,8 +141,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getUserStorageDirNodes = td.replace(storageService, 'getUserStorageDirNodes')
-      td.when(getUserStorageDirNodes(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getUserDirNodes = td.replace(storageService, 'getUserDirNodes')
+      td.when(getUserDirNodes(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -152,15 +152,15 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - td.explain()バージョン', async () => {
-      const getUserStorageDirNodes = td.replace(storageService, 'getUserStorageDirNodes')
-      td.when(getUserStorageDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
+      const getUserDirNodes = td.replace(storageService, 'getUserDirNodes')
+      td.when(getUserDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
       })
 
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
-      const explanation = td.explain(getUserStorageDirNodes)
+      const explanation = td.explain(getUserDirNodes)
       expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
       expect(explanation.calls[0].args[1]).toBe(dir1.path)
     })
@@ -186,8 +186,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const createUserStorageDirs = td.replace(storageService, 'createUserStorageDirs')
-      td.when(createUserStorageDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+      const createUserDirs = td.replace(storageService, 'createUserDirs')
+      td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -217,8 +217,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const removeUserStorageDirs = td.replace(storageService, 'removeUserStorageDirs')
-      td.when(removeUserStorageDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
+      const removeUserDirs = td.replace(storageService, 'removeUserDirs')
+      td.when(removeUserDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -248,8 +248,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const removeUserStorageFiles = td.replace(storageService, 'removeUserStorageFiles')
-      td.when(removeUserStorageFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
+      const removeUserFiles = td.replace(storageService, 'removeUserFiles')
+      td.when(removeUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -280,8 +280,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const moveUserStorageDir = td.replace(storageService, 'moveUserStorageDir')
-      td.when(moveUserStorageDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
+      const moveUserDir = td.replace(storageService, 'moveUserDir')
+      td.when(moveUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -312,8 +312,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const moveUserStorageFile = td.replace(storageService, 'moveUserStorageFile')
-      td.when(moveUserStorageFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
+      const moveUserFile = td.replace(storageService, 'moveUserFile')
+      td.when(moveUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -344,8 +344,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const renameUserStorageDir = td.replace(storageService, 'renameUserStorageDir')
-      td.when(renameUserStorageDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
+      const renameUserDir = td.replace(storageService, 'renameUserDir')
+      td.when(renameUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -376,8 +376,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const renameUserStorageFile = td.replace(storageService, 'renameUserStorageFile')
-      td.when(renameUserStorageFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
+      const renameUserFile = td.replace(storageService, 'renameUserFile')
+      td.when(renameUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, generalAuthHeader),
@@ -448,8 +448,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getStorageDirNodes = td.replace(storageService, 'getStorageDirNodes')
-      td.when(getStorageDirNodes(dir1.path)).thenResolve([dir1_1])
+      const getDirNodes = td.replace(storageService, 'getDirNodes')
+      td.when(getDirNodes(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -486,8 +486,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const createStorageDirs = td.replace(storageService, 'createStorageDirs')
-      td.when(createStorageDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+      const createDirs = td.replace(storageService, 'createDirs')
+      td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -524,8 +524,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const removeStorageDirs = td.replace(storageService, 'removeStorageDirs')
-      td.when(removeStorageDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
+      const removeDirs = td.replace(storageService, 'removeDirs')
+      td.when(removeDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -562,8 +562,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const removeStorageFiles = td.replace(storageService, 'removeStorageFiles')
-      td.when(removeStorageFiles([dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
+      const removeFiles = td.replace(storageService, 'removeFiles')
+      td.when(removeFiles([dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -601,8 +601,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const moveStorageDir = td.replace(storageService, 'moveStorageDir')
-      td.when(moveStorageDir(dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
+      const moveDir = td.replace(storageService, 'moveDir')
+      td.when(moveDir(dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -640,8 +640,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const moveStorageFile = td.replace(storageService, 'moveStorageFile')
-      td.when(moveStorageFile(dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
+      const moveFile = td.replace(storageService, 'moveFile')
+      td.when(moveFile(dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -679,8 +679,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const renameStorageDir = td.replace(storageService, 'renameStorageDir')
-      td.when(renameStorageDir(dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
+      const renameDir = td.replace(storageService, 'renameDir')
+      td.when(renameDir(dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),
@@ -718,8 +718,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const renameStorageFile = td.replace(storageService, 'renameStorageFile')
-      td.when(renameStorageFile(dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
+      const renameFile = td.replace(storageService, 'renameFile')
+      td.when(renameFile(dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, adminAuthHeader),

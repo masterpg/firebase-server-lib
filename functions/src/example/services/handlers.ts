@@ -14,7 +14,7 @@ class HandlersService {
   async onCreateUser(user: UserRecord, context: EventContext): Promise<void> {
     let error: Error | undefined
     try {
-      await this.storageService.assignUserStorageDir(user)
+      await this.storageService.assignUserDir(user)
     } catch (err) {
       error = err
     }
@@ -24,8 +24,8 @@ class HandlersService {
   async onDeleteUser(user: UserRecord, context: EventContext): Promise<void> {
     let error: Error | undefined
     try {
-      const userDirPath = this.storageService.getUserStorageDirPath(user)
-      await this.storageService.removeStorageDirs([userDirPath])
+      const userDirPath = this.storageService.getUserDirPath(user)
+      await this.storageService.removeDirs([userDirPath])
     } catch (err) {
       error = err
     }

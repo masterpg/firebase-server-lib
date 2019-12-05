@@ -73,9 +73,9 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getStorageDirNodes(dirPath?: string, basePath?: string): Promise<StorageNode[]> {
+  async getDirNodes(dirPath?: string, basePath?: string): Promise<StorageNode[]> {
     // Cloud Storageから指定されたディレクトリのノードを取得
-    const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
+    const nodeMap = await this.getNodeMap(dirPath, basePath)
 
     // 親ディレクトリの穴埋め
     this.padVirtualDirNode(nodeMap)
@@ -92,9 +92,9 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPath
    */
-  async getUserStorageDirNodes(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.getStorageDirNodes(dirPath, userDirPath)
+  async getUserDirNodes(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.getDirNodes(dirPath, userDirPath)
   }
 
   /**
@@ -116,7 +116,7 @@ export abstract class BaseStorageService {
    * @param dirPaths
    * @param basePath
    */
-  async createStorageDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
+  async createDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
     const bucket = admin.storage().bucket()
     const result: StorageNode[] = []
     basePath = removeBothEndsSlash(basePath)
@@ -145,9 +145,9 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPaths
    */
-  async createUserStorageDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.createStorageDirs(dirPaths, userDirPath)
+  async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.createDirs(dirPaths, userDirPath)
   }
 
   /**
@@ -170,10 +170,10 @@ export abstract class BaseStorageService {
    * @param dirPaths
    * @param basePath
    */
-  async removeStorageDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
+  async removeDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
     const remove = async (dirPath: string, basePath = '') => {
       // Cloud Storageから指定されたディレクトリのノードを取得
-      const nodeMap = await this.getStorageNodeMap(dirPath, basePath)
+      const nodeMap = await this.getNodeMap(dirPath, basePath)
       // 親ディレクトリの穴埋め
       this.padVirtualDirNode(nodeMap, dirPath)
 
@@ -204,9 +204,9 @@ export abstract class BaseStorageService {
    * @param user
    * @param dirPaths
    */
-  async removeUserStorageDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.removeStorageDirs(dirPaths, userDirPath)
+  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.removeDirs(dirPaths, userDirPath)
   }
 
   /**
@@ -228,7 +228,7 @@ export abstract class BaseStorageService {
    * @param filePaths
    * @param basePath
    */
-  async removeStorageFiles(filePaths: string[], basePath = ''): Promise<StorageNode[]> {
+  async removeFiles(filePaths: string[], basePath = ''): Promise<StorageNode[]> {
     const bucket = admin.storage().bucket()
     const nodeMap: { [path: string]: StorageNode } = {}
 
@@ -261,9 +261,9 @@ export abstract class BaseStorageService {
    * @param user
    * @param filePaths
    */
-  async removeUserStorageFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.removeStorageFiles(filePaths, userDirPath)
+  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.removeFiles(filePaths, userDirPath)
   }
 
   /**
@@ -290,7 +290,7 @@ export abstract class BaseStorageService {
    * @param toDirPath
    * @param basePath
    */
-  async moveStorageDir(fromDirPath: string, toDirPath: string, basePath = ''): Promise<StorageNode[]> {
+  async moveDir(fromDirPath: string, toDirPath: string, basePath = ''): Promise<StorageNode[]> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     basePath = removeBothEndsSlash(basePath)
@@ -305,7 +305,7 @@ export abstract class BaseStorageService {
     }
 
     // 移動元ディレクトリ配下のノードを取得
-    const nodeMap = await this.getStorageNodeMap(fromDirPath, basePath)
+    const nodeMap = await this.getNodeMap(fromDirPath, basePath)
     const dirNode = nodeMap[fromDirPath]
     if (!dirNode || !dirNode.exists) {
       throw new Error(`The source directory does not exist: '${path.join(basePath, fromDirPath)}'`)
@@ -319,7 +319,7 @@ export abstract class BaseStorageService {
     // (アプリケーションまたはユーザーディレクトリ直下へ移動する場合は確認しない)
     if (path.dirname(toDirPath) !== '.') {
       const toDirParentPath = path.join(path.dirname(toDirPath), '/')
-      const toDirParentNode = await this.getStorageDirNode(toDirParentPath, basePath)
+      const toDirParentNode = await this.getDirNode(toDirParentPath, basePath)
       if (!toDirParentNode.exists) {
         throw new Error(`The destination directory does not exist: '${path.join(basePath, toDirParentNode.path)}'`)
       }
@@ -331,7 +331,7 @@ export abstract class BaseStorageService {
     {
       const newDirNodePath = path.join(toDirPath, '/')
       await dirNode.gcsNode!.move(path.join(basePath, newDirNodePath))
-      const movedNode = (await this.getStorageDirNode(newDirNodePath, basePath))!
+      const movedNode = (await this.getDirNode(newDirNodePath, basePath))!
       result.push(movedNode!)
     }
 
@@ -345,19 +345,19 @@ export abstract class BaseStorageService {
         // ディレクトリが存在する場合、そのディレクトリを移動
         if (node.exists) {
           await node.gcsNode!.move(path.join(basePath, newNodePath, '/'))
-          const movedNode = await this.getStorageDirNode(newNodePath, basePath)
+          const movedNode = await this.getDirNode(newNodePath, basePath)
           result.push(movedNode!)
         }
         // ディレクトリが存在しない場合、ディレクトリを移動先に作成
         else {
-          const createdNode = (await this.createStorageDirs([newNodePath], basePath))[0]
+          const createdNode = (await this.createDirs([newNodePath], basePath))[0]
           result.push(createdNode)
         }
       }
       // ノードがファイルの場合
       else {
         await node.gcsNode!.move(path.join(basePath, newNodePath))
-        const movedNode = await this.getStorageFileNode(newNodePath, basePath)
+        const movedNode = await this.getFileNode(newNodePath, basePath)
         result.push(movedNode!)
       }
     }
@@ -375,9 +375,9 @@ export abstract class BaseStorageService {
    * @param fromDirPath
    * @param toDirPath
    */
-  async moveUserStorageDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageDir(fromDirPath, toDirPath, userDirPath)
+  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.moveDir(fromDirPath, toDirPath, userDirPath)
   }
 
   /**
@@ -402,20 +402,20 @@ export abstract class BaseStorageService {
    * @param toFilePath
    * @param basePath
    */
-  async moveStorageFile(fromFilePath: string, toFilePath: string, basePath = ''): Promise<StorageNode> {
+  async moveFile(fromFilePath: string, toFilePath: string, basePath = ''): Promise<StorageNode> {
     fromFilePath = removeBothEndsSlash(fromFilePath)
     toFilePath = removeBothEndsSlash(toFilePath)
     basePath = removeBothEndsSlash(basePath)
 
     // 移動元ファイルの存在確認
-    const fileNode = await this.getStorageNode(fromFilePath, basePath)
+    const fileNode = await this.getFileNode(fromFilePath, basePath)
     if (!fileNode.exists) {
       throw new Error(`The source file does not exist: '${path.join(basePath, fileNode.path)}'`)
     }
 
     // 移動先ディレクトリの存在確認
-    const toDirPath = path.join(path.dirname(toFilePath), '/')
-    const toDirNode = await this.getStorageNode(toDirPath, basePath)
+    const toDirPath = path.join(path.dirname(toFilePath))
+    const toDirNode = await this.getDirNode(toDirPath, basePath)
     if (!toDirNode.exists) {
       throw new Error(`The destination directory does not exist: '${path.join(basePath, toDirNode.path)}'`)
     }
@@ -423,7 +423,7 @@ export abstract class BaseStorageService {
     // ファイルの移動
     await fileNode.gcsNode!.move(path.join(basePath, toFilePath))
 
-    return this.getStorageNode(toFilePath, basePath)
+    return this.getFileNode(toFilePath, basePath)
   }
 
   /**
@@ -433,9 +433,9 @@ export abstract class BaseStorageService {
    * @param fromFilePath
    * @param toDirPath
    */
-  async moveUserStorageFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<StorageNode> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.moveStorageFile(fromFilePath, toDirPath, userDirPath)
+  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<StorageNode> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.moveFile(fromFilePath, toDirPath, userDirPath)
   }
 
   /**
@@ -462,12 +462,12 @@ export abstract class BaseStorageService {
    * @param newName
    * @param basePath
    */
-  async renameStorageDir(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
+  async renameDir(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
     dirPath = removeBothEndsSlash(dirPath)
 
     const reg = new RegExp(`${path.basename(dirPath)}$`)
     const toDirPath = dirPath.replace(reg, newName)
-    return this.moveStorageDir(dirPath, toDirPath, basePath)
+    return this.moveDir(dirPath, toDirPath, basePath)
   }
 
   /**
@@ -477,9 +477,9 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param newName
    */
-  async renameUserStorageDir(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.renameStorageDir(dirPath, newName, userDirPath)
+  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.renameDir(dirPath, newName, userDirPath)
   }
 
   /**
@@ -504,12 +504,12 @@ export abstract class BaseStorageService {
    * @param newName
    * @param basePath
    */
-  async renameStorageFile(filePath: string, newName: string, basePath = ''): Promise<StorageNode> {
+  async renameFile(filePath: string, newName: string, basePath = ''): Promise<StorageNode> {
     filePath = removeBothEndsSlash(filePath)
 
     const reg = new RegExp(`${path.basename(filePath)}$`)
     const toFilePath = filePath.replace(reg, newName)
-    return this.moveStorageFile(filePath, toFilePath, basePath)
+    return this.moveFile(filePath, toFilePath, basePath)
   }
 
   /**
@@ -519,9 +519,9 @@ export abstract class BaseStorageService {
    * @param filePath
    * @param newName
    */
-  async renameUserStorageFile(user: StorageUser, filePath: string, newName: string): Promise<StorageNode> {
-    const userDirPath = this.getUserStorageDirPath(user)
-    return this.renameStorageFile(filePath, newName, userDirPath)
+  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<StorageNode> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.renameFile(filePath, newName, userDirPath)
   }
 
   /**
@@ -557,7 +557,7 @@ export abstract class BaseStorageService {
    *   ディレクトリパスを指定する場合は末尾に'/'を付与するよう注意してください。
    * @param basePath
    */
-  async getStorageNode(nodePath: string, basePath = ''): Promise<GCSStorageNode> {
+  async getNode(nodePath: string, basePath = ''): Promise<GCSStorageNode> {
     nodePath = removeStartSlash(nodePath)
     basePath = removeBothEndsSlash(basePath)
 
@@ -575,8 +575,8 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getStorageDirNode(dirPath: string, basePath = ''): Promise<GCSStorageNode> {
-    return this.getStorageNode(path.join(dirPath, '/'), basePath)
+  async getDirNode(dirPath: string, basePath = ''): Promise<GCSStorageNode> {
+    return this.getNode(path.join(dirPath, '/'), basePath)
   }
 
   /**
@@ -584,8 +584,8 @@ export abstract class BaseStorageService {
    * @param filePath
    * @param basePath
    */
-  async getStorageFileNode(filePath: string, basePath = ''): Promise<GCSStorageNode> {
-    return this.getStorageNode(removeEndSlash(filePath), basePath)
+  async getFileNode(filePath: string, basePath = ''): Promise<GCSStorageNode> {
+    return this.getNode(removeEndSlash(filePath), basePath)
   }
 
   /**
@@ -594,7 +594,7 @@ export abstract class BaseStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getStorageNodeMap(dirPath = '', basePath = ''): Promise<{ [path: string]: GCSStorageNode }> {
+  async getNodeMap(dirPath = '', basePath = ''): Promise<{ [path: string]: GCSStorageNode }> {
     // 引数のディレクトリパスをCloud Storageのパスへ変換
     let gcsDirPath = ''
     if (dirPath || basePath) {
@@ -657,7 +657,7 @@ export abstract class BaseStorageService {
    * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
    * @param user
    */
-  async assignUserStorageDir(user: UserRecord): Promise<void> {
+  async assignUserDir(user: UserRecord): Promise<void> {
     // 既に割り当てられている場合は終了
     if (user.customClaims && (user.customClaims as any).storageDir) return
 
@@ -674,7 +674,7 @@ export abstract class BaseStorageService {
    * Cloud Storageのユーザーディレクトリのパスを取得します。
    * @param user
    */
-  getUserStorageDirPath(user: StorageUser): string {
+  getUserDirPath(user: StorageUser): string {
     const usersDir = config.storage.usersDir
     if ((user as IdToken).storageDir) {
       return `${usersDir}/${(user as IdToken).storageDir}`
@@ -798,7 +798,7 @@ export abstract class BaseStorageService {
    * 指定されたディレクトリパスをStorageNodeのディレクトリノードへ変換します。
    * @param dirPath
    */
-  protected toDirStorageNode(dirPath: string): StorageNode {
+  protected toStorageNodeByDir(dirPath: string): StorageNode {
     const dirPathSegments = dirPath.split('/')
     const name = dirPathSegments[dirPathSegments.length - 1]
     const dir = dirPathSegments.slice(0, dirPathSegments.length - 1).join('/')
@@ -871,7 +871,7 @@ export abstract class BaseStorageService {
     for (const dirPath of hierarchicalDirPaths) {
       if (basePath && !dirPath.startsWith(basePath)) continue
       if (nodeMap[dirPath]) continue
-      const dirNode = this.toDirStorageNode(dirPath) as GCSStorageNode
+      const dirNode = this.toStorageNodeByDir(dirPath) as GCSStorageNode
       dirNode.exists = false
       dirNode.gcsNode = bucket.file(dirPath)
       nodeMap[dirPath] = dirNode
