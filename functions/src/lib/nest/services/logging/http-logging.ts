@@ -222,9 +222,21 @@ abstract class HttpLoggingService {
 class ProdHttpLoggingService extends HttpLoggingService {
   getFunctionNameByRequest(req: Request): string {
     // 例: function_name = 'api/rest/hello'
-    // ・req.baseUrl: '/rest'
-    // ・req.path: '/hello'
-    return removeBothEndsSlash(path.join('api', req.baseUrl, req.path))
+    // ・req.path: '/api/gql'
+    // ・req.path: '/rest/hello'
+    const requestPath = req.path.replace(
+      /(^\/?api)/,
+      /**
+       * @param str マッチした文字列
+       * @param p1, p2 ..., pn 括弧の内容(ある場合)
+       * @param offset マッチした位置
+       * @param s 元の文字列
+       */
+      (str: string, p1: string, offset: number, s: string) => {
+        return ''
+      }
+    )
+    return removeBothEndsSlash(path.join('api', requestPath))
   }
 
   protected getRequestUrl(req: Request): string {
