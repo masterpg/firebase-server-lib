@@ -2,7 +2,6 @@ import { SUPPORTED_REGIONS, config as _config } from 'firebase-functions'
 const merge = require('lodash/merge')
 
 export interface FunctionsConfig {
-  readonly credential: string
   readonly region: typeof SUPPORTED_REGIONS[number]
 }
 
@@ -25,7 +24,6 @@ export class LibConfig {
   ) {
     this.functions = merge(
       {
-        credential: _config().functions.credential || '',
         region: _config().functions.region || '',
       } as FunctionsConfig,
       params.functions || {}
