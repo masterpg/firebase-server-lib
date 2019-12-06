@@ -951,6 +951,10 @@ export abstract class BaseStorageService {
    * @param nodePath
    */
   protected validatePath(nodePath: string): void {
+    if (!nodePath) {
+      throw new InputValidationError('The specified path is empty.')
+    }
+
     // 改行、タブが含まれないことを検証
     if (/\r?\n|\t/g.test(nodePath)) {
       throw new InputValidationError('The specified path is invalid.', {

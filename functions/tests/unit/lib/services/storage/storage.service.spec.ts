@@ -2083,6 +2083,16 @@ describe('StorageService', () => {
   })
 
   describe('validatePath', () => {
+    it('空の場合', async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validatePath('')
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
     it(`'\\n'を含んでいる場合`, async () => {
       let actual!: InputValidationError
       try {
