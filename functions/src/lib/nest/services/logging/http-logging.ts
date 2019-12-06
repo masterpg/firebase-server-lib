@@ -51,6 +51,7 @@ export interface HttpLoggingData {
   error?: {
     message: string
     detail?: any
+    stack?: any
   }
 }
 
@@ -153,14 +154,11 @@ abstract class HttpLoggingService {
     }
 
     if (error) {
+      result.error = { message: '', stack: error.stack }
       if (error instanceof HttpException) {
-        result.error = {
-          message: (error.getResponse() as any).message,
-        }
+        result.error.message = (error.getResponse() as any).message
       } else {
-        result.error = {
-          message: error.message,
-        }
+        result.error.message = error.message
       }
 
       if (error instanceof ValidationErrors || error instanceof InputValidationError) {
