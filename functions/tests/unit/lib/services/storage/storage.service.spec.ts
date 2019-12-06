@@ -1,7 +1,8 @@
 import * as admin from 'firebase-admin'
 import * as fs from 'fs'
 import * as path from 'path'
-import { FirestoreServiceDI, SignedUploadUrlInput, StorageNode, StorageNodeType, UploadDataItem } from '../../../../../src/lib'
+import * as td from 'testdouble'
+import { FirestoreServiceDI, InputValidationError, SignedUploadUrlInput, StorageNode, StorageNodeType, UploadDataItem } from '../../../../../src/lib'
 import { MockBaseAppModule, MockDevUtilsServiceDI, MockRESTContainerModule, MockStorageServiceDI } from '../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Module } from '@nestjs/common'
@@ -315,6 +316,17 @@ describe('StorageService', () => {
       expect(actual[4].path).toBe(`d2/d21`)
       expect(actual[5].path).toBe(`d3`)
       await existsNodes(actual, `/${TEST_FILES_DIR}/`)
+    })
+
+    it('作成ディレクトリパスへのバリデーション実行確認', async () => {
+      const validatePath = td.replace(storageService, 'validatePath')
+
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
+
+      const explanation = td.explain(validatePath)
+      expect(explanation.calls.length).toBe(2)
+      expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d1`)
+      expect(explanation.calls[1].args[0]).toBe(`${TEST_FILES_DIR}/d2`)
     })
   })
 
@@ -834,6 +846,29 @@ describe('StorageService', () => {
 
       expect(actual!.message).toBe(`The destination directory is its own subdirectory: '${TEST_FILES_DIR}/d1' -> '${TEST_FILES_DIR}/d1/aaa/bbb/d1'`)
     })
+
+    it('移動先ディレクトリパスへのバリデーション実行確認', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // バリデーションメソッドのモック化
+      const validatePath = td.replace(storageService, 'validatePath')
+
+      await storageService.moveDir(`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`)
+
+      const explanation = td.explain(validatePath)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d2`)
+    })
   })
 
   describe('moveUserDir', () => {
@@ -962,6 +997,29 @@ describe('StorageService', () => {
       await existsNodes([actual!], `${TEST_FILES_DIR}`)
       await notExistsNodes([fromFileNode], `${TEST_FILES_DIR}`)
     })
+
+    it('移動先ファイルパスへのバリデーション実行確認', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // バリデーションメソッドのモック化
+      const validatePath = td.replace(storageService, 'validatePath')
+
+      await storageService.moveFile(`${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
+
+      const explanation = td.explain(validatePath)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
+    })
   })
 
   describe('moveUserFile', () => {
@@ -1086,6 +1144,20 @@ describe('StorageService', () => {
       await existsNodes(actual)
       await notExistsNodes([dirNode])
     })
+
+    it('リネームディレクトリパスへのバリデーション実行確認', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // バリデーションメソッドのモック化
+      const validateDirName = td.replace(storageService, 'validateDirName')
+
+      await storageService.renameDir(`${TEST_FILES_DIR}/d1`, `d2`)
+
+      const explanation = td.explain(validateDirName)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`d2`)
+    })
   })
 
   describe('renameUserDir', () => {
@@ -1204,6 +1276,29 @@ describe('StorageService', () => {
       expect(actual!.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt/fileB.txt`)
       await existsNodes([actual!])
       await notExistsNodes([fileNode])
+    })
+
+    it('リネームディレクトリパスへのバリデーション実行確認', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // バリデーションメソッドのモック化
+      const validateFileName = td.replace(storageService, 'validateFileName')
+
+      await storageService.renameFile(`${TEST_FILES_DIR}/d1/fileA.txt`, `fileB.txt`)
+
+      const explanation = td.explain(validateFileName)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`fileB.txt`)
     })
   })
 
@@ -1984,6 +2079,92 @@ describe('StorageService', () => {
       expect(actual[4]).toBe(`d2`)
       expect(actual[5]).toBe(`d2/d21`)
       expect(actual[6]).toBe(`d2/d21/fileC.txt`)
+    })
+  })
+
+  describe('validatePath', () => {
+    it(`'\\n'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validatePath('d1/d1\n1')
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
+    it(`'\\r\\n'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validatePath('d1/d1\r\n1')
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
+    it(`'\\t'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validatePath('d1/d1\t1')
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
+    it(`'\\r'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validatePath('d1/d1\r1')
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeUndefined()
+    })
+  })
+
+  describe('validateDirName', () => {
+    it(`'/'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validateDirName(`d1/1`)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
+    it(`validatePath()の呼び出し確認`, async () => {
+      const validatePath = td.replace(storageService, 'validatePath')
+
+      await storageService.validateDirName(`d1`)
+
+      const explanation = td.explain(validatePath)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`d1`)
+    })
+  })
+
+  describe('validateFileName', () => {
+    it(`'/'を含んでいる場合`, async () => {
+      let actual!: InputValidationError
+      try {
+        storageService.validateFileName(`file/A.txt`)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual).toBeDefined()
+    })
+
+    it(`validatePath()の呼び出し確認`, async () => {
+      const validatePath = td.replace(storageService, 'validatePath')
+
+      await storageService.validateFileName(`fileA.txt`)
+
+      const explanation = td.explain(validatePath)
+      expect(explanation.calls.length).toBe(1)
+      expect(explanation.calls[0].args[0]).toBe(`fileA.txt`)
     })
   })
 })

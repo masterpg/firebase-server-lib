@@ -6,6 +6,7 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as uuidv4 from 'uuid/v4'
+import { InputValidationError, config } from '../base'
 import { Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
@@ -13,7 +14,6 @@ import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
 import { IdToken } from '../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
-import { config } from '../base'
 const dayjs = require('dayjs')
 
 type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
@@ -120,6 +120,8 @@ export abstract class BaseStorageService {
     const bucket = admin.storage().bucket()
     const result: StorageNode[] = []
     basePath = removeBothEndsSlash(basePath)
+
+    dirPaths.forEach(dirPath => this.validatePath(dirPath))
 
     const promises: Promise<void>[] = []
     for (const dirPath of this.splitHierarchicalDirPaths(...dirPaths)) {
@@ -295,6 +297,8 @@ export abstract class BaseStorageService {
     toDirPath = removeBothEndsSlash(toDirPath)
     basePath = removeBothEndsSlash(basePath)
 
+    this.validatePath(toDirPath)
+
     // 移動先ディレクトリが移動元のサブディレクトリでないことを確認
     // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
     //               → to: aaa/zzz/ccc/bbb [OK]
@@ -407,6 +411,8 @@ export abstract class BaseStorageService {
     toFilePath = removeBothEndsSlash(toFilePath)
     basePath = removeBothEndsSlash(basePath)
 
+    this.validatePath(toFilePath)
+
     // 移動元ファイルの存在確認
     const fileNode = await this.getFileNode(fromFilePath, basePath)
     if (!fileNode.exists) {
@@ -465,6 +471,8 @@ export abstract class BaseStorageService {
   async renameDir(dirPath: string, newName: string, basePath = ''): Promise<StorageNode[]> {
     dirPath = removeBothEndsSlash(dirPath)
 
+    this.validateDirName(newName)
+
     const reg = new RegExp(`${path.basename(dirPath)}$`)
     const toDirPath = dirPath.replace(reg, newName)
     return this.moveDir(dirPath, toDirPath, basePath)
@@ -506,6 +514,8 @@ export abstract class BaseStorageService {
    */
   async renameFile(filePath: string, newName: string, basePath = ''): Promise<StorageNode> {
     filePath = removeBothEndsSlash(filePath)
+
+    this.validateFileName(newName)
 
     const reg = new RegExp(`${path.basename(filePath)}$`)
     const toFilePath = filePath.replace(reg, newName)
@@ -934,5 +944,42 @@ export abstract class BaseStorageService {
       pushMaxDirPathToArray(result, dirPath)
     }
     return result
+  }
+
+  /**
+   * ノードパスのチェックを行います。
+   * @param nodePath
+   */
+  protected validatePath(nodePath: string): void {
+    // 改行、タブが含まれないことを検証
+    if (/\r?\n|\t/g.test(nodePath)) {
+      throw new InputValidationError('The specified path is invalid.', {
+        path: nodePath,
+      })
+    }
+  }
+
+  /**
+   * ディレクトリ名のチェックを行います。
+   * @param dirName
+   */
+  protected validateDirName(dirName: string): void {
+    this.validatePath(dirName)
+    // '/'が含まれないことを検証
+    if (/\//g.test(dirName)) {
+      throw new InputValidationError('The specified directory name is invalid.', { dirName })
+    }
+  }
+
+  /**
+   * ファイル名のチェックを行います。
+   * @param fileName
+   */
+  protected validateFileName(fileName: string): void {
+    this.validatePath(fileName)
+    // '/'が含まれないことを検証
+    if (/\//g.test(fileName)) {
+      throw new InputValidationError('The specified file name is invalid.', { fileName })
+    }
   }
 }

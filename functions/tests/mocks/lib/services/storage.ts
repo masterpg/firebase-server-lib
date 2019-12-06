@@ -7,6 +7,9 @@ type MockStorageService = BaseStorageService & {
   sortStorageNodes: BaseStorageService['sortStorageNodes']
   padVirtualDirNode: BaseStorageService['padVirtualDirNode']
   splitHierarchicalDirPaths: BaseStorageService['splitHierarchicalDirPaths']
+  validatePath: BaseStorageService['validatePath']
+  validateDirName: BaseStorageService['validateDirName']
+  validateFileName: BaseStorageService['validateFileName']
 }
 
 @Injectable()
