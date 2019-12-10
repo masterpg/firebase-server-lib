@@ -373,7 +373,7 @@ describe('StorageService', () => {
       await notExistsNodes(actual)
     })
 
-    it('複数のディレクトリを指定した場合', async () => {
+    it(`'d1/d11'と親である'd1'を同時に指定した場合`, async () => {
       // ディレクトリを作成
       await storageService.createDirs([`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d1/d12`, `${TEST_FILES_DIR}/d2/d21`])
 
