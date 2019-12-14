@@ -174,6 +174,9 @@ export abstract class BaseStorageService {
    */
   async removeDirs(dirPaths: string[], basePath = ''): Promise<StorageNode[]> {
     const remove = async (dirPath: string, basePath = '') => {
+      dirPath = removeBothEndsSlash(dirPath)
+      if (!dirPath) return Promise.resolve([])
+
       // Cloud Storageから指定されたディレクトリのノードを取得
       const nodeMap = await this.getNodeMap(dirPath, basePath)
       // 親ディレクトリの穴埋め
@@ -235,7 +238,10 @@ export abstract class BaseStorageService {
     const nodeMap: { [path: string]: StorageNode } = {}
 
     const promises: Promise<void>[] = []
-    for (const filePath of filePaths) {
+    for (let filePath of filePaths) {
+      filePath = removeBothEndsSlash(filePath)
+      if (!filePath) continue
+
       promises.push(
         (async () => {
           const gcsFilePath = removeBothEndsSlash(path.join(basePath, filePath))

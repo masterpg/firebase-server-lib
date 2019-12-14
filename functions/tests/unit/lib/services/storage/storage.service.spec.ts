@@ -494,6 +494,26 @@ describe('StorageService', () => {
       expect(actual[1].path).toBe(`d1/fileB.txt`)
       await notExistsNodes(actual, `${TEST_FILES_DIR}`)
     })
+
+    it('dirPathsに空文字が含まれている場合', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // 空文字を指定
+      const actual = await storageService.removeDirs(['', undefined, null as any])
+
+      // 何も行われないことを検証
+      expect(actual.length).toBe(0)
+    })
   })
 
   describe('removeUserDirs', () => {
@@ -594,6 +614,26 @@ describe('StorageService', () => {
     it('存在しないファイルを指定', async () => {
       const actual = await storageService.removeFiles([`${TEST_FILES_DIR}/d1/fileXXX.txt`])
 
+      expect(actual.length).toBe(0)
+    })
+
+    it('filePathsに空文字が含まれている場合', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // 作成したディレクトリにファイルをアップロード
+      const uploadList = [
+        {
+          localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
+          toFilePath: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadLocalFiles(uploadList)
+
+      // 空文字を指定
+      const actual = await storageService.removeFiles(['', undefined, null as any])
+
+      // 何も行われないことを検証
       expect(actual.length).toBe(0)
     })
   })
