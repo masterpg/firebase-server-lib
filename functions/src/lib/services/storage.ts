@@ -674,16 +674,29 @@ export abstract class BaseStorageService {
    * @param user
    */
   async assignUserDir(user: UserRecord): Promise<void> {
-    // 既に割り当てられている場合は終了
-    if (user.customClaims && (user.customClaims as any).storageDir) return
+    // ユーザーディレクトリを取得
+    let storageDir: string | undefined
+    if (user.customClaims) {
+      storageDir = (user.customClaims as any).storageDir
+    }
 
-    // ユーザークレームに'storageDir'というプロパティを追加
-    // このプロパティに設定される値がユーザーディレクトリとなる
-    const storageDir = uuidv4()
-    await admin.auth().setCustomUserClaims(user.uid, {
-      storageDir,
-    })
-    ;(user.customClaims as any).storageDir = storageDir
+    // まだユーザーディレクトリが割り当てられていない場合
+    if (!storageDir) {
+      // ユーザークレームに'storageDir'というプロパティを追加。
+      // このプロパティの値がユーザーディレクトリとなる。
+      const storageDir = uuidv4()
+      await admin.auth().setCustomUserClaims(user.uid, {
+        storageDir,
+      })
+      ;(user.customClaims as any).storageDir = storageDir
+    }
+
+    // ユーザーディレクトリの作成(存在しない場合のみ)
+    const userDirPath = this.getUserDirPath(user)
+    const userDirNode = await this.getDirNode(userDirPath)
+    if (!userDirNode.exists) {
+      await this.createDirs([userDirNode.path])
+    }
   }
 
   /**
