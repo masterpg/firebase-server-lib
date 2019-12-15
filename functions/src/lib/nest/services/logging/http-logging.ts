@@ -7,7 +7,7 @@ import { GraphQLResolveInfo } from 'graphql'
 import { IdToken } from '../auth'
 import { LogEntry } from '@google-cloud/logging/build/src/entry'
 import { LoggingLatencyTimer } from './base'
-import { google } from '@google-cloud/logging/build/proto/logging'
+import { google } from '@google-cloud/logging/build/protos/protos'
 import { removeBothEndsSlash } from 'web-base-lib'
 import IHttpRequest = google.logging.type.IHttpRequest
 import IMonitoredResource = google.api.IMonitoredResource

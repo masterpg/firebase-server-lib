@@ -2,7 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { LogEntry } from '@google-cloud/logging/build/src/entry'
-import { google } from '@google-cloud/logging/build/proto/logging'
+import { google } from '@google-cloud/logging/build/protos/protos'
 import IMonitoredResource = google.api.IMonitoredResource
 const merge = require('lodash/merge')
 const clone = require('lodash/clone')
