@@ -12,13 +12,7 @@ class HandlersService {
   ) {}
 
   async onCreateUser(user: UserRecord, context: EventContext): Promise<void> {
-    let error: Error | undefined
-    try {
-      await this.storageService.assignUserDir(user)
-    } catch (err) {
-      error = err
-    }
-    await this.loggingService.log({ functionName: 'onCreateUser', data: { user }, error })
+    await this.loggingService.log({ functionName: 'onCreateUser', data: { user } })
   }
 
   async onDeleteUser(user: UserRecord, context: EventContext): Promise<void> {

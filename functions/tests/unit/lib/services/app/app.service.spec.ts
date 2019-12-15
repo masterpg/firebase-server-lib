@@ -1,4 +1,4 @@
-import { MockAppServiceDI } from '../../../../mocks/lib'
+import { MockAppServiceDI, MockStorageServiceDI } from '../../../../mocks/lib'
 import { Test } from '@nestjs/testing'
 import { initLibTestApp } from '../../../../helpers/lib'
 
@@ -12,7 +12,7 @@ describe('AppService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [MockAppServiceDI.provider],
+      providers: [MockAppServiceDI.provider, MockStorageServiceDI.provider],
     }).compile()
 
     appService = module.get<MockAppServiceDI.type>(MockAppServiceDI.symbol)
@@ -25,6 +25,10 @@ describe('AppService', () => {
     })
   })
 
+  /**
+   * TODO Jest did not exit one second after the test run has completed.
+   * admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生する
+   */
   describe('customToken', () => {
     it('ベーシックケース', async () => {
       const actual = await appService.customToken(GENERAL_USER as any)

@@ -38,6 +38,10 @@ describe('AppResolver', () => {
     })
   })
 
+  /**
+   * TODO Jest did not exit one second after the test run has completed.
+   * admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生する
+   */
   describe('customToken', () => {
     const gql = {
       query: `

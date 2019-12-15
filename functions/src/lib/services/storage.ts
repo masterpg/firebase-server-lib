@@ -16,7 +16,7 @@ import { IdToken } from '../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
 
-type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
+export type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
 
 export enum StorageNodeType {
   File = 'File',
@@ -580,8 +580,13 @@ export abstract class BaseStorageService {
     const bucket = admin.storage().bucket()
     const gcsNodePath = path.join(basePath, nodePath)
     const gcsNode = bucket.file(gcsNodePath)
+    const exists = (await gcsNode.exists())[0]
+    if (exists) {
+      await gcsNode.getMetadata()
+    }
+
     const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
-    node.exists = (await gcsNode.exists())[0]
+    node.exists = exists
     node.gcsNode = gcsNode
     return node
   }
@@ -673,26 +678,22 @@ export abstract class BaseStorageService {
    * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
    * @param user
    */
-  async assignUserDir(user: UserRecord): Promise<void> {
-    // ユーザーディレクトリを取得
-    let storageDir: string | undefined
-    if (user.customClaims) {
-      storageDir = (user.customClaims as any).storageDir
-    }
+  async assignUserDir(user: StorageUser): Promise<void> {
+    let storageDir = this.m_getStorageDirFromStorageUser(user)
+    const uid = user.uid
 
     // まだユーザーディレクトリが割り当てられていない場合
     if (!storageDir) {
-      // ユーザークレームに'storageDir'というプロパティを追加。
+      // カスタムクレームに'storageDir'というプロパティを追加。
       // このプロパティの値がユーザーディレクトリとなる。
-      const storageDir = uuidv4()
-      await admin.auth().setCustomUserClaims(user.uid, {
+      storageDir = uuidv4()
+      await admin.auth().setCustomUserClaims(uid, {
         storageDir,
       })
-      ;(user.customClaims as any).storageDir = storageDir
     }
 
     // ユーザーディレクトリの作成(存在しない場合のみ)
-    const userDirPath = this.getUserDirPath(user)
+    const userDirPath = this.getUserDirPath({ uid, storageDir })
     const userDirNode = await this.getDirNode(userDirPath)
     if (!userDirNode.exists) {
       await this.createDirs([userDirNode.path])
@@ -704,15 +705,10 @@ export abstract class BaseStorageService {
    * @param user
    */
   getUserDirPath(user: StorageUser): string {
-    const usersDir = config.storage.usersDir
-    if ((user as IdToken).storageDir) {
-      return `${usersDir}/${(user as IdToken).storageDir}`
-    } else if ((user as UserRecord).customClaims) {
-      const customClaims = (user as UserRecord).customClaims!
-      const storageDir = (customClaims as any).storageDir
-      if (storageDir) {
-        return storageDir ? `${usersDir}/${storageDir}` : ''
-      }
+    const storageDir = this.m_getStorageDirFromStorageUser(user)
+    if (storageDir) {
+      const usersDir = config.storage.usersDir
+      return `${usersDir}/${storageDir}`
     }
     throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
   }
@@ -1004,5 +1000,28 @@ export abstract class BaseStorageService {
     if (/\//g.test(fileName)) {
       throw new InputValidationError('The specified file name is invalid.', { fileName })
     }
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  /**
+   * ユーザーディレクトリのパス`storageDir`の値を取得します。
+   * @param user
+   */
+  private m_getStorageDirFromStorageUser(user: StorageUser): string | undefined {
+    // IdTokeから取得
+    if ((user as IdToken).storageDir) {
+      return (user as IdToken).storageDir!
+    }
+    // UserRecordから取得
+    else if ((user as UserRecord).customClaims) {
+      const customClaims = (user as UserRecord).customClaims!
+      return (customClaims as any).storageDir
+    }
+    return undefined
   }
 }
