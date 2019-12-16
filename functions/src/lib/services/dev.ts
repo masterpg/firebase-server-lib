@@ -18,7 +18,7 @@ export interface TestSignedUploadUrlInput {
   contentType?: string
 }
 
-export abstract class BaseDevUtilsService {
+export class LibDevUtilsService {
   constructor(@Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -179,4 +179,13 @@ export abstract class BaseDevUtilsService {
   private m_isObject(value: any): boolean {
     return value instanceof Object && !(value instanceof Array)
   }
+}
+
+export namespace LibDevUtilsServiceDI {
+  export const symbol = Symbol(LibDevUtilsService.name)
+  export const provider = {
+    provide: symbol,
+    useClass: LibDevUtilsService,
+  }
+  export type type = LibDevUtilsService
 }

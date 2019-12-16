@@ -1,12 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common'
-import { BaseAppService } from '../../../../src/lib/services'
-import { MockStorageServiceDI } from './storage'
+import { BaseAppService } from '../../../../src/lib'
+import { Injectable } from '@nestjs/common'
 
 @Injectable()
-class MockAppService extends BaseAppService {
-  @Inject(MockStorageServiceDI.symbol)
-  protected readonly storageService!: MockStorageServiceDI.type
-}
+class MockAppService extends BaseAppService {}
 
 export namespace MockAppServiceDI {
   export const symbol = Symbol(MockAppService.name)

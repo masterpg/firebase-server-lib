@@ -1,5 +1,6 @@
-import { DevUtilsServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
+import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import { AppBaseModule } from '../../../../../src/example/app.module'
+import { LibDevUtilsServiceDI } from '../../../../../src/lib'
 import { Test } from '@nestjs/testing'
 import { initLibTestApp } from '../../../../helpers/lib'
 
@@ -14,7 +15,7 @@ const PRODUCTS: Product[] = [
 
 describe('ProductService', () => {
   let productService: ProductServiceDI.type
-  let devUtilsService: DevUtilsServiceDI.type
+  let devUtilsService: LibDevUtilsServiceDI.type
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -22,7 +23,7 @@ describe('ProductService', () => {
     }).compile()
 
     productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
-    devUtilsService = module.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
   })
 
   describe('findList', () => {

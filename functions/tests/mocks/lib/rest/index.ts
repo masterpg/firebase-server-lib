@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Module, Param, Req, Res, UseInterceptors } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { MockStorageServiceDI } from '../services/storage'
+import { LibStorageServiceDI } from '../../../../src/lib'
 import { Product } from '../services/types'
 import { TransformInterceptor } from '../../../../src/lib/nest'
 
@@ -15,7 +15,7 @@ export class MockProductController {
 
 @Controller('unit/storage')
 export class MockStorageController {
-  constructor(@Inject(MockStorageServiceDI.symbol) protected readonly storageService: MockStorageServiceDI.type) {}
+  constructor(@Inject(LibStorageServiceDI.symbol) protected readonly storageService: LibStorageServiceDI.type) {}
 
   @Get('*')
   async sendFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
@@ -26,6 +26,6 @@ export class MockStorageController {
 
 @Module({
   controllers: [MockProductController, MockStorageController],
-  providers: [MockStorageServiceDI.provider],
+  providers: [LibStorageServiceDI.provider],
 })
 export class MockRESTContainerModule {}

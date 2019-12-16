@@ -1,12 +1,11 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { PutTestDataInput, TestSignedUploadUrlInput } from '../../../../lib'
-import { DevUtilsServiceDI } from '../../../services'
+import { LibDevUtilsServiceDI, PutTestDataInput, TestSignedUploadUrlInput } from '../../../../lib'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
 @Resolver()
 export class DevUtilsResolver {
-  constructor(@Inject(DevUtilsServiceDI.symbol) protected readonly devUtilsService: DevUtilsServiceDI.type) {}
+  constructor(@Inject(LibDevUtilsServiceDI.symbol) protected readonly devUtilsService: LibDevUtilsServiceDI.type) {}
 
   @Mutation()
   async putTestData(@Args('inputs') inputs: PutTestDataInput[]): Promise<boolean> {

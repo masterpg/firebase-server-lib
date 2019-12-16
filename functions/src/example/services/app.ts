@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { BaseAppService } from '../../lib/services'
+import { BaseAppService } from '../../lib'
 import { StorageServiceDI } from './storage'
 
 @Injectable()

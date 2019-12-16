@@ -1,4 +1,4 @@
-import { initFirebaseApp } from '../lib/base'
+import { initFirebaseApp } from '../lib'
 
 export function initApp() {
   initFirebaseApp()

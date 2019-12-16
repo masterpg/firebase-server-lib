@@ -1,4 +1,4 @@
-import { DateTimeScalar, getGqlModuleBaseOptions } from '../../../../src/lib/gql'
+import { DateTimeScalar, getGqlModuleBaseOptions } from '../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { Module } from '@nestjs/common'
 import { Product } from '../services/types'

@@ -1,13 +1,5 @@
-import {
-  AddCartItemInput,
-  CartItem,
-  CartServiceDI,
-  DevUtilsServiceDI,
-  EditCartItemResponse,
-  Product,
-  ProductServiceDI,
-} from '../../../../../src/example/services'
-import { InputValidationError, ValidationErrors } from '../../../../../src/lib'
+import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, Product, ProductServiceDI } from '../../../../../src/example/services'
+import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
 import { initLibTestApp } from '../../../../helpers/lib'
@@ -44,7 +36,7 @@ const CART_ITEMS: CartItem[] = [
 ]
 
 describe('CartService', () => {
-  let devUtilsService: DevUtilsServiceDI.type
+  let devUtilsService: LibDevUtilsServiceDI.type
   let cartService: CartServiceDI.type
   let productService: ProductServiceDI.type
 
@@ -53,7 +45,7 @@ describe('CartService', () => {
       imports: [AppBaseModule],
     }).compile()
 
-    devUtilsService = module.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
     cartService = module.get<CartServiceDI.type>(CartServiceDI.symbol)
     productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
   })

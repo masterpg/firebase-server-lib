@@ -1,11 +1,11 @@
-import { BaseStorageService } from '../../lib/services'
+import { LibStorageService, LibStorageServiceDI } from '../../lib'
 import { Injectable } from '@nestjs/common'
 
 @Injectable()
-class StorageService extends BaseStorageService {}
+class StorageService extends LibStorageService {}
 
 export namespace StorageServiceDI {
-  export const symbol = Symbol(StorageService.name)
+  export const symbol = LibStorageServiceDI.symbol
   export const provider = {
     provide: symbol,
     useClass: StorageService,

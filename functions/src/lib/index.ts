@@ -1,24 +1,15 @@
 import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, HandlerLoggingServiceDI, HttpLoggingServiceDI } from './nest'
-import { Global, Module } from '@nestjs/common'
+import { LibDevUtilsServiceDI, LibStorageServiceDI } from './services'
 
-@Global()
-@Module({
-  providers: [
-    CORSServiceDI.provider,
-    AuthServiceDI.provider,
-    HttpLoggingServiceDI.provider,
-    HandlerLoggingServiceDI.provider,
-    FirestoreServiceDI.provider,
-  ],
-  exports: [
-    CORSServiceDI.provider,
-    AuthServiceDI.provider,
-    HttpLoggingServiceDI.provider,
-    HandlerLoggingServiceDI.provider,
-    FirestoreServiceDI.provider,
-  ],
-})
-export class LibBaseModule {}
+export const libBaseProviders = [
+  CORSServiceDI.provider,
+  AuthServiceDI.provider,
+  HttpLoggingServiceDI.provider,
+  HandlerLoggingServiceDI.provider,
+  FirestoreServiceDI.provider,
+  LibStorageServiceDI.provider,
+  LibDevUtilsServiceDI.provider,
+]
 
 export {
   CORSConfig,
@@ -66,15 +57,18 @@ export {
 
 export {
   BaseAppService,
-  BaseDevUtilsService,
-  BaseStorageService,
   GCSStorageNode,
   JSON,
   JSONObject,
+  LibDevUtilsService,
+  LibDevUtilsServiceDI,
+  LibStorageService,
+  LibStorageServiceDI,
   PutTestDataInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeType,
+  StorageUser,
   TestSignedUploadUrlInput,
   UploadDataItem,
 } from './services'

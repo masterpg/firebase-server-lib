@@ -4,7 +4,7 @@ import { StorageNode, StorageServiceDI } from '../../../../../../src/example/ser
 import { Test, TestingModule } from '@nestjs/testing'
 import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
-import { StorageNodeType } from '../../../../../../src/lib/services'
+import { StorageNodeType } from '../../../../../../src/lib'
 import { StorageResolver } from '../../../../../../src/example/gql/modules/storage'
 import { initApp } from '../../../../../../src/example/initializer'
 const dayjs = require('dayjs')

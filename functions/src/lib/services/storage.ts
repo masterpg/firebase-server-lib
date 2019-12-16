@@ -48,7 +48,7 @@ export interface UploadDataItem {
   contentType: string
 }
 
-export abstract class BaseStorageService {
+export class LibStorageService {
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -1024,4 +1024,13 @@ export abstract class BaseStorageService {
     }
     return undefined
   }
+}
+
+export namespace LibStorageServiceDI {
+  export const symbol = Symbol(LibStorageService.name)
+  export const provider = {
+    provide: symbol,
+    useClass: LibStorageService,
+  }
+  export type type = LibStorageService
 }

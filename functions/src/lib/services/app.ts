@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin'
-import { BaseStorageService } from './storage'
 import { IdToken } from '../nest'
+import { Inject } from '@nestjs/common'
+import { LibStorageServiceDI } from './storage'
 import { config } from '../base'
 
 export interface AppConfigResponse {
@@ -8,7 +9,8 @@ export interface AppConfigResponse {
 }
 
 export abstract class BaseAppService {
-  protected abstract readonly storageService: BaseStorageService
+  @Inject(LibStorageServiceDI.symbol)
+  protected readonly storageService!: LibStorageServiceDI.type
 
   async appConfig(): Promise<AppConfigResponse> {
     return {

@@ -2,12 +2,22 @@ import * as admin from 'firebase-admin'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as td from 'testdouble'
-import { FirestoreServiceDI, InputValidationError, SignedUploadUrlInput, StorageNode, StorageNodeType, UploadDataItem } from '../../../../../src/lib'
-import { MockBaseAppModule, MockDevUtilsServiceDI, MockRESTContainerModule, MockStorageServiceDI } from '../../../../mocks/lib'
+import {
+  FirestoreServiceDI,
+  InputValidationError,
+  LibDevUtilsServiceDI,
+  LibStorageService,
+  LibStorageServiceDI,
+  SignedUploadUrlInput,
+  StorageNode,
+  StorageNodeType,
+  StorageUser,
+  UploadDataItem,
+} from '../../../../../src/lib'
+import { MockBaseAppModule, MockRESTContainerModule } from '../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
-import { StorageUser } from '../../../../../src/lib/services'
 import { config } from '../../../../../src/lib/base'
 import { initLibTestApp } from '../../../../helpers/lib'
 import { removeBothEndsSlash } from 'web-base-lib'
@@ -18,8 +28,32 @@ const cloneDeep = require('lodash/cloneDeep')
 jest.setTimeout(25000)
 initLibTestApp()
 
+//========================================================================
+//
+//  Test data
+//
+//========================================================================
+
 const STORAGE_ONE_USER: StorageUser = { uid: 'storage.one', storageDir: 'storage.one' }
+
 const TEST_FILES_DIR = 'test-files'
+
+//========================================================================
+//
+//  Test helpers
+//
+//========================================================================
+
+type TestStorageService = LibStorageService & {
+  toStorageNode: LibStorageService['toStorageNode']
+  toStorageNodeByDir: LibStorageService['toStorageNodeByDir']
+  sortStorageNodes: LibStorageService['sortStorageNodes']
+  padVirtualDirNode: LibStorageService['padVirtualDirNode']
+  splitHierarchicalDirPaths: LibStorageService['splitHierarchicalDirPaths']
+  validatePath: LibStorageService['validatePath']
+  validateDirName: LibStorageService['validateDirName']
+  validateFileName: LibStorageService['validateFileName']
+}
 
 /**
  * 指定された`StorageNode`自体の検証と、対象のノードがCloud Storageに存在することを検証します。
@@ -69,17 +103,23 @@ async function sleep(ms: number): Promise<void> {
   }) as Promise<void>
 }
 
+//========================================================================
+//
+//  Tests
+//
+//========================================================================
+
 describe('StorageService', () => {
-  let storageService: MockStorageServiceDI.type
-  let devUtilsService: MockDevUtilsServiceDI.type
+  let storageService: TestStorageService
+  let devUtilsService: LibDevUtilsServiceDI.type
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [MockDevUtilsServiceDI.provider, FirestoreServiceDI.provider, MockStorageServiceDI.provider],
+      providers: [LibDevUtilsServiceDI.provider, FirestoreServiceDI.provider, LibStorageServiceDI.provider],
     }).compile()
 
-    storageService = module.get<MockStorageServiceDI.type>(MockStorageServiceDI.symbol)
-    devUtilsService = module.get<MockDevUtilsServiceDI.type>(MockDevUtilsServiceDI.symbol)
+    storageService = module.get<TestStorageService>(LibStorageServiceDI.symbol)
+    devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
 
     await storageService.removeDirs([`${TEST_FILES_DIR}`])
     await storageService.removeDirs([`${storageService.getUserDirPath(STORAGE_ONE_USER)}/`])
