@@ -8,7 +8,7 @@ const cloneDeep = require('lodash/cloneDeep')
 jest.setTimeout(25000)
 initLibTestApp()
 
-const GENERAL_USER = { uid: 'yamada.one' }
+const GENERAL_USER = { uid: 'general.user' }
 
 const PRODUCTS: Product[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
@@ -297,7 +297,7 @@ describe('CartService', () => {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
           collectionRecords: CART_ITEMS.map(item => {
-            return { ...item, uid: 'yamada.one.xxx' }
+            return { ...item, uid: 'general.user.xxx' }
           }),
         },
       ])
@@ -424,7 +424,7 @@ describe('CartService', () => {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
           collectionRecords: CART_ITEMS.map(item => {
-            return { ...item, uid: 'yamada.one.xxx' }
+            return { ...item, uid: 'general.user.xxx' }
           }),
         },
       ])

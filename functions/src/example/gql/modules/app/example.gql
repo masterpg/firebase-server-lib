@@ -6,5 +6,5 @@ query GetCustomToken {
   customToken
 }
 {
-  "authorization": "Bearer {\"uid\":\"yamada.one\"}"
+  "authorization": "Bearer {\"uid\":\"general.user\"}"
 }

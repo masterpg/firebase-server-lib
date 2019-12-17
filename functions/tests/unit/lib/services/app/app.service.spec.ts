@@ -6,7 +6,7 @@ import { initLibTestApp } from '../../../../helpers/lib'
 jest.setTimeout(25000)
 initLibTestApp()
 
-const GENERAL_USER = { uid: 'yamada.one', customClaims: { storageDir: 'yamada.one' } }
+const GENERAL_USER = { uid: 'general.user', customClaims: { storageDir: 'general.user' } }
 
 describe('AppService', () => {
   let appService: MockAppServiceDI.type

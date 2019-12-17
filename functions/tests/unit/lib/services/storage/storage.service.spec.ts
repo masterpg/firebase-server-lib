@@ -34,7 +34,7 @@ initLibTestApp()
 //
 //========================================================================
 
-const STORAGE_ONE_USER: StorageUser = { uid: 'storage.one', storageDir: 'storage.one' }
+const STORAGE_TEST_USER: StorageUser = { uid: 'storage.test.user', storageDir: 'storage.test.user' }
 
 const TEST_FILES_DIR = 'test-files'
 
@@ -122,7 +122,7 @@ describe('StorageService', () => {
     devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
 
     await storageService.removeDirs([`${TEST_FILES_DIR}`])
-    await storageService.removeDirs([`${storageService.getUserDirPath(STORAGE_ONE_USER)}/`])
+    await storageService.removeDirs([`${storageService.getUserDirPath(STORAGE_TEST_USER)}/`])
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(750)
@@ -266,7 +266,7 @@ describe('StorageService', () => {
 
   describe('getUserDirNodes', () => {
     it('ディレクトリを指定しない場合', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -279,7 +279,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const actual = await storageService.getUserDirNodes(STORAGE_ONE_USER)
+      const actual = await storageService.getUserDirNodes(STORAGE_TEST_USER)
 
       expect(actual.length).toBe(5)
       expect(actual[0].path).toBe(`d1`)
@@ -290,7 +290,7 @@ describe('StorageService', () => {
     })
 
     it('ディレクトリを指定した場合', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
@@ -303,7 +303,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const actual = await storageService.getUserDirNodes(STORAGE_ONE_USER, `d1/d11`)
+      const actual = await storageService.getUserDirNodes(STORAGE_TEST_USER, `d1/d11`)
 
       expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d1`)
@@ -373,7 +373,7 @@ describe('StorageService', () => {
 
   describe('createUserDirs', () => {
     it('ベーシックケース', async () => {
-      const actual = await storageService.createUserDirs(STORAGE_ONE_USER, [`d3`, `d1/d11`, `d1/d12`, `d2/d21`])
+      const actual = await storageService.createUserDirs(STORAGE_TEST_USER, [`d3`, `d1/d11`, `d1/d12`, `d2/d21`])
 
       expect(actual.length).toBe(6)
       expect(actual[0].path).toBe(`d1`)
@@ -382,7 +382,7 @@ describe('StorageService', () => {
       expect(actual[3].path).toBe(`d2`)
       expect(actual[4].path).toBe(`d2/d21`)
       expect(actual[5].path).toBe(`d3`)
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
       await existsNodes(actual, `${userDirPath}`)
     })
   })
@@ -559,7 +559,7 @@ describe('StorageService', () => {
 
   describe('removeUserDirs', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       // ディレクトリを作成
       await storageService.createDirs([`${userDirPath}/d1`])
@@ -577,7 +577,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const actual = await storageService.removeUserDirs(STORAGE_ONE_USER, [`d1`])
+      const actual = await storageService.removeUserDirs(STORAGE_TEST_USER, [`d1`])
 
       expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d1`)
@@ -681,7 +681,7 @@ describe('StorageService', () => {
 
   describe('removeUserFiles', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       const uploadList = [
         {
@@ -695,7 +695,7 @@ describe('StorageService', () => {
       ]
       await storageService.uploadLocalFiles(uploadList)
 
-      const actual = await storageService.removeUserFiles(STORAGE_ONE_USER, [`d1/fileA.txt`, `d2/fileB.txt`])
+      const actual = await storageService.removeUserFiles(STORAGE_TEST_USER, [`d1/fileA.txt`, `d2/fileB.txt`])
 
       expect(actual.length).toBe(2)
       expect(actual[0].path).toBe(`d1/fileA.txt`)
@@ -954,7 +954,7 @@ describe('StorageService', () => {
 
   describe('moveUserDir', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       // ディレクトリを作成
       await storageService.createDirs([`${userDirPath}/d1/d11`, `${userDirPath}/d2`])
@@ -969,7 +969,7 @@ describe('StorageService', () => {
       await storageService.uploadLocalFiles(uploadList)
 
       const fromDirNode = await storageService.getDirNode(`d1`, `${userDirPath}`)
-      const actual = await storageService.moveUserDir(STORAGE_ONE_USER, fromDirNode.path, `d2/d1`)
+      const actual = await storageService.moveUserDir(STORAGE_TEST_USER, fromDirNode.path, `d2/d1`)
 
       expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d2/d1`)
@@ -1105,7 +1105,7 @@ describe('StorageService', () => {
 
   describe('moveUserFile', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       // ディレクトリを作成
       await storageService.createDirs([`${userDirPath}/d1`, `${userDirPath}/d2`])
@@ -1120,7 +1120,7 @@ describe('StorageService', () => {
       await storageService.uploadLocalFiles(uploadList)
 
       const fromFileNode = await storageService.getFileNode(`d1/fileA.txt`, userDirPath)
-      const actual = await storageService.moveUserFile(STORAGE_ONE_USER, `d1/fileA.txt`, `d2/fileA.txt`)
+      const actual = await storageService.moveUserFile(STORAGE_TEST_USER, `d1/fileA.txt`, `d2/fileA.txt`)
 
       await existsNodes([actual!], `${userDirPath}`)
       await notExistsNodes([fromFileNode], `${userDirPath}`)
@@ -1243,7 +1243,7 @@ describe('StorageService', () => {
 
   describe('renameUserDir', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       // ディレクトリを作成
       await storageService.createDirs([`${userDirPath}/d1/d11`])
@@ -1385,7 +1385,7 @@ describe('StorageService', () => {
 
   describe('renameUserFile', () => {
     it('ベーシックケース', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
 
       // ディレクトリを作成
       await storageService.createDirs([`${userDirPath}/d1`])
@@ -1400,7 +1400,7 @@ describe('StorageService', () => {
       await storageService.uploadLocalFiles(uploadList)
 
       const fromFileNode = await storageService.getFileNode(`d1/fileA.txt`, `${userDirPath}`)
-      const actual = await storageService.renameUserFile(STORAGE_ONE_USER, fromFileNode.path, 'fileB.txt')
+      const actual = await storageService.renameUserFile(STORAGE_TEST_USER, fromFileNode.path, 'fileB.txt')
 
       expect(actual!.path).toBe(`d1/fileB.txt`)
       await existsNodes([actual!], `${userDirPath}`)
@@ -1875,7 +1875,7 @@ describe('StorageService', () => {
 
     async function removeUserRootDir(): Promise<void> {
       // ユーザーディレクトリのパスを取得
-      const user = await admin.auth().getUser(STORAGE_ONE_USER.uid)
+      const user = await admin.auth().getUser(STORAGE_TEST_USER.uid)
       let userDirPath
       try {
         userDirPath = storageService.getUserDirPath(user)
@@ -1888,19 +1888,19 @@ describe('StorageService', () => {
         // ユーザーディレクトリを削除
         await storageService.removeDirs([userDirPath])
         // カスタムクレイムのユーザーディレクトリをクリア
-        await admin.auth().setCustomUserClaims(STORAGE_ONE_USER.uid, { storageDir: undefined })
+        await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: undefined })
       }
     }
 
     it('ベーシックケース', async () => {
       await storageService.assignUserDir({
-        uid: STORAGE_ONE_USER.uid,
+        uid: STORAGE_TEST_USER.uid,
         storageDir: undefined,
       })
 
       expect(true).toBeTruthy()
 
-      const afterUser = await admin.auth().getUser(STORAGE_ONE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
       // カスタムクレイムのユーザーディレクトリが設定されたか検証
       expect((afterUser.customClaims as any).storageDir).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
@@ -1911,13 +1911,13 @@ describe('StorageService', () => {
 
     it('カスタムクレイムにユーザーディレクトリが割り当てられてられているが、ユーザーディレクトリは存在しない場合', async () => {
       // カスタムクレイムのユーザーディレクトリを設定
-      await admin.auth().setCustomUserClaims(STORAGE_ONE_USER.uid, { storageDir: STORAGE_ONE_USER.storageDir })
+      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: STORAGE_TEST_USER.storageDir })
 
-      await storageService.assignUserDir(STORAGE_ONE_USER)
+      await storageService.assignUserDir(STORAGE_TEST_USER)
 
-      const afterUser = await admin.auth().getUser(STORAGE_ONE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
       // カスタムクレイムのユーザーディレクトリに変化がないことを検証
-      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_ONE_USER.storageDir)
+      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_TEST_USER.storageDir)
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
       const userDirNode = await storageService.getDirNode(userDirPath)
@@ -1926,16 +1926,16 @@ describe('StorageService', () => {
 
     it('カスタムクレイムにユーザーディレクトリが割り当てられていて、かつユーザーディレクトリも存在する場合', async () => {
       // カスタムクレイムのユーザーディレクトリを設定
-      await admin.auth().setCustomUserClaims(STORAGE_ONE_USER.uid, { storageDir: STORAGE_ONE_USER.storageDir })
+      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: STORAGE_TEST_USER.storageDir })
       // ユーザーディレクトリを作成
-      const beforeUserDirPath = storageService.getUserDirPath(STORAGE_ONE_USER)
+      const beforeUserDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
       const beforeUserDirNode = (await storageService.createDirs([beforeUserDirPath]))[0]
 
-      await storageService.assignUserDir(STORAGE_ONE_USER)
+      await storageService.assignUserDir(STORAGE_TEST_USER)
 
-      const afterUser = await admin.auth().getUser(STORAGE_ONE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
       // カスタムクレイムのユーザーディレクトリに変化がないことを検証
-      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_ONE_USER.storageDir)
+      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_TEST_USER.storageDir)
       // ユーザーディレクトリに変化がないことを検証
       const afterUserDirPath = storageService.getUserDirPath(afterUser)
       expect(afterUserDirPath).toBe(beforeUserDirPath)
@@ -1946,15 +1946,15 @@ describe('StorageService', () => {
 
   describe('getUserDirPath', () => {
     it('ベーシックケース - user.storageDir', async () => {
-      const actual = storageService.getUserDirPath(STORAGE_ONE_USER)
-      expect(actual).toBe(`users/${STORAGE_ONE_USER.storageDir}`)
+      const actual = storageService.getUserDirPath(STORAGE_TEST_USER)
+      expect(actual).toBe(`users/${STORAGE_TEST_USER.storageDir}`)
     })
 
     it('ベーシックケース - user.customClaims.storageDir', async () => {
       const user = {
-        uid: STORAGE_ONE_USER.uid,
+        uid: STORAGE_TEST_USER.uid,
         customClaims: {
-          storageDir: STORAGE_ONE_USER.storageDir,
+          storageDir: STORAGE_TEST_USER.storageDir,
         },
       }
 
@@ -1963,7 +1963,7 @@ describe('StorageService', () => {
     })
 
     it('user.storageDirが設定されていない場合', async () => {
-      const user = cloneDeep(STORAGE_ONE_USER)
+      const user = cloneDeep(STORAGE_TEST_USER)
       user.storageDir = undefined
 
       let actual!: Error
@@ -1978,7 +1978,7 @@ describe('StorageService', () => {
 
     it('user.customClaims.storageDirが設定されていない場合', async () => {
       const user = {
-        uid: STORAGE_ONE_USER.uid,
+        uid: STORAGE_TEST_USER.uid,
         customClaims: {
           storageDir: undefined,
         },

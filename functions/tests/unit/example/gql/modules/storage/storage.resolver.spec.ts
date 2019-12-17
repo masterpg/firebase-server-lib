@@ -18,14 +18,14 @@ initApp()
 //
 //========================================================================
 
-const GENERAL_USER = { uid: 'yamada.one', storageDir: 'yamada.one' }
+const GENERAL_USER = { uid: 'general.user', storageDir: 'general.user' }
 const generalAuthHeader = {
   Authorization: `Bearer {"uid": "${GENERAL_USER.uid}", "storageDir": "${GENERAL_USER.storageDir}"}`,
 }
 
-const ADMIN_USER = { uid: 'kanri.one', storageDir: 'kanri.one', isAppAdmin: true }
+const APP_ADMIN_USER = { uid: 'app.admin.user', storageDir: 'app.admin.user', isAppAdmin: true }
 const adminAuthHeader = {
-  Authorization: `Bearer {"uid": "${ADMIN_USER.uid}", "storageDir": "${ADMIN_USER.storageDir}", "isAppAdmin": ${ADMIN_USER.isAppAdmin}}`,
+  Authorization: `Bearer {"uid": "${APP_ADMIN_USER.uid}", "storageDir": "${APP_ADMIN_USER.storageDir}", "isAppAdmin": ${APP_ADMIN_USER.isAppAdmin}}`,
 }
 
 const dir1: StorageNode = {

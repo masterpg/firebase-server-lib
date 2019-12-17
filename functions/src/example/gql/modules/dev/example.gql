@@ -16,7 +16,7 @@ mutation PutTestData($inputs: [PutTestDataInput!]!) {
       "collectionRecords": [
         {
           "id": "cartItem1",
-          "uid": "yamada.one",
+          "uid": "general.user",
           "productId": "product1",
           "title": "iPad 4 Mini",
           "price": 500.01,
@@ -24,7 +24,7 @@ mutation PutTestData($inputs: [PutTestDataInput!]!) {
         },
         {
           "id": "cartItem2",
-          "uid": "yamada.one",
+          "uid": "general.user",
           "productId": "product2",
           "title": "Fire HD 8 Tablet",
           "price": 80.99,

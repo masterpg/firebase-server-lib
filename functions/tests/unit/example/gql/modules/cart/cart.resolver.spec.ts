@@ -7,7 +7,7 @@ jest.setTimeout(25000)
 initApp()
 
 const authorizationHeader = {
-  Authorization: `Bearer {"uid": "yamada.one"}`,
+  Authorization: `Bearer {"uid": "general.user"}`,
 }
 
 describe('CartResolver', () => {
