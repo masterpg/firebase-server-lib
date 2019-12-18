@@ -332,6 +332,17 @@ describe('StorageService', () => {
       await existsNodes(actual)
     })
 
+    it('既に存在するディレクトリを作成しようとした場合', async () => {
+      const d1 = (await storageService.createDirs([`d1`], `${TEST_FILES_DIR}`))[0]
+
+      const actual = await storageService.createDirs([`d1`], `${TEST_FILES_DIR}`)
+
+      expect(actual.length).toBe(0)
+      const afterD1 = await storageService.getDirNode(`d1`, `${TEST_FILES_DIR}`)
+      expect(d1.created).toEqual(afterD1.created)
+      expect(d1.updated).toEqual(afterD1.updated)
+    })
+
     it('basePathを指定した場合', async () => {
       const actual = await storageService.createDirs([`d3`, `d1/d11`, `d1/d12`, `d2/d21`], `${TEST_FILES_DIR}`)
 
