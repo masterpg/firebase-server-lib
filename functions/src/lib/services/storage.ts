@@ -305,10 +305,15 @@ export class LibStorageService {
 
     this.validatePath(toDirPath)
 
+    // 移動元と移動先が同じでないことを確認
+    if (fromDirPath === toDirPath) {
+      throw new Error(`The source and destination are the same: '${path.join(basePath, fromDirPath)}' -> '${path.join(basePath, toDirPath)}'`)
+    }
+
     // 移動先ディレクトリが移動元のサブディレクトリでないことを確認
     // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
     //               → to: aaa/zzz/ccc/bbb [OK]
-    if (toDirPath.startsWith(fromDirPath)) {
+    if (toDirPath.startsWith(path.join(fromDirPath, '/'))) {
       throw new Error(
         `The destination directory is its own subdirectory: '${path.join(basePath, fromDirPath)}' -> '${path.join(basePath, toDirPath)}'`
       )
@@ -339,9 +344,25 @@ export class LibStorageService {
 
     // 移動元ディレクトリの移動処理
     {
+      // const metadata = await dirNode.gcsNode!.getMetadata()
+      // console.log(`metadata: ${JSON.stringify(metadata, null, 2)}`)
+      // console.log(`★created: ${created.toISOString()}, ${dirNode.gcsNode.metadata.timeCreated}`)
+      // console.log(`metadata: ${JSON.stringify(dirNode.gcsNode.metadata, null, 2)}`)
+
+      const created = dirNode.created
+
       const newDirNodePath = path.join(toDirPath, '/')
       await dirNode.gcsNode!.move(path.join(basePath, newDirNodePath))
       const movedNode = (await this.getDirNode(newDirNodePath, basePath))!
+
+      await movedNode.gcsNode.setMetadata({
+        metadata: {
+          created: created.toISOString(),
+        },
+      })
+      const metadata = await movedNode.gcsNode.getMetadata()
+      console.log(`metadata: ${JSON.stringify(metadata, null, 2)}`)
+
       result.push(movedNode!)
     }
 

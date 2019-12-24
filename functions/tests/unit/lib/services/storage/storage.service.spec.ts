@@ -789,6 +789,21 @@ describe('StorageService', () => {
       await notExistsNodes([fromDirNode], `${TEST_FILES_DIR}`)
     })
 
+    it('移動元と移動先が同じ場合', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      let actual: Error
+      try {
+        const fromDirNode = await storageService.getDirNode(`${TEST_FILES_DIR}/d1`)
+        await storageService.moveDir(fromDirNode.path, fromDirNode.path + '/') // 移動先に''を付けて試す
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual!.message).toBe(`The source and destination are the same: '${TEST_FILES_DIR}/d1' -> '${TEST_FILES_DIR}/d1'`)
+    })
+
     it('移動元ディレクトリのサブディレクトリが実際には存在しない場合', async () => {
       // ディレクトリを作成
       // (移動元のサブディレクトリは作成しない)
@@ -892,7 +907,7 @@ describe('StorageService', () => {
 
     it('移動先ディレクトリが移動元のサブディレクトリの場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs([`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
       const uploadList = [
@@ -916,7 +931,7 @@ describe('StorageService', () => {
 
     it(`移動先ディレクトリが移動元のサブディレクトリの場合 - fromDirPath、toDirPathの先頭・末尾に'/'を付与`, async () => {
       // ディレクトリを作成
-      await storageService.createDirs([`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
       const uploadList = [
@@ -1221,18 +1236,33 @@ describe('StorageService', () => {
       const uploadList = [
         {
           localFilePath: `${__dirname}/${TEST_FILES_DIR}/fileA.txt`,
-          // あえて'd1/d1'というディレクトリにファイルを配置
+          // 'd1/d1'というディレクトリにファイルを配置
           toFilePath: `${TEST_FILES_DIR}/d1/d1/fileA.txt`,
         },
       ]
       await storageService.uploadLocalFiles(uploadList)
 
+      // 'd1/d1'を'd1/d2'へリネーム
       const dirNode = await storageService.getDirNode(`${TEST_FILES_DIR}/d1/d1`)
       const actual = await storageService.renameDir(dirNode.path, `d2`)
 
       expect(actual.length).toBe(2)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1/d2`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d2/fileA.txt`)
+      await existsNodes(actual)
+      await notExistsNodes([dirNode])
+    })
+
+    it('既存のディレクトリ名に文字を付け加える形でリネームをした場合', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
+
+      // 'd1'を'd1XXX'へリネーム
+      const dirNode = await storageService.getDirNode(`${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.renameDir(dirNode.path, `d1XXX`)
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1XXX`)
       await existsNodes(actual)
       await notExistsNodes([dirNode])
     })
