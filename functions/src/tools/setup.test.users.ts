@@ -14,7 +14,7 @@ const users = [
     password: 'passpass',
     displayName: '一般ユーザー',
     disabled: false,
-    customUserClaims: { storageDir: 'general.user' },
+    customUserClaims: { myDirName: 'general.user' },
   },
   {
     uid: 'app.admin.user',
@@ -23,7 +23,7 @@ const users = [
     password: 'passpass',
     displayName: 'アプリケーション管理ユーザー',
     disabled: false,
-    customUserClaims: { storageDir: 'app.admin.user', isAppAdmin: true },
+    customUserClaims: { myDirName: 'app.admin.user', isAppAdmin: true },
   },
   {
     uid: 'storage.test.user',

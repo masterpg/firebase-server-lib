@@ -1,6 +1,6 @@
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirNodes",
@@ -26,7 +26,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "CreateUserStorageDirs",
@@ -45,7 +45,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RemoveUserStorageDirs",
@@ -59,7 +59,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RemoveUserStorageFiles",
@@ -75,7 +75,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "MoveUserStorageDir",
@@ -90,7 +90,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "MoveUserStorageFile",
@@ -105,7 +105,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RenameUserStorageDir",
@@ -120,7 +120,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RenameUserStorageFile",
@@ -135,7 +135,7 @@ Authorization: Bearer {"uid": "general.user", "storageDir": "general.user"}
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "GetSignedUploadUrls",
@@ -154,7 +154,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "GetStorageDirNodes",
@@ -168,7 +168,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "CreateStorageDirs",
@@ -187,7 +187,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "RemoveStorageDirs",
@@ -201,7 +201,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "RemoveStorageFiles",
@@ -217,7 +217,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "MoveStorageDir",
@@ -232,7 +232,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "MoveStorageFile",
@@ -247,7 +247,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "RenameStorageDir",
@@ -262,7 +262,7 @@ Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", 
 
 POST {{host}}/api/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "storageDir": "app.admin.user", "isAppAdmin": true}
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
   "operationName": "RenameStorageFile",

@@ -7,7 +7,7 @@ jest.setTimeout(25000)
 initApp()
 
 const authorizationHeader = {
-  Authorization: `Bearer {"uid": "general.user", "storageDir": "general.user"}`,
+  Authorization: `Bearer {"uid": "general.user", "myDirName": "general.user"}`,
 }
 
 describe('AppResolver', () => {

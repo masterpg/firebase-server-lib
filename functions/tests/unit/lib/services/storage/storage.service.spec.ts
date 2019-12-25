@@ -34,7 +34,7 @@ initLibTestApp()
 //
 //========================================================================
 
-const STORAGE_TEST_USER: StorageUser = { uid: 'storage.test.user', storageDir: 'storage.test.user' }
+const STORAGE_TEST_USER: StorageUser = { uid: 'storage.test.user', myDirName: 'storage.test.user' }
 
 const TEST_FILES_DIR = 'test-files'
 
@@ -1928,46 +1928,46 @@ describe('StorageService', () => {
       if (userDirPath) {
         // ユーザーディレクトリを削除
         await storageService.removeDirs([userDirPath])
-        // カスタムクレイムのユーザーディレクトリをクリア
-        await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: undefined })
+        // カスタムクレイムのユーザーディレクトリ名をクリア
+        await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: undefined })
       }
     }
 
     it('ベーシックケース', async () => {
       await storageService.assignUserDir({
         uid: STORAGE_TEST_USER.uid,
-        storageDir: undefined,
+        myDirName: undefined,
       })
 
       expect(true).toBeTruthy()
 
       const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
-      // カスタムクレイムのユーザーディレクトリが設定されたか検証
-      expect((afterUser.customClaims as any).storageDir).toBeDefined()
+      // カスタムクレイムのユーザーディレクトリ名が設定されたか検証
+      expect((afterUser.customClaims as any).myDirName).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
       const userDirNode = await storageService.getDirNode(userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
-    it('カスタムクレイムにユーザーディレクトリが割り当てられてられているが、ユーザーディレクトリは存在しない場合', async () => {
-      // カスタムクレイムのユーザーディレクトリを設定
-      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: STORAGE_TEST_USER.storageDir })
+    it('カスタムクレイムにユーザーディレクトリ名が割り当てられてられているが、ユーザーディレクトリは存在しない場合', async () => {
+      // カスタムクレイムのユーザーディレクトリ名を設定
+      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: STORAGE_TEST_USER.myDirName })
 
       await storageService.assignUserDir(STORAGE_TEST_USER)
 
       const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
-      // カスタムクレイムのユーザーディレクトリに変化がないことを検証
-      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_TEST_USER.storageDir)
+      // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
+      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
       const userDirNode = await storageService.getDirNode(userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
-    it('カスタムクレイムにユーザーディレクトリが割り当てられていて、かつユーザーディレクトリも存在する場合', async () => {
-      // カスタムクレイムのユーザーディレクトリを設定
-      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { storageDir: STORAGE_TEST_USER.storageDir })
+    it('カスタムクレイムにユーザーディレクトリ名が割り当てられていて、かつユーザーディレクトリも存在する場合', async () => {
+      // カスタムクレイムのユーザーディレクトリ名を設定
+      await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: STORAGE_TEST_USER.myDirName })
       // ユーザーディレクトリを作成
       const beforeUserDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
       const beforeUserDirNode = (await storageService.createDirs([beforeUserDirPath]))[0]
@@ -1975,8 +1975,8 @@ describe('StorageService', () => {
       await storageService.assignUserDir(STORAGE_TEST_USER)
 
       const afterUser = await admin.auth().getUser(STORAGE_TEST_USER.uid)
-      // カスタムクレイムのユーザーディレクトリに変化がないことを検証
-      expect((afterUser.customClaims as any).storageDir).toBe(STORAGE_TEST_USER.storageDir)
+      // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
+      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリに変化がないことを検証
       const afterUserDirPath = storageService.getUserDirPath(afterUser)
       expect(afterUserDirPath).toBe(beforeUserDirPath)
@@ -1986,26 +1986,26 @@ describe('StorageService', () => {
   })
 
   describe('getUserDirPath', () => {
-    it('ベーシックケース - user.storageDir', async () => {
+    it('ベーシックケース - user.myDirName', async () => {
       const actual = storageService.getUserDirPath(STORAGE_TEST_USER)
-      expect(actual).toBe(`users/${STORAGE_TEST_USER.storageDir}`)
+      expect(actual).toBe(`users/${STORAGE_TEST_USER.myDirName}`)
     })
 
-    it('ベーシックケース - user.customClaims.storageDir', async () => {
+    it('ベーシックケース - user.customClaims.myDirName', async () => {
       const user = {
         uid: STORAGE_TEST_USER.uid,
         customClaims: {
-          storageDir: STORAGE_TEST_USER.storageDir,
+          myDirName: STORAGE_TEST_USER.myDirName,
         },
       }
 
       const actual = storageService.getUserDirPath(user)
-      expect(actual).toBe(`users/${user.customClaims.storageDir}`)
+      expect(actual).toBe(`users/${user.customClaims.myDirName}`)
     })
 
-    it('user.storageDirが設定されていない場合', async () => {
+    it('user.myDirNameが設定されていない場合', async () => {
       const user = cloneDeep(STORAGE_TEST_USER)
-      user.storageDir = undefined
+      user.myDirName = undefined
 
       let actual!: Error
       try {
@@ -2017,11 +2017,11 @@ describe('StorageService', () => {
       expect(actual).toBeDefined()
     })
 
-    it('user.customClaims.storageDirが設定されていない場合', async () => {
+    it('user.customClaims.myDirNameが設定されていない場合', async () => {
       const user = {
         uid: STORAGE_TEST_USER.uid,
         customClaims: {
-          storageDir: undefined,
+          myDirName: undefined,
         },
       }
 

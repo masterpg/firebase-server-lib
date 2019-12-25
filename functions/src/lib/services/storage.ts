@@ -16,7 +16,7 @@ import { IdToken } from '../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
 
-export type StorageUser = Pick<IdToken, 'uid' | 'storageDir'> | Pick<UserRecord, 'uid' | 'customClaims'>
+export type StorageUser = Pick<IdToken, 'uid' | 'myDirName'> | Pick<UserRecord, 'uid' | 'customClaims'>
 
 export enum StorageNodeType {
   File = 'File',
@@ -344,11 +344,6 @@ export class LibStorageService {
 
     // 移動元ディレクトリの移動処理
     {
-      // const metadata = await dirNode.gcsNode!.getMetadata()
-      // console.log(`metadata: ${JSON.stringify(metadata, null, 2)}`)
-      // console.log(`★created: ${created.toISOString()}, ${dirNode.gcsNode.metadata.timeCreated}`)
-      // console.log(`metadata: ${JSON.stringify(dirNode.gcsNode.metadata, null, 2)}`)
-
       const created = dirNode.created
 
       const newDirNodePath = path.join(toDirPath, '/')
@@ -361,7 +356,6 @@ export class LibStorageService {
         },
       })
       const metadata = await movedNode.gcsNode.getMetadata()
-      console.log(`metadata: ${JSON.stringify(metadata, null, 2)}`)
 
       result.push(movedNode!)
     }
@@ -696,25 +690,25 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageに指定されたユーザーのディレクトリを割り当てます。
+   * Cloud Storageのユーザーディレクトリの名前を割り当てます。
    * @param user
    */
   async assignUserDir(user: StorageUser): Promise<void> {
-    let storageDir = this.m_getStorageDirFromStorageUser(user)
+    let myDirName = this.m_getMyDirNameFromStorageUser(user)
     const uid = user.uid
 
-    // まだユーザーディレクトリが割り当てられていない場合
-    if (!storageDir) {
-      // カスタムクレームに'storageDir'というプロパティを追加。
-      // このプロパティの値がユーザーディレクトリとなる。
-      storageDir = uuidv4()
+    // まだユーザーディレクトリ名が割り当てられていない場合
+    if (!myDirName) {
+      // カスタムクレームに'myDirName'というプロパティを追加。
+      // このプロパティの値がユーザーディレクトリ名となる。
+      myDirName = uuidv4()
       await admin.auth().setCustomUserClaims(uid, {
-        storageDir,
+        myDirName,
       })
     }
 
     // ユーザーディレクトリの作成(存在しない場合のみ)
-    const userDirPath = this.getUserDirPath({ uid, storageDir })
+    const userDirPath = this.getUserDirPath({ uid, myDirName })
     const userDirNode = await this.getDirNode(userDirPath)
     if (!userDirNode.exists) {
       await this.createDirs([userDirNode.path])
@@ -726,10 +720,10 @@ export class LibStorageService {
    * @param user
    */
   getUserDirPath(user: StorageUser): string {
-    const storageDir = this.m_getStorageDirFromStorageUser(user)
-    if (storageDir) {
+    const myDirName = this.m_getMyDirNameFromStorageUser(user)
+    if (myDirName) {
       const usersDir = config.storage.usersDir
-      return `${usersDir}/${storageDir}`
+      return `${usersDir}/${myDirName}`
     }
     throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
   }
@@ -1030,18 +1024,18 @@ export class LibStorageService {
   //----------------------------------------------------------------------
 
   /**
-   * ユーザーディレクトリのパス`storageDir`の値を取得します。
+   * ユーザーディレクトリの名前である`myDirName`の値を取得します。
    * @param user
    */
-  private m_getStorageDirFromStorageUser(user: StorageUser): string | undefined {
+  private m_getMyDirNameFromStorageUser(user: StorageUser): string | undefined {
     // IdTokeから取得
-    if ((user as IdToken).storageDir) {
-      return (user as IdToken).storageDir!
+    if ((user as IdToken).myDirName) {
+      return (user as IdToken).myDirName!
     }
     // UserRecordから取得
     else if ((user as UserRecord).customClaims) {
       const customClaims = (user as UserRecord).customClaims!
-      return (customClaims as any).storageDir
+      return (customClaims as any).myDirName
     }
     return undefined
   }
