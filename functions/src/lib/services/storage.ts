@@ -344,19 +344,9 @@ export class LibStorageService {
 
     // 移動元ディレクトリの移動処理
     {
-      const created = dirNode.created
-
       const newDirNodePath = path.join(toDirPath, '/')
       await dirNode.gcsNode!.move(path.join(basePath, newDirNodePath))
       const movedNode = (await this.getDirNode(newDirNodePath, basePath))!
-
-      await movedNode.gcsNode.setMetadata({
-        metadata: {
-          created: created.toISOString(),
-        },
-      })
-      const metadata = await movedNode.gcsNode.getMetadata()
-
       result.push(movedNode!)
     }
 
@@ -494,8 +484,16 @@ export class LibStorageService {
 
     this.validateDirName(newName)
 
+    // リネームした際のパスを作成
     const reg = new RegExp(`${path.basename(dirPath)}$`)
     const toDirPath = dirPath.replace(reg, newName)
+
+    // 既に同じ名前のディレクトリがある場合
+    const toDirNode = await this.getDirNode(toDirPath)
+    if (toDirNode.exists) {
+      throw new Error(`The specified directory name already exists: '${dirPath}' -> '${toDirPath}'`)
+    }
+
     return this.moveDir(dirPath, toDirPath, basePath)
   }
 
@@ -538,8 +536,16 @@ export class LibStorageService {
 
     this.validateFileName(newName)
 
+    // リネームした際のパスを作成
     const reg = new RegExp(`${path.basename(filePath)}$`)
     const toFilePath = filePath.replace(reg, newName)
+
+    // 既に同じ名前のファイルがある場合
+    const toFileNode = await this.getFileNode(toFilePath)
+    if (toFileNode.exists) {
+      throw new Error(`The specified file name already exists: '${filePath}' -> '${toFilePath}'`)
+    }
+
     return this.moveFile(filePath, toFilePath, basePath)
   }
 
