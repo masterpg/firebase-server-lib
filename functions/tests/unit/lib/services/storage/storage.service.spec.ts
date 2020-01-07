@@ -2217,6 +2217,8 @@ describe('StorageService', () => {
       expect(actual.name).toBe(`d1`)
       expect(actual.dir).toBe(`${TEST_FILES_DIR}`)
       expect(actual.path).toBe(`${TEST_FILES_DIR}/d1`)
+      expect(actual.contentType).toBe('')
+      expect(actual.size).toBe(0)
       expect(dayjs(actual.created).isValid()).toBeTruthy()
       expect(dayjs(actual.updated).isValid()).toBeTruthy()
       expect(actual.exists).toBeTruthy()
@@ -2239,6 +2241,8 @@ describe('StorageService', () => {
       expect(actual.name).toBe(`fileA.txt`)
       expect(actual.dir).toBe(`${TEST_FILES_DIR}/d1`)
       expect(actual.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual.contentType).toBe('text/plain; charset=utf-8')
+      expect(actual.size).toBeGreaterThan(0)
       expect(dayjs(actual.created).isValid()).toBeTruthy()
       expect(dayjs(actual.updated).isValid()).toBeTruthy()
       expect(actual.exists).toBeTruthy()
@@ -2263,6 +2267,10 @@ describe('StorageService', () => {
       expect(actual.name).toBe(`fileA.txt`)
       expect(actual.dir).toBe(`d1`)
       expect(actual.path).toBe(`d1/fileA.txt`)
+      expect(actual.contentType).toBe('text/plain; charset=utf-8')
+      expect(actual.size).toBeGreaterThan(0)
+      expect(dayjs(actual.created).isValid()).toBeTruthy()
+      expect(dayjs(actual.updated).isValid()).toBeTruthy()
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBeDefined()
     })
@@ -2286,31 +2294,73 @@ describe('StorageService', () => {
 
   describe('sortStorageNodes', () => {
     it('昇順でソート', async () => {
-      const d1: StorageNode = { nodeType: StorageNodeType.Dir, name: 'd1', dir: '', path: 'd1', created: dayjs(0), updated: dayjs(0) }
-      const d11: StorageNode = { nodeType: StorageNodeType.Dir, name: 'd11', dir: 'd1', path: 'd1/d11', created: dayjs(0), updated: dayjs(0) }
+      const d1: StorageNode = {
+        nodeType: StorageNodeType.Dir,
+        name: 'd1',
+        dir: '',
+        path: 'd1',
+        contentType: '',
+        size: 0,
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
+      const d11: StorageNode = {
+        nodeType: StorageNodeType.Dir,
+        name: 'd11',
+        dir: 'd1',
+        path: 'd1/d11',
+        contentType: '',
+        size: 0,
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
       const fileA: StorageNode = {
         nodeType: StorageNodeType.File,
         name: 'fileA.txt',
         dir: 'd1/d11',
         path: 'd1/d11/fileA.txt',
+        contentType: '',
+        size: 0,
         created: dayjs(0),
         updated: dayjs(0),
       }
-      const d12: StorageNode = { nodeType: StorageNodeType.Dir, name: 'd12', dir: 'd1', path: 'd1/d12', created: dayjs(0), updated: dayjs(0) }
+      const d12: StorageNode = {
+        nodeType: StorageNodeType.Dir,
+        name: 'd12',
+        dir: 'd1',
+        path: 'd1/d12',
+        contentType: '',
+        size: 0,
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
       const fileB: StorageNode = {
         nodeType: StorageNodeType.File,
         name: 'fileB.txt',
         dir: 'd1/d12',
         path: 'd1/d12/fileB.txt',
+        contentType: '',
+        size: 0,
         created: dayjs(0),
         updated: dayjs(0),
       }
-      const d2: StorageNode = { nodeType: StorageNodeType.Dir, name: 'd2', dir: '', path: 'd2', created: dayjs(0), updated: dayjs(0) }
+      const d2: StorageNode = {
+        nodeType: StorageNodeType.Dir,
+        name: 'd2',
+        dir: '',
+        path: 'd2',
+        contentType: '',
+        size: 0,
+        created: dayjs(0),
+        updated: dayjs(0),
+      }
       const fileC: StorageNode = {
         nodeType: StorageNodeType.File,
         name: 'fileC.txt',
         dir: 'd2',
         path: 'd2/fileC.txt',
+        contentType: '',
+        size: 0,
         created: dayjs(0),
         updated: dayjs(0),
       }
@@ -2319,6 +2369,8 @@ describe('StorageService', () => {
         name: 'fileD.txt',
         dir: '',
         path: 'fileD.txt',
+        contentType: '',
+        size: 0,
         created: dayjs(0),
         updated: dayjs(0),
       }
@@ -2327,6 +2379,8 @@ describe('StorageService', () => {
         name: 'fileE.txt',
         dir: '',
         path: 'fileE.txt',
+        contentType: '',
+        size: 0,
         created: dayjs(0),
         updated: dayjs(0),
       }

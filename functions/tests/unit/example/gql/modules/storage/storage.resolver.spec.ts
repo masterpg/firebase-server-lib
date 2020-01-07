@@ -33,6 +33,8 @@ const dir1: StorageNode = {
   name: 'dir1',
   dir: '',
   path: 'dir1',
+  contentType: '',
+  size: 0,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -42,6 +44,8 @@ const dir1_1: StorageNode = {
   name: 'dir1_1',
   dir: dir1.path,
   path: path.join(dir1.path, 'dir1_1'),
+  contentType: '',
+  size: 0,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -51,6 +55,8 @@ const dir1_1_fileA: StorageNode = {
   name: 'fileA.txt',
   dir: dir1_1.path,
   path: path.join(dir1_1.path, 'fileA.txt'),
+  contentType: 'text/plain; charset=utf-8',
+  size: 5,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -60,6 +66,8 @@ const dir1_1_fileB: StorageNode = {
   name: 'fileB.txt',
   dir: dir1_1.path,
   path: path.join(dir1_1.path, 'fileB.txt'),
+  contentType: 'text/plain; charset=utf-8',
+  size: 5,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -69,6 +77,8 @@ const dir1_2: StorageNode = {
   name: 'dir1_2',
   dir: dir1.path,
   path: path.join(dir1.path, 'dir1_2'),
+  contentType: '',
+  size: 0,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -78,6 +88,8 @@ const dir1_2_fileA: StorageNode = {
   name: 'fileA.txt',
   dir: dir1_2.path,
   path: path.join(dir1_2.path, 'fileA.txt'),
+  contentType: 'text/plain; charset=utf-8',
+  size: 5,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -131,7 +143,7 @@ describe('StorageResolver', () => {
       query: `
         query GetUserStorageDirNodes($dirPath: String) {
           userStorageDirNodes(dirPath: $dirPath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -176,7 +188,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateUserStorageDirs($dirPaths: [String!]!) {
           createUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -207,7 +219,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageDirs($dirPaths: [String!]!) {
           removeUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -238,7 +250,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageFiles($filePaths: [String!]!) {
           removeUserStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -269,7 +281,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -301,7 +313,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -333,7 +345,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageDir($dirPath: String!, $newName: String!) {
           renameUserStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -365,7 +377,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageFile($filePath: String!, $newName: String!) {
           renameUserStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -438,7 +450,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageDirNodes($dirPath: String) {
           storageDirNodes(dirPath: $dirPath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -476,7 +488,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDirs($dirPaths: [String!]!) {
           createStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -514,7 +526,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageDirNodes($dirPaths: [String!]!) {
           removeStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -552,7 +564,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFiles($filePaths: [String!]!) {
           removeStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -590,7 +602,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -629,7 +641,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -668,7 +680,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageDir($dirPath: String!, $newName: String!) {
           renameStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,
@@ -707,7 +719,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path created updated
+            nodeType name dir path contentType size created updated
           }
         }
       `,

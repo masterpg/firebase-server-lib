@@ -28,6 +28,8 @@ export interface StorageNode {
   name: string
   dir: string
   path: string
+  contentType: string
+  size: number
   created: Dayjs
   updated: Dayjs
 }
@@ -602,9 +604,6 @@ export class LibStorageService {
     const gcsNodePath = path.join(basePath, nodePath)
     const gcsNode = bucket.file(gcsNodePath)
     const exists = (await gcsNode.exists())[0]
-    if (exists) {
-      await gcsNode.getMetadata()
-    }
 
     const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
     node.exists = exists
@@ -833,6 +832,8 @@ export class LibStorageService {
       name,
       dir: removeStartSlash(dir),
       path: removeStartSlash(nodePath),
+      contentType: gcsNode.metadata.contentType || '',
+      size: Number(gcsNode.metadata.size),
       created: dayjs(gcsNode.metadata.timeCreated),
       updated: dayjs(gcsNode.metadata.updated),
       exists: true,
@@ -854,6 +855,8 @@ export class LibStorageService {
       name,
       dir,
       path: dirPathSegments.join('/'),
+      contentType: '',
+      size: 0,
       created: dayjs(0),
       updated: dayjs(0),
     }

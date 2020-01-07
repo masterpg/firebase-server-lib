@@ -10,6 +10,8 @@ type StorageNode {
   name: String!
   dir: String!
   path: String!
+  contentType: String!
+  size: Int!
   created: DateTime!
   updated: DateTime!
 }

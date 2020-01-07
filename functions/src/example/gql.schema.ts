@@ -107,6 +107,8 @@ export interface StorageNode {
     name: string;
     dir: string;
     path: string;
+    contentType: string;
+    size: number;
     created: DateTime;
     updated: DateTime;
 }
