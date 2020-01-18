@@ -1897,7 +1897,7 @@ describe('StorageService', () => {
       await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
 
       return request(app.getHttpServer())
-        .get(`/unit/storage/${toFilePath}`)
+        .get(`/api/storage/${toFilePath}`)
         .expect(200)
         .then((res: Response) => {
           const localFileBuffer = fs.readFileSync(localFilePath)
@@ -1914,7 +1914,7 @@ describe('StorageService', () => {
       await storageService.uploadAsFiles([uploadItem])
 
       return request(app.getHttpServer())
-        .get(`/unit/storage/${uploadItem.path}`)
+        .get(`/api/storage/${uploadItem.path}`)
         .expect(200)
         .then((res: Response) => {
           expect(res.text).toEqual(uploadItem.data)
@@ -1930,14 +1930,14 @@ describe('StorageService', () => {
       const uploadedFileNode = (await storageService.uploadAsFiles([uploadItem]))[0]
 
       return request(app.getHttpServer())
-        .get(`/unit/storage/${uploadItem.path}`)
+        .get(`/api/storage/${uploadItem.path}`)
         .set('If-Modified-Since', uploadedFileNode.updated!.toString())
         .expect(304)
     })
 
     it('存在しないファイルを指定', async () => {
       return request(app.getHttpServer())
-        .get(`/unit/storage/${TEST_FILES_DIR}/d1/fileA.txt`)
+        .get(`/api/storage/${TEST_FILES_DIR}/d1/fileA.txt`)
         .expect(404)
     })
   })

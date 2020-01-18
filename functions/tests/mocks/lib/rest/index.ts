@@ -4,7 +4,7 @@ import { LibStorageServiceDI } from '../../../../src/lib'
 import { Product } from '../services/types'
 import { TransformInterceptor } from '../../../../src/lib/nest'
 
-@Controller('unit/rest/products')
+@Controller('api/rest/products')
 @UseInterceptors(TransformInterceptor)
 export class MockProductController {
   @Get()
@@ -13,7 +13,16 @@ export class MockProductController {
   }
 }
 
-@Controller('unit/storage')
+@Controller('api/rest/site')
+@UseInterceptors(TransformInterceptor)
+export class MockSiteController {
+  @Get()
+  async getOutline(): Promise<{ name: string }> {
+    return { name: 'TestSite' }
+  }
+}
+
+@Controller('api/storage')
 export class MockStorageController {
   constructor(@Inject(LibStorageServiceDI.symbol) protected readonly storageService: LibStorageServiceDI.type) {}
 
@@ -25,7 +34,7 @@ export class MockStorageController {
 }
 
 @Module({
-  controllers: [MockProductController, MockStorageController],
+  controllers: [MockProductController, MockSiteController, MockStorageController],
   providers: [LibStorageServiceDI.provider],
 })
 export class MockRESTContainerModule {}

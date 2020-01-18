@@ -30,7 +30,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/unit/rest/products')
+        .get('/api/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
@@ -42,7 +42,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/unit/rest/products')
+        .get('/api/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(200)
@@ -54,7 +54,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/unit/rest/products')
+        .options('/api/rest/products')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -66,7 +66,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/unit/rest/products')
+        .options('/api/rest/products')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -74,10 +74,34 @@ describe('CORSService', () => {
         .expect('Content-Length', '0')
         .expect(204)
     })
+
+    it('除外リストが設定されている場合 - リクエストオリジンあり', async () => {
+      // 除外リストの設定は`functions/functions.env.test.sh`を参照
+      const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
+      return request(app.getHttpServer())
+        .get('/api/rest/site')
+        .set('Origin', requestOrigin)
+        .expect('Access-Control-Allow-Origin', '*')
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body.data).toEqual({ name: 'TestSite' })
+        })
+    })
+
+    it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
+      // 除外リストの設定は`functions/functions.env.test.sh`を参照
+      return request(app.getHttpServer())
+        .get('/api/rest/site')
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.get('Access-Control-Allow-Origin')).toBe('*')
+          expect(res.body.data).toEqual({ name: 'TestSite' })
+        })
+    })
   })
 
   describe('GQL', () => {
-    const gqlRequestData = {
+    const getProductsRequestData = {
       query: `
         query GetProducts {
           products { id name }
@@ -85,11 +109,19 @@ describe('CORSService', () => {
       `,
     }
 
+    const getSiteRequestData = {
+      query: `
+        query GetSite {
+          site { name }
+        }
+      `,
+    }
+
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .post('/unit/gql')
-        .send(gqlRequestData)
+        .post('/api/gql')
+        .send(getProductsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
@@ -103,8 +135,8 @@ describe('CORSService', () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return (
         request(app.getHttpServer())
-          .post('/unit/gql')
-          .send(gqlRequestData)
+          .post('/api/gql')
+          .send(getProductsRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
           // ここではGraphQLライブラリにより'*'が設定される。
@@ -122,7 +154,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/unit/gql')
+        .options('/api/gql')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)
@@ -134,13 +166,39 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/unit/gql')
+        .options('/api/gql')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect('Content-Length', '0')
         .expect(204)
+    })
+
+    it('除外リストが設定されている場合 - リクエストオリジンあり', async () => {
+      const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
+      return request(app.getHttpServer())
+        .post('/api/gql')
+        .send(getSiteRequestData)
+        .set('Content-Type', 'application/json')
+        .set('Origin', requestOrigin)
+        .expect('Access-Control-Allow-Origin', '*')
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body.data.site).toEqual({ name: 'TestSite' })
+        })
+    })
+
+    it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
+      return request(app.getHttpServer())
+        .post('/api/gql')
+        .send(getSiteRequestData)
+        .set('Content-Type', 'application/json')
+        .expect('Access-Control-Allow-Origin', '*')
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body.data.site).toEqual({ name: 'TestSite' })
+        })
     })
   })
 })

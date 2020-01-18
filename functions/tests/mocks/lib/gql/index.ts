@@ -1,7 +1,7 @@
 import { DateTimeScalar, getGqlModuleBaseOptions } from '../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
+import { Product, Site } from '../services/types'
 import { Module } from '@nestjs/common'
-import { Product } from '../services/types'
 const merge = require('lodash/merge')
 
 @Resolver('Product')
@@ -12,14 +12,22 @@ export class MockProductResolver {
   }
 }
 
+@Resolver('Site')
+export class MockSiteResolver {
+  @Query('site')
+  async outline(): Promise<Site> {
+    return { name: 'TestSite' }
+  }
+}
+
 const baseOptions = getGqlModuleBaseOptions('tests/mocks/lib/gql')
 
 @Module({
-  providers: [DateTimeScalar, MockProductResolver],
+  providers: [DateTimeScalar, MockProductResolver, MockSiteResolver],
   imports: [
     GraphQLModule.forRoot(
       merge(baseOptions, {
-        path: '/unit/gql',
+        path: '/api/gql',
       })
     ),
   ],

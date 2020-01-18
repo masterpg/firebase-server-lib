@@ -12,6 +12,11 @@ export interface Product {
 
 export interface IQuery {
     products(): Product[] | Promise<Product[]>;
+    site(): Site | Promise<Site>;
+}
+
+export interface Site {
+    name: string;
 }
 
 export type DateTime = any;

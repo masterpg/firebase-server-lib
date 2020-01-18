@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
 import { config } from '../../base'
+import { removeStartSlash } from 'web-base-lib'
 
 //========================================================================
 //
@@ -64,7 +65,7 @@ abstract class CORSService {
 
     const isAllowed = this.isAllowed(options, req)
     if (!isAllowed && options.isLogging) {
-      !isAllowed && this.logNotAllowed(context, options)
+      this.logNotAllowed(context, options)
     }
 
     const headers = []
@@ -102,22 +103,46 @@ abstract class CORSService {
   //----------------------------------------------------------------------
 
   protected isAllowed(options: CORSOptions, req: Request): boolean {
+    // リクエストがCORS除外リストと一致する場合、リクエストを許可
+    if (this.isExcluded(req)) {
+      return true
+    }
+
     const requestOrigin = (req.headers.origin as string) || ''
     const whitelist = options.whitelist || []
 
-    // リクエストオリジンの空を許容していて、かつリクエストオリジンが空の場合
+    // リクエストオリジンの空を許容していて、かつリクエストオリジンが空の場合、リクエストを許可
     if (options.allowedBlankOrigin && !requestOrigin) {
       return true
     }
 
-    // ホワイトリストが指定されていない場合
-    if (whitelist.length === 0) {
-      return false
+    // ホワイトリストが指定されている場合
+    if (whitelist.length > 0) {
+      // リクエストオリジンがホワイトリストに含まれている場合、リクエストを許可
+      const isWhiteOrigin = whitelist.indexOf(requestOrigin) >= 0
+      if (isWhiteOrigin) {
+        return true
+      }
     }
 
-    // ホワイトリストが指定されている場合、
-    // リクエストオリジンがホワイトリストに含まれていることを検証
-    return whitelist.indexOf(requestOrigin) >= 0
+    return false
+  }
+
+  /**
+   * リクエストがCORS除外リストと一致するかを取得します。
+   * @param req
+   */
+  protected isExcluded(req: Request): boolean {
+    for (const exclude of config.cors.excludes) {
+      if (exclude.method && exclude.method !== req.method) continue
+
+      const apiPath = removeStartSlash(req.originalUrl)
+      const reg = new RegExp(exclude.pattern)
+      const tested = reg.test(apiPath)
+      if (tested) return true
+    }
+
+    return false
   }
 
   protected configureOrigin(options: CORSOptions, req: Request) {
@@ -125,18 +150,24 @@ abstract class CORSService {
     const whitelist = options.whitelist || []
     const requestOrigin = (req.headers.origin as string) || ''
 
-    // リクエストオリジンの空を許容していて、かつリクエストオリジンが空の場合
+    // リクエストがCORS除外リストと一致する場合、リクエストを許可
+    if (this.isExcluded(req)) {
+      headers.push({ key: 'Access-Control-Allow-Origin', value: '*' })
+      return headers
+    }
+
+    // リクエストオリジンの空を許容していて、かつリクエストオリジンが空の場合、リクエストを許可
     if (options.allowedBlankOrigin && !requestOrigin) {
       headers.push({ key: 'Access-Control-Allow-Origin', value: '*' })
       return headers
     }
 
-    // リクエストオリジンがホワイトリストに含まれている場合
+    // リクエストオリジンがホワイトリストに含まれている場合、リクエストを許可
     if (whitelist.length > 0 && whitelist.indexOf(requestOrigin) >= 0) {
       headers.push({ key: 'Access-Control-Allow-Origin', value: requestOrigin })
       headers.push({ key: 'Vary', value: 'Origin' })
     }
-    // リクエストオリジンがホワイトリストに含まれていない場合
+    // リクエストオリジンがホワイトリストに含まれていない場合、リクエストを拒否
     else {
       headers.push({ key: 'Access-Control-Allow-Origin', value: '' })
     }
@@ -174,7 +205,7 @@ abstract class CORSService {
     let allowedHeaders: string | undefined
 
     if (!options.allowedHeaders) {
-      // リクエストヘッダーの'access-control-request-headers'指定された値を
+      // リクエストヘッダーの'access-control-request-headers'に指定された値を
       // レスポンスの'Access-Control-Allow-Headers'に設定する
       allowedHeaders = req.headers['access-control-request-headers'] as string | undefined
       headers.push({
@@ -278,6 +309,32 @@ abstract class CORSService {
 //
 //========================================================================
 
+function isExcludedForDev(req: Request) {
+  for (const exclude of config.cors.excludes) {
+    if (exclude.method && exclude.method !== req.method) continue
+
+    // 開発環境はURLに'/api'があるのでこのパターンでapiPathを取得
+    // ※本番環境ではURLに/api'がない
+    const index = req.originalUrl.indexOf('/api') + '/api'.length
+    const apiPath = removeStartSlash(req.originalUrl.slice(index))
+
+    const reg = new RegExp(exclude.pattern)
+    const tested = reg.test(apiPath)
+
+    // console.log(`
+    //   url: ${req.baseUrl}
+    //   baseUrl: ${req.baseUrl}
+    //   originalUrl: ${req.originalUrl}
+    //   path: ${req.path}
+    //   tested: ${tested}
+    // `)
+
+    if (tested) return true
+  }
+
+  return false
+}
+
 @Injectable()
 class ProdCORSService extends CORSService {}
 
@@ -289,6 +346,8 @@ class DevCORSService extends CORSService {
       allowedBlankOrigin: true,
     }
   }
+
+  protected isExcluded = isExcludedForDev
 
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {
     const { req, res, info } = context
@@ -302,6 +361,8 @@ class DevCORSService extends CORSService {
 
 @Injectable()
 class TestCORSService extends CORSService {
+  protected isExcluded = isExcludedForDev
+
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {}
 }
 

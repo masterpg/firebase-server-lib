@@ -7,6 +7,11 @@ type Product {
   name: String!
 }
 
+type Site {
+  name: String!
+}
+
 type Query {
   products: [Product!]!
+  site: Site!
 }
