@@ -12,8 +12,19 @@ type StorageNode {
   path: String!
   contentType: String!
   size: Int!
+  share: StorageNodeShareSettings!
   created: DateTime!
   updated: DateTime!
+}
+
+type StorageNodeShareSettings {
+  isPublic: Boolean!
+  uids: [String!]!
+}
+
+input StorageNodeShareSettingsInput {
+  isPublic: Boolean!
+  uids: [String!]
 }
 
 input SignedUploadUrlInput {
@@ -29,6 +40,8 @@ type Mutation {
   moveUserStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameUserStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
   renameUserStorageFile(filePath: String!, newName: String!): StorageNode!
+  setUserStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): [StorageNode!]!
+  setUserStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 
   createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeStorageDirs(dirPaths: [String!]!): [StorageNode!]!
@@ -37,6 +50,8 @@ type Mutation {
   moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
+  setStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): [StorageNode!]!
+  setStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 }
 
 type Query {

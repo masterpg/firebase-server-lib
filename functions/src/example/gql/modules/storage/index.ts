@@ -1,5 +1,16 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthRoleType, GQLContext, GQLCtx, IdToken, Roles, SignedUploadUrlInput, StorageNode, User, UserGuard } from '../../../../lib'
+import {
+  AuthRoleType,
+  GQLContext,
+  GQLCtx,
+  IdToken,
+  Roles,
+  SignedUploadUrlInput,
+  StorageNode,
+  StorageNodeShareSettingsInput,
+  User,
+  UserGuard,
+} from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 import { StorageServiceDI } from '../../../services'
@@ -64,6 +75,26 @@ export class StorageResolver {
     return this.storageService.renameUserFile(user, filePath, newName)
   }
 
+  @Mutation()
+  @UseGuards(UserGuard)
+  async setUserStorageDirShareSettings(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath: string,
+    @Args('settings') settings: StorageNodeShareSettingsInput
+  ): Promise<StorageNode[]> {
+    return this.storageService.setUserDirShareSettings(user, dirPath, settings)
+  }
+
+  @Mutation()
+  @UseGuards(UserGuard)
+  async setUserStorageFileShareSettings(
+    @User() user: IdToken,
+    @Args('filePath') filePath: string,
+    @Args('settings') settings: StorageNodeShareSettingsInput
+  ): Promise<StorageNode> {
+    return this.storageService.setUserFileShareSettings(user, filePath, settings)
+  }
+
   @Query()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
@@ -75,7 +106,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(UserGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDirNodes(@Args('dirPath') dirPath: string): Promise<StorageNode[]> {
+  async storageDirNodes(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
     return this.storageService.getDirNodes(dirPath)
   }
 
@@ -126,6 +157,26 @@ export class StorageResolver {
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
     return this.storageService.renameFile(filePath, newName)
+  }
+
+  @Mutation()
+  @UseGuards(UserGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async setStorageDirShareSettings(
+    @Args('dirPath') dirPath: string,
+    @Args('settings') settings: StorageNodeShareSettingsInput
+  ): Promise<StorageNode[]> {
+    return this.storageService.setDirShareSettings(dirPath, settings)
+  }
+
+  @Mutation()
+  @UseGuards(UserGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async setStorageFileShareSettings(
+    @Args('filePath') filePath: string,
+    @Args('settings') settings: StorageNodeShareSettingsInput
+  ): Promise<StorageNode> {
+    return this.storageService.setFileShareSettings(filePath, settings)
   }
 }
 

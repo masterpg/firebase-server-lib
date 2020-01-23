@@ -1,10 +1,10 @@
 import * as path from 'path'
 import * as td from 'testdouble'
 import { StorageNode, StorageServiceDI } from '../../../../../../src/example/services'
+import { StorageNodeShareSettings, StorageNodeType } from '../../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
-import { StorageNodeType } from '../../../../../../src/lib'
 import { StorageResolver } from '../../../../../../src/example/gql/modules/storage'
 import { initApp } from '../../../../../../src/example/initializer'
 const dayjs = require('dayjs')
@@ -19,13 +19,18 @@ initApp()
 //========================================================================
 
 const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
-const generalAuthHeader = {
+const GENERAL_AUTH_HEADER = {
   Authorization: `Bearer {"uid": "${GENERAL_USER.uid}", "myDirName": "${GENERAL_USER.myDirName}"}`,
 }
 
 const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-const adminAuthHeader = {
+const ADMIN_AUTH_HEADER = {
   Authorization: `Bearer {"uid": "${APP_ADMIN_USER.uid}", "myDirName": "${APP_ADMIN_USER.myDirName}", "isAppAdmin": ${APP_ADMIN_USER.isAppAdmin}}`,
+}
+
+const SHARE_SETTINGS: StorageNodeShareSettings = {
+  isPublic: false,
+  uids: ['ichiro', 'jiro'],
 }
 
 const dir1: StorageNode = {
@@ -35,6 +40,7 @@ const dir1: StorageNode = {
   path: 'dir1',
   contentType: '',
   size: 0,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -46,6 +52,7 @@ const dir1_1: StorageNode = {
   path: path.join(dir1.path, 'dir1_1'),
   contentType: '',
   size: 0,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -57,6 +64,7 @@ const dir1_1_fileA: StorageNode = {
   path: path.join(dir1_1.path, 'fileA.txt'),
   contentType: 'text/plain; charset=utf-8',
   size: 5,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -68,6 +76,7 @@ const dir1_1_fileB: StorageNode = {
   path: path.join(dir1_1.path, 'fileB.txt'),
   contentType: 'text/plain; charset=utf-8',
   size: 5,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -79,6 +88,7 @@ const dir1_2: StorageNode = {
   path: path.join(dir1.path, 'dir1_2'),
   contentType: '',
   size: 0,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -90,6 +100,7 @@ const dir1_2_fileA: StorageNode = {
   path: path.join(dir1_2.path, 'fileA.txt'),
   contentType: 'text/plain; charset=utf-8',
   size: 5,
+  share: SHARE_SETTINGS,
   created: dayjs(),
   updated: dayjs(),
 }
@@ -143,7 +154,7 @@ describe('StorageResolver', () => {
       query: `
         query GetUserStorageDirNodes($dirPath: String) {
           userStorageDirNodes(dirPath: $dirPath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -157,7 +168,7 @@ describe('StorageResolver', () => {
       td.when(getUserDirNodes(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -168,7 +179,7 @@ describe('StorageResolver', () => {
       td.when(getUserDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -188,7 +199,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateUserStorageDirs($dirPaths: [String!]!) {
           createUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -202,7 +213,7 @@ describe('StorageResolver', () => {
       td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.createUserStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
@@ -219,7 +230,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageDirs($dirPaths: [String!]!) {
           removeUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -233,7 +244,7 @@ describe('StorageResolver', () => {
       td.when(removeUserDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.removeUserStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
@@ -250,7 +261,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageFiles($filePaths: [String!]!) {
           removeUserStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -264,7 +275,7 @@ describe('StorageResolver', () => {
       td.when(removeUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.removeUserStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
@@ -281,7 +292,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -296,7 +307,7 @@ describe('StorageResolver', () => {
       td.when(moveUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.moveUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -313,7 +324,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -328,7 +339,7 @@ describe('StorageResolver', () => {
       td.when(moveUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.moveUserStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
@@ -345,7 +356,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageDir($dirPath: String!, $newName: String!) {
           renameUserStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -360,7 +371,7 @@ describe('StorageResolver', () => {
       td.when(renameUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.renameUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -377,7 +388,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageFile($filePath: String!, $newName: String!) {
           renameUserStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -392,10 +403,74 @@ describe('StorageResolver', () => {
       td.when(renameUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
 
       expect(response.body.data.renameUserStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
+    })
+  })
+
+  describe('setUserStorageDirShareSettings', () => {
+    const gql = {
+      query: `
+        mutation SetUserStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
+          setUserStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        settings: SHARE_SETTINGS,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const setUserDirShareSettings = td.replace(storageService, 'setUserDirShareSettings')
+      td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER), dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      })
+
+      expect(response.body.data.setUserStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
+    })
+  })
+
+  describe('setUserStorageFileShareSettings', () => {
+    const gql = {
+      query: `
+        mutation SetUserStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
+          setUserStorageFileShareSettings(filePath: $filePath, settings: $settings) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        filePath: dir1_1_fileA.path,
+        settings: SHARE_SETTINGS,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const setUserFileShareSettings = td.replace(storageService, 'setUserFileShareSettings')
+      td.when(setUserFileShareSettings(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      })
+
+      expect(response.body.data.setUserStorageFileShareSettings).toEqual(toResponseStorageNode(dir1_1_fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -426,7 +501,7 @@ describe('StorageResolver', () => {
       td.when(getSignedUploadUrls(td.matchers.anything(), gql.variables.inputs)).thenResolve(['xxx'])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.signedUploadUrls).toEqual(['xxx'])
@@ -439,7 +514,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -450,7 +525,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageDirNodes($dirPath: String) {
           storageDirNodes(dirPath: $dirPath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -464,7 +539,7 @@ describe('StorageResolver', () => {
       td.when(getDirNodes(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.storageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -477,7 +552,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -488,7 +563,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDirs($dirPaths: [String!]!) {
           createStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -502,7 +577,7 @@ describe('StorageResolver', () => {
       td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.createStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
@@ -515,7 +590,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -526,7 +601,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageDirNodes($dirPaths: [String!]!) {
           removeStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -540,7 +615,7 @@ describe('StorageResolver', () => {
       td.when(removeDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.removeStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
@@ -553,7 +628,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -564,7 +639,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFiles($filePaths: [String!]!) {
           removeStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -578,7 +653,7 @@ describe('StorageResolver', () => {
       td.when(removeFiles([dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.removeStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
@@ -591,7 +666,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -602,7 +677,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -617,7 +692,7 @@ describe('StorageResolver', () => {
       td.when(moveDir(dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.moveStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -630,7 +705,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -641,7 +716,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -656,7 +731,7 @@ describe('StorageResolver', () => {
       td.when(moveFile(dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.moveStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
@@ -669,7 +744,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -680,7 +755,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageDir($dirPath: String!, $newName: String!) {
           renameStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -695,7 +770,7 @@ describe('StorageResolver', () => {
       td.when(renameDir(dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.renameStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -708,7 +783,7 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })
@@ -719,7 +794,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path contentType size created updated
+            nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -734,7 +809,7 @@ describe('StorageResolver', () => {
       td.when(renameFile(dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, adminAuthHeader),
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
       })
 
       expect(response.body.data.renameStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
@@ -747,7 +822,85 @@ describe('StorageResolver', () => {
 
     it('アプリケーション管理者でない場合', async () => {
       const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, generalAuthHeader),
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      })
+      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+    })
+  })
+
+  describe('setStorageDirShareSettings', () => {
+    const gql = {
+      query: `
+        mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
+          setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        settings: SHARE_SETTINGS,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
+      td.when(setDirShareSettings(dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+      })
+
+      expect(response.body.data.setStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const actual = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      })
+      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+    })
+  })
+
+  describe('setStorageFileShareSettings', () => {
+    const gql = {
+      query: `
+        mutation SetFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
+          setStorageFileShareSettings(filePath: $filePath, settings: $settings) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        filePath: dir1_1_fileA.path,
+        settings: SHARE_SETTINGS,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const setFileShareSettings = td.replace(storageService, 'setFileShareSettings')
+      td.when(setFileShareSettings(dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+      })
+
+      expect(response.body.data.setStorageFileShareSettings).toEqual(toResponseStorageNode(dir1_1_fileA))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      await verifyNotSignInGQLResponse(response)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const actual = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_AUTH_HEADER),
       })
       expect(actual.body.errors[0].extensions.exception.status).toBe(403)
     })

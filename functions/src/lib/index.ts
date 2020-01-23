@@ -67,6 +67,8 @@ export {
   PutTestDataInput,
   SignedUploadUrlInput,
   StorageNode,
+  StorageNodeShareSettings,
+  StorageNodeShareSettingsInput,
   StorageNodeType,
   StorageUser,
   TestSignedUploadUrlInput,
