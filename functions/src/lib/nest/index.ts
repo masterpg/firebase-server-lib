@@ -1,8 +1,8 @@
 export * from './decorators/roles'
 export * from './decorators/user'
 
+export * from './guards/auth'
 export * from './guards/cors'
-export * from './guards/user'
 
 export * from './interceptors/logging'
 export * from './interceptors/transform'

@@ -3,7 +3,7 @@ import * as td from 'testdouble'
 import { StorageNode, StorageServiceDI } from '../../../../../../src/example/services'
 import { StorageNodeShareSettings, StorageNodeType } from '../../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
+import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
 import { StorageResolver } from '../../../../../../src/example/gql/modules/storage'
 import { initApp } from '../../../../../../src/example/initializer'
@@ -19,14 +19,10 @@ initApp()
 //========================================================================
 
 const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
-const GENERAL_AUTH_HEADER = {
-  Authorization: `Bearer {"uid": "${GENERAL_USER.uid}", "myDirName": "${GENERAL_USER.myDirName}"}`,
-}
+const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
 
 const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-const ADMIN_AUTH_HEADER = {
-  Authorization: `Bearer {"uid": "${APP_ADMIN_USER.uid}", "myDirName": "${APP_ADMIN_USER.myDirName}", "isAppAdmin": ${APP_ADMIN_USER.isAppAdmin}}`,
-}
+const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
 
 const SHARE_SETTINGS: StorageNodeShareSettings = {
   isPublic: false,
@@ -168,7 +164,7 @@ describe('StorageResolver', () => {
       td.when(getUserDirNodes(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -179,7 +175,7 @@ describe('StorageResolver', () => {
       td.when(getUserDirNodes(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.userStorageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -190,7 +186,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -213,7 +209,7 @@ describe('StorageResolver', () => {
       td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.createUserStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
@@ -221,7 +217,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -244,7 +240,7 @@ describe('StorageResolver', () => {
       td.when(removeUserDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.removeUserStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
@@ -252,7 +248,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -275,7 +271,7 @@ describe('StorageResolver', () => {
       td.when(removeUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.removeUserStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
@@ -283,7 +279,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -307,7 +303,7 @@ describe('StorageResolver', () => {
       td.when(moveUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.moveUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -315,7 +311,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -339,7 +335,7 @@ describe('StorageResolver', () => {
       td.when(moveUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.moveUserStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
@@ -347,7 +343,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -371,7 +367,7 @@ describe('StorageResolver', () => {
       td.when(renameUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.renameUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -379,7 +375,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -403,7 +399,7 @@ describe('StorageResolver', () => {
       td.when(renameUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.renameUserStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
@@ -411,7 +407,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -435,7 +431,7 @@ describe('StorageResolver', () => {
       td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER), dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.setUserStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
@@ -443,7 +439,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -467,7 +463,7 @@ describe('StorageResolver', () => {
       td.when(setUserFileShareSettings(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
       expect(response.body.data.setUserStorageFileShareSettings).toEqual(toResponseStorageNode(dir1_1_fileA))
@@ -475,7 +471,7 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -501,7 +497,7 @@ describe('StorageResolver', () => {
       td.when(getSignedUploadUrls(td.matchers.anything(), gql.variables.inputs)).thenResolve(['xxx'])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.signedUploadUrls).toEqual(['xxx'])
@@ -509,14 +505,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -539,7 +535,7 @@ describe('StorageResolver', () => {
       td.when(getDirNodes(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.storageDirNodes).toEqual(toResponseStorageNodes([dir1_1]))
@@ -547,14 +543,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -577,7 +573,7 @@ describe('StorageResolver', () => {
       td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.createStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
@@ -585,14 +581,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -615,7 +611,7 @@ describe('StorageResolver', () => {
       td.when(removeDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.removeStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
@@ -623,14 +619,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -653,7 +649,7 @@ describe('StorageResolver', () => {
       td.when(removeFiles([dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.removeStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
@@ -661,14 +657,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -692,7 +688,7 @@ describe('StorageResolver', () => {
       td.when(moveDir(dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.moveStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -700,14 +696,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -731,7 +727,7 @@ describe('StorageResolver', () => {
       td.when(moveFile(dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.moveStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
@@ -739,14 +735,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -770,7 +766,7 @@ describe('StorageResolver', () => {
       td.when(renameDir(dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.renameStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
@@ -778,14 +774,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -809,7 +805,7 @@ describe('StorageResolver', () => {
       td.when(renameFile(dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.renameStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
@@ -817,14 +813,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -848,7 +844,7 @@ describe('StorageResolver', () => {
       td.when(setDirShareSettings(dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.setStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
@@ -856,14 +852,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 
@@ -887,7 +883,7 @@ describe('StorageResolver', () => {
       td.when(setFileShareSettings(dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
 
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, ADMIN_AUTH_HEADER),
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
       expect(response.body.data.setStorageFileShareSettings).toEqual(toResponseStorageNode(dir1_1_fileA))
@@ -895,14 +891,14 @@ describe('StorageResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
 
     it('アプリケーション管理者でない場合', async () => {
-      const actual = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_AUTH_HEADER),
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
-      expect(actual.body.errors[0].extensions.exception.status).toBe(403)
+      expect(getGQLErrorStatus(response)).toBe(403)
     })
   })
 })

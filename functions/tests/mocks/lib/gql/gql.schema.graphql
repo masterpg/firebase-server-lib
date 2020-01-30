@@ -7,11 +7,17 @@ type Product {
   name: String!
 }
 
-type Site {
-  name: String!
+type SitePublicConfig {
+  siteName: String!
+}
+
+type SiteAdminConfig {
+  uid: String!
+  apiKey: String!
 }
 
 type Query {
   products: [Product!]!
-  site: Site!
+  sitePublicConfig: SitePublicConfig!
+  siteAdminConfig: SiteAdminConfig!
 }

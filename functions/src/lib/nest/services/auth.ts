@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
-import { Injectable } from '@nestjs/common'
-import { Request } from 'express'
+import { ForbiddenException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common'
+import { Request, Response } from 'express'
 
 //========================================================================
 //
@@ -19,8 +19,8 @@ export enum AuthRoleType {
 
 export interface AuthValidateResult {
   result: boolean
-  errorMessage: string
   idToken?: IdToken
+  error?: HttpException
 }
 
 abstract class AuthService {
@@ -33,14 +33,16 @@ abstract class AuthService {
   /**
    * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、そのトークンの検証も行います。
    * @param req
+   * @param res
    * @param roles
    */
-  async validate(req: Request, roles: string[]): Promise<AuthValidateResult> {
+  async validate(req: Request, res: Response, roles?: string[]): Promise<AuthValidateResult> {
     const encodedIdToken = this.m_getIdToken(req)
     if (!encodedIdToken) {
+      res.setHeader('WWW-Authenticate', 'Bearer realm="token_required"')
       return {
         result: false,
-        errorMessage: 'Authorization failed because ID token could not be obtained from the HTTP request header.',
+        error: new UnauthorizedException('Authorization failed because ID token could not be obtained from the HTTP request header.'),
       }
     }
 
@@ -48,18 +50,20 @@ abstract class AuthService {
     try {
       idToken = await this.decodeIdToken(encodedIdToken)
     } catch (err) {
+      res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token"')
       return {
         result: false,
-        errorMessage: 'Authorization failed because ID token decoding failed.',
+        error: new UnauthorizedException('Authorization failed because ID token decoding failed.'),
       }
     }
 
     for (const role of roles || []) {
       if (role === AuthRoleType.AppAdmin) {
         if (!idToken.isAppAdmin) {
+          res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
           return {
             result: false,
-            errorMessage: 'Authorization failed because the role is invalid.',
+            error: new ForbiddenException('Authorization failed because the role is invalid.'),
           }
         }
       }
@@ -68,7 +72,6 @@ abstract class AuthService {
     return {
       result: true,
       idToken,
-      errorMessage: '',
     }
   }
 

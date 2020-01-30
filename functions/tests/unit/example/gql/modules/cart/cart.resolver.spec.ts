@@ -1,14 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
+import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
 import { initApp } from '../../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
 initApp()
-
-const authorizationHeader = {
-  Authorization: `Bearer {"uid": "general.user"}`,
-}
 
 describe('CartResolver', () => {
   let app: any
@@ -33,7 +29,7 @@ describe('CartResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -50,7 +46,7 @@ describe('CartResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -72,7 +68,7 @@ describe('CartResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -89,7 +85,7 @@ describe('CartResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
@@ -104,7 +100,7 @@ describe('CartResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 })

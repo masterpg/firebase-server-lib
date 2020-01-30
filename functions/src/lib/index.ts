@@ -27,6 +27,7 @@ export {
 export { DateTimeScalar, GQLCtx, getGqlModuleBaseOptions, getTypeDefs } from './gql'
 
 export {
+  AuthGuard,
   AuthRoleType,
   AuthServiceDI,
   AuthValidateResult,
@@ -51,7 +52,6 @@ export {
   LoggingLatencyTimer,
   Roles,
   User,
-  UserGuard,
   getAllExecutionContext,
 } from './nest'
 

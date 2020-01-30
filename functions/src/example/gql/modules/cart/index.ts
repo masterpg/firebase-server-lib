@@ -1,11 +1,11 @@
 import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, UpdateCartItemInput } from '../../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { IdToken, User, UserGuard } from '../../../../lib'
+import { AuthGuard, IdToken, User } from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
 @Resolver('CartItem')
-@UseGuards(UserGuard)
+@UseGuards(AuthGuard)
 export class CartResolver {
   constructor(@Inject(CartServiceDI.symbol) protected readonly cartService: CartServiceDI.type) {}
 

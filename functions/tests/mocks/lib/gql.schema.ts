@@ -12,11 +12,17 @@ export interface Product {
 
 export interface IQuery {
     products(): Product[] | Promise<Product[]>;
-    site(): Site | Promise<Site>;
+    sitePublicConfig(): SitePublicConfig | Promise<SitePublicConfig>;
+    siteAdminConfig(): SiteAdminConfig | Promise<SiteAdminConfig>;
 }
 
-export interface Site {
-    name: string;
+export interface SiteAdminConfig {
+    uid: string;
+    apiKey: string;
+}
+
+export interface SitePublicConfig {
+    siteName: string;
 }
 
 export type DateTime = any;

@@ -1,4 +1,4 @@
-import { LibStorageServiceDI } from '../../../../../src/lib'
+import { AuthServiceDI, LibStorageServiceDI } from '../../../../../src/lib'
 import { MockAppServiceDI } from '../../../../mocks/lib'
 import { Test } from '@nestjs/testing'
 import { initLibTestApp } from '../../../../helpers/lib'
@@ -13,7 +13,7 @@ describe('AppService', () => {
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [MockAppServiceDI.provider, LibStorageServiceDI.provider],
+      providers: [MockAppServiceDI.provider, LibStorageServiceDI.provider, AuthServiceDI.provider],
     }).compile()
 
     appService = module.get<MockAppServiceDI.type>(MockAppServiceDI.symbol)

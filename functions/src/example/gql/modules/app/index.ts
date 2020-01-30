@@ -1,5 +1,5 @@
 import { AppConfigResponse, AppServiceDI } from '../../../services'
-import { IdToken, User, UserGuard } from '../../../../lib'
+import { AuthGuard, IdToken, User } from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Query, Resolver } from '@nestjs/graphql'
 import { Module } from '@nestjs/common'
@@ -14,7 +14,7 @@ export class AppResolver {
   }
 
   @Query()
-  @UseGuards(UserGuard)
+  @UseGuards(AuthGuard)
   async customToken(@User() user: IdToken): Promise<string> {
     return this.appService.customToken(user)
   }

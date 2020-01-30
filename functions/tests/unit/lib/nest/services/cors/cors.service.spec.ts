@@ -9,10 +9,22 @@ const request = require('supertest')
 jest.setTimeout(25000)
 initLibTestApp()
 
+//========================================================================
+//
+//  Test helpers
+//
+//========================================================================
+
 @Module({
   imports: [MockCORSBaseAppModule, MockRESTContainerModule, MockGQLContainerModule],
 })
 class MockAppModule {}
+
+//========================================================================
+//
+//  Tests
+//
+//========================================================================
 
 describe('CORSService', () => {
   let app: any
@@ -79,23 +91,23 @@ describe('CORSService', () => {
       // 除外リストの設定は`functions/functions.env.test.sh`を参照
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/api/rest/site')
+        .get('/api/rest/site/public/config')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
         .expect(200)
         .then((res: Response) => {
-          expect(res.body.data).toEqual({ name: 'TestSite' })
+          expect(res.body.data).toEqual({ siteName: 'TestSite' })
         })
     })
 
     it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
       // 除外リストの設定は`functions/functions.env.test.sh`を参照
       return request(app.getHttpServer())
-        .get('/api/rest/site')
+        .get('/api/rest/site/public/config')
         .expect(200)
         .then((res: Response) => {
           expect(res.get('Access-Control-Allow-Origin')).toBe('*')
-          expect(res.body.data).toEqual({ name: 'TestSite' })
+          expect(res.body.data).toEqual({ siteName: 'TestSite' })
         })
     })
   })
@@ -109,10 +121,10 @@ describe('CORSService', () => {
       `,
     }
 
-    const getSiteRequestData = {
+    const getSitePublicConfigRequestData = {
       query: `
-        query GetSite {
-          site { name }
+        query GetSitePublicConfig {
+          sitePublicConfig { siteName }
         }
       `,
     }
@@ -173,32 +185,6 @@ describe('CORSService', () => {
         .expect('Access-Control-Allow-Origin', '')
         .expect('Content-Length', '0')
         .expect(204)
-    })
-
-    it('除外リストが設定されている場合 - リクエストオリジンあり', async () => {
-      const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
-      return request(app.getHttpServer())
-        .post('/api/gql')
-        .send(getSiteRequestData)
-        .set('Content-Type', 'application/json')
-        .set('Origin', requestOrigin)
-        .expect('Access-Control-Allow-Origin', '*')
-        .expect(200)
-        .then((res: Response) => {
-          expect(res.body.data.site).toEqual({ name: 'TestSite' })
-        })
-    })
-
-    it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
-      return request(app.getHttpServer())
-        .post('/api/gql')
-        .send(getSiteRequestData)
-        .set('Content-Type', 'application/json')
-        .expect('Access-Control-Allow-Origin', '*')
-        .expect(200)
-        .then((res: Response) => {
-          expect(res.body.data.site).toEqual({ name: 'TestSite' })
-        })
     })
   })
 })

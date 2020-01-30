@@ -1,7 +1,7 @@
-import { DateTimeScalar, getGqlModuleBaseOptions } from '../../../../src/lib'
+import { AuthGuard, AuthRoleType, DateTimeScalar, IdToken, Roles, User, getGqlModuleBaseOptions } from '../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
-import { Product, Site } from '../services/types'
-import { Module } from '@nestjs/common'
+import { Module, UseGuards } from '@nestjs/common'
+import { Product, SiteAdminConfig, SitePublicConfig } from '../services/types'
 const merge = require('lodash/merge')
 
 @Resolver('Product')
@@ -12,11 +12,18 @@ export class MockProductResolver {
   }
 }
 
-@Resolver('Site')
+@Resolver()
 export class MockSiteResolver {
-  @Query('site')
-  async outline(): Promise<Site> {
-    return { name: 'TestSite' }
+  @Query('sitePublicConfig')
+  async getPublicConfig(): Promise<SitePublicConfig> {
+    return { siteName: 'TestSite' }
+  }
+
+  @Query('siteAdminConfig')
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async getAdminConfig(@User() user: IdToken): Promise<SiteAdminConfig> {
+    return { uid: user.uid, apiKey: '162738495' }
   }
 }
 

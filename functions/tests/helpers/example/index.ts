@@ -25,6 +25,13 @@ export function requestGQL(
     .expect(200)
 }
 
-export function verifyNotSignInGQLResponse(res: Response): void {
-  expect(res.body.errors[0].extensions.exception.status).toBe(403)
+/**
+ * エラーのあったGQLレスポンスからHTTPのエラーコードを取得します。
+ * GQLはエラーがあってもHTTPレスポンスは200が返されます。
+ * ただしレスポンスの内部では本来のHTTPエラーを保持しているため、
+ * 本関数ではこれを取得します。
+ * @param res
+ */
+export function getGQLErrorStatus(res: Response): number {
+  return res.body.errors[0].extensions.exception.status
 }

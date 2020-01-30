@@ -10,11 +10,23 @@ const request = require('supertest')
 jest.setTimeout(25000)
 initLibTestApp()
 
+//========================================================================
+//
+//  Test helpers
+//
+//========================================================================
+
 @Module({
   providers: [CORSGuardDI.provider],
   imports: [MockCORSBaseAppModule, MockRESTContainerModule, MockGQLContainerModule],
 })
 class MockAppModule {}
+
+//========================================================================
+//
+//  Tests
+//
+//========================================================================
 
 describe('CORSGuard', () => {
   let app: any

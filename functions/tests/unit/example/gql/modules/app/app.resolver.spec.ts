@@ -1,14 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { requestGQL, verifyNotSignInGQLResponse } from '../../../../../helpers/example'
+import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
 import { initApp } from '../../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
 initApp()
 
-const authorizationHeader = {
-  Authorization: `Bearer {"uid": "general.user", "myDirName": "general.user"}`,
-}
+const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
+const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
 
 describe('AppResolver', () => {
   let app: any
@@ -53,7 +52,7 @@ describe('AppResolver', () => {
 
     it('疎通確認', async () => {
       const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, authorizationHeader),
+        headers: Object.assign({}, GENERAL_USER_HEADER),
       })
       const customToken = response.body.data.customToken
       expect(customToken).toBeDefined()
@@ -61,7 +60,7 @@ describe('AppResolver', () => {
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, gql)
-      await verifyNotSignInGQLResponse(response)
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 })
