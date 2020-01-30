@@ -6,12 +6,13 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as uuidv4 from 'uuid/v4'
+import { AuthServiceDI, IdToken } from '../nest'
+import { Inject, UnauthorizedException } from '@nestjs/common'
 import { InputValidationError, config } from '../base'
 import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
-import { IdToken } from '../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
 const cloneDeep = require('lodash/cloneDeep')
@@ -59,6 +60,14 @@ export interface UploadDataItem {
 }
 
 export class LibStorageService {
+  //----------------------------------------------------------------------
+  //
+  //  Constructor
+  //
+  //----------------------------------------------------------------------
+
+  constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {}
+
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -865,32 +874,79 @@ export class LibStorageService {
   }
 
   /**
-   * クライアントから指定されたファイルをレスポンスします。
+   * クライアントから指定されたアプリケーションファイルをレスポンスします。
    * @param req
    * @param res
    * @param filePath
    */
-  async sendFile(req: Request, res: Response, filePath: string): Promise<Response> {
-    const bucket = admin.storage().bucket()
-    const file = bucket.file(filePath)
-    const exists = (await file.exists())[0]
-    if (!exists) {
-      return res.sendStatus(404)
+  async serveAppFile(req: Request, res: Response, filePath: string): Promise<Response> {
+    const fileNode = await this.getFileNode(filePath)
+
+    // ファイルの公開フラグがオンの場合
+    if (fileNode.share.isPublic) {
+      return this.serveFile(req, res, fileNode)
     }
 
-    const lastModified = dayjs(file.metadata.updated).toString()
-    const ifModifiedSinceStr = req.header('If-Modified-Since')
-    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
-    if (lastModified === ifModifiedSince) {
-      return res.sendStatus(304)
+    // ユーザー認証されているか検証
+    const validated = await this.authService.validate(req, res)
+    if (!validated.result) {
+      return res.sendStatus(validated.error!.getStatus())
     }
 
-    res.setHeader('Last-Modified', lastModified)
-    res.setHeader('Content-Type', file.metadata.contentType)
-    const fileStream = file.createReadStream()
+    const user = validated.idToken!
 
-    fileStream.pipe(res)
-    return res
+    // 自ユーザーがアプリケーション管理者の場合
+    if (user.isAppAdmin) {
+      return this.serveFile(req, res, fileNode)
+    }
+
+    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
+    if (fileNode.share.uids.includes(user.uid)) {
+      return this.serveFile(req, res, fileNode)
+    }
+
+    return res.sendStatus(403)
+  }
+
+  /**
+   * クライアントから指定されたユーザーファイルをレスポンスします。
+   * @param req
+   * @param res
+   * @param filePath
+   */
+  async serveUserFile(req: Request, res: Response, filePath: string): Promise<Response> {
+    const fileNode = await this.getFileNode(filePath)
+
+    // ファイルの公開フラグがオンの場合
+    if (fileNode.share.isPublic) {
+      return this.serveFile(req, res, fileNode)
+    }
+
+    // ユーザー認証されているか検証
+    const validated = await this.authService.validate(req, res)
+    if (!validated.result) {
+      return res.sendStatus(validated.error!.getStatus())
+    }
+
+    // ユーザーディレクトリ名が割り当てられているか検証
+    const user = validated.idToken!
+    if (!user.myDirName) {
+      res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token')
+      throw new UnauthorizedException(`'myDirName' has not been assigned to the user [uid: '${user.uid}].`)
+    }
+
+    // 指定ファイルが自ユーザーの所有物である場合
+    const userDirPath = this.getUserDirPath(user)
+    if (filePath.startsWith(path.join(userDirPath, '/'))) {
+      return this.serveFile(req, res, fileNode)
+    }
+
+    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
+    if (fileNode.share.uids.includes(user.uid)) {
+      return this.serveFile(req, res, fileNode)
+    }
+
+    return res.sendStatus(403)
   }
 
   /**
@@ -929,7 +985,7 @@ export class LibStorageService {
       const usersDir = config.storage.usersDir
       return path.join(usersDir, myDirName)
     }
-    throw new Error(`User (uid: '${user.uid}') does not have a storage directory assigned.`)
+    throw new Error(`User [uid: '${user.uid}'] does not have a storage directory assigned.`)
   }
 
   /**
@@ -1262,11 +1318,39 @@ export class LibStorageService {
     }
   }
 
-  //----------------------------------------------------------------------
-  //
-  //  Internal methods
-  //
-  //----------------------------------------------------------------------
+  //--------------------------------------------------
+  //  ファイルサーブ
+  //--------------------------------------------------
+
+  /**
+   * クライアントから指定されたファイルをサーブします。
+   * @param req
+   * @param res
+   * @param fileNode
+   */
+  protected async serveFile(req: Request, res: Response, fileNode: GCSStorageNode): Promise<Response> {
+    if (!fileNode.exists) {
+      return res.sendStatus(404)
+    }
+
+    const lastModified = dayjs(fileNode.gcsNode.metadata.updated).toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return res.sendStatus(304)
+    }
+
+    res.setHeader('Last-Modified', lastModified)
+    res.setHeader('Content-Type', fileNode.gcsNode.metadata.contentType)
+    const fileStream = fileNode.gcsNode.createReadStream()
+
+    fileStream.pipe(res)
+    return res
+  }
+
+  //--------------------------------------------------
+  //  共有設定
+  //--------------------------------------------------
 
   /**
    * ユーザーディレクトリの名前である`myDirName`の値を取得します。

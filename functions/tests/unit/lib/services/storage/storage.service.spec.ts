@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as td from 'testdouble'
 import {
+  AuthServiceDI,
   FirestoreServiceDI,
   InputValidationError,
   LibDevUtilsServiceDI,
@@ -37,6 +38,8 @@ initLibTestApp()
 //========================================================================
 
 const STORAGE_TEST_USER: StorageUser = { uid: 'storage.test.user', myDirName: 'storage.test.user' }
+
+const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
 
 const TEST_FILES_DIR = 'test-files'
 
@@ -139,7 +142,7 @@ async function sleep(ms: number): Promise<void> {
 describe('StorageService', () => {
   beforeEach(async () => {
     const module = await Test.createTestingModule({
-      providers: [LibDevUtilsServiceDI.provider, FirestoreServiceDI.provider, LibStorageServiceDI.provider],
+      providers: [LibDevUtilsServiceDI.provider, FirestoreServiceDI.provider, AuthServiceDI.provider, LibStorageServiceDI.provider],
     }).compile()
 
     storageService = module.get<TestStorageService>(LibStorageServiceDI.symbol)
@@ -3181,7 +3184,15 @@ describe('StorageService', () => {
     })
   })
 
-  describe('sendFile', () => {
+  describe('Serve files', () => {
+    //--------------------------------------------------
+    //  Test helpers
+    //--------------------------------------------------
+
+    const STORAGE_TEST_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(STORAGE_TEST_USER)}` }
+
+    const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
+
     @Module({
       imports: [MockBaseAppModule, MockRESTContainerModule],
     })
@@ -3198,54 +3209,232 @@ describe('StorageService', () => {
       await app.init()
     })
 
-    it('画像ファイルをダウンロード', async () => {
-      const localFilePath = `${__dirname}/${TEST_FILES_DIR}/desert.jpg`
-      const toFilePath = `${TEST_FILES_DIR}/d1/desert.jpg`
-      await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
+    //--------------------------------------------------
+    //  Tests
+    //--------------------------------------------------
 
-      return request(app.getHttpServer())
-        .get(`/api/storage/${toFilePath}`)
-        .expect(200)
-        .then((res: Response) => {
-          const localFileBuffer = fs.readFileSync(localFilePath)
-          expect(res.body).toEqual(localFileBuffer)
-        })
+    describe('serveFile', () => {
+      it('画像ファイルをダウンロード', async () => {
+        const localFilePath = `${__dirname}/${TEST_FILES_DIR}/desert.jpg`
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const toFilePath = `${userDirPath}/d1/desert.jpg`
+        await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${toFilePath}`)
+          .set({ ...STORAGE_TEST_USER_HEADER })
+          .expect(200)
+          .then((res: Response) => {
+            const localFileBuffer = fs.readFileSync(localFilePath)
+            expect(res.body).toEqual(localFileBuffer)
+          })
+      })
+
+      it('テキストファイルをダウンロード', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...STORAGE_TEST_USER_HEADER })
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
+
+      it('If-Modified-Sinceの検証', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        const uploadedFileNode = (await storageService.uploadAsFiles([uploadItem]))[0]
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...STORAGE_TEST_USER_HEADER })
+          .set('If-Modified-Since', uploadedFileNode.updated!.toString())
+          .expect(304)
+      })
+
+      it('存在しないファイルを指定', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...STORAGE_TEST_USER_HEADER })
+          .expect(404)
+      })
     })
 
-    it('テキストファイルをダウンロード', async () => {
-      const uploadItem: UploadDataItem = {
-        data: 'test',
-        contentType: 'text/plain; charset=utf-8',
-        path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-      }
-      await storageService.uploadAsFiles([uploadItem])
+    describe('serveAppFile', () => {
+      it('アプリケーション管理者の場合 - ファイルが公開されていない場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
 
-      return request(app.getHttpServer())
-        .get(`/api/storage/${uploadItem.path}`)
-        .expect(200)
-        .then((res: Response) => {
-          expect(res.text).toEqual(uploadItem.data)
-        })
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
+
+      it('アプリケーション管理者以外でない場合 - ファイルが公開されていない場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+
+        return (
+          request(app.getHttpServer())
+            .get(`/api/storage/${uploadItem.path}`)
+            // アプリケーション管理者以外を設定
+            .set({ ...STORAGE_TEST_USER_HEADER })
+            .expect(403)
+        )
+      })
+
+      it('アプリケーション管理者以外でない場合 - ファイルが公開されている場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+        // ファイルの公開フラグをオンに設定
+        await storageService.setFileShareSettings(uploadItem.path, { isPublic: true })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/api/storage/${uploadItem.path}`)
+            // アプリケーション管理者以外を設定
+            .set({ ...STORAGE_TEST_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
+
+      it('アプリケーション管理者以外でない場合 - ファイルの共有ユーザーIDにマッチする場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+        // ファイルの共有ユーザーIDを設定
+        await storageService.setFileShareSettings(uploadItem.path, { uids: [STORAGE_TEST_USER.uid] })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/api/storage/${uploadItem.path}`)
+            // 共有ユーザーIDにマッチするユーザーを設定
+            .set({ ...STORAGE_TEST_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
     })
 
-    it('If-Modified-Sinceの検証', async () => {
-      const uploadItem: UploadDataItem = {
-        data: 'test',
-        contentType: 'text/plain; charset=utf-8',
-        path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-      }
-      const uploadedFileNode = (await storageService.uploadAsFiles([uploadItem]))[0]
+    describe('serveUserFile', () => {
+      it('自ユーザーの場合 - ファイルが公開されていない場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
 
-      return request(app.getHttpServer())
-        .get(`/api/storage/${uploadItem.path}`)
-        .set('If-Modified-Since', uploadedFileNode.updated!.toString())
-        .expect(304)
-    })
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...STORAGE_TEST_USER_HEADER })
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
 
-    it('存在しないファイルを指定', async () => {
-      return request(app.getHttpServer())
-        .get(`/api/storage/${TEST_FILES_DIR}/d1/fileA.txt`)
-        .expect(404)
+      it('他ユーザーの場合 - ファイルが公開されている場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+        // ファイルの公開フラグをオンに設定
+        await storageService.setFileShareSettings(uploadItem.path, { isPublic: true })
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
+
+      it('他ユーザーの場合 - ファイルが公開されていない場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+
+        return request(app.getHttpServer())
+          .get(`/api/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
+          .expect(403)
+      })
+
+      it('他ユーザーの場合 - ファイルの共有ユーザーIDにマッチする場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles([uploadItem])
+        // ファイルの共有ユーザーIDを設定
+        await storageService.setFileShareSettings(uploadItem.path, { uids: [APP_ADMIN_USER.uid] })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/api/storage/${uploadItem.path}`)
+            // 共有ユーザーIDにマッチするユーザーを設定
+            .set({ ...APP_ADMIN_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
     })
   })
 
