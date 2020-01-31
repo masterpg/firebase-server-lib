@@ -29,6 +29,20 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
+  "operationName": "HandleUploadedUserFiles",
+  "query": "mutation HandleUploadedUserFiles($filePaths: [String!]!) { handleUploadedUserFiles(filePaths: $filePaths) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "filePaths": ["d1/fileA.txt"]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
+
+{
   "operationName": "CreateUserStorageDirs",
   "query": "mutation CreateUserStorageDirs($dirPaths: [String!]!) { createUserStorageDirs(dirPaths: $dirPaths) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
@@ -210,6 +224,20 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
       "test-files/d1/d11/d112",
       "test-files/dir2/dir2_1"
     ]
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+  "operationName": "HandleUploadedFiles",
+  "query": "mutation HandleUploadedFiles($filePaths: [String!]!) { handleUploadedFiles(filePaths: $filePaths) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "filePaths": ["test-files/d1/fileA.txt"]
   }
 }
 

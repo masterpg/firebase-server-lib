@@ -141,59 +141,31 @@ export class LibStorageService {
     // 指定されたパスのバリデーションチェック
     dirPaths.forEach(dirPath => this.validatePath(dirPath))
 
-    // 必要な情報の取得
-    const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths)
-    const hierarchicalDirNodeMap: { [path: string]: GCSStorageNode } = {}
-    {
-      const promises: Promise<void>[] = []
-      for (const dirPath of hierarchicalDirPaths) {
-        const promise = (async () => {
-          hierarchicalDirNodeMap[dirPath] = await this.getDirNode(dirPath, basePath)
-        })()
-        promises.push(promise)
-      }
-      await Promise.all(promises)
-    }
+    // 引数ディレクトリのノードを取得
+    // ※存在する、しないディレクトリが混在する
+    const dirNodes = await Promise.all(dirPaths.map(dirPath => this.getDirNode(dirPath, basePath)))
 
-    // Cloud Storageに実際に存在する直近の祖先の共有設定を取得する関数
-    const getAncestorShareSettings: (_: string) => StorageNodeShareSettings | undefined = dirPath => {
-      const dirNode = hierarchicalDirNodeMap[dirPath]
-      if (!dirNode) {
-        return
-      }
+    // 上記で取得したディレクトリノードの階層構造に必要なノードを取得/格納したストアを取得
+    const hierarchicalNodeStore = await this.getHierarchicalNodeStore(dirNodes, basePath)
 
-      const parentDirNode = hierarchicalDirNodeMap[dirNode.dir]
-      if (!parentDirNode) {
-        return
-      }
-
-      if (parentDirNode.exists) {
-        return parentDirNode.share
-      } else {
-        return getAncestorShareSettings(dirNode.dir)
-      }
-    }
-
-    // ディレクトリの作成を実行
+    // ディレクトリを作成
     const result: StorageNode[] = []
-    {
-      const promises: Promise<void>[] = []
-      for (const dirPath of hierarchicalDirPaths) {
-        const promise = (async () => {
-          const dirNode = hierarchicalDirNodeMap[dirPath]
-          if (!dirNode.exists) {
-            await dirNode.gcsNode.save('')
-            const shareSettings = getAncestorShareSettings(dirNode.path)
-            if (shareSettings) {
-              await this.m_saveShareSettings(dirNode.gcsNode, shareSettings)
-            }
-            result.push(this.toStorageNode(dirNode.gcsNode, basePath))
-          }
-        })()
-        promises.push(promise)
-      }
-      await Promise.all(promises)
-    }
+    await Promise.all(
+      hierarchicalNodeStore.nodes.map(async dirNode => {
+        // ディレクトリが存在する場合はディレクトリを作成せず終了
+        if (dirNode.exists) return
+        // ディレクトリを作成
+        await dirNode.gcsNode.save('')
+        // 直近の祖先ディレクトリの共有設定を取得
+        const shareSettings = hierarchicalNodeStore.getNearestShareSettings(dirNode.path)
+        // 共有設定を作成したディレクトリに設定
+        if (shareSettings) {
+          await this.m_saveShareSettings(dirNode.gcsNode, shareSettings)
+        }
+
+        result.push(this.toStorageNode(dirNode.gcsNode, basePath))
+      })
+    )
 
     return this.sortStorageNodes(result)
   }
@@ -206,6 +178,67 @@ export class LibStorageService {
   async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.createDirs(dirPaths, userDirPath)
+  }
+
+  /**
+   * Cloud Storageへのファイルアップロードの後に必要な処理を行います。
+   * @param filePaths
+   * @param basePath
+   */
+  async handleUploadedFiles(filePaths: string[], basePath?: string): Promise<StorageNode[]> {
+    basePath = removeBothEndsSlash(basePath)
+
+    // 指定されたパスのバリデーションチェック
+    filePaths.forEach(filePath => this.validatePath(filePath))
+
+    // 引数ファイルのノードを取得
+    // const fileNodes = await Promise.all(filePaths.map(filePath => this.getFileNode(filePath, basePath)))
+    const fileNodes = await Promise.all(
+      filePaths.map(async filePath => {
+        const fileNode = await this.getFileNode(filePath, basePath)
+        if (!fileNode.exists) {
+          throw new Error(`Uploaded file not found: '${path.join(basePath!, filePath)}'`)
+        }
+        return fileNode
+      })
+    )
+
+    // 上記で取得したファイルノードの階層構造に必要なノードを取得/格納したストアを取得
+    const hierarchicalNodeStore = await this.getHierarchicalNodeStore(fileNodes, basePath)
+
+    // ディレクトリ作成と共有設定の継承
+    const result: StorageNode[] = []
+    await Promise.all(
+      hierarchicalNodeStore.nodes.map(async node => {
+        //ループノードがディレクトリの場合
+        if (node.nodeType === StorageNodeType.Dir) {
+          // ループディレクトリが存在する場合は何もせず終了
+          if (node.exists) return
+          // ループディレクトリが実際にはCloud Storageに存在しない場合、ディレクトリを作成
+          await node.gcsNode.save('')
+        }
+        // 直近の祖先ディレクトリの共有設定を取得
+        const shareSettings = hierarchicalNodeStore.getNearestShareSettings(node.path)
+        // 共有設定をループノードに設定
+        if (shareSettings) {
+          await this.m_saveShareSettings(node.gcsNode, shareSettings)
+        }
+
+        result.push(this.toStorageNode(node.gcsNode, basePath))
+      })
+    )
+
+    return this.sortStorageNodes(result)
+  }
+
+  /**
+   * Cloud Storageへのユーザーファイルアップロードの後に必要な処理を行います。
+   * @param user
+   * @param filePaths
+   */
+  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.handleUploadedFiles(filePaths, userDirPath)
   }
 
   /**
@@ -1021,8 +1054,10 @@ export class LibStorageService {
   /**
    * 指定されたデータをファイルとしてCloud Storageへアップロードします。
    * @param uploadList
+   * @param basePath
    */
-  async uploadAsFiles(uploadList: UploadDataItem[]): Promise<StorageNode[]> {
+  async uploadAsFiles(uploadList: UploadDataItem[], basePath?: string): Promise<StorageNode[]> {
+    basePath = removeBothEndsSlash(basePath)
     const bucket = admin.storage().bucket()
 
     const uploadedFileMap: { [path: string]: StorageNode } = {}
@@ -1030,10 +1065,10 @@ export class LibStorageService {
     for (const uploadItem of uploadList) {
       promises.push(
         (async () => {
-          const gcsFileNode = bucket.file(uploadItem.path)
+          const gcsFileNode = bucket.file(path.join(basePath, uploadItem.path))
           await gcsFileNode.save(uploadItem.data, { contentType: uploadItem.contentType })
           const fileNode = this.toStorageNode(gcsFileNode)
-          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode)
+          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode, basePath)
         })()
       )
     }
@@ -1239,6 +1274,67 @@ export class LibStorageService {
         return 0
       }
     })
+  }
+
+  /**
+   * 指定されたノード一覧の階層構造に必要なノードを取得し、
+   * 指定ノードと取得ノードへのアクセスを容易にするためのストアクラスを返します。
+   * @param nodes
+   * @param basePath
+   */
+  protected async getHierarchicalNodeStore(nodes: GCSStorageNode[], basePath?: string) {
+    // 引数のノード一覧をマップ化
+    const hierarchicalNodeMap = nodes.reduce((result, node) => {
+      result[node.path] = node
+      return result
+    }, {} as { [path: string]: GCSStorageNode })
+
+    // 引数ノードの階層構造に必要なノードを取得
+    {
+      const dirPaths = Object.keys(hierarchicalNodeMap)
+      const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths)
+      const promises: Promise<void>[] = []
+      for (const dirPath of hierarchicalDirPaths) {
+        if (hierarchicalNodeMap[dirPath]) continue
+        promises.push(
+          (async () => {
+            hierarchicalNodeMap[dirPath] = await this.getDirNode(dirPath, basePath)
+          })()
+        )
+      }
+      await Promise.all(promises)
+    }
+
+    // 引数ノードの階層構造にアクセスするためのストアクラスを作成
+    const result = new (class {
+      constructor(private m_nodeMap: { [path: string]: GCSStorageNode }) {}
+
+      get nodes(): GCSStorageNode[] {
+        return Object.values(this.m_nodeMap)
+      }
+
+      getNode(dirPath: string): GCSStorageNode | undefined {
+        return this.m_nodeMap[dirPath]
+      }
+
+      getNearestShareSettings(nodePath: string): StorageNodeShareSettings | undefined {
+        const node = this.m_nodeMap[nodePath]
+        if (!node) {
+          return
+        }
+
+        const parentDirNode = this.m_nodeMap[node.dir]
+        if (!parentDirNode) return
+
+        if (parentDirNode.exists) {
+          return parentDirNode.share
+        } else {
+          return this.getNearestShareSettings(parentDirNode.path)
+        }
+      }
+    })(hierarchicalNodeMap)
+
+    return result
   }
 
   /**

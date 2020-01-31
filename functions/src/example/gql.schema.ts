@@ -74,6 +74,7 @@ export interface IMutation {
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    handleUploadedUserFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     moveUserStorageDir(fromDirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
@@ -83,6 +84,7 @@ export interface IMutation {
     setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode[] | Promise<StorageNode[]>;
     setUserStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    handleUploadedFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     moveStorageDir(fromDirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;

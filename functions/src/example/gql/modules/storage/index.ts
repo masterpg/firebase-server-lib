@@ -33,6 +33,12 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
+  async handleUploadedUserFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.handleUploadedUserFiles(user, filePaths)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
   async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
     return this.storageService.removeUserDirs(user, dirPaths)
   }
@@ -115,6 +121,13 @@ export class StorageResolver {
   @Roles(AuthRoleType.AppAdmin)
   async createStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
     return this.storageService.createDirs(dirPaths)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async handleUploadedFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.handleUploadedFiles(filePaths)
   }
 
   @Mutation()

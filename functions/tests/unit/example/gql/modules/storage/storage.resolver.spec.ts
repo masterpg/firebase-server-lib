@@ -221,6 +221,40 @@ describe('StorageResolver', () => {
     })
   })
 
+  describe('handleUploadedUserFiles', () => {
+    const gql = {
+      query: `
+        mutation HandleUploadedUserFiles($filePaths: [String!]!) {
+          handleUploadedUserFiles(filePaths: $filePaths) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        filePaths: [dir1_1_fileA.path, dir1_1_fileB.path],
+      },
+    }
+
+    it('疎通確認', async () => {
+      const handleUploadedUserFiles = td.replace(storageService, 'handleUploadedUserFiles')
+      td.when(handleUploadedUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([
+        dir1_1_fileA,
+        dir1_1_fileB,
+      ])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.handleUploadedUserFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
   describe('removeUserStorageDirs', () => {
     const gql = {
       query: `
@@ -577,6 +611,44 @@ describe('StorageResolver', () => {
       })
 
       expect(response.body.data.createStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('handleUploadedFiles', () => {
+    const gql = {
+      query: `
+        mutation HandleUploadedFiles($filePaths: [String!]!) {
+          handleUploadedFiles(filePaths: $filePaths) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        filePaths: [dir1_1_fileA.path, dir1_1_fileB.path],
+      },
+    }
+
+    it('疎通確認', async () => {
+      const handleUploadedFiles = td.replace(storageService, 'handleUploadedFiles')
+      td.when(handleUploadedFiles([dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([dir1_1_fileA, dir1_1_fileB])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.handleUploadedFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
     })
 
     it('サインインしていない場合', async () => {

@@ -34,6 +34,7 @@ input SignedUploadUrlInput {
 
 type Mutation {
   createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
+  handleUploadedUserFiles(filePaths: [String!]!): [StorageNode!]!
   removeUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeUserStorageFiles(filePaths: [String!]!): [StorageNode!]!
   moveUserStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
@@ -44,6 +45,7 @@ type Mutation {
   setUserStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 
   createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
+  handleUploadedFiles(filePaths: [String!]!): [StorageNode!]!
   removeStorageDirs(dirPaths: [String!]!): [StorageNode!]!
   removeStorageFiles(filePaths: [String!]!): [StorageNode!]!
   moveStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
