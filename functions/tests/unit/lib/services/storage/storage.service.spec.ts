@@ -60,7 +60,6 @@ let devUtilsService!: LibDevUtilsServiceDI.type
 
 type TestStorageService = LibStorageService & {
   toStorageNode: LibStorageService['toStorageNode']
-  toStorageNodeByDir: LibStorageService['toStorageNodeByDir']
   sortStorageNodes: LibStorageService['sortStorageNodes']
   padVirtualDirNode: LibStorageService['padVirtualDirNode']
   splitHierarchicalDirPaths: LibStorageService['splitHierarchicalDirPaths']
@@ -3946,21 +3945,6 @@ describe('StorageService', () => {
       expect(dayjs(actual.updated).isValid()).toBeTruthy()
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBeDefined()
-    })
-  })
-
-  describe('toStorageNodeByDir', () => {
-    it('ベーシックケース', async () => {
-      await storageService.createDirs([`${TEST_FILES_DIR}/d1`])
-
-      const actual = storageService.toStorageNodeByDir(`${TEST_FILES_DIR}/d1`)
-
-      expect(actual.nodeType).toBe(StorageNodeType.Dir)
-      expect(actual.name).toBe(`d1`)
-      expect(actual.dir).toBe(`${TEST_FILES_DIR}`)
-      expect(actual.path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual.created).toEqual(dayjs(0))
-      expect(actual.updated).toEqual(dayjs(0))
     })
   })
 

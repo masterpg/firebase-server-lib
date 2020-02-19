@@ -95,7 +95,7 @@ export class LibStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getDirAndDescendants(dirPath?: string, basePath?: string): Promise<StorageNode[]> {
+  async getDirAndDescendants(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
     // Cloud Storageから指定されたディレクトリのノードを取得
     const nodeMap = await this.getDirAndDescendantMap(dirPath, basePath)
 
@@ -114,7 +114,7 @@ export class LibStorageService {
    * @param user
    * @param dirPath
    */
-  async getUserDirAndDescendants(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
+  async getUserDirAndDescendants(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDirAndDescendants(dirPath, userDirPath)
   }
@@ -139,7 +139,7 @@ export class LibStorageService {
    * @param dirPaths
    * @param basePath
    */
-  async createDirs(dirPaths: string[], basePath?: string): Promise<StorageNode[]> {
+  async createDirs(dirPaths: string[], basePath?: string): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
 
     // 指定されたパスのバリデーションチェック
@@ -153,7 +153,7 @@ export class LibStorageService {
     const hierarchicalNodeStore = await this.getHierarchicalNodeStore(dirNodes, basePath)
 
     // ディレクトリを作成
-    const result: StorageNode[] = []
+    const result: GCSStorageNode[] = []
     await Promise.all(
       hierarchicalNodeStore.nodes.map(async dirNode => {
         // ディレクトリが存在する場合はディレクトリを作成せず終了
@@ -179,7 +179,7 @@ export class LibStorageService {
    * @param user
    * @param dirPaths
    */
-  async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
+  async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.createDirs(dirPaths, userDirPath)
   }
@@ -189,7 +189,7 @@ export class LibStorageService {
    * @param filePaths
    * @param basePath
    */
-  async handleUploadedFiles(filePaths: string[], basePath?: string): Promise<StorageNode[]> {
+  async handleUploadedFiles(filePaths: string[], basePath?: string): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
 
     // 指定されたパスのバリデーションチェック
@@ -211,7 +211,7 @@ export class LibStorageService {
     const hierarchicalNodeStore = await this.getHierarchicalNodeStore(fileNodes, basePath)
 
     // ディレクトリ作成と共有設定の継承
-    const result: StorageNode[] = []
+    const result: GCSStorageNode[] = []
     await Promise.all(
       hierarchicalNodeStore.nodes.map(async node => {
         //ループノードがディレクトリの場合
@@ -240,7 +240,7 @@ export class LibStorageService {
    * @param user
    * @param filePaths
    */
-  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
+  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.handleUploadedFiles(filePaths, userDirPath)
   }
@@ -265,7 +265,7 @@ export class LibStorageService {
    * @param dirPaths
    * @param basePath
    */
-  async removeDirs(dirPaths: string[], basePath?: string): Promise<StorageNode[]> {
+  async removeDirs(dirPaths: string[], basePath?: string): Promise<GCSStorageNode[]> {
     const remove = async (dirPath: string, basePath?: string) => {
       dirPath = removeBothEndsSlash(dirPath)
       if (!dirPath) return Promise.resolve([])
@@ -276,7 +276,7 @@ export class LibStorageService {
       await this.padVirtualDirNode(nodeMap, dirPath, basePath)
 
       // Cloud Storageから取得したノードを削除
-      const promises: Promise<StorageNode>[] = []
+      const promises: Promise<GCSStorageNode>[] = []
       for (const node of Object.values(nodeMap)) {
         if (node.exists) {
           promises.push(node.gcsNode.delete().then(() => node))
@@ -285,7 +285,7 @@ export class LibStorageService {
       return await Promise.all(promises)
     }
 
-    const result: StorageNode[] = []
+    const result: GCSStorageNode[] = []
 
     for (const dirPath of dirPaths) {
       const nodes = await remove(dirPath, basePath)
@@ -302,7 +302,7 @@ export class LibStorageService {
    * @param user
    * @param dirPaths
    */
-  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<StorageNode[]> {
+  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.removeDirs(dirPaths, userDirPath)
   }
@@ -326,11 +326,11 @@ export class LibStorageService {
    * @param filePaths
    * @param basePath
    */
-  async removeFiles(filePaths: string[], basePath?: string): Promise<StorageNode[]> {
+  async removeFiles(filePaths: string[], basePath?: string): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
 
     const bucket = admin.storage().bucket()
-    const nodeMap: { [path: string]: StorageNode } = {}
+    const nodeMap: { [path: string]: GCSStorageNode } = {}
 
     const promises: Promise<void>[] = []
     for (let filePath of filePaths) {
@@ -352,7 +352,7 @@ export class LibStorageService {
     }
     await Promise.all(promises)
 
-    return filePaths.reduce<StorageNode[]>((result, filePath) => {
+    return filePaths.reduce<GCSStorageNode[]>((result, filePath) => {
       const fileNode = nodeMap[removeBothEndsSlash(filePath)]
       fileNode && result.push(fileNode)
       return result
@@ -364,7 +364,7 @@ export class LibStorageService {
    * @param user
    * @param filePaths
    */
-  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<StorageNode[]> {
+  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.removeFiles(filePaths, userDirPath)
   }
@@ -393,7 +393,7 @@ export class LibStorageService {
    * @param toDirPath
    * @param basePath
    */
-  async moveDir(fromDirPath: string, toDirPath: string, basePath?: string): Promise<StorageNode[]> {
+  async moveDir(fromDirPath: string, toDirPath: string, basePath?: string): Promise<GCSStorageNode[]> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     basePath = removeBothEndsSlash(basePath)
@@ -452,7 +452,7 @@ export class LibStorageService {
       await this.setDirShareSettings(fromDirPath, toDirParentNode.share, basePath)
     }
 
-    const resultMap: { [path: string]: StorageNode } = {}
+    const resultMap: { [path: string]: GCSStorageNode } = {}
 
     // 移動元ディレクトリの移動処理
     {
@@ -499,7 +499,7 @@ export class LibStorageService {
    * @param fromDirPath
    * @param toDirPath
    */
-  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<StorageNode[]> {
+  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.moveDir(fromDirPath, toDirPath, userDirPath)
   }
@@ -526,7 +526,7 @@ export class LibStorageService {
    * @param toFilePath
    * @param basePath
    */
-  async moveFile(fromFilePath: string, toFilePath: string, basePath?: string): Promise<StorageNode> {
+  async moveFile(fromFilePath: string, toFilePath: string, basePath?: string): Promise<GCSStorageNode> {
     fromFilePath = removeBothEndsSlash(fromFilePath)
     toFilePath = removeBothEndsSlash(toFilePath)
     basePath = removeBothEndsSlash(basePath)
@@ -566,7 +566,7 @@ export class LibStorageService {
    * @param fromFilePath
    * @param toDirPath
    */
-  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<StorageNode> {
+  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.moveFile(fromFilePath, toDirPath, userDirPath)
   }
@@ -595,7 +595,7 @@ export class LibStorageService {
    * @param newName
    * @param basePath
    */
-  async renameDir(dirPath: string, newName: string, basePath?: string): Promise<StorageNode[]> {
+  async renameDir(dirPath: string, newName: string, basePath?: string): Promise<GCSStorageNode[]> {
     dirPath = removeBothEndsSlash(dirPath)
 
     this.validateDirName(newName)
@@ -620,7 +620,7 @@ export class LibStorageService {
    * @param dirPath
    * @param newName
    */
-  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<StorageNode[]> {
+  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.renameDir(dirPath, newName, userDirPath)
   }
@@ -646,7 +646,7 @@ export class LibStorageService {
    * @param newName
    * @param basePath
    */
-  async renameFile(filePath: string, newName: string, basePath?: string): Promise<StorageNode> {
+  async renameFile(filePath: string, newName: string, basePath?: string): Promise<GCSStorageNode> {
     filePath = removeBothEndsSlash(filePath)
 
     this.validateFileName(newName)
@@ -671,7 +671,7 @@ export class LibStorageService {
    * @param filePath
    * @param newName
    */
-  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<StorageNode> {
+  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.renameFile(filePath, newName, userDirPath)
   }
@@ -682,7 +682,7 @@ export class LibStorageService {
    * @param settings
    * @param basePath
    */
-  async setDirShareSettings(dirPath: string, settings: StorageNodeShareSettingsInput | null, basePath?: string): Promise<StorageNode[]> {
+  async setDirShareSettings(dirPath: string, settings: StorageNodeShareSettingsInput | null, basePath?: string): Promise<GCSStorageNode[]> {
     dirPath = removeBothEndsSlash(dirPath)
     basePath = removeBothEndsSlash(basePath)
 
@@ -701,7 +701,7 @@ export class LibStorageService {
     // 引数ディレクトリと配下のノードは別処理を行うので、descendantMapから引数ディレクトリを削除
     delete descendantMap[dirPath]
 
-    const result: StorageNode[] = []
+    const result: GCSStorageNode[] = []
 
     // 引数ディレクトリの共有設定
     const oldDirSettings = dirNode.share
@@ -756,7 +756,7 @@ export class LibStorageService {
     dirPath: string,
     settings: StorageNodeShareSettingsInput,
     basePath?: string
-  ): Promise<StorageNode[]> {
+  ): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.setDirShareSettings(dirPath, settings, userDirPath)
   }
@@ -767,7 +767,7 @@ export class LibStorageService {
    * @param settings
    * @param basePath
    */
-  async setFileShareSettings(filePath: string, settings: StorageNodeShareSettingsInput | null, basePath?: string): Promise<StorageNode> {
+  async setFileShareSettings(filePath: string, settings: StorageNodeShareSettingsInput | null, basePath?: string): Promise<GCSStorageNode> {
     filePath = removeBothEndsSlash(filePath)
     basePath = removeBothEndsSlash(basePath)
 
@@ -801,7 +801,7 @@ export class LibStorageService {
     filePath: string,
     settings: StorageNodeShareSettingsInput,
     basePath?: string
-  ): Promise<StorageNode> {
+  ): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.setFileShareSettings(filePath, settings, userDirPath)
   }
@@ -1030,11 +1030,11 @@ export class LibStorageService {
    * @param uploadList
    * @param basePath
    */
-  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[], basePath?: string): Promise<StorageNode[]> {
+  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[], basePath?: string): Promise<GCSStorageNode[]> {
     const bucket = admin.storage().bucket()
     basePath = removeBothEndsSlash(basePath)
 
-    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const uploadedFileMap: { [path: string]: GCSStorageNode } = {}
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
@@ -1049,7 +1049,7 @@ export class LibStorageService {
     }
     await Promise.all(promises)
 
-    return uploadList.reduce<StorageNode[]>((result, item) => {
+    return uploadList.reduce<GCSStorageNode[]>((result, item) => {
       result.push(uploadedFileMap[removeStartSlash(item.toFilePath)])
       return result
     }, [])
@@ -1060,11 +1060,11 @@ export class LibStorageService {
    * @param uploadList
    * @param basePath
    */
-  async uploadAsFiles(uploadList: UploadDataItem[], basePath?: string): Promise<StorageNode[]> {
+  async uploadAsFiles(uploadList: UploadDataItem[], basePath?: string): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
     const bucket = admin.storage().bucket()
 
-    const uploadedFileMap: { [path: string]: StorageNode } = {}
+    const uploadedFileMap: { [path: string]: GCSStorageNode } = {}
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       promises.push(
@@ -1078,7 +1078,7 @@ export class LibStorageService {
     }
     await Promise.all(promises)
 
-    return uploadList.reduce<StorageNode[]>((result, item) => {
+    return uploadList.reduce<GCSStorageNode[]>((result, item) => {
       result.push(uploadedFileMap[removeStartSlash(item.path)])
       return result
     }, [])
@@ -1133,28 +1133,6 @@ export class LibStorageService {
       updated: dayjs(gcsNode.metadata.updated),
       exists: true,
       gcsNode: gcsNode,
-    }
-  }
-
-  /**
-   * 指定されたディレクトリパスをStorageNodeのディレクトリノードへ変換します。
-   * @param dirPath
-   */
-  protected toStorageNodeByDir(dirPath: string): StorageNode {
-    const dirPathSegments = dirPath.split('/')
-    const name = dirPathSegments[dirPathSegments.length - 1]
-    const dir = dirPathSegments.slice(0, dirPathSegments.length - 1).join('/')
-
-    return {
-      nodeType: StorageNodeType.Dir,
-      name,
-      dir,
-      path: dirPathSegments.join('/'),
-      contentType: '',
-      size: 0,
-      share: { isPublic: false, uids: [] },
-      created: dayjs(0),
-      updated: dayjs(0),
     }
   }
 
