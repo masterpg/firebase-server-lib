@@ -113,7 +113,7 @@ describe('CORSService', () => {
   })
 
   describe('GQL', () => {
-    const getProductsRequestData = {
+    const productsRequestData = {
       query: `
         query GetProducts {
           products { id name }
@@ -133,7 +133,7 @@ describe('CORSService', () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
         .post('/api/gql')
-        .send(getProductsRequestData)
+        .send(productsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
@@ -148,7 +148,7 @@ describe('CORSService', () => {
       return (
         request(app.getHttpServer())
           .post('/api/gql')
-          .send(getProductsRequestData)
+          .send(productsRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
           // ここではGraphQLライブラリにより'*'が設定される。

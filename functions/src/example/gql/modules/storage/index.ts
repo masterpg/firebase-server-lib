@@ -21,8 +21,8 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageDirNodes(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getUserDirNodes(user, dirPath)
+  async userStorageDirAndDescendants(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getUserDirAndDescendants(user, dirPath)
   }
 
   @Mutation()
@@ -112,8 +112,8 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDirNodes(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getDirNodes(dirPath)
+  async storageDirAndDescendants(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getDirAndDescendants(dirPath)
   }
 
   @Mutation()

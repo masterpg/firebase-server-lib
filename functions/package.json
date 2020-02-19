@@ -39,7 +39,7 @@
     "graphql-type-json": "^0.3.1",
     "lodash": "^4.17.15",
     "reflect-metadata": "^0.1.13",
-    "uuid": "^3.3.3",
+    "shortid": "^2.2.15",
     "vary": "^1.1.2",
     "web-base-lib": "https://github.com/masterpg/web-base-lib.git",
     "yargs": "^15.0.2"
@@ -48,8 +48,8 @@
     "@nestjs/testing": "^6.10.11",
     "@types/graphql-type-json": "^0.3.2",
     "@types/jest": "^24.0.23",
+    "@types/shortid": "^0.0.29",
     "@types/supertest": "^2.0.8",
-    "@types/uuid": "^3.4.6",
     "@types/vary": "^1.1.0",
     "@types/yargs": "^13.0.3",
     "@typescript-eslint/eslint-plugin": "^2.11.0",

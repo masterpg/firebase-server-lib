@@ -5,7 +5,7 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import * as uuidv4 from 'uuid/v4'
+import * as shortid from 'shortid'
 import { AuthServiceDI, IdToken } from '../nest'
 import { Inject, UnauthorizedException } from '@nestjs/common'
 import { InputValidationError, config } from '../base'
@@ -75,26 +75,29 @@ export class LibStorageService {
   //----------------------------------------------------------------------
 
   /**
-   * Cloud Storageから指定されたディレクトリのノード一覧を取得します。
+   * Cloud Storageから指定されたディレクトリと配下のノードを取得します。
    *
    * 引数が次のように指定された場合、
    *   + dirPath: 'photos'
    *   + basePath: 'home'
    *
    * 次のようなノードが取得されます。
+   *   + 'home'
+   *   + 'home/photos'
    *   + 'home/photos/family.png'
    *   + 'home/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
+   *   + 'photos'
    *   + 'photos/family.png'
    *   + 'photos/children.png'
    *
    * @param dirPath
    * @param basePath
    */
-  async getDirNodes(dirPath?: string, basePath?: string): Promise<StorageNode[]> {
+  async getDirAndDescendants(dirPath?: string, basePath?: string): Promise<StorageNode[]> {
     // Cloud Storageから指定されたディレクトリのノードを取得
-    const nodeMap = await this.getNodeMap(dirPath, basePath)
+    const nodeMap = await this.getDirAndDescendantMap(dirPath, basePath)
 
     // 親ディレクトリの穴埋め
     await this.padVirtualDirNode(nodeMap, null, basePath)
@@ -107,13 +110,13 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリから指定されたディレクトリのノード一覧を取得します。
+   * Cloud Storageのユーザーディレクトリから指定されたディレクトリと配下のノードを取得します。
    * @param user
    * @param dirPath
    */
-  async getUserDirNodes(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
+  async getUserDirAndDescendants(user: StorageUser, dirPath?: string): Promise<StorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getDirNodes(dirPath, userDirPath)
+    return this.getDirAndDescendants(dirPath, userDirPath)
   }
 
   /**
@@ -125,6 +128,7 @@ export class LibStorageService {
    *   + basePath: 'home'
    *
    * 次のディレクトリが作成されます。
+   *   + 'home'
    *   + 'home/photos'
    *   + 'home/docs'
    *
@@ -267,7 +271,7 @@ export class LibStorageService {
       if (!dirPath) return Promise.resolve([])
 
       // Cloud Storageから指定されたディレクトリのノードを取得
-      const nodeMap = await this.getNodeMap(dirPath, basePath)
+      const nodeMap = await this.getDirAndDescendantMap(dirPath, basePath)
       // 親ディレクトリの穴埋め
       await this.padVirtualDirNode(nodeMap, dirPath, basePath)
 
@@ -412,7 +416,7 @@ export class LibStorageService {
 
     // 移動元ディレクトリ配下のノードを取得
     // ※この段階ではfromDirPathのノードも含む
-    const movingDescendantMap = await this.getNodeMap(fromDirPath, basePath)
+    const movingDescendantMap = await this.getDirAndDescendantMap(fromDirPath, basePath)
     const dirNode = movingDescendantMap[fromDirPath]
     if (!dirNode || !dirNode.exists) {
       throw new Error(`The source directory does not exist: '${path.join(basePath, fromDirPath)}'`)
@@ -438,7 +442,7 @@ export class LibStorageService {
         }
       })
     )
-    // 移動元ディレクトリと配下のノードは別処理を行うのでmovingDescendantMapからは削除
+    // 移動元ディレクトリと配下のノードは別処理を行うので、movingDescendantMapからは移動元ディレクトリを削除
     delete movingDescendantMap[fromDirPath]
 
     // 古い親ディレクトリの共有設定を移動元ディレクトリ＋配下のノードから削除
@@ -516,7 +520,7 @@ export class LibStorageService {
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + 'archives/family.png'
    *
-   * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
+   * 移動元ファイルまたは移動先ディレクトリがない場合、移動は行われず、戻り値は何も返しません。
    *
    * @param fromFilePath
    * @param toFilePath
@@ -557,7 +561,7 @@ export class LibStorageService {
 
   /**
    * Cloud Storageのユーザーディレクトリ配下にあるファイルを指定されたディレクトリへ移動します。
-   * 移動元ファイルまたは移動先ディレクトリがない場合は移動は行われず、戻り値は何も返しません。
+   * 移動元ファイルまたは移動先ディレクトリがない場合、移動は行われず、戻り値は何も返しません。
    * @param user
    * @param fromFilePath
    * @param toDirPath
@@ -577,15 +581,15 @@ export class LibStorageService {
    *
    * 次のようなディレクトリの名前変更が行われます。
    *
-   *   + 移動元: 'home/photos'
-   *   + 移動先: 'home/my-photos'
+   *   + 変更前: 'home/photos'
+   *   + 変更後: 'home/my-photos'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + 'my-photos'
    *   + 'my-photos/20190101'
    *   + 'my-photos/20190101/family1.png'
    *
-   * リネームするディレクトリがない場合はリネームは行われず、空配列が返されます。
+   * リネームするディレクトリがない場合、リネームは行われず、空配列が返されます。
    *
    * @param dirPath
    * @param newName
@@ -611,7 +615,7 @@ export class LibStorageService {
 
   /**
    * Cloud Storageのユーザーディレクトリ配下にあるディレクトリのリネームを行います。
-   * リネームするディレクトリがない場合はリネームは行われず、空配列が返されます。
+   * リネームするディレクトリがない場合、リネームは行われず、空配列が返されます。
    * @param user
    * @param dirPath
    * @param newName
@@ -630,13 +634,13 @@ export class LibStorageService {
    *   + basePath: 'home'
    *
    * 次のような名前変更が行われます。
-   *   + 移動元: 'home/photos/family.png'
-   *   + 移動先: 'home/photos/my-family.png'
+   *   + 変更前: 'home/photos/family.png'
+   *   + 変更後: 'home/photos/my-family.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
    *   + 'photos/my-family.png'
    *
-   * リネームするファイルがない場合は移動は行われず、戻り値は何も返しません。
+   * リネームするファイルがない場合、移動行われず、戻り値は何も返しません。
    *
    * @param filePath
    * @param newName
@@ -662,7 +666,7 @@ export class LibStorageService {
 
   /**
    * Cloud Storageのユーザーディレクトリ配下にあるファイルのリネームを行います。
-   * リネームするファイルがない場合はリネームは行われず、戻り値は何も返しません。
+   * リネームするファイルがない場合、リネームは行われず、戻り値は何も返しません。
    * @param user
    * @param filePath
    * @param newName
@@ -683,7 +687,7 @@ export class LibStorageService {
     basePath = removeBothEndsSlash(basePath)
 
     // 指定されたディレクトリのノード一覧を取得
-    const descendantMap = await this.getNodeMap(dirPath, basePath)
+    const descendantMap = await this.getDirAndDescendantMap(dirPath, basePath)
     if (Object.values(descendantMap).length === 0) {
       return []
     }
@@ -694,7 +698,7 @@ export class LibStorageService {
     if (!dirNode.exists) {
       await dirNode.gcsNode.save('')
     }
-    // 引数ディレクトリと配下のノードは別処理を行うのでdescendantMapからは削除
+    // 引数ディレクトリと配下のノードは別処理を行うので、descendantMapから引数ディレクトリを削除
     delete descendantMap[dirPath]
 
     const result: StorageNode[] = []
@@ -869,13 +873,13 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageからノードを取得します。
+   * Cloud Storageから指定されたディレクトリと配下のノードをマップ形式取得します。
    * `dirPath`を指定すると、このディレクトリ(※1)を含めた配下のノードを取得します。
    * ※1 Cloud Storageにディレクトリが実際に存在する場合のみ取得されます。
    * @param dirPath
    * @param basePath
    */
-  async getNodeMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
+  async getDirAndDescendantMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
@@ -994,7 +998,7 @@ export class LibStorageService {
     if (!myDirName) {
       // カスタムクレームに'myDirName'というプロパティを追加。
       // このプロパティの値がユーザーディレクトリ名となる。
-      myDirName = uuidv4()
+      myDirName = shortid.generate()
       await admin.auth().setCustomUserClaims(uid, {
         myDirName,
       })
@@ -1194,7 +1198,7 @@ export class LibStorageService {
    *
    * `topPath`は最上位のパスで、このパスより上位のディレクトリは作成しません。
    * 例えば、'aaa/bbb/ccc/family.png'というノードがあり、ディレクトリが存在しないとします。
-   * この条件で`topPath`に'aaa/bbb'を指定すると次のようにディレクトリノードが作成されます。
+   * この条件で`topPath`に'aaa/bbb'を指定すると次のようなディレクトリノードが作成されます。
    * + 'aaa' ← 最上位パスより上なので作成されない
    * + 'aaa/bbb' ← 作成される
    * + 'aaa/bbb/ccc' ← 作成される
@@ -1414,6 +1418,23 @@ export class LibStorageService {
     }
   }
 
+  /**
+   * ユーザーディレクトリの名前である`myDirName`の値を取得します。
+   * @param user
+   */
+  private m_getMyDirNameFromStorageUser(user: StorageUser): string | undefined {
+    // IdTokeから取得
+    if ((user as IdToken).myDirName) {
+      return (user as IdToken).myDirName!
+    }
+    // UserRecordから取得
+    else if ((user as UserRecord).customClaims) {
+      const customClaims = (user as UserRecord).customClaims!
+      return (customClaims as any).myDirName
+    }
+    return undefined
+  }
+
   //--------------------------------------------------
   //  ファイルサーブ
   //--------------------------------------------------
@@ -1447,23 +1468,6 @@ export class LibStorageService {
   //--------------------------------------------------
   //  共有設定
   //--------------------------------------------------
-
-  /**
-   * ユーザーディレクトリの名前である`myDirName`の値を取得します。
-   * @param user
-   */
-  private m_getMyDirNameFromStorageUser(user: StorageUser): string | undefined {
-    // IdTokeから取得
-    if ((user as IdToken).myDirName) {
-      return (user as IdToken).myDirName!
-    }
-    // UserRecordから取得
-    else if ((user as UserRecord).customClaims) {
-      const customClaims = (user as UserRecord).customClaims!
-      return (customClaims as any).myDirName
-    }
-    return undefined
-  }
 
   /**
    * targetからfromParentの設定を除去し、その後targetへtoParentの設定をマージします。
@@ -1518,7 +1522,7 @@ export class LibStorageService {
   }
 
   /**
-   * 指定さてたGCSノードのメタデータから共有設定を抽出します。
+   * 指定されたGCSノードのメタデータから共有設定を抽出します。
    * @param gcsNode
    */
   private m_extractShareSettings(gcsNode: File): StorageNodeShareSettings {

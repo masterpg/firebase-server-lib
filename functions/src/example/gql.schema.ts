@@ -108,9 +108,9 @@ export interface IQuery {
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    userStorageDirNodes(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageDirAndDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
-    storageDirNodes(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    storageDirAndDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
 }
 
 export interface StorageNode {

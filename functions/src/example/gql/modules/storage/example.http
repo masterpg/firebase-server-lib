@@ -4,7 +4,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes { userStorageDirNodes { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "query": "query GetUserStorageDirNodes { userStorageDirAndDescendants { nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {}
 }
 
@@ -16,7 +16,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirNodes(dirPath: $dirPath) { nodeType name dir path contentType size share created updated } }",
+  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirAndDescendants(dirPath: $dirPath) { nodeType name dir path contentType size share created updated } }",
   "variables": {
     "dirPath": "d1"
   }
@@ -201,8 +201,8 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "GetStorageDirNodes",
-  "query": "query GetStorageDirNodes($dirPath: String) { storageDirNodes(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "operationName": "GetStorageDirAndDescendants",
+  "query": "query GetStorageDirAndDescendants($dirPath: String) { storageDirAndDescendants(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "dirPath": "test-files/d1"
   }

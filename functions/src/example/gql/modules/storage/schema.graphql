@@ -57,7 +57,7 @@ type Mutation {
 }
 
 type Query {
-  userStorageDirNodes(dirPath: String): [StorageNode!]!
+  userStorageDirAndDescendants(dirPath: String): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  storageDirNodes(dirPath: String): [StorageNode!]!
+  storageDirAndDescendants(dirPath: String): [StorageNode!]!
 }

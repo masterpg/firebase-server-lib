@@ -1,5 +1,5 @@
 query GetUserStorageDirNodes {
-  userStorageDirNodes {
+  userStorageDirAndDescendants {
     nodeType
     name
     dir
@@ -11,7 +11,7 @@ query GetUserStorageDirNodes {
 { "authorization": "Bearer {\"uid\": \"general.user\"}" }
 
 query GetUserStorageDirNodes {
-  userStorageDirNodes(dirPath: "dir1") {
+  userStorageDirAndDescendants(dirPath: "dir1") {
     nodeType
     name
     dir
@@ -23,7 +23,7 @@ query GetUserStorageDirNodes {
 { "authorization": "Bearer {\"uid\": \"general.user\"}" }
 
 query GetUserStorageDirNodes($dirPath: String) {
-  userStorageDirNodes(dirPath: $dirPath) {
+  userStorageDirAndDescendants(dirPath: $dirPath) {
     nodeType
     name
     dir
