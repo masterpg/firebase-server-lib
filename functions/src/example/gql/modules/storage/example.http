@@ -2,10 +2,18 @@ POST {{host}}/api/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
+
 {
-  "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes { userStorageDirAndDescendants { nodeType name dir path contentType size share { isPublic uids } created updated } }",
-  "variables": {}
+  "operationName": "GetHierarchicalUserStorageDirDescendants",
+  "query": "query GetHierarchicalUserStorageDirDescendants { hierarchicalUserStorageDirDescendants { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "dirPath": "d1"
+  }
 }
 
 ###
@@ -15,8 +23,22 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
-  "operationName": "GetUserStorageDirNodes",
-  "query": "query GetUserStorageDirNodes($dirPath: String) { userStorageDirAndDescendants(dirPath: $dirPath) { nodeType name dir path contentType size share created updated } }",
+  "operationName": "GetHierarchicalUserStorageDirChildren",
+  "query": "query GetHierarchicalUserStorageDirChildren { hierarchicalUserStorageDirChildren { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "dirPath": "d1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
+
+{
+  "operationName": "GetUserStorageDirChildren",
+  "query": "query GetUserStorageDirChildren { userStorageDirChildren { nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "dirPath": "d1"
   }
@@ -201,10 +223,52 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "GetStorageDirAndDescendants",
-  "query": "query GetStorageDirAndDescendants($dirPath: String) { storageDirAndDescendants(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "operationName": "GetHierarchicalStorageDirDescendants",
+  "query": "query GetHierarchicalStorageDirDescendants($dirPath: String) { hierarchicalStorageDirDescendants(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "dirPath": "test-files/d1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+  "operationName": "GetHierarchicalStorageDirChildren",
+  "query": "query GetHierarchicalStorageDirChildren($dirPath: String) { hierarchicalStorageDirChildren(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "dirPath": "test-files/d1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+  "operationName": "GetStorageDirChildren",
+  "query": "query GetStorageDirChildren($dirPath: String) { storageDirChildren(dirPath: $dirPath) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "dirPath": "test-files/d1"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+  "operationName": "HandleUploadedFiles",
+  "query": "mutation HandleUploadedFiles($filePaths: [String!]!) { handleUploadedFiles(filePaths: $filePaths) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "filePaths": ["test-files/d1/fileA.txt"]
   }
 }
 
@@ -224,20 +288,6 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
       "test-files/d1/d11/d112",
       "test-files/dir2/dir2_1"
     ]
-  }
-}
-
-###
-
-POST {{host}}/api/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
-
-{
-  "operationName": "HandleUploadedFiles",
-  "query": "mutation HandleUploadedFiles($filePaths: [String!]!) { handleUploadedFiles(filePaths: $filePaths) { nodeType name dir path contentType size share { isPublic uids } created updated } }",
-  "variables": {
-    "filePaths": ["test-files/d1/fileA.txt"]
   }
 }
 

@@ -21,20 +21,32 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageDirAndDescendants(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getUserDirAndDescendants(user, dirPath)
+  async hierarchicalUserStorageDirDescendants(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalUserDirDescendants(user, dirPath)
   }
 
-  @Mutation()
+  @Query()
   @UseGuards(AuthGuard)
-  async createUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createUserDirs(user, dirPaths)
+  async hierarchicalUserStorageDirChildren(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalUserDirChildren(user, dirPath)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  async userStorageDirChildren(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getUserDirChildren(user, dirPath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   async handleUploadedUserFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
     return this.storageService.handleUploadedUserFiles(user, filePaths)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
+  async createUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.createUserDirs(user, dirPaths)
   }
 
   @Mutation()
@@ -112,8 +124,22 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDirAndDescendants(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getDirAndDescendants(dirPath)
+  async hierarchicalStorageDirDescendants(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalDirDescendants(dirPath)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async hierarchicalStorageDirChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalDirChildren(dirPath)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async storageDirChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
+    return this.storageService.getDirChildren(dirPath)
   }
 
   @Mutation()

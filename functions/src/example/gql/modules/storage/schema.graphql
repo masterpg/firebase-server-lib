@@ -57,7 +57,11 @@ type Mutation {
 }
 
 type Query {
-  userStorageDirAndDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalUserStorageDirDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalUserStorageDirChildren(dirPath: String): [StorageNode!]!
+  userStorageDirChildren(dirPath: String): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  storageDirAndDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalStorageDirDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalStorageDirChildren(dirPath: String): [StorageNode!]!
+  storageDirChildren(dirPath: String): [StorageNode!]!
 }

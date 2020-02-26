@@ -108,9 +108,13 @@ export interface IQuery {
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    userStorageDirAndDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalUserStorageDirDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalUserStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
-    storageDirAndDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalStorageDirDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    storageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
 }
 
 export interface StorageNode {

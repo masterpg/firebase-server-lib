@@ -145,11 +145,11 @@ describe('StorageResolver', () => {
     storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
   })
 
-  describe('userStorageDirAndDescendants', () => {
+  describe('hierarchicalUserStorageDirDescendants', () => {
     const gql = {
       query: `
-        query GetUserStorageDirAndDescendants($dirPath: String) {
-          userStorageDirAndDescendants(dirPath: $dirPath) {
+        query GetHierarchicalUserStorageDirDescendants($dirPath: String) {
+          hierarchicalUserStorageDirDescendants(dirPath: $dirPath) {
             nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
@@ -160,26 +160,26 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getUserDirAndDescendants = td.replace(storageService, 'getUserDirAndDescendants')
-      td.when(getUserDirAndDescendants(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalUserDirDescendants = td.replace(storageService, 'getHierarchicalUserDirDescendants')
+      td.when(getHierarchicalUserDirDescendants(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.userStorageDirAndDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalUserStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('疎通確認 - td.explain()バージョン', async () => {
-      const getUserDirAndDescendants = td.replace(storageService, 'getUserDirAndDescendants')
-      td.when(getUserDirAndDescendants(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
+      const getHierarchicalUserDirDescendants = td.replace(storageService, 'getHierarchicalUserDirDescendants')
+      td.when(getHierarchicalUserDirDescendants(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.userStorageDirAndDescendants).toEqual(toResponseStorageNodes([dir1_1]))
-      const explanation = td.explain(getUserDirAndDescendants)
+      expect(response.body.data.hierarchicalUserStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      const explanation = td.explain(getHierarchicalUserDirDescendants)
       expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
       expect(explanation.calls[0].args[1]).toBe(dir1.path)
     })
@@ -190,29 +190,60 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('createUserStorageDirs', () => {
+  describe('hierarchicalUserStorageDirChildren', () => {
     const gql = {
       query: `
-        mutation CreateUserStorageDirs($dirPaths: [String!]!) {
-          createUserStorageDirs(dirPaths: $dirPaths) {
+        query GetHierarchicalUserStorageDirChildren($dirPath: String) {
+          hierarchicalUserStorageDirChildren(dirPath: $dirPath) {
             nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
       variables: {
-        dirPaths: [dir1_1.path, dir1_2.path],
+        dirPath: dir1.path,
       },
     }
 
     it('疎通確認', async () => {
-      const createUserDirs = td.replace(storageService, 'createUserDirs')
-      td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+      const getHierarchicalUserDirChildren = td.replace(storageService, 'getHierarchicalUserDirChildren')
+      td.when(getHierarchicalUserDirChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.createUserStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
+      expect(response.body.data.hierarchicalUserStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('userStorageDirChildren', () => {
+    const gql = {
+      query: `
+        query GetUserStorageDirChildren($dirPath: String) {
+          userStorageDirChildren(dirPath: $dirPath) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getUserDirChildren = td.replace(storageService, 'getUserDirChildren')
+      td.when(getUserDirChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -247,6 +278,37 @@ describe('StorageResolver', () => {
       })
 
       expect(response.body.data.handleUploadedUserFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('createUserStorageDirs', () => {
+    const gql = {
+      query: `
+        mutation CreateUserStorageDirs($dirPaths: [String!]!) {
+          createUserStorageDirs(dirPaths: $dirPaths) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPaths: [dir1_1.path, dir1_2.path],
+      },
+    }
+
+    it('疎通確認', async () => {
+      const createUserDirs = td.replace(storageService, 'createUserDirs')
+      td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.createUserStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
     })
 
     it('サインインしていない場合', async () => {
@@ -550,11 +612,11 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('storageDirAndDescendants', () => {
+  describe('hierarchicalStorageDirDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDirAndDescendants($dirPath: String) {
-          storageDirAndDescendants(dirPath: $dirPath) {
+        query GetHierarchicalStorageDirDescendants($dirPath: String) {
+          hierarchicalStorageDirDescendants(dirPath: $dirPath) {
             nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
@@ -565,14 +627,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getDirAndDescendants = td.replace(storageService, 'getDirAndDescendants')
-      td.when(getDirAndDescendants(dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalDirDescendants = td.replace(storageService, 'getHierarchicalDirDescendants')
+      td.when(getHierarchicalDirDescendants(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.storageDirAndDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -588,29 +650,67 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('createStorageDirs', () => {
+  describe('hierarchicalStorageDirChildren', () => {
     const gql = {
       query: `
-        mutation CreateStorageDirs($dirPaths: [String!]!) {
-          createStorageDirs(dirPaths: $dirPaths) {
+        query GetHierarchicalStorageDirChildren($dirPath: String) {
+          hierarchicalStorageDirChildren(dirPath: $dirPath) {
             nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
       variables: {
-        dirPaths: [dir1_1.path, dir1_2.path],
+        dirPath: dir1.path,
       },
     }
 
     it('疎通確認', async () => {
-      const createDirs = td.replace(storageService, 'createDirs')
-      td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+      const getHierarchicalDirChildren = td.replace(storageService, 'getHierarchicalDirChildren')
+      td.when(getHierarchicalDirChildren(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.createStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
+      expect(response.body.data.hierarchicalStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('storageDirChildren', () => {
+    const gql = {
+      query: `
+        query GetStorageDirChildren($dirPath: String) {
+          storageDirChildren(dirPath: $dirPath) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getDirChildren = td.replace(storageService, 'getDirChildren')
+      td.when(getDirChildren(dir1.path)).thenResolve([dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -649,6 +749,44 @@ describe('StorageResolver', () => {
       })
 
       expect(response.body.data.handleUploadedFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('createStorageDirs', () => {
+    const gql = {
+      query: `
+        mutation CreateStorageDirs($dirPaths: [String!]!) {
+          createStorageDirs(dirPaths: $dirPaths) {
+            nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        dirPaths: [dir1_1.path, dir1_2.path],
+      },
+    }
+
+    it('疎通確認', async () => {
+      const createDirs = td.replace(storageService, 'createDirs')
+      td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.createStorageDirs).toEqual(toResponseStorageNodes([dir1_1, dir1_2]))
     })
 
     it('サインインしていない場合', async () => {
