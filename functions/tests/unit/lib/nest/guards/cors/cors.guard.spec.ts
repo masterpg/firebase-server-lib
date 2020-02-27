@@ -18,7 +18,7 @@ initLibTestApp()
 
 @Module({
   providers: [CORSGuardDI.provider],
-  imports: [MockCORSBaseAppModule, MockRESTContainerModule, MockGQLContainerModule],
+  imports: [MockCORSBaseAppModule],
 })
 class MockAppModule {}
 
@@ -32,11 +32,11 @@ describe('CORSGuard', () => {
   let app: any
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const testingModule: TestingModule = await Test.createTestingModule({
       imports: [MockAppModule],
     }).compile()
 
-    app = moduleFixture.createNestApplication()
+    app = testingModule.createNestApplication()
     await app.init()
   })
 
@@ -44,7 +44,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/api/rest/products')
+        .get('/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
@@ -56,7 +56,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/api/rest/products')
+        .get('/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(403)
@@ -78,7 +78,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .post('/api/gql')
+        .post('/gql')
         .send(gqlRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
@@ -92,7 +92,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .post('/api/gql')
+        .post('/gql')
         .send(gqlRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)

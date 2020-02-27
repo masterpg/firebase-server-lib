@@ -103,10 +103,10 @@ export interface Product {
 }
 
 export interface IQuery {
-    appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
-    customToken(): string | Promise<string>;
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
+    appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
+    customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
     hierarchicalUserStorageDirDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     hierarchicalUserStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;

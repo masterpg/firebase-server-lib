@@ -1,0 +1,34 @@
+import * as admin from 'firebase-admin'
+import { BaseFoundationService, IdToken } from '../../lib'
+import { Inject, Injectable } from '@nestjs/common'
+import { AppConfigResponse } from './types'
+import { StorageServiceDI } from './storage'
+import { config } from '../../lib/base'
+
+@Injectable()
+class FoundationService extends BaseFoundationService {
+  @Inject(StorageServiceDI.symbol)
+  protected readonly storageService!: StorageServiceDI.type
+
+  async appConfig(): Promise<AppConfigResponse> {
+    return {
+      usersDir: config.storage.usersDir,
+    }
+  }
+
+  async customToken(user: IdToken): Promise<string> {
+    await this.storageService.assignUserDir(user)
+    // user.customClaimsには開発や単体テストで必要なカスタムクレームが設定されてくる
+    const token = await admin.auth().createCustomToken(user.uid, user.customClaims || {})
+    return token
+  }
+}
+
+export namespace FoundationServiceDI {
+  export const symbol = Symbol(FoundationService.name)
+  export const provider = {
+    provide: symbol,
+    useClass: FoundationService,
+  }
+  export type type = FoundationService
+}

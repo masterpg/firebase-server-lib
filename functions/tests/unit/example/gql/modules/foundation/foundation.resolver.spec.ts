@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
+import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
@@ -9,15 +9,15 @@ initApp()
 const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
 const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
 
-describe('AppResolver', () => {
+describe('FoundationResolver', () => {
   let app: any
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const testingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile()
 
-    app = moduleFixture.createNestApplication()
+    app = testingModule.createNestApplication()
     await app.init()
   })
 

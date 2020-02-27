@@ -2,13 +2,13 @@ import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, HandlerLoggingService
 import { LibDevUtilsServiceDI, LibStorageServiceDI } from './services'
 
 export const libBaseProviders = [
-  CORSServiceDI.provider,
   AuthServiceDI.provider,
-  HttpLoggingServiceDI.provider,
-  HandlerLoggingServiceDI.provider,
+  CORSServiceDI.provider,
   FirestoreServiceDI.provider,
-  LibStorageServiceDI.provider,
+  HandlerLoggingServiceDI.provider,
+  HttpLoggingServiceDI.provider,
   LibDevUtilsServiceDI.provider,
+  LibStorageServiceDI.provider,
 ]
 
 export {
@@ -56,7 +56,7 @@ export {
 } from './nest'
 
 export {
-  BaseAppService,
+  BaseFoundationService,
   GCSStorageNode,
   JSON,
   JSONObject,

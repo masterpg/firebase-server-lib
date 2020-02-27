@@ -19,6 +19,10 @@ import { StorageServiceDI } from '../../../services'
 export class StorageResolver {
   constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
+  //--------------------------------------------------
+  //  User
+  //--------------------------------------------------
+
   @Query()
   @UseGuards(AuthGuard)
   async hierarchicalUserStorageDirDescendants(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
@@ -112,6 +116,10 @@ export class StorageResolver {
   ): Promise<StorageNode> {
     return this.storageService.setUserFileShareSettings(user, filePath, settings)
   }
+
+  //--------------------------------------------------
+  //  Application
+  //--------------------------------------------------
 
   @Query()
   @UseGuards(AuthGuard)

@@ -34,7 +34,7 @@ const baseOptions = getGqlModuleBaseOptions('tests/mocks/lib/gql')
   imports: [
     GraphQLModule.forRoot(
       merge(baseOptions, {
-        path: '/api/gql',
+        path: '/gql',
       })
     ),
   ],

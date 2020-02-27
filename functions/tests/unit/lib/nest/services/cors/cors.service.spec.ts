@@ -16,7 +16,7 @@ initLibTestApp()
 //========================================================================
 
 @Module({
-  imports: [MockCORSBaseAppModule, MockRESTContainerModule, MockGQLContainerModule],
+  imports: [MockCORSBaseAppModule],
 })
 class MockAppModule {}
 
@@ -42,7 +42,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/api/rest/products')
+        .get('/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
@@ -54,7 +54,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/api/rest/products')
+        .get('/rest/products')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(200)
@@ -66,7 +66,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/api/rest/products')
+        .options('/rest/products')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -78,7 +78,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/api/rest/products')
+        .options('/rest/products')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -91,7 +91,7 @@ describe('CORSService', () => {
       // 除外リストの設定は`functions/functions.env.test.sh`を参照
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/api/rest/site/public/config')
+        .get('/rest/site/public/config')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
         .expect(200)
@@ -103,7 +103,7 @@ describe('CORSService', () => {
     it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
       // 除外リストの設定は`functions/functions.env.test.sh`を参照
       return request(app.getHttpServer())
-        .get('/api/rest/site/public/config')
+        .get('/rest/site/public/config')
         .expect(200)
         .then((res: Response) => {
           expect(res.get('Access-Control-Allow-Origin')).toBe('*')
@@ -132,7 +132,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .post('/api/gql')
+        .post('/gql')
         .send(productsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
@@ -147,7 +147,7 @@ describe('CORSService', () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return (
         request(app.getHttpServer())
-          .post('/api/gql')
+          .post('/gql')
           .send(productsRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
@@ -166,7 +166,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/api/gql')
+        .options('/gql')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)
@@ -178,7 +178,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/api/gql')
+        .options('/gql')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)

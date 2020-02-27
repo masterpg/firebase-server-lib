@@ -2,10 +2,16 @@ import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { LibDevUtilsServiceDI } from '../../../../../src/lib'
 import { Test } from '@nestjs/testing'
-import { initLibTestApp } from '../../../../helpers/lib'
+import { initApp } from '../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
-initLibTestApp()
+initApp()
+
+//========================================================================
+//
+//  Test data
+//
+//========================================================================
 
 const PRODUCTS: Product[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
@@ -13,17 +19,23 @@ const PRODUCTS: Product[] = [
   { id: 'product3', title: 'MediaPad T5 10', price: 150.8, stock: 10 },
 ]
 
+//========================================================================
+//
+//  Tests
+//
+//========================================================================
+
 describe('ProductService', () => {
   let productService: ProductServiceDI.type
   let devUtilsService: LibDevUtilsServiceDI.type
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    const testingModule = await Test.createTestingModule({
       imports: [AppBaseModule],
     }).compile()
 
-    productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
-    devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
+    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
   })
 
   describe('findList', () => {

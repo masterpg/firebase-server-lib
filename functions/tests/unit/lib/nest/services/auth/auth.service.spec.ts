@@ -28,7 +28,7 @@ const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMI
 //========================================================================
 
 @Module({
-  imports: [MockBaseAppModule, MockRESTContainerModule, MockGQLContainerModule],
+  imports: [MockBaseAppModule],
 })
 class MockAppModule {}
 
@@ -55,7 +55,7 @@ describe('AuthService', () => {
       const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/api/rest/site/admin/config')
+          .get('/rest/site/admin/config')
           // 権限を満たすユーザーを設定
           .set(APP_ADMIN_USER_HEADER)
           .expect(200)
@@ -68,7 +68,7 @@ describe('AuthService', () => {
     it('サインインしていない場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/api/rest/site/admin/config')
+        .get('/rest/site/admin/config')
         .expect(401)
         .then((res: Response) => {
           expect(res.header['www-authenticate']).toEqual(`Bearer realm="token_required"`)
@@ -80,7 +80,7 @@ describe('AuthService', () => {
       const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/api/rest/site/admin/config')
+          .get('/rest/site/admin/config')
           // 不正な認証トークンを設定
           .set({ Authorization: `Bearer ABCDEFG` })
           .expect(401)
@@ -95,7 +95,7 @@ describe('AuthService', () => {
       const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/api/rest/site/admin/config')
+          .get('/rest/site/admin/config')
           // ロール権限が足りないユーザーを設定
           .set(GENERAL_USER_HEADER)
           .expect(403)
@@ -119,7 +119,7 @@ describe('AuthService', () => {
     it('認証ユーザーが権限を満たしている場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/api/gql')
+          .post('/gql')
           .send(getSiteAdminConfigRequestData)
           .set('Content-Type', 'application/json')
           // 権限を満たすユーザーを設定
@@ -133,7 +133,7 @@ describe('AuthService', () => {
 
     it('サインインしていない場合', async () => {
       return request(app.getHttpServer())
-        .post('/api/gql')
+        .post('/gql')
         .send(getSiteAdminConfigRequestData)
         .set('Content-Type', 'application/json')
         .expect(200)
@@ -146,7 +146,7 @@ describe('AuthService', () => {
     it('認証トークンが不正な場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/api/gql')
+          .post('/gql')
           .send(getSiteAdminConfigRequestData)
           .set('Content-Type', 'application/json')
           // 不正な認証トークンを設定
@@ -162,7 +162,7 @@ describe('AuthService', () => {
     it('認証ユーザーのロール権限が足りない場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/api/gql')
+          .post('/gql')
           .send(getSiteAdminConfigRequestData)
           .set('Content-Type', 'application/json')
           // ロール権限が足りないユーザーを設定

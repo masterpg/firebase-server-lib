@@ -5,14 +5,13 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import * as shortid from 'shortid'
 import { AuthServiceDI, IdToken } from '../nest'
-import { Inject, UnauthorizedException } from '@nestjs/common'
 import { InputValidationError, config } from '../base'
 import { Request, Response } from 'express'
 import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
 import { File } from '@google-cloud/storage'
+import { Inject } from '@nestjs/common'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
 const cloneDeep = require('lodash/cloneDeep')
@@ -115,16 +114,6 @@ export class LibStorageService {
 
     // ディレクトリ階層を表現できるようノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリから指定されたディレクトリと配下のノードを取得します。
-   * @param user
-   * @param dirPath
-   */
-  async getHierarchicalUserDirDescendants(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalDirDescendants(dirPath, userDirPath)
   }
 
   /**
@@ -235,16 +224,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリから指定されたディレクトリと直下のノードを階層構造を形成して取得します。
-   * @param user
-   * @param dirPath
-   */
-  async getHierarchicalUserDirChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalDirChildren(dirPath, userDirPath)
-  }
-
-  /**
    * Cloud Storageから指定されたディレクトリ直下のノードを取得します。
    *
    * 引数が次のように指定された場合、
@@ -267,16 +246,6 @@ export class LibStorageService {
     const nodeMap = await this.getDirChildMap(dirPath, basePath)
     // ノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリから指定されたディレクトリ直下のノードを取得します。
-   * @param user
-   * @param dirPath
-   */
-  async getUserDirChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.getDirChildren(dirPath, userDirPath)
   }
 
   /**
@@ -395,16 +364,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリ配下にディレクトリを作成します。
-   * @param user
-   * @param dirPaths
-   */
-  async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.createDirs(dirPaths, userDirPath)
-  }
-
-  /**
    * Cloud Storageへのファイルアップロードの後に必要な処理を行います。
    * @param filePaths
    * @param basePath
@@ -452,16 +411,6 @@ export class LibStorageService {
     )
 
     return this.sortStorageNodes(result)
-  }
-
-  /**
-   * Cloud Storageへのユーザーファイルアップロードの後に必要な処理を行います。
-   * @param user
-   * @param filePaths
-   */
-  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.handleUploadedFiles(filePaths, userDirPath)
   }
 
   /**
@@ -519,16 +468,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリ配下にあるファイルを削除します。。
-   * @param user
-   * @param dirPaths
-   */
-  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.removeDirs(dirPaths, userDirPath)
-  }
-
-  /**
    * Cloud Storageからファイルノードを削除します。
    *
    * 引数が次のように指定された場合、
@@ -578,16 +517,6 @@ export class LibStorageService {
       fileNode && result.push(fileNode)
       return result
     }, [])
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリ配下にあるファイルを削除します。。
-   * @param user
-   * @param filePaths
-   */
-  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.removeFiles(filePaths, userDirPath)
   }
 
   /**
@@ -714,18 +643,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリを指定されたディレクトリへ移動します。
-   * 移動元ディレクトリまたは移動先ディレクトリがない場合は移動は行われず、空配列が返されます。
-   * @param user
-   * @param fromDirPath
-   * @param toDirPath
-   */
-  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.moveDir(fromDirPath, toDirPath, userDirPath)
-  }
-
-  /**
    * Cloud Storageのファイルを指定されたディレクトリへ移動します。
    *
    * 引数が次のように指定された場合、
@@ -781,18 +698,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリ配下にあるファイルを指定されたディレクトリへ移動します。
-   * 移動元ファイルまたは移動先ディレクトリがない場合、移動は行われず、戻り値は何も返しません。
-   * @param user
-   * @param fromFilePath
-   * @param toDirPath
-   */
-  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.moveFile(fromFilePath, toDirPath, userDirPath)
-  }
-
-  /**
    * Cloud Storageのディレクトリの名前変更を行います。
    *
    * 引数が次のように指定された場合、
@@ -835,18 +740,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリ配下にあるディレクトリのリネームを行います。
-   * リネームするディレクトリがない場合、リネームは行われず、空配列が返されます。
-   * @param user
-   * @param dirPath
-   * @param newName
-   */
-  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.renameDir(dirPath, newName, userDirPath)
-  }
-
-  /**
    * Cloud Storageのファイルの名前変更を行います。
    *
    * 引数が次のように指定された場合、
@@ -883,18 +776,6 @@ export class LibStorageService {
     }
 
     return this.moveFile(filePath, toFilePath, basePath)
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリ配下にあるファイルのリネームを行います。
-   * リネームするファイルがない場合、リネームは行われず、戻り値は何も返しません。
-   * @param user
-   * @param filePath
-   * @param newName
-   */
-  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<GCSStorageNode> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.renameFile(filePath, newName, userDirPath)
   }
 
   /**
@@ -966,23 +847,6 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのユーザーディレクトリに対して共有設定を行います。
-   * @param user
-   * @param dirPath
-   * @param settings
-   * @param basePath
-   */
-  async setUserDirShareSettings(
-    user: StorageUser,
-    dirPath: string,
-    settings: StorageNodeShareSettingsInput,
-    basePath?: string
-  ): Promise<GCSStorageNode[]> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.setDirShareSettings(dirPath, settings, userDirPath)
-  }
-
-  /**
    * Cloud Storageのファイルに対してい共有設定を行います。
    * @param filePath
    * @param settings
@@ -1008,23 +872,6 @@ export class LibStorageService {
     await this.m_saveShareSettings(node.gcsNode, newDirSettings)
 
     return this.toStorageNode(node.gcsNode, basePath)
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリに対して共有設定を行います。
-   * @param user
-   * @param filePath
-   * @param settings
-   * @param basePath
-   */
-  async setUserFileShareSettings(
-    user: StorageUser,
-    filePath: string,
-    settings: StorageNodeShareSettingsInput,
-    basePath?: string
-  ): Promise<GCSStorageNode> {
-    const userDirPath = this.getUserDirPath(user)
-    return this.setFileShareSettings(filePath, settings, userDirPath)
   }
 
   /**
@@ -1094,118 +941,36 @@ export class LibStorageService {
   }
 
   /**
-   * クライアントから指定されたアプリケーションファイルをレスポンスします。
+   * クライアントから指定されたファイルをサーブします。
    * @param req
    * @param res
-   * @param filePath
+   * @param file
    */
-  async serveAppFile(req: Request, res: Response, filePath: string): Promise<Response> {
-    const fileNode = await this.getFileNode(filePath)
-
-    // ファイルの公開フラグがオンの場合
-    if (fileNode.share.isPublic) {
-      return this.serveFile(req, res, fileNode)
+  async serveFile(req: Request, res: Response, file: string | GCSStorageNode): Promise<Response> {
+    let fileNode: GCSStorageNode
+    if (typeof file === 'string') {
+      fileNode = await this.getFileNode(file)
+    } else {
+      fileNode = file
     }
 
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
+    if (!fileNode.exists) {
+      return res.sendStatus(404)
     }
 
-    const user = validated.idToken!
-
-    // 自ユーザーがアプリケーション管理者の場合
-    if (user.isAppAdmin) {
-      return this.serveFile(req, res, fileNode)
+    const lastModified = dayjs(fileNode.gcsNode.metadata.updated).toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return res.sendStatus(304)
     }
 
-    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (fileNode.share.uids.includes(user.uid)) {
-      return this.serveFile(req, res, fileNode)
-    }
+    res.setHeader('Last-Modified', lastModified)
+    res.setHeader('Content-Type', fileNode.gcsNode.metadata.contentType)
+    const fileStream = fileNode.gcsNode.createReadStream()
 
-    return res.sendStatus(403)
-  }
-
-  /**
-   * クライアントから指定されたユーザーファイルをレスポンスします。
-   * @param req
-   * @param res
-   * @param filePath
-   */
-  async serveUserFile(req: Request, res: Response, filePath: string): Promise<Response> {
-    const fileNode = await this.getFileNode(filePath)
-
-    // ファイルの公開フラグがオンの場合
-    if (fileNode.share.isPublic) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
-    }
-
-    // ユーザーディレクトリ名が割り当てられているか検証
-    const user = validated.idToken!
-    if (!user.myDirName) {
-      res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token')
-      throw new UnauthorizedException(`'myDirName' has not been assigned to the user [uid: '${user.uid}].`)
-    }
-
-    // 指定ファイルが自ユーザーの所有物である場合
-    const userDirPath = this.getUserDirPath(user)
-    if (filePath.startsWith(path.join(userDirPath, '/'))) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (fileNode.share.uids.includes(user.uid)) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    return res.sendStatus(403)
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリの名前を割り当てます。
-   * @param user
-   */
-  async assignUserDir(user: StorageUser): Promise<void> {
-    let myDirName = this.m_getMyDirNameFromStorageUser(user)
-    const uid = user.uid
-
-    // まだユーザーディレクトリ名が割り当てられていない場合
-    if (!myDirName) {
-      // カスタムクレームに'myDirName'というプロパティを追加。
-      // このプロパティの値がユーザーディレクトリ名となる。
-      myDirName = shortid.generate()
-      await admin.auth().setCustomUserClaims(uid, {
-        myDirName,
-      })
-    }
-
-    // ユーザーディレクトリの作成(存在しない場合のみ)
-    const userDirPath = this.getUserDirPath({ uid, myDirName })
-    const userDirNode = await this.getDirNode(userDirPath)
-    if (!userDirNode.exists) {
-      await this.createDirs([userDirNode.path])
-    }
-  }
-
-  /**
-   * Cloud Storageのユーザーディレクトリのパスを取得します。
-   * @param user
-   */
-  getUserDirPath(user: StorageUser): string {
-    const myDirName = this.m_getMyDirNameFromStorageUser(user)
-    if (myDirName) {
-      const usersDir = config.storage.usersDir
-      return path.join(usersDir, myDirName)
-    }
-    throw new Error(`User [uid: '${user.uid}'] does not have a storage directory assigned.`)
+    fileStream.pipe(res)
+    return res
   }
 
   /**
@@ -1577,53 +1342,6 @@ export class LibStorageService {
     if (/\//g.test(fileName)) {
       throw new InputValidationError('The specified file name is invalid.', { fileName })
     }
-  }
-
-  /**
-   * ユーザーディレクトリの名前である`myDirName`の値を取得します。
-   * @param user
-   */
-  private m_getMyDirNameFromStorageUser(user: StorageUser): string | undefined {
-    // IdTokeから取得
-    if ((user as IdToken).myDirName) {
-      return (user as IdToken).myDirName!
-    }
-    // UserRecordから取得
-    else if ((user as UserRecord).customClaims) {
-      const customClaims = (user as UserRecord).customClaims!
-      return (customClaims as any).myDirName
-    }
-    return undefined
-  }
-
-  //--------------------------------------------------
-  //  ファイルサーブ
-  //--------------------------------------------------
-
-  /**
-   * クライアントから指定されたファイルをサーブします。
-   * @param req
-   * @param res
-   * @param fileNode
-   */
-  protected async serveFile(req: Request, res: Response, fileNode: GCSStorageNode): Promise<Response> {
-    if (!fileNode.exists) {
-      return res.sendStatus(404)
-    }
-
-    const lastModified = dayjs(fileNode.gcsNode.metadata.updated).toString()
-    const ifModifiedSinceStr = req.header('If-Modified-Since')
-    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
-    if (lastModified === ifModifiedSince) {
-      return res.sendStatus(304)
-    }
-
-    res.setHeader('Last-Modified', lastModified)
-    res.setHeader('Content-Type', fileNode.gcsNode.metadata.contentType)
-    const fileStream = fileNode.gcsNode.createReadStream()
-
-    fileStream.pipe(res)
-    return res
   }
 
   //--------------------------------------------------

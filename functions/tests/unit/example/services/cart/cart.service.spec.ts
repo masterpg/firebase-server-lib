@@ -2,11 +2,17 @@ import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, Produc
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
-import { initLibTestApp } from '../../../../helpers/lib'
+import { initApp } from '../../../../../src/example/initializer'
 const cloneDeep = require('lodash/cloneDeep')
 
 jest.setTimeout(25000)
-initLibTestApp()
+initApp()
+
+//========================================================================
+//
+//  Test data
+//
+//========================================================================
 
 const GENERAL_USER = { uid: 'general.user' }
 
@@ -35,19 +41,25 @@ const CART_ITEMS: CartItem[] = [
   },
 ]
 
+//========================================================================
+//
+//  Tests
+//
+//========================================================================
+
 describe('CartService', () => {
   let devUtilsService: LibDevUtilsServiceDI.type
   let cartService: CartServiceDI.type
   let productService: ProductServiceDI.type
 
   beforeEach(async () => {
-    const module = await Test.createTestingModule({
+    const testingModule = await Test.createTestingModule({
       imports: [AppBaseModule],
     }).compile()
 
-    devUtilsService = module.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
-    cartService = module.get<CartServiceDI.type>(CartServiceDI.symbol)
-    productService = module.get<ProductServiceDI.type>(ProductServiceDI.symbol)
+    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    cartService = testingModule.get<CartServiceDI.type>(CartServiceDI.symbol)
+    productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
   })
 
   describe('findList', () => {

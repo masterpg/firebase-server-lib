@@ -309,32 +309,6 @@ abstract class CORSService {
 //
 //========================================================================
 
-function isExcludedForDev(req: Request) {
-  for (const exclude of config.cors.excludes) {
-    if (exclude.method && exclude.method !== req.method) continue
-
-    // 開発環境はURLに'/api'があるのでこのパターンでapiPathを取得
-    // ※本番環境ではURLに/api'がない
-    const index = req.originalUrl.indexOf('/api') + '/api'.length
-    const apiPath = removeStartSlash(req.originalUrl.slice(index))
-
-    const reg = new RegExp(exclude.pattern)
-    const tested = reg.test(apiPath)
-
-    // console.log(`
-    //   url: ${req.baseUrl}
-    //   baseUrl: ${req.baseUrl}
-    //   originalUrl: ${req.originalUrl}
-    //   path: ${req.path}
-    //   tested: ${tested}
-    // `)
-
-    if (tested) return true
-  }
-
-  return false
-}
-
 @Injectable()
 class ProdCORSService extends CORSService {}
 
@@ -346,8 +320,6 @@ class DevCORSService extends CORSService {
       allowedBlankOrigin: true,
     }
   }
-
-  protected isExcluded = isExcludedForDev
 
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {
     const { req, res, info } = context
@@ -361,8 +333,6 @@ class DevCORSService extends CORSService {
 
 @Injectable()
 class TestCORSService extends CORSService {
-  protected isExcluded = isExcludedForDev
-
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {}
 }
 

@@ -1,8 +1,8 @@
 import { DateTimeScalar, getGqlModuleBaseOptions } from '../../lib'
 import { GqlModuleOptions, GraphQLModule } from '@nestjs/graphql'
-import { GQLAppModule } from './modules/app'
 import { GQLCartModule } from './modules/cart'
 import { GQLDevUtilsModule } from './modules/dev'
+import { GQLFoundationModule } from './modules/foundation'
 import { GQLProductModule } from './modules/product'
 import { GQLStorageModule } from './modules/storage'
 import { Module } from '@nestjs/common'
@@ -13,7 +13,7 @@ const gqlOptions: GqlModuleOptions = {
   path: '/gql',
 }
 
-const imports: any[] = [GQLAppModule, GQLProductModule, GQLCartModule, GQLStorageModule]
+const imports: any[] = [GQLFoundationModule, GQLProductModule, GQLCartModule, GQLStorageModule]
 
 if (process.env.NODE_ENV !== 'production') {
   merge(gqlOptions, {

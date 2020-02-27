@@ -1,12 +1,10 @@
-import * as path from 'path'
 import { AuthGuard, AuthRoleType, IdToken, LibStorageServiceDI, Roles, User } from '../../../../src/lib'
 import { Controller, Get, Inject, Module, Param, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { Product } from '../services/types'
 import { TransformInterceptor } from '../../../../src/lib/nest'
-import { config } from '../../../../src/lib/base'
 
-@Controller('api/rest/products')
+@Controller('rest/products')
 @UseInterceptors(TransformInterceptor)
 export class MockProductController {
   @Get()
@@ -15,7 +13,7 @@ export class MockProductController {
   }
 }
 
-@Controller('api/rest/site')
+@Controller('rest/site')
 @UseInterceptors(TransformInterceptor)
 export class MockSiteController {
   @Get('public/config')
@@ -31,20 +29,14 @@ export class MockSiteController {
   }
 }
 
-@Controller('api/storage')
+@Controller('storage')
 export class MockStorageController {
   constructor(@Inject(LibStorageServiceDI.symbol) protected readonly storageService: LibStorageServiceDI.type) {}
 
-  @Get(path.join(config.storage.usersDir, '*'))
-  async serveUserFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
-    const filePath = path.join(config.storage.usersDir, params[0])
-    return this.storageService.serveUserFile(req, res, filePath)
-  }
-
   @Get('*')
-  async serveAppFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
+  async serveFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
     const filePath = params[0]
-    return this.storageService.serveAppFile(req, res, filePath)
+    return this.storageService.serveFile(req, res, filePath)
   }
 }
 
