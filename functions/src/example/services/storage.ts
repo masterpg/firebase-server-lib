@@ -130,19 +130,19 @@ export class StorageService extends LibStorageService {
     return res.sendStatus(403)
   }
 
-  async getHierarchicalUserDirDescendants(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getHierarchicalUserDescendants(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalDirDescendants(dirPath, userDirPath)
+    return this.getHierarchicalDescendants(dirPath, userDirPath)
   }
 
-  async getHierarchicalUserDirChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getHierarchicalUserChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalDirChildren(dirPath, userDirPath)
+    return this.getHierarchicalChildren(dirPath, userDirPath)
   }
 
-  async getUserDirChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getUserChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getDirChildren(dirPath, userDirPath)
+    return this.getChildren(dirPath, userDirPath)
   }
 
   async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {

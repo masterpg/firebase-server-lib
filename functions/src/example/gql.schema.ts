@@ -108,16 +108,17 @@ export interface IQuery {
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    hierarchicalUserStorageDirDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    hierarchicalUserStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    userStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalUserStorageDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalUserStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
-    hierarchicalStorageDirDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    hierarchicalStorageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    storageDirChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalStorageDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    hierarchicalStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    storageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
 }
 
 export interface StorageNode {
+    id: string;
     nodeType: StorageNodeType;
     name: string;
     dir: string;

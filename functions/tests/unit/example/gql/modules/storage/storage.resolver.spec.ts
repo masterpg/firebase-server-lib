@@ -1,4 +1,5 @@
 import * as path from 'path'
+import * as shortid from 'shortid'
 import * as td from 'testdouble'
 import { StorageNode, StorageServiceDI } from '../../../../../../src/example/services'
 import { StorageNodeShareSettings, StorageNodeType } from '../../../../../../src/lib'
@@ -30,6 +31,7 @@ const SHARE_SETTINGS: StorageNodeShareSettings = {
 }
 
 const dir1: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.Dir,
   name: 'dir1',
   dir: '',
@@ -42,6 +44,7 @@ const dir1: StorageNode = {
 }
 
 const dir1_1: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.Dir,
   name: 'dir1_1',
   dir: dir1.path,
@@ -54,6 +57,7 @@ const dir1_1: StorageNode = {
 }
 
 const dir1_1_fileA: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.File,
   name: 'fileA.txt',
   dir: dir1_1.path,
@@ -66,6 +70,7 @@ const dir1_1_fileA: StorageNode = {
 }
 
 const dir1_1_fileB: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.File,
   name: 'fileB.txt',
   dir: dir1_1.path,
@@ -78,6 +83,7 @@ const dir1_1_fileB: StorageNode = {
 }
 
 const dir1_2: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.Dir,
   name: 'dir1_2',
   dir: dir1.path,
@@ -90,6 +96,7 @@ const dir1_2: StorageNode = {
 }
 
 const dir1_2_fileA: StorageNode = {
+  id: shortid.generate(),
   nodeType: StorageNodeType.Dir,
   name: 'fileA.txt',
   dir: dir1_2.path,
@@ -145,12 +152,12 @@ describe('StorageResolver', () => {
     storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
   })
 
-  describe('hierarchicalUserStorageDirDescendants', () => {
+  describe('hierarchicalUserStorageDescendants', () => {
     const gql = {
       query: `
         query GetHierarchicalUserStorageDirDescendants($dirPath: String) {
-          hierarchicalUserStorageDirDescendants(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          hierarchicalUserStorageDescendants(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -160,26 +167,26 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalUserDirDescendants = td.replace(storageService, 'getHierarchicalUserDirDescendants')
-      td.when(getHierarchicalUserDirDescendants(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalUserDescendants = td.replace(storageService, 'getHierarchicalUserDescendants')
+      td.when(getHierarchicalUserDescendants(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalUserStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('疎通確認 - td.explain()バージョン', async () => {
-      const getHierarchicalUserDirDescendants = td.replace(storageService, 'getHierarchicalUserDirDescendants')
-      td.when(getHierarchicalUserDirDescendants(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
+      const getHierarchicalUserDescendants = td.replace(storageService, 'getHierarchicalUserDescendants')
+      td.when(getHierarchicalUserDescendants(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
-      const explanation = td.explain(getHierarchicalUserDirDescendants)
+      expect(response.body.data.hierarchicalUserStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      const explanation = td.explain(getHierarchicalUserDescendants)
       expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
       expect(explanation.calls[0].args[1]).toBe(dir1.path)
     })
@@ -190,12 +197,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalUserStorageDirChildren', () => {
+  describe('hierarchicalUserStorageChildren', () => {
     const gql = {
       query: `
         query GetHierarchicalUserStorageDirChildren($dirPath: String) {
-          hierarchicalUserStorageDirChildren(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          hierarchicalUserStorageChildren(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -205,14 +212,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalUserDirChildren = td.replace(storageService, 'getHierarchicalUserDirChildren')
-      td.when(getHierarchicalUserDirChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalUserChildren = td.replace(storageService, 'getHierarchicalUserChildren')
+      td.when(getHierarchicalUserChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalUserStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -221,12 +228,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('userStorageDirChildren', () => {
+  describe('userStorageChildren', () => {
     const gql = {
       query: `
         query GetUserStorageDirChildren($dirPath: String) {
-          userStorageDirChildren(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          userStorageChildren(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -236,14 +243,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getUserDirChildren = td.replace(storageService, 'getUserDirChildren')
-      td.when(getUserDirChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getUserChildren = td.replace(storageService, 'getUserChildren')
+      td.when(getUserChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.userStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -257,7 +264,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedUserFiles($filePaths: [String!]!) {
           handleUploadedUserFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -291,7 +298,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateUserStorageDirs($dirPaths: [String!]!) {
           createUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -322,7 +329,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageDirs($dirPaths: [String!]!) {
           removeUserStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -353,7 +360,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageFiles($filePaths: [String!]!) {
           removeUserStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -384,7 +391,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -416,7 +423,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -448,7 +455,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageDir($dirPath: String!, $newName: String!) {
           renameUserStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -480,7 +487,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageFile($filePath: String!, $newName: String!) {
           renameUserStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -512,7 +519,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetUserStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
           setUserStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -544,7 +551,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetUserStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
           setUserStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -612,12 +619,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalStorageDirDescendants', () => {
+  describe('hierarchicalStorageDescendants', () => {
     const gql = {
       query: `
         query GetHierarchicalStorageDirDescendants($dirPath: String) {
-          hierarchicalStorageDirDescendants(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          hierarchicalStorageDescendants(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -627,14 +634,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalDirDescendants = td.replace(storageService, 'getHierarchicalDirDescendants')
-      td.when(getHierarchicalDirDescendants(dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalDescendants = td.replace(storageService, 'getHierarchicalDescendants')
+      td.when(getHierarchicalDescendants(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalStorageDirDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -650,12 +657,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalStorageDirChildren', () => {
+  describe('hierarchicalStorageChildren', () => {
     const gql = {
       query: `
         query GetHierarchicalStorageDirChildren($dirPath: String) {
-          hierarchicalStorageDirChildren(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          hierarchicalStorageChildren(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -665,14 +672,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalDirChildren = td.replace(storageService, 'getHierarchicalDirChildren')
-      td.when(getHierarchicalDirChildren(dir1.path)).thenResolve([dir1_1])
+      const getHierarchicalChildren = td.replace(storageService, 'getHierarchicalChildren')
+      td.when(getHierarchicalChildren(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalStorageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.hierarchicalStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -688,12 +695,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('storageDirChildren', () => {
+  describe('storageChildren', () => {
     const gql = {
       query: `
         query GetStorageDirChildren($dirPath: String) {
-          storageDirChildren(dirPath: $dirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+          storageChildren(dirPath: $dirPath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -703,14 +710,14 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getDirChildren = td.replace(storageService, 'getDirChildren')
-      td.when(getDirChildren(dir1.path)).thenResolve([dir1_1])
+      const getChildren = td.replace(storageService, 'getChildren')
+      td.when(getChildren(dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.storageDirChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageChildren).toEqual(toResponseStorageNodes([dir1_1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -731,7 +738,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFiles($filePaths: [String!]!) {
           handleUploadedFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -769,7 +776,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDirs($dirPaths: [String!]!) {
           createStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -807,7 +814,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageDirNodes($dirPaths: [String!]!) {
           removeStorageDirs(dirPaths: $dirPaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -845,7 +852,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFiles($filePaths: [String!]!) {
           removeStorageFiles(filePaths: $filePaths) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -883,7 +890,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -922,7 +929,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -961,7 +968,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageDir($dirPath: String!, $newName: String!) {
           renameStorageDir(dirPath: $dirPath, newName: $newName) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -1000,7 +1007,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -1039,7 +1046,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
@@ -1078,7 +1085,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            nodeType name dir path contentType size share { isPublic uids } created updated
+            id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,

@@ -6,6 +6,7 @@ enum StorageNodeType {
 }
 
 type StorageNode {
+  id: String!
   nodeType: StorageNodeType!
   name: String!
   dir: String!
@@ -57,11 +58,11 @@ type Mutation {
 }
 
 type Query {
-  hierarchicalUserStorageDirDescendants(dirPath: String): [StorageNode!]!
-  hierarchicalUserStorageDirChildren(dirPath: String): [StorageNode!]!
-  userStorageDirChildren(dirPath: String): [StorageNode!]!
+  hierarchicalUserStorageDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalUserStorageChildren(dirPath: String): [StorageNode!]!
+  userStorageChildren(dirPath: String): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  hierarchicalStorageDirDescendants(dirPath: String): [StorageNode!]!
-  hierarchicalStorageDirChildren(dirPath: String): [StorageNode!]!
-  storageDirChildren(dirPath: String): [StorageNode!]!
+  hierarchicalStorageDescendants(dirPath: String): [StorageNode!]!
+  hierarchicalStorageChildren(dirPath: String): [StorageNode!]!
+  storageChildren(dirPath: String): [StorageNode!]!
 }

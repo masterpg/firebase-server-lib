@@ -5,13 +5,14 @@
 
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import * as shortid from 'shortid'
 import { AuthServiceDI, IdToken } from '../nest'
-import { InputValidationError, config } from '../base'
+import { File, SaveOptions } from '@google-cloud/storage'
 import { Request, Response } from 'express'
-import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitFilePath } from 'web-base-lib'
+import { removeBothEndsSlash, removeEndSlash, removeStartSlash } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
-import { File } from '@google-cloud/storage'
 import { Inject } from '@nestjs/common'
+import { InputValidationError } from '../base'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 const dayjs = require('dayjs')
 const cloneDeep = require('lodash/cloneDeep')
@@ -24,6 +25,7 @@ export enum StorageNodeType {
 }
 
 export interface StorageNode {
+  id: string
   nodeType: StorageNodeType
   name: string
   dir: string
@@ -33,6 +35,21 @@ export interface StorageNode {
   share: StorageNodeShareSettings
   created: Dayjs
   updated: Dayjs
+}
+
+export interface StorageMetadata {
+  id: string
+  share: StorageNodeShareSettings
+}
+
+export interface StorageMetadataInput {
+  id?: string | null
+  share?: StorageNodeShareSettings | null
+}
+
+export interface StorageRawMetadata {
+  id?: string | null
+  share?: string | null
 }
 
 export interface StorageNodeShareSettings {
@@ -96,21 +113,20 @@ export class LibStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getHierarchicalDirDescendants(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
-    // 引数ディレクトリ配下のノードを取得
-    const nodeMap = await this.getDirDescendantMap(dirPath, basePath)
+  async getHierarchicalDescendants(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
+    let nodeMap: { [path: string]: GCSStorageNode }
 
     // 引数ディレクトリが指定された場合
     if (dirPath) {
-      // 引数ディレクトリが存在する場合、戻り値に設定
-      const dirNode = await this.getDirNode(dirPath, basePath)
-      if (dirNode.exists) {
-        nodeMap[dirNode.path] = dirNode
-      }
+      nodeMap = await this.getDirAndDescendantMap(dirPath, basePath)
+    }
+    // 引数ディレクトリが指定されなかった場合
+    else {
+      nodeMap = await this.getDescendantMap(dirPath, basePath)
     }
 
-    // 親ディレクトリの穴埋め
-    await this.padVirtualDirNode(nodeMap, null, basePath)
+    // 祖先ディレクトリの穴埋め
+    Object.assign(nodeMap, await this.padRealDirNodes(nodeMap, null, basePath))
 
     // ディレクトリ階層を表現できるようノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
@@ -118,37 +134,47 @@ export class LibStorageService {
 
   /**
    * Cloud Storageから指定されたディレクトリと配下のノードをマップ形式取得します。
-   *
-   * 注意: この関数ではCloud Storageに実際に存在するノードのみが取得されます。
-   *
    * @param dirPath
    * @param basePath
    */
-  async getDirAndDescendantMap(dirPath: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
+  protected async getDirAndDescendantMap(dirPath: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
-    // 引数ディレクトリ配下のノードを取得
-    const result = await this.getDirDescendantMap(dirPath, basePath)
-
-    // 引数ディレクトリを戻り値に設定
+    // 引数ディレクトリと配下ノードを取得
     const dirNode = await this.getDirNode(dirPath, basePath)
-    if (dirNode.exists) {
-      result[dirNode.path] = dirNode
+    const result = await this.getDescendantMap(dirPath, basePath)
+
+    // 引数ディレクトリと配下ノードが存在しない場合
+    if (!dirNode.exists && Object.keys(result).length === 0) {
+      return {}
     }
+
+    // 引数ディレクトリは存在しないが、配下ノードは存在する場合
+    // ※Cloud Storageに手動でファイルがアップロードされた場合がこの状況にあたる
+    if (!dirNode.exists) {
+      // 引数ディレクトリを作成
+      Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
+    }
+
+    // 引数ディレクトリにIDが振られていない場合、IDを採番
+    // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+    if (!dirNode.id) {
+      Object.assign(dirNode, await this.assignIdToNode(basePath, dirNode))
+    }
+
+    // 戻り値に引数ディレクトリを設定
+    result[dirNode.path] = dirNode
 
     return result
   }
 
   /**
    * Cloud Storageから指定されたディレクトリ配下のノードをマップ形式取得します。
-   *
-   * 注意: この関数ではCloud Storageに実際に存在するノードのみが取得されます。
-   *
    * @param dirPath
    * @param basePath
    */
-  async getDirDescendantMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
+  protected async getDescendantMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
@@ -173,11 +199,21 @@ export class LibStorageService {
       if (gcsDirPath === gcsNode.name) {
         continue
       }
+
       const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
       node.exists = true
-      node.gcsNode = gcsNode
+
+      // ノードにIDが振られていない場合、IDを採番
+      // ※Cloud Storageに手動でディレクトリ作成またはアップロードされた場合がこの状況にあたる
+      if (!node.id) {
+        Object.assign(node, await this.assignIdToNode(basePath, node))
+      }
+
       result[node.path] = node
     }
+
+    // 配下ディレクトリの穴埋め
+    Object.assign(result, await this.padRealDirNodes(result, dirPath, basePath))
 
     return result
   }
@@ -203,21 +239,28 @@ export class LibStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getHierarchicalDirChildren(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
-    // Cloud Storageから指定されたディレクトリ直下のノードを取得
-    const nodeMap = await this.getDirChildMap(dirPath, basePath)
+  async getHierarchicalChildren(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
+    const nodeMap: { [path: string]: GCSStorageNode } = {}
 
     // 引数ディレクトリが指定された場合
     if (dirPath) {
       // 引数ディレクトリが存在する場合、戻り値に設定
       const dirNode = await this.getDirNode(dirPath, basePath)
       if (dirNode.exists) {
+        // 引数ディレクトリにIDが振られていない場合、IDを採番
+        // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+        if (!dirNode.id) {
+          Object.assign(dirNode, await this.assignIdToNode(basePath, dirNode))
+        }
         nodeMap[dirNode.path] = dirNode
       }
     }
 
-    // 親ディレクトリの穴埋め
-    await this.padVirtualDirNode(nodeMap, null, basePath)
+    // Cloud Storageから指定されたディレクトリ直下のノードを取得
+    Object.assign(nodeMap, await this.getChildMap(dirPath, basePath))
+
+    // 祖先ディレクトリの穴埋め
+    Object.assign(nodeMap, await this.padRealDirNodes(nodeMap, null, basePath))
 
     // ディレクトリ階層を表現できるようノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
@@ -241,9 +284,9 @@ export class LibStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getDirChildren(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
+  async getChildren(dirPath?: string, basePath?: string): Promise<GCSStorageNode[]> {
     // Cloud Storageから指定されたディレクトリのノードを取得
-    const nodeMap = await this.getDirChildMap(dirPath, basePath)
+    const nodeMap = await this.getChildMap(dirPath, basePath)
     // ノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
   }
@@ -253,7 +296,7 @@ export class LibStorageService {
    * @param dirPath
    * @param basePath
    */
-  async getDirChildMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
+  protected async getChildMap(dirPath?: string, basePath?: string): Promise<{ [path: string]: GCSStorageNode }> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
@@ -284,9 +327,16 @@ export class LibStorageService {
       if (gcsDirPath === gcsNode.name) {
         continue
       }
+
       const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
       node.exists = true
-      node.gcsNode = gcsNode
+
+      // ファイルにIDが振られていない場合は設定
+      // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
+      if (!node.id) {
+        Object.assign(node, await this.assignIdToNode(basePath, node))
+      }
+
       result[node.path] = node
     }
 
@@ -299,9 +349,20 @@ export class LibStorageService {
           dirPath = dirPath.replace(path.join(basePath, '/'), '')
         }
         const dirNode = await this.getDirNode(dirPath, basePath)
-        if (dirNode) {
-          result[dirNode.path] = dirNode
+
+        // ディレクトリが存在しない場合、ディレクトリを作成
+        // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
+        if (!dirNode.exists) {
+          Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
         }
+
+        // ディレクトリにIDが振られていない場合は設定
+        // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+        if (!dirNode.id) {
+          Object.assign(dirNode, await this.assignIdToNode(basePath, dirNode))
+        }
+
+        result[dirNode.path] = dirNode
       })
     )
 
@@ -347,16 +408,12 @@ export class LibStorageService {
       hierarchicalNodeStore.nodes.map(async dirNode => {
         // ディレクトリが存在する場合はディレクトリを作成せず終了
         if (dirNode.exists) return
-        // ディレクトリを作成
-        await dirNode.gcsNode.save('')
         // 直近の祖先ディレクトリの共有設定を取得
-        const shareSettings = hierarchicalNodeStore.getNearestShareSettings(dirNode.path)
-        // 共有設定を作成したディレクトリに設定
-        if (shareSettings) {
-          await this.m_saveShareSettings(dirNode.gcsNode, shareSettings)
-        }
+        const share = hierarchicalNodeStore.getNearestShareSettings(dirNode.path)
+        // ディレクトリを作成
+        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode, { share }))
 
-        result.push(this.toStorageNode(dirNode.gcsNode, basePath))
+        result.push(dirNode)
       })
     )
 
@@ -377,36 +434,42 @@ export class LibStorageService {
     // 引数ファイルのノードを取得
     const fileNodes = await Promise.all(
       filePaths.map(async filePath => {
+        // ファイルノードが存在することを確認
         const fileNode = await this.getFileNode(filePath, basePath)
         if (!fileNode.exists) {
           throw new Error(`Uploaded file not found: '${path.join(basePath!, filePath)}'`)
         }
+        // この時点でファイルノードにIDは振られていないためここで設定
+        Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
         return fileNode
       })
     )
 
-    // 上記で取得したファイルノードの階層構造に必要なノードを取得/格納したストアを取得
+    // 引数ファイルノードの階層構造形成に必要なノードを格納したストアを取得
     const hierarchicalNodeStore = await this.getHierarchicalNodeStore(fileNodes, basePath)
 
     // ディレクトリ作成と共有設定の継承
     const result: GCSStorageNode[] = []
     await Promise.all(
       hierarchicalNodeStore.nodes.map(async node => {
-        //ループノードがディレクトリの場合
-        if (node.nodeType === StorageNodeType.Dir) {
-          // ループディレクトリが存在する場合は何もせず終了
-          if (node.exists) return
-          // ループディレクトリが実際にはCloud Storageに存在しない場合、ディレクトリを作成
-          await node.gcsNode.save('')
-        }
         // 直近の祖先ディレクトリの共有設定を取得
-        const shareSettings = hierarchicalNodeStore.getNearestShareSettings(node.path)
-        // 共有設定をループノードに設定
-        if (shareSettings) {
-          await this.m_saveShareSettings(node.gcsNode, shareSettings)
+        const share = hierarchicalNodeStore.getNearestShareSettings(node.path)
+        switch (node.nodeType) {
+          case StorageNodeType.Dir: {
+            // ディレクトリが実際に存在する場合、何もせず終了
+            if (node.exists) return
+            // ディレクトリが実際は存在しない場合、ディレクトリを作成
+            Object.assign(node, await this.saveDirNode(basePath, node, { share }))
+            break
+          }
+          case StorageNodeType.File: {
+            if (share) {
+              Object.assign(node, await this.saveMetadata(basePath, node, { share }))
+            }
+            break
+          }
         }
-
-        result.push(this.toStorageNode(node.gcsNode, basePath))
+        result.push(node)
       })
     )
 
@@ -442,8 +505,6 @@ export class LibStorageService {
 
       // Cloud Storageから指定されたディレクトリのノードを取得
       const nodeMap = await this.getDirAndDescendantMap(dirPath, basePath)
-      // 親ディレクトリの穴埋め
-      await this.padVirtualDirNode(nodeMap, dirPath, basePath)
 
       // Cloud Storageから取得したノードを削除
       const promises: Promise<GCSStorageNode>[] = []
@@ -489,7 +550,6 @@ export class LibStorageService {
   async removeFiles(filePaths: string[], basePath?: string): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
 
-    const bucket = admin.storage().bucket()
     const nodeMap: { [path: string]: GCSStorageNode } = {}
 
     const promises: Promise<void>[] = []
@@ -499,12 +559,9 @@ export class LibStorageService {
 
       promises.push(
         (async () => {
-          const gcsFilePath = removeBothEndsSlash(path.join(basePath, filePath))
-          const gcsFileNode = bucket.file(gcsFilePath)
-          const exists = (await gcsFileNode.exists())[0]
-          if (exists) {
-            await gcsFileNode.delete()
-            const node = this.toStorageNode(gcsFileNode, basePath)
+          const node = await this.getFileNode(filePath, basePath)
+          if (node.exists) {
+            await node.gcsNode.delete()
             nodeMap[node.path] = node
           }
         })()
@@ -581,20 +638,8 @@ export class LibStorageService {
       }
     }
 
-    // 移動元ディレクトリ配下のノードを取得
-    const movingDescendantMap = await this.getDirDescendantMap(fromDirPath, basePath)
-    // 親ディレクトリの穴埋め
-    const paddedDirNodes = await this.padVirtualDirNode(movingDescendantMap, fromDirPath, basePath)
-    await Promise.all(
-      paddedDirNodes.map(async node => {
-        if (!node.exists) {
-          await node.gcsNode.save('')
-        }
-      })
-    )
-    // 移動元ディレクトリと配下のノードは別処理を行うので、movingDescendantMapからは移動元ディレクトリを削除
-    delete movingDescendantMap[fromDirPath]
-
+    // 移動元ディレクトリの配下ノードを取得
+    const movingDescendantMap = await this.getDescendantMap(fromDirPath, basePath)
     // 古い親ディレクトリの共有設定を移動元ディレクトリ＋配下のノードから削除
     await this.setDirShareSettings(fromDirPath, null, basePath)
     // 新しい親ディレクトリの共有設定を移動元ディレクトリ＋配下のノードに設定
@@ -607,7 +652,7 @@ export class LibStorageService {
     // 移動元ディレクトリの移動処理
     {
       const newDirNodePath = path.join(toDirPath, '/')
-      await dirNode.gcsNode!.move(path.join(basePath, newDirNodePath))
+      await dirNode.gcsNode.move(path.join(basePath, newDirNodePath))
       const newDirNode = (await this.getDirNode(newDirNodePath, basePath))!
       resultMap[newDirNode.path] = newDirNode
     }
@@ -622,13 +667,13 @@ export class LibStorageService {
           const newNodePath = node.path.replace(reg, toDirPath)
           // 移動ノードがディレクトリの場合
           if (node.nodeType === StorageNodeType.Dir) {
-            await node.gcsNode!.move(path.join(basePath, newNodePath, '/'))
+            await node.gcsNode.move(path.join(basePath, newNodePath, '/'))
             const movedNode = (await this.getDirNode(newNodePath, basePath))!
             resultMap[movedNode.path] = movedNode
           }
           // ノードがファイルの場合
           else {
-            await node.gcsNode!.move(path.join(basePath, newNodePath))
+            await node.gcsNode.move(path.join(basePath, newNodePath))
             const movedNode = await this.getFileNode(newNodePath, basePath)
             resultMap[movedNode.path] = movedNode
           }
@@ -688,7 +733,7 @@ export class LibStorageService {
     const fromDirNode = await this.getDirNode(fileNode.dir, basePath)
 
     // ファイルの移動
-    await fileNode.gcsNode!.move(path.join(basePath, toFilePath))
+    await fileNode.gcsNode.move(path.join(basePath, toFilePath))
 
     // 移動先ディレクトリの共有設定を継承
     this.m_mergeShareSettings(fileNode.share, fromDirNode.share, toDirNode.share)
@@ -788,24 +833,20 @@ export class LibStorageService {
     dirPath = removeBothEndsSlash(dirPath)
     basePath = removeBothEndsSlash(basePath)
 
-    // 引数ディレクトリ配下のノードを取得
+    // 引数ディレクトリと配下ノードを取得
     const descendantMap = await this.getDirAndDescendantMap(dirPath, basePath)
     if (Object.keys(descendantMap).length === 0) {
       return []
     }
-    // 親ディレクトリの穴埋め
-    await this.padVirtualDirNode(descendantMap, dirPath, basePath)
-    // 引数ディレクトリがCloud Storageに存在しない場合は作成
     const dirNode = descendantMap[dirPath]
-    if (!dirNode.exists) {
-      await dirNode.gcsNode.save('')
-    }
     // 引数ディレクトリと配下のノードは別処理を行うので、descendantMapから引数ディレクトリを削除
     delete descendantMap[dirPath]
 
     const result: GCSStorageNode[] = []
 
+    //
     // 引数ディレクトリの共有設定
+    //
     const oldDirSettings = dirNode.share
     const newDirSettings: StorageNodeShareSettings = cloneDeep(dirNode.share)
     if (settings === null) {
@@ -819,25 +860,22 @@ export class LibStorageService {
         newDirSettings.uids = settings.uids
       }
     }
-    await this.m_saveShareSettings(dirNode.gcsNode, newDirSettings)
-    result.push(this.toStorageNode(dirNode.gcsNode, basePath))
+    Object.assign(dirNode, await this.saveMetadata(basePath, dirNode, { share: newDirSettings }))
+    result.push(dirNode)
 
+    //
     // 引数ディレクトリの配下ノードの共有設定
+    //
     const promises: Promise<void>[] = []
     for (const descendantNode of Object.values(descendantMap)) {
       const promise = (async () => {
-        // Cloud Storageにディレクトリが存在しない場合は作成
-        if (descendantNode.nodeType === StorageNodeType.Dir && !descendantNode.exists) {
-          await descendantNode.gcsNode.save('')
-        }
-
         const newSettings = cloneDeep(descendantNode.share)
         // ループノードの共有設定と前回/今回の親ディレクトリの共有設定をマージする
         this.m_mergeShareSettings(newSettings, oldDirSettings, newDirSettings)
         // 現ノードの共有設定を保存
-        await this.m_saveShareSettings(descendantNode.gcsNode, newSettings)
+        Object.assign(descendantNode, await this.saveMetadata(basePath, descendantNode, { share: newSettings }))
 
-        result.push(this.toStorageNode(descendantNode.gcsNode, basePath))
+        result.push(descendantNode)
       })()
       promises.push(promise)
     }
@@ -847,7 +885,7 @@ export class LibStorageService {
   }
 
   /**
-   * Cloud Storageのファイルに対してい共有設定を行います。
+   * Cloud Storageのファイルに対して共有設定を行います。
    * @param filePath
    * @param settings
    * @param basePath
@@ -856,22 +894,22 @@ export class LibStorageService {
     filePath = removeBothEndsSlash(filePath)
     basePath = removeBothEndsSlash(basePath)
 
-    const node = await this.getFileNode(filePath, basePath)
-    if (!node.exists) {
+    const fileNode = await this.getFileNode(filePath, basePath)
+    if (!fileNode.exists) {
       throw new Error(`The specified file does not exist: '${path.join(basePath, filePath)}'`)
     }
 
-    const newDirSettings: StorageNodeShareSettings = { isPublic: false, uids: [] }
+    const share: StorageNodeShareSettings = { isPublic: false, uids: [] }
     if (settings && typeof settings.isPublic === 'boolean') {
-      newDirSettings.isPublic = settings.isPublic
+      share.isPublic = settings.isPublic
     }
     if (settings && settings.uids) {
-      newDirSettings.uids = settings.uids
+      share.uids = settings.uids
     }
 
-    await this.m_saveShareSettings(node.gcsNode, newDirSettings)
+    Object.assign(fileNode, await this.saveMetadata(basePath, fileNode, { share }))
 
-    return this.toStorageNode(node.gcsNode, basePath)
+    return fileNode
   }
 
   /**
@@ -885,16 +923,12 @@ export class LibStorageService {
 
     for (const input of inputs) {
       const { filePath, contentType } = input
-      const { fileName, dirPath } = splitFilePath(filePath)
-      const gcsFilePath = path.join(dirPath, fileName)
-      const gcsFileNode = bucket.file(gcsFilePath)
-
-      urlMap[filePath] = (
-        await gcsFileNode.createResumableUpload({
-          origin: requestOrigin,
-          metadata: { contentType },
-        })
-      )[0]
+      const gcsFileNode = bucket.file(filePath)
+      const [url] = await gcsFileNode.createResumableUpload({
+        origin: requestOrigin,
+        metadata: { contentType },
+      })
+      urlMap[filePath] = url
     }
 
     return inputs.map(input => urlMap[input.filePath])
@@ -914,12 +948,12 @@ export class LibStorageService {
     const bucket = admin.storage().bucket()
     const gcsNodePath = path.join(basePath, nodePath)
     const gcsNode = bucket.file(gcsNodePath)
-    const exists = (await gcsNode.exists())[0]
+    const [exists] = await gcsNode.exists()
 
-    const node = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
-    node.exists = exists
-    node.gcsNode = gcsNode
-    return node
+    const result = this.toStorageNode(gcsNode, basePath) as GCSStorageNode
+    result.exists = exists
+
+    return result
   }
 
   /**
@@ -987,10 +1021,10 @@ export class LibStorageService {
     for (const uploadItem of uploadList) {
       const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
       promises.push(
-        bucket.upload(uploadItem.localFilePath, { destination }).then(response => {
-          const file = response[0]
-          const metadata = response[1]
+        bucket.upload(uploadItem.localFilePath, { destination }).then(async response => {
+          const [file, metadata] = response
           const fileNode = this.toStorageNode(file, basePath)
+          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
           uploadedFileMap[fileNode.path] = fileNode
         })
       )
@@ -1018,9 +1052,10 @@ export class LibStorageService {
       promises.push(
         (async () => {
           const gcsFileNode = bucket.file(path.join(basePath, uploadItem.path))
-          await gcsFileNode.save(uploadItem.data, { contentType: uploadItem.contentType })
           const fileNode = this.toStorageNode(gcsFileNode)
-          uploadedFileMap[fileNode.path] = this.toStorageNode(gcsFileNode, basePath)
+          const options = { contentType: uploadItem.contentType }
+          Object.assign(fileNode, await this.saveFileNode(basePath, fileNode, uploadItem.data, options))
+          uploadedFileMap[fileNode.path] = fileNode
         })()
       )
     }
@@ -1039,6 +1074,86 @@ export class LibStorageService {
   //----------------------------------------------------------------------
 
   /**
+   * Cloud Storageへディレクトリノードを保存します。
+   * @param basePath
+   * @param dirNode
+   * @param metadata
+   */
+  protected async saveDirNode(
+    basePath: string | null | undefined,
+    dirNode: GCSStorageNode,
+    metadata?: Omit<StorageMetadataInput, 'id'>
+  ): Promise<GCSStorageNode> {
+    if (dirNode.nodeType !== StorageNodeType.Dir) {
+      throw new Error(`The specified node is not directory: { path: '${dirNode.path}', nodeType: '${dirNode.nodeType}' }`)
+    }
+
+    const result = Object.assign({}, dirNode)
+
+    const _metadata = (metadata || {}) as StorageMetadataInput
+
+    // idが設定されている場合、そのidを引き続き設定
+    if (result.id) {
+      _metadata.id = result.id
+    }
+    // idが設定されていない場合、idを生成して設定
+    else {
+      _metadata.id = shortid.generate()
+    }
+
+    // Cloud Storageへノードを保存
+    // TODO saveとsaveMetadataを別にした理由: saveにメタデータを指定すると、単体テストでメタデータが保存されない状態がごくまれに発生するため別にしている。
+    if (!result.exists) {
+      await result.gcsNode.save('')
+    }
+    Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
+    result.exists = true
+
+    return result
+  }
+
+  /**
+   * Cloud Storageへファイルノードを保存します。
+   * @param fileNode
+   * @param data
+   * @param options
+   * @param metadata
+   * @param basePath
+   */
+  protected async saveFileNode(
+    basePath: string | null | undefined,
+    fileNode: GCSStorageNode,
+    data: any,
+    options: SaveOptions,
+    metadata?: Omit<StorageMetadataInput, 'id'>
+  ): Promise<GCSStorageNode> {
+    if (fileNode.nodeType !== StorageNodeType.File) {
+      throw new Error(`The specified node is not file: { path: '${fileNode.path}', nodeType: '${fileNode.nodeType}' }`)
+    }
+
+    const result = Object.assign({}, fileNode)
+
+    const _metadata = (metadata || {}) as StorageMetadataInput
+
+    // idが設定されている場合、そのidを引き続き設定
+    if (result.id) {
+      _metadata.id = result.id
+    }
+    // idが設定されていない場合、idを生成して設定
+    else {
+      _metadata.id = shortid.generate()
+    }
+
+    // Cloud Storageへノードを保存
+    // TODO saveとsaveMetadataを別にした理由: saveにメタデータを指定すると、単体テストでメタデータが保存されない状態がごくまれに発生するため別にしている。
+    await result.gcsNode.save(data, options)
+    Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
+    result.exists = true
+
+    return result
+  }
+
+  /**
    * Cloud Storageから取得したノードをStorageNodeへ変換します。
    *
    * `basePath`が指定された場合、`gcsNode`のパスから基準パスが除去されます。
@@ -1050,10 +1165,7 @@ export class LibStorageService {
    *   + images/family.png
    *
    * @param gcsNode
-   *   Cloud Storageのノードを指定。
-   *   このノードはCloud Storageから取得したものが渡されることを前提としています。
-   *   クライアント側でパスから生成したノード渡さないように注意してください。
-   * @param basePath 基準パスを指定
+   * @param basePath
    */
   protected toStorageNode(gcsNode: File, basePath?: string): GCSStorageNode {
     let nodePath = removeBothEndsSlash(gcsNode.name)
@@ -1069,17 +1181,21 @@ export class LibStorageService {
     // ノード名の末尾が'/'の場合はディレクトリ、それ以外はファイルと判定
     const nodeType = gcsNode.name.match(/\/$/) ? StorageNodeType.Dir : StorageNodeType.File
 
+    // メタデータの取得
+    const storageMetadata = this.extractMetaData(gcsNode)
+
     return {
+      id: storageMetadata.id,
       nodeType,
       name,
       dir: removeStartSlash(dir),
       path: removeStartSlash(nodePath),
       contentType: gcsNode.metadata.contentType || '',
       size: Number(gcsNode.metadata.size || '0'),
-      share: this.m_extractShareSettings(gcsNode),
+      share: storageMetadata.share,
       created: dayjs(gcsNode.metadata.timeCreated),
       updated: dayjs(gcsNode.metadata.updated),
-      exists: true,
+      exists: false,
       gcsNode: gcsNode,
     }
   }
@@ -1122,36 +1238,41 @@ export class LibStorageService {
    * 例えば、'aaa/bbb/family.png'の場合、'aaa/bbb/'というディレクトリがない場合があります。
    * このように親ディレクトリがない場合、仮想的にディレクトリを作成して穴埋めします。
    *
-   * `topPath`は最上位のパスで、このパスより上位のディレクトリは作成しません。
+   * `topPath`は最上位のパスで、このパス含め上位のディレクトリは作成しません。
    * 例えば、'aaa/bbb/ccc/family.png'というノードがあり、ディレクトリが存在しないとします。
    * この条件で`topPath`に'aaa/bbb'を指定すると次のようなディレクトリノードが作成されます。
    * + 'aaa' ← 最上位パスより上なので作成されない
-   * + 'aaa/bbb' ← 作成される
+   * + 'aaa/bbb' ← 最上位パスなので作成されない
    * + 'aaa/bbb/ccc' ← 作成される
    *
    * @param nodeMap
    * @param topPath
    * @param basePath
    */
-  protected async padVirtualDirNode(
+  protected async padVirtualDirNodes(
     nodeMap: { [path: string]: GCSStorageNode },
     topPath: string | null,
     basePath?: string
-  ): Promise<GCSStorageNode[]> {
+  ): Promise<{ [path: string]: GCSStorageNode }> {
     topPath = removeBothEndsSlash(topPath || undefined)
     basePath = removeBothEndsSlash(basePath)
 
     // 指定された全ノードの階層的なディレクトリパスを取得
     const dirPaths = Object.values(nodeMap).map(node => node.dir)
-    const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths)
+    const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths, topPath || '')
 
     // 欠けているディレクトリパスを取得
     const lackDirPaths: string[] = []
     for (const dirPath of hierarchicalDirPaths) {
-      // 引数で最上位パスが指定されていて、かつループパスが最上位パスより上位の場合はスルー
-      if (topPath && !dirPath.startsWith(topPath)) {
-        continue
+      // 引数で最上位パスが指定されている場合
+      if (topPath) {
+        // 最上位パスとループパスが同じ場合、スルー
+        if (topPath === dirPath) continue
+        // ループパスが最上位パスより上位の場合、スルー
+        // ※ ｢dirPath: 'd1', topPath: 'd1/d11'｣ の場合、dirPathはtopPathより上位のノードとなる
+        if (!dirPath.startsWith(topPath)) continue
       }
+
       // ループパスのノードが既に存在する場合はスルー
       if (nodeMap[dirPath]) {
         continue
@@ -1159,20 +1280,49 @@ export class LibStorageService {
       lackDirPaths.push(dirPath)
     }
 
-    const result: GCSStorageNode[] = []
+    const result: { [path: string]: GCSStorageNode } = {}
 
     const promises: Promise<void>[] = []
     for (const lackDirPath of lackDirPaths) {
       const promise = (async () => {
         const dirNode = await this.getDirNode(lackDirPath, basePath)
-        nodeMap[dirNode.path] = dirNode
-        result.push(dirNode)
+        result[dirNode.path] = dirNode
       })()
       promises.push(promise)
     }
     await Promise.all(promises)
 
-    return this.sortStorageNodes(result)
+    return result
+  }
+
+  /**
+   * 親ディレクトリがない場合、実際にディレクトリを作成して穴埋めします。
+   *
+   * @see LibStorageService.padVirtualDirNodes
+   * @param nodeMap
+   * @param topPath
+   * @param basePath
+   */
+  protected async padRealDirNodes(
+    nodeMap: { [path: string]: GCSStorageNode },
+    topPath: string | null,
+    basePath?: string
+  ): Promise<{ [path: string]: GCSStorageNode }> {
+    const result = await this.padVirtualDirNodes(nodeMap, topPath, basePath)
+    await Promise.all(
+      Object.values(result).map(async node => {
+        // ディレクトリが実際には存在しない場合、ディレクトリを作成
+        if (!node.exists) {
+          Object.assign(node, await this.saveDirNode(basePath, node, undefined))
+        }
+        // ディレクトリにIDが振られていない場合、IDを採番
+        // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+        if (!node.id) {
+          Object.assign(node, await this.assignIdToNode(basePath, node))
+        }
+      })
+    )
+    return result
   }
 
   /**
@@ -1345,6 +1495,78 @@ export class LibStorageService {
   }
 
   //--------------------------------------------------
+  //  メタデータ
+  //--------------------------------------------------
+
+  /**
+   * ノードにIDを割り当てます。
+   * @param basePath
+   * @param node
+   */
+  protected async assignIdToNode(basePath: string | null | undefined, node: GCSStorageNode): Promise<GCSStorageNode> {
+    if (node.id) return node
+
+    return Object.assign(node, await this.saveMetadata(basePath, node, { id: shortid.generate() }))
+  }
+
+  /**
+   * 指定されたGCSノードのメタデータを保存します。
+   * @param basePath
+   * @param node
+   * @param metadata
+   */
+  async saveMetadata(basePath: string | null | undefined, node: GCSStorageNode, metadata: StorageMetadataInput): Promise<GCSStorageNode> {
+    const result = Object.assign({}, node)
+
+    await result.gcsNode.setMetadata({ metadata: this.toRawMetadata(metadata) })
+
+    const exists = result.exists
+    Object.assign(result, this.toStorageNode(result.gcsNode, basePath || undefined))
+    result.exists = exists
+
+    return result
+  }
+
+  /**
+   * 指定されたGCSノードからメタデータを取得します。
+   * @param gcsNode
+   */
+  protected extractMetaData(gcsNode: File): StorageMetadata {
+    const share = this.m_extractShareSettings(gcsNode)
+
+    const result = { id: '', share }
+    if (!gcsNode.metadata) return result
+
+    const metadata = gcsNode.metadata.metadata || {}
+    return {
+      id: metadata.id || '',
+      share,
+    }
+  }
+
+  /**
+   * メタデータをGCSへ保存できる形式へ変換します。
+   * @param metadata
+   */
+  protected toRawMetadata(metadata: StorageMetadataInput): StorageRawMetadata {
+    const result: StorageRawMetadata = {}
+
+    if (typeof metadata.id !== 'undefined') {
+      result.id = metadata.id
+    }
+
+    if (typeof metadata.share !== 'undefined') {
+      if (metadata.share === null) {
+        result.share = null
+      } else {
+        result.share = this.m_toShareSettingsString(metadata.share)
+      }
+    }
+
+    return result
+  }
+
+  //--------------------------------------------------
   //  共有設定
   //--------------------------------------------------
 
@@ -1384,19 +1606,14 @@ export class LibStorageService {
   }
 
   /**
-   * 指定されたGCSノードのメタデータに共有設定を保存します。
-   * @param gcsNode
+   * 共有設定をJSON文字列へ変換します。
    * @param settings
    */
-  private async m_saveShareSettings(gcsNode: File, settings: StorageNodeShareSettings): Promise<void> {
+  private m_toShareSettingsString(settings: StorageNodeShareSettings): string | null {
     if (!settings.isPublic && settings.uids.length === 0) {
-      await gcsNode.setMetadata({
-        metadata: { share: null },
-      })
+      return null
     } else {
-      await gcsNode.setMetadata({
-        metadata: { share: JSON.stringify(settings) },
-      })
+      return JSON.stringify(settings)
     }
   }
 
