@@ -133,77 +133,77 @@ export class StorageResolver {
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async hierarchicalStorageDescendants(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalDescendants(dirPath)
+    return this.storageService.getHierarchicalDescendants(null, dirPath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async hierarchicalStorageChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalChildren(dirPath)
+    return this.storageService.getHierarchicalChildren(null, dirPath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async storageChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getChildren(dirPath)
+    return this.storageService.getChildren(null, dirPath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async createStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createDirs(dirPaths)
+    return this.storageService.createDirs(null, dirPaths)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async handleUploadedFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.handleUploadedFiles(filePaths)
+    return this.storageService.handleUploadedFiles(null, filePaths)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeDirs(dirPaths)
+    return this.storageService.removeDirs(null, dirPaths)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async removeStorageFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeFiles(filePaths)
+    return this.storageService.removeFiles(null, filePaths)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
-    return this.storageService.moveDir(fromDirPath, toDirPath)
+    return this.storageService.moveDir(null, fromDirPath, toDirPath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return this.storageService.moveFile(fromFilePath, toFilePath)
+    return this.storageService.moveFile(null, fromFilePath, toFilePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode[]> {
-    return this.storageService.renameDir(dirPath, newName)
+    return this.storageService.renameDir(null, dirPath, newName)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameFile(filePath, newName)
+    return this.storageService.renameFile(null, filePath, newName)
   }
 
   @Mutation()
@@ -213,7 +213,7 @@ export class StorageResolver {
     @Args('dirPath') dirPath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode[]> {
-    return this.storageService.setDirShareSettings(dirPath, settings)
+    return this.storageService.setDirShareSettings(null, dirPath, settings)
   }
 
   @Mutation()
@@ -223,7 +223,7 @@ export class StorageResolver {
     @Args('filePath') filePath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
-    return this.storageService.setFileShareSettings(filePath, settings)
+    return this.storageService.setFileShareSettings(null, filePath, settings)
   }
 }
 

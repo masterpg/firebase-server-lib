@@ -19,7 +19,7 @@ class HandlersService {
     let error: Error | undefined
     try {
       const userDirPath = this.storageService.getUserDirPath(user)
-      await this.storageService.removeDirs([userDirPath])
+      await this.storageService.removeDirs(null, [userDirPath])
     } catch (err) {
       error = err
     }

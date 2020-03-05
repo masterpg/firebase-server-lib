@@ -57,8 +57,8 @@ describe('StorageService', () => {
 
     storageService = testingModule.get<LibStorageService>(LibStorageServiceDI.symbol)
 
-    await storageService.removeDirs([`${TEST_FILES_DIR}`])
-    await storageService.removeDirs([`${storageService.getUserDirPath(STORAGE_TEST_USER)}`])
+    await storageService.removeDirs(null, [`${TEST_FILES_DIR}`])
+    await storageService.removeDirs(null, [`${storageService.getUserDirPath(STORAGE_TEST_USER)}`])
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(1000)
@@ -90,7 +90,7 @@ describe('StorageService', () => {
 
       if (userDirPath) {
         // ユーザーディレクトリを削除
-        await storageService.removeDirs([userDirPath])
+        await storageService.removeDirs(null, [userDirPath])
         // カスタムクレイムのユーザーディレクトリ名をクリア
         await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: undefined })
       }
@@ -109,7 +109,7 @@ describe('StorageService', () => {
       expect((afterUser.customClaims as any).myDirName).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
-      const userDirNode = await storageService.getDirNode(userDirPath)
+      const userDirNode = await storageService.getDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
@@ -124,7 +124,7 @@ describe('StorageService', () => {
       expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
-      const userDirNode = await storageService.getDirNode(userDirPath)
+      const userDirNode = await storageService.getDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
@@ -133,7 +133,7 @@ describe('StorageService', () => {
       await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: STORAGE_TEST_USER.myDirName })
       // ユーザーディレクトリを作成
       const beforeUserDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
-      const beforeUserDirNode = (await storageService.createDirs([beforeUserDirPath]))[0]
+      const beforeUserDirNode = (await storageService.createDirs(null, [beforeUserDirPath]))[0]
 
       await storageService.assignUserDir(STORAGE_TEST_USER)
 
@@ -143,7 +143,7 @@ describe('StorageService', () => {
       // ユーザーディレクトリに変化がないことを検証
       const afterUserDirPath = storageService.getUserDirPath(afterUser)
       expect(afterUserDirPath).toBe(beforeUserDirPath)
-      const afterUserDirNode = await storageService.getDirNode(afterUserDirPath)
+      const afterUserDirNode = await storageService.getDirNode(null, afterUserDirPath)
       expect(afterUserDirNode.created).toEqual(beforeUserDirNode.created)
     })
   })
@@ -226,7 +226,7 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
@@ -243,7 +243,7 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
 
         return (
           request(app.getHttpServer())
@@ -260,9 +260,9 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルの公開フラグをオンに設定
-        await storageService.setFileShareSettings(uploadItem.path, { isPublic: true })
+        await storageService.setFileShareSettings(null, uploadItem.path, { isPublic: true })
 
         return (
           request(app.getHttpServer())
@@ -282,9 +282,9 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルの共有ユーザーIDを設定
-        await storageService.setFileShareSettings(uploadItem.path, { uids: [STORAGE_TEST_USER.uid] })
+        await storageService.setFileShareSettings(null, uploadItem.path, { uids: [STORAGE_TEST_USER.uid] })
 
         return (
           request(app.getHttpServer())
@@ -307,7 +307,7 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
@@ -325,9 +325,9 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルの公開フラグをオンに設定
-        await storageService.setFileShareSettings(uploadItem.path, { isPublic: true })
+        await storageService.setFileShareSettings(null, uploadItem.path, { isPublic: true })
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
@@ -345,7 +345,7 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
@@ -360,9 +360,9 @@ describe('StorageService', () => {
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
         }
-        await storageService.uploadAsFiles([uploadItem])
+        await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルの共有ユーザーIDを設定
-        await storageService.setFileShareSettings(uploadItem.path, { uids: [APP_ADMIN_USER.uid] })
+        await storageService.setFileShareSettings(null, uploadItem.path, { uids: [APP_ADMIN_USER.uid] })
 
         return (
           request(app.getHttpServer())

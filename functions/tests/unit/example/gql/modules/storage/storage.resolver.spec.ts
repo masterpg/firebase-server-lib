@@ -635,7 +635,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getHierarchicalDescendants = td.replace(storageService, 'getHierarchicalDescendants')
-      td.when(getHierarchicalDescendants(dir1.path)).thenResolve([dir1_1])
+      td.when(getHierarchicalDescendants(null, dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -673,7 +673,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getHierarchicalChildren = td.replace(storageService, 'getHierarchicalChildren')
-      td.when(getHierarchicalChildren(dir1.path)).thenResolve([dir1_1])
+      td.when(getHierarchicalChildren(null, dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -711,7 +711,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getChildren = td.replace(storageService, 'getChildren')
-      td.when(getChildren(dir1.path)).thenResolve([dir1_1])
+      td.when(getChildren(null, dir1.path)).thenResolve([dir1_1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -749,7 +749,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const handleUploadedFiles = td.replace(storageService, 'handleUploadedFiles')
-      td.when(handleUploadedFiles([dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([dir1_1_fileA, dir1_1_fileB])
+      td.when(handleUploadedFiles(null, [dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([dir1_1_fileA, dir1_1_fileB])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -787,7 +787,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const createDirs = td.replace(storageService, 'createDirs')
-      td.when(createDirs([dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
+      td.when(createDirs(null, [dir1_1.path, dir1_2.path])).thenResolve([dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -825,7 +825,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeDirs = td.replace(storageService, 'removeDirs')
-      td.when(removeDirs([dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
+      td.when(removeDirs(null, [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -863,7 +863,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeFiles = td.replace(storageService, 'removeFiles')
-      td.when(removeFiles([dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
+      td.when(removeFiles(null, [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -902,7 +902,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
+      td.when(moveDir(null, dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -941,7 +941,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveFile = td.replace(storageService, 'moveFile')
-      td.when(moveFile(dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
+      td.when(moveFile(null, dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -980,7 +980,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
+      td.when(renameDir(null, dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1019,7 +1019,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameFile = td.replace(storageService, 'renameFile')
-      td.when(renameFile(dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
+      td.when(renameFile(null, dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1058,7 +1058,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
-      td.when(setDirShareSettings(dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
+      td.when(setDirShareSettings(null, dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1097,7 +1097,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setFileShareSettings = td.replace(storageService, 'setFileShareSettings')
-      td.when(setFileShareSettings(dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
+      td.when(setFileShareSettings(null, dir1_1_fileA.path, SHARE_SETTINGS)).thenResolve(dir1_1_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
