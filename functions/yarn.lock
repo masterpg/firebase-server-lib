@@ -8250,8 +8250,8 @@ wcwidth@^1.0.1:
     defaults "^1.0.3"
 
 "web-base-lib@https://github.com/masterpg/web-base-lib.git":
-  version "0.0.3"
-  resolved "https://github.com/masterpg/web-base-lib.git#7fc2089153a427a13b0f86b9f67448c77d001412"
+  version "0.0.4"
+  resolved "https://github.com/masterpg/web-base-lib.git#62a763f50e75e57b5061c4d6f93bdd3a3d7d3fb4"
 
 webidl-conversions@^4.0.2:
   version "4.0.2"

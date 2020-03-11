@@ -57,13 +57,14 @@ let devUtilsService!: LibDevUtilsServiceDI.type
 type TestStorageService = LibStorageService & {
   saveDirNode: LibStorageService['saveDirNode']
   saveFileNode: LibStorageService['saveFileNode']
-  getDirAndDescendantMap: LibStorageService['getDirAndDescendantMap']
+  getDirDescendantMap: LibStorageService['getDirDescendantMap']
   getDescendantMap: LibStorageService['getDescendantMap']
+  getDirChildMap: LibStorageService['getDirChildMap']
   getChildMap: LibStorageService['getChildMap']
   toStorageNode: LibStorageService['toStorageNode']
   sortStorageNodes: LibStorageService['sortStorageNodes']
   padVirtualDirNodes: LibStorageService['padVirtualDirNodes']
-  splitHierarchicalDirPaths: LibStorageService['splitHierarchicalDirPaths']
+  padRealDirNodes: LibStorageService['padRealDirNodes']
   validatePath: LibStorageService['validatePath']
   validateDirName: LibStorageService['validateDirName']
   validateFileName: LibStorageService['validateFileName']
@@ -170,24 +171,25 @@ describe('BaseStorageService', () => {
   describe('getHierarchicalDescendants', () => {
     it('ノードの格納ディレクトリが存在する場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(3)
+      expect(actual.length).toBe(4)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
@@ -197,123 +199,135 @@ describe('BaseStorageService', () => {
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(3)
+      expect(actual.length).toBe(4)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
     it('ノードにIDが振られていない場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
       // IDを強制的に未設定にする
-      const nodes = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const nodes = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
       await Promise.all(
         nodes.map(async node => {
           await storageService.saveMetadata(null, node, { id: null })
         })
       )
 
-      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(3)
+      expect(actual.length).toBe(4)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
-    it('存在しないディレクトリを指定した場合', async () => {
+    it('存在しないディレクトリを指定した場合 - 上位ノードは存在する', async () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}`])
 
-      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
+    })
+
+    it('存在しないディレクトリを指定した場合 - 上位ノードも存在しない', async () => {
+      const actual = await storageService.getHierarchicalDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
       expect(actual.length).toBe(0)
     })
 
     it(`パスの先頭・末尾に'/'を付与した場合`, async () => {
       // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       // パスの先頭・末尾に'/'を付与
-      const actual = await storageService.getHierarchicalDescendants(`/${TEST_FILES_DIR}/`, `/d1/`)
+      const actual = await storageService.getHierarchicalDescendants(`/${TEST_FILES_DIR}/`, `/d1/d11/`)
 
-      expect(actual.length).toBe(2)
+      expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d1`)
-      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
 
     it('basePathを指定した場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getHierarchicalDescendants(`${TEST_FILES_DIR}`, `d1`)
+      const actual = await storageService.getHierarchicalDescendants(`${TEST_FILES_DIR}`, `d1/d11`)
 
-      expect(actual.length).toBe(2)
+      expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d1`)
-      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
 
     it('basePathを指定した場合 - dirPathを指定しない', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       const actual = await storageService.getHierarchicalDescendants(`${TEST_FILES_DIR}`)
 
-      expect(actual.length).toBe(2)
+      expect(actual.length).toBe(3)
       expect(actual[0].path).toBe(`d1`)
-      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
   })
@@ -321,30 +335,31 @@ describe('BaseStorageService', () => {
   describe('getHierarchicalChildren', () => {
     it('ノードの格納ディレクトリが存在する場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
         {
           data: 'testB',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileB.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(4)
+      expect(actual.length).toBe(5)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
       expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
+      expect(actual[4].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
@@ -354,124 +369,135 @@ describe('BaseStorageService', () => {
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
         {
           data: 'testB',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileB.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(4)
+      expect(actual.length).toBe(5)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
       expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
+      expect(actual[4].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
     it('ノードにIDが振られていない場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
         },
         {
           data: 'testB',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileB.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
       // IDを強制的に未設定にする
-      const nodes = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1`)
+      const nodes = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
       await Promise.all(
         nodes.map(async node => {
           await storageService.saveMetadata(null, node, { id: null })
         })
       )
 
-      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
 
-      expect(actual.length).toBe(4)
+      expect(actual.length).toBe(5)
       expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1`)
       expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
+      expect(actual[4].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual)
     })
 
-    it('存在しないディレクトリを指定した場合', async () => {
+    it('存在しないディレクトリを指定した場合 - 上位ノードは存在する', async () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}`])
 
-      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`${TEST_FILES_DIR}`)
+    })
+
+    it('存在しないディレクトリを指定した場合 - 上位ノードも存在しない', async () => {
+      const actual = await storageService.getHierarchicalChildren(null, `${TEST_FILES_DIR}/d1/d11`)
 
       expect(actual.length).toBe(0)
     })
 
     it(`パスの先頭・末尾に'/'を付与した場合`, async () => {
       // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
         },
         {
           data: 'testB',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/d11/fileB.txt`,
+          path: `d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getHierarchicalChildren(`/${TEST_FILES_DIR}/`, `/d1/`)
+      const actual = await storageService.getHierarchicalChildren(`/${TEST_FILES_DIR}/`, `/d1/d11/`)
 
-      expect(actual.length).toBe(3)
+      expect(actual.length).toBe(4)
       expect(actual[0].path).toBe(`d1`)
       expect(actual[1].path).toBe(`d1/d11`)
-      expect(actual[2].path).toBe(`d1/fileA.txt`)
+      expect(actual[2].path).toBe(`d1/d11/d111`)
+      expect(actual[3].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
 
     it('basePathを指定した場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
         },
         {
           data: 'testB',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/d11/fileB.txt`,
+          path: `d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getHierarchicalChildren(`${TEST_FILES_DIR}`, `/d1/`)
+      const actual = await storageService.getHierarchicalChildren(`${TEST_FILES_DIR}`, `d1/d11`)
 
-      expect(actual.length).toBe(3)
+      expect(actual.length).toBe(4)
       expect(actual[0].path).toBe(`d1`)
       expect(actual[1].path).toBe(`d1/d11`)
-      expect(actual[2].path).toBe(`d1/fileA.txt`)
+      expect(actual[2].path).toBe(`d1/d11/d111`)
+      expect(actual[3].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
 
@@ -3310,8 +3336,8 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('getDirAndDescendantMap', () => {
-    it('ノードの格納ディレクトリが存在する場合', async () => {
+  describe('getDirDescendantMap', () => {
+    it('ベーシックケース', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
@@ -3325,7 +3351,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getDirAndDescendantMap(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -3333,16 +3359,18 @@ describe('BaseStorageService', () => {
       await existsNodes(null, Object.values(actual))
     })
 
-    it('ノードの格納ディレクトリが存在しない場合', async () => {
-      // ディレクトリを作成せずファイルをアップロード
-      const uploadItem: UploadDataItem = {
-        data: 'test',
-        contentType: 'text/plain; charset=utf-8',
-        path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-      }
-      await storageService.uploadAsFiles(null, [uploadItem])
+    it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
+      // ファイルをアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getDirAndDescendantMap(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -3350,9 +3378,9 @@ describe('BaseStorageService', () => {
       await existsNodes(null, Object.values(actual))
     })
 
-    it('ノードにIDが振られていない場合', async () => {
+    it('ディレクトリにIDが振られていない場合', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
@@ -3365,50 +3393,18 @@ describe('BaseStorageService', () => {
       await storageService.uploadAsFiles(null, uploadItems)
 
       // IDを強制的に未設定にする
-      const nodeMap = await storageService.getDirAndDescendantMap(null, `${TEST_FILES_DIR}/d1`)
       await Promise.all(
-        Object.values(nodeMap).map(async node => {
+        dirs.map(async node => {
           await storageService.saveMetadata(null, node, { id: null })
         })
       )
 
-      const actual = await storageService.getDirAndDescendantMap(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
       expect(actual[`${TEST_FILES_DIR}/d1/fileA.txt`].exists).toBeTruthy()
       await existsNodes(null, Object.values(actual))
-    })
-
-    it('存在しないディレクトリを指定した場合', async () => {
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}`])
-
-      const actual = await storageService.getDirAndDescendantMap(null, `${TEST_FILES_DIR}/d1`)
-
-      expect(Object.keys(actual).length).toBe(0)
-    })
-
-    it(`パスの先頭・末尾に'/'を付与した場合`, async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
-
-      // パスの先頭・末尾に'/'を付与
-      const actual = await storageService.getDirAndDescendantMap(`/${TEST_FILES_DIR}/`, `/d1/`)
-
-      expect(Object.keys(actual).length).toBe(2)
-      expect(actual[`d1`].exists).toBeTruthy()
-      expect(actual[`d1/fileA.txt`].exists).toBeTruthy()
-      await existsNodes(`${TEST_FILES_DIR}`, Object.values(actual))
     })
 
     it('basePathを指定した場合', async () => {
@@ -3425,7 +3421,101 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getDirAndDescendantMap(`${TEST_FILES_DIR}`, `d1`)
+      const actual = await storageService.getDirDescendantMap(`${TEST_FILES_DIR}`, `d1`)
+
+      expect(Object.keys(actual).length).toBe(2)
+      expect(actual[`d1`].exists).toBeTruthy()
+      expect(actual[`d1/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(`${TEST_FILES_DIR}`, Object.values(actual))
+    })
+  })
+
+  describe('getDirChildMap', () => {
+    it('ベーシックケース', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+
+      // ファイルをアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadAsFiles(null, uploadItems)
+
+      const actual = await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)
+
+      expect(Object.keys(actual).length).toBe(2)
+      expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(null, Object.values(actual))
+    })
+
+    it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
+      // ファイルをアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadAsFiles(null, uploadItems)
+
+      const actual = await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)
+
+      expect(Object.keys(actual).length).toBe(2)
+      expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(null, Object.values(actual))
+    })
+
+    it('ディレクトリにIDが振られていない場合', async () => {
+      // ディレクトリを作成
+      const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+
+      // ファイルをアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadAsFiles(null, uploadItems)
+
+      // IDを強制的に未設定にする
+      await Promise.all(
+        dirs.map(async node => {
+          await storageService.saveMetadata(null, node, { id: null })
+        })
+      )
+
+      const actual = await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)
+
+      expect(Object.keys(actual).length).toBe(2)
+      expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(null, Object.values(actual))
+    })
+
+    it('basePathを指定した場合', async () => {
+      // ディレクトリを作成
+      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
+
+      // ファイルをアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ]
+      await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
+
+      const actual = await storageService.getDirChildMap(`${TEST_FILES_DIR}`, `d1`)
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`d1`].exists).toBeTruthy()
@@ -4496,18 +4586,99 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('splitHierarchicalDirPaths', () => {
-    it('ベーシックケース', async () => {
-      const actual = storageService.splitHierarchicalDirPaths(`d1`, `d1/d11/fileA.txt`, 'd2/d21/fileC.txt', `d1/d11/fileB.txt`)
+  describe('padRealDirNodes', () => {
+    it('topPathを指定しない場合', async () => {
+      // 存在しないディレクトリを取得
+      const dirs = [await storageService.getDirNode(null, `${TEST_FILES_DIR}/d1`)]
 
-      expect(actual.length).toBe(7)
-      expect(actual[0]).toBe(`d1`)
-      expect(actual[1]).toBe(`d1/d11`)
-      expect(actual[2]).toBe(`d1/d11/fileA.txt`)
-      expect(actual[3]).toBe(`d1/d11/fileB.txt`)
-      expect(actual[4]).toBe(`d2`)
-      expect(actual[5]).toBe(`d2/d21`)
-      expect(actual[6]).toBe(`d2/d21/fileC.txt`)
+      // ファイルのアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        },
+      ]
+      const files = await storageService.uploadAsFiles(null, uploadItems)
+
+      // 歯抜け状態のノードマップを取得
+      // 'd1', 'd1/d11/fileA.txt'
+      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+        result[node.path] = node
+        return result
+      }, {} as { [path: string]: GCSStorageNode })
+
+      // ノードマップの歯抜けノードを穴埋め - topPathを指定しない
+      const actual = await storageService.padRealDirNodes(null, nodeMap, null)
+
+      expect(Object.keys(actual).length).toBe(4)
+      expect(actual[`${TEST_FILES_DIR}`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/d11`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/d11/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(null, Object.values(actual))
+    })
+
+    it('topPathを指定した場合', async () => {
+      // 存在しないディレクトリを取得
+      const dirs = [await storageService.getDirNode(null, `${TEST_FILES_DIR}/d1`)]
+
+      // ファイルのアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        },
+      ]
+      const files = await storageService.uploadAsFiles(null, uploadItems)
+
+      // 歯抜け状態のノードマップを取得
+      // 'd1', 'd1/d11/fileA.txt'
+      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+        result[node.path] = node
+        return result
+      }, {} as { [path: string]: GCSStorageNode })
+
+      // ノードマップの歯抜けノードを穴埋め - topPathを指定
+      const actual = await storageService.padRealDirNodes(null, nodeMap, `${TEST_FILES_DIR}/d1`)
+
+      expect(Object.keys(actual).length).toBe(3)
+      expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/d11`].exists).toBeTruthy()
+      expect(actual[`${TEST_FILES_DIR}/d1/d11/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(null, Object.values(actual))
+    })
+
+    it('basePathを指定した場合', async () => {
+      // 存在しないディレクトリを取得
+      const dirs = [await storageService.getDirNode(`${TEST_FILES_DIR}`, `d1`)]
+
+      // ファイルのアップロード
+      const uploadItems: UploadDataItem[] = [
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/fileA.txt`,
+        },
+      ]
+      const files = await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
+
+      // 歯抜け状態のノードマップを取得
+      // 'd1', 'd1/d11/fileA.txt'
+      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+        result[node.path] = node
+        return result
+      }, {} as { [path: string]: GCSStorageNode })
+
+      // ノードマップの歯抜けノードを穴埋め - topPathを指定
+      const actual = await storageService.padRealDirNodes(`${TEST_FILES_DIR}`, nodeMap, `d1`)
+
+      expect(Object.keys(actual).length).toBe(3)
+      expect(actual[`d1`].exists).toBeTruthy()
+      expect(actual[`d1/d11`].exists).toBeTruthy()
+      expect(actual[`d1/d11/fileA.txt`].exists).toBeTruthy()
+      await existsNodes(`${TEST_FILES_DIR}`, Object.values(actual))
     })
   })
 

@@ -20,7 +20,7 @@ import {
   UploadDataItem,
 } from './types'
 import { Request, Response } from 'express'
-import { removeBothEndsSlash, removeEndSlash, removeStartSlash } from 'web-base-lib'
+import { removeBothEndsSlash, removeEndSlash, removeStartSlash, splitHierarchicalPaths } from 'web-base-lib'
 import { AuthServiceDI } from '../../nest'
 import { Inject } from '@nestjs/common'
 import { InputValidationError } from '../../base'
@@ -66,19 +66,40 @@ export class BaseStorageService {
    * @param dirPath
    */
   async getHierarchicalDescendants(basePath: string | null, dirPath?: string): Promise<GCSStorageNode[]> {
-    let nodeMap: { [path: string]: GCSStorageNode }
+    basePath = removeBothEndsSlash(basePath)
+    dirPath = removeBothEndsSlash(dirPath)
 
+    let nodeMap: { [path: string]: GCSStorageNode }
+    //
     // 引数ディレクトリが指定された場合
+    //
     if (dirPath) {
-      nodeMap = await this.getDirAndDescendantMap(basePath, dirPath)
+      // 引数ディレクトリと配下ノードを取得
+      nodeMap = await this.getDirDescendantMap(basePath, dirPath)
+      // 引数ディレクトリと配下ノードが存在しない場合
+      if (Object.keys(nodeMap).length === 0) {
+        // 引数ディレクトリの上位ディレクトリを取得
+        const hierarchicalDirPaths = splitHierarchicalPaths(dirPath)
+        await Promise.all(
+          hierarchicalDirPaths.map(async iDirPath => {
+            if (iDirPath === dirPath) return
+            const dirNode = await this.getDirNode(basePath, iDirPath)
+            if (dirNode.exists) {
+              nodeMap[dirNode.path] = dirNode
+            }
+          })
+        )
+      }
     }
+    //
     // 引数ディレクトリが指定されなかった場合
+    //
     else {
       nodeMap = await this.getDescendantMap(basePath, dirPath)
     }
 
     // 祖先ディレクトリの穴埋め
-    Object.assign(nodeMap, await this.padRealDirNodes(basePath, nodeMap, basePath))
+    Object.assign(nodeMap, await this.padRealDirNodes(basePath, nodeMap, null))
 
     // ディレクトリ階層を表現できるようノード配列をソート
     return this.sortStorageNodes(Object.values(nodeMap))
@@ -106,24 +127,37 @@ export class BaseStorageService {
    * @param dirPath
    */
   async getHierarchicalChildren(basePath: string | null, dirPath?: string): Promise<GCSStorageNode[]> {
-    const nodeMap: { [path: string]: GCSStorageNode } = {}
+    basePath = removeBothEndsSlash(basePath)
+    dirPath = removeBothEndsSlash(dirPath)
 
+    let nodeMap: { [path: string]: GCSStorageNode }
+    //
     // 引数ディレクトリが指定された場合
+    //
     if (dirPath) {
-      // 引数ディレクトリが存在する場合、戻り値に設定
-      const dirNode = await this.getDirNode(basePath, dirPath)
-      if (dirNode.exists) {
-        // 引数ディレクトリにIDが振られていない場合、IDを採番
-        // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
-        if (!dirNode.id) {
-          Object.assign(dirNode, await this.assignIdToNode(basePath, dirNode))
-        }
-        nodeMap[dirNode.path] = dirNode
+      // 引数ディレクトリと直下ノードを取得
+      nodeMap = await this.getDirChildMap(basePath, dirPath)
+      // 引数ディレクトリと直下ノードが存在しない場合
+      if (Object.keys(nodeMap).length === 0) {
+        // 引数ディレクトリの上位ディレクトリを取得
+        const hierarchicalDirPaths = splitHierarchicalPaths(dirPath)
+        await Promise.all(
+          hierarchicalDirPaths.map(async iDirPath => {
+            if (iDirPath === dirPath) return
+            const dirNode = await this.getDirNode(basePath, iDirPath)
+            if (dirNode.exists) {
+              nodeMap[dirNode.path] = dirNode
+            }
+          })
+        )
       }
     }
-
-    // Cloud Storageから指定されたディレクトリ直下のノードを取得
-    Object.assign(nodeMap, await this.getChildMap(basePath, dirPath))
+    //
+    // 引数ディレクトリが指定されなかった場合
+    //
+    else {
+      nodeMap = await this.getChildMap(basePath, dirPath)
+    }
 
     // 祖先ディレクトリの穴埋め
     Object.assign(nodeMap, await this.padRealDirNodes(basePath, nodeMap, null))
@@ -292,7 +326,7 @@ export class BaseStorageService {
       if (!dirPath) return []
 
       // Cloud Storageから指定されたディレクトリのノードを取得
-      const nodeMap = await this.getDirAndDescendantMap(basePath, dirPath)
+      const nodeMap = await this.getDirDescendantMap(basePath, dirPath)
 
       // Cloud Storageから取得したノードを削除
       const promises: Promise<GCSStorageNode>[] = []
@@ -622,7 +656,7 @@ export class BaseStorageService {
     dirPath = removeBothEndsSlash(dirPath)
 
     // 引数ディレクトリと配下ノードを取得
-    const descendantMap = await this.getDirAndDescendantMap(basePath, dirPath)
+    const descendantMap = await this.getDirDescendantMap(basePath, dirPath)
     if (Object.keys(descendantMap).length === 0) {
       return []
     }
@@ -866,7 +900,7 @@ export class BaseStorageService {
    * @param basePath
    * @param dirPath
    */
-  protected async getDirAndDescendantMap(basePath: string | null, dirPath: string): Promise<{ [path: string]: GCSStorageNode }> {
+  protected async getDirDescendantMap(basePath: string | null, dirPath: string): Promise<{ [path: string]: GCSStorageNode }> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
@@ -943,6 +977,43 @@ export class BaseStorageService {
 
     // 配下ディレクトリの穴埋め
     Object.assign(result, await this.padRealDirNodes(basePath, result, dirPath))
+
+    return result
+  }
+
+  /**
+   * Cloud Storageから指定されたディレクトリと直下のノードをマップ形式取得します。
+   * @param basePath
+   * @param dirPath
+   */
+  protected async getDirChildMap(basePath: string | null, dirPath: string): Promise<{ [path: string]: GCSStorageNode }> {
+    basePath = removeBothEndsSlash(basePath)
+    dirPath = removeBothEndsSlash(dirPath)
+
+    // 引数ディレクトリと配下ノードを取得
+    const dirNode = await this.getDirNode(basePath, dirPath)
+    const result = await this.getChildMap(basePath, dirPath)
+
+    // 引数ディレクトリと配下ノードが存在しない場合
+    if (!dirNode.exists && Object.keys(result).length === 0) {
+      return {}
+    }
+
+    // 引数ディレクトリは存在しないが、配下ノードは存在する場合
+    // ※Cloud Storageに手動でファイルがアップロードされた場合がこの状況にあたる
+    if (!dirNode.exists) {
+      // 引数ディレクトリを作成
+      Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
+    }
+
+    // 引数ディレクトリにIDが振られていない場合、IDを採番
+    // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+    if (!dirNode.id) {
+      Object.assign(dirNode, await this.assignIdToNode(basePath, dirNode))
+    }
+
+    // 戻り値に引数ディレクトリを設定
+    result[dirNode.path] = dirNode
 
     return result
   }
@@ -1211,7 +1282,7 @@ export class BaseStorageService {
 
     // 指定された全ノードの階層的なディレクトリパスを取得
     const dirPaths = Object.values(nodeMap).map(node => node.dir)
-    const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths, topPath || '')
+    const hierarchicalDirPaths = splitHierarchicalPaths(...dirPaths, topPath || '')
 
     // 欠けているディレクトリパスを取得
     const lackDirPaths: string[] = []
@@ -1260,7 +1331,8 @@ export class BaseStorageService {
     nodeMap: { [path: string]: GCSStorageNode },
     topPath: string | null
   ): Promise<{ [path: string]: GCSStorageNode }> {
-    const result = await this.padVirtualDirNodes(basePath, nodeMap, topPath)
+    const paddedNodeMap = await this.padVirtualDirNodes(basePath, nodeMap, topPath)
+    const result = Object.assign({}, nodeMap, paddedNodeMap)
     await Promise.all(
       Object.values(result).map(async node => {
         // ディレクトリが実際には存在しない場合、ディレクトリを作成
@@ -1275,37 +1347,6 @@ export class BaseStorageService {
       })
     )
     return result
-  }
-
-  /**
-   * 指定されたディレクトリパスを階層的に分割します。
-   *
-   * 例: 'aaa/bbb/ccc'が指定された場合、
-   *    ['aaa', 'aaa/bbb', 'aaa/bbb/ccc']を返します。
-   *
-   * @param dirPaths
-   */
-  protected splitHierarchicalDirPaths(...dirPaths: string[]): string[] {
-    const set: Set<string> = new Set<string>()
-
-    for (const dirPath of dirPaths) {
-      const dirPathSegments = dirPath.split('/').filter(item => !!item)
-      for (let i = 0; i < dirPathSegments.length; i++) {
-        const currentDirPath = dirPathSegments.slice(0, i + 1).join('/')
-        set.add(currentDirPath)
-      }
-    }
-
-    // ディレクトリ階層順にソート
-    return Array.from(set).sort((a, b) => {
-      if (a < b) {
-        return -1
-      } else if (a > b) {
-        return 1
-      } else {
-        return 0
-      }
-    })
   }
 
   /**
@@ -1324,7 +1365,7 @@ export class BaseStorageService {
     // 引数ノードの階層構造に必要なノードを取得
     {
       const dirPaths = Object.keys(hierarchicalNodeMap)
-      const hierarchicalDirPaths = this.splitHierarchicalDirPaths(...dirPaths)
+      const hierarchicalDirPaths = splitHierarchicalPaths(...dirPaths)
       const promises: Promise<void>[] = []
       for (const dirPath of hierarchicalDirPaths) {
         if (hierarchicalNodeMap[dirPath]) continue
