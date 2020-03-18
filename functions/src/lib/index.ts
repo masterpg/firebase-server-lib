@@ -11,18 +11,7 @@ export const libBaseProviders = [
   LibStorageServiceDI.provider,
 ]
 
-export {
-  CORSConfig,
-  FunctionsConfig,
-  InputValidationError,
-  LibConfig,
-  StorageConfig,
-  ValidationErrors,
-  WriteReadyObserver,
-  initFirebaseApp,
-  validate,
-  validateSync,
-} from './base'
+export { InputValidationError, ValidationErrors, WriteReadyObserver, initFirebaseApp, validate, validateSync } from './base'
 
 export { DateTimeScalar, GQLCtx, getGqlModuleBaseOptions, getTypeDefs } from './gql'
 

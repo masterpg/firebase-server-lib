@@ -7,7 +7,7 @@ import { ExpressAdapter } from '@nestjs/platform-express'
 import { HandlersServiceDI } from './services'
 import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { config } from './base'
+import { config } from '../config'
 import { initApp } from './initializer'
 
 initApp()

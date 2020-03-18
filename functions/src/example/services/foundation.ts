@@ -3,7 +3,7 @@ import { BaseFoundationService, IdToken } from '../../lib'
 import { Inject, Injectable } from '@nestjs/common'
 import { AppConfigResponse } from './types'
 import { StorageServiceDI } from './storage'
-import { config } from '../../lib/base'
+import { config } from '../../config'
 
 @Injectable()
 class FoundationService extends BaseFoundationService {

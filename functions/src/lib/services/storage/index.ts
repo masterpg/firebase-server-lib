@@ -7,7 +7,7 @@ import { Request, Response } from 'express'
 import { BaseStorageService } from './base'
 import { IdToken } from '../../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
-import { config } from '../../base'
+import { config } from '../../../config'
 
 @Injectable()
 export class LibStorageService extends BaseStorageService {

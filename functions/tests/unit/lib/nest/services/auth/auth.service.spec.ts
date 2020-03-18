@@ -1,8 +1,8 @@
-import { MockBaseAppModule, MockGQLContainerModule, MockRESTContainerModule } from '../../../../../mocks/lib'
 import { Test, TestingModule } from '@nestjs/testing'
+import { MockBaseAppModule } from '../../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
-import { config } from '../../../../../../src/lib/base'
+import { config } from '../../../../../../src/config'
 import { initLibTestApp } from '../../../../../helpers/lib'
 const request = require('supertest')
 

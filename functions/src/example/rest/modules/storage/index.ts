@@ -2,7 +2,7 @@ import * as path from 'path'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { StorageServiceDI } from '../../../services'
-import { config } from '../../../../lib/base'
+import { config } from '../../../../config'
 
 @Controller('storage')
 export class StorageController {

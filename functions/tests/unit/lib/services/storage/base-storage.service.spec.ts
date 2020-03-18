@@ -20,7 +20,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { MockBaseAppModule } from '../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
-import { config } from '../../../../../src/lib/base'
+import { config } from '../../../../../src/config'
 import { initLibTestApp } from '../../../../helpers/lib'
 import { removeBothEndsSlash } from 'web-base-lib'
 const dayjs = require('dayjs')

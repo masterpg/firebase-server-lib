@@ -3,7 +3,7 @@ import { HttpLoggingData, HttpLoggingServiceDI, LoggingLatencyTimer } from './lo
 import { Inject, Injectable } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
-import { config } from '../../base'
+import { config } from '../../../config'
 import { removeStartSlash } from 'web-base-lib'
 
 //========================================================================
