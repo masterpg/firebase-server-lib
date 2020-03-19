@@ -61,7 +61,7 @@ describe('StorageService', () => {
     await storageService.removeDirs(null, [`${storageService.getUserDirPath(STORAGE_TEST_USER)}`])
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-    await sleep(1000)
+    await sleep(2000)
   })
 
   /**
@@ -237,7 +237,7 @@ describe('StorageService', () => {
           })
       })
 
-      it('アプリケーション管理者以外でない場合 - ファイルが公開されていない場合', async () => {
+      it('アプリケーション管理者以外の場合 - ファイルが公開されていない場合', async () => {
         const uploadItem: UploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
@@ -254,7 +254,7 @@ describe('StorageService', () => {
         )
       })
 
-      it('アプリケーション管理者以外でない場合 - ファイルが公開されている場合', async () => {
+      it('アプリケーション管理者以外の場合 - ファイル自体に公開設定されている場合', async () => {
         const uploadItem: UploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
@@ -276,7 +276,32 @@ describe('StorageService', () => {
         )
       })
 
-      it('アプリケーション管理者以外でない場合 - ファイルの共有ユーザーIDにマッチする場合', async () => {
+      it('アプリケーション管理者以外の場合 - 上位ディレクトリに公開設定されている場合', async () => {
+        // ディレクトリを作成
+        await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
+        // ファイルのアップロード
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+        // ディレクトリの公開フラグをオンに設定
+        await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/storage/${uploadItem.path}`)
+            // アプリケーション管理者以外を設定
+            .set({ ...STORAGE_TEST_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
+
+      it('アプリケーション管理者以外の場合 - ファイル自体に共有ユーザーIDが設定されている場合', async () => {
         const uploadItem: UploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
@@ -296,6 +321,64 @@ describe('StorageService', () => {
               expect(res.text).toEqual(uploadItem.data)
             })
         )
+      })
+
+      it('アプリケーション管理者以外の場合 - 上位ディレクトリに共有ユーザーIDが設定されている場合', async () => {
+        // ディレクトリを作成
+        await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
+        // ファイルのアップロード
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+        // ディレクトリの共有ユーザーIDを設定
+        await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: [STORAGE_TEST_USER.uid] })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/storage/${uploadItem.path}`)
+            // 共有ユーザーIDにマッチするユーザーを設定
+            .set({ ...STORAGE_TEST_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
+
+      it('ログインしていない場合 - ファイルが公開されている場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+        // ファイルの公開フラグをオンに設定
+        await storageService.setFileShareSettings(null, uploadItem.path, { isPublic: true })
+
+        // Authorizationヘッダーを設定しない
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
+
+      it('ログインしていない場合 - ファイルが公開されていない場合', async () => {
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+
+        // Authorizationヘッダーを設定しない
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .expect(401)
       })
     })
 
@@ -318,7 +401,22 @@ describe('StorageService', () => {
           })
       })
 
-      it('他ユーザーの場合 - ファイルが公開されている場合', async () => {
+      it('他ユーザーの場合 - ファイルが公開されていない場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
+          .expect(403)
+      })
+
+      it('他ユーザーの場合 - ファイル自体に公開設定されている場合', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         const uploadItem: UploadDataItem = {
           data: 'test',
@@ -338,22 +436,30 @@ describe('StorageService', () => {
           })
       })
 
-      it('他ユーザーの場合 - ファイルが公開されていない場合', async () => {
+      it('他ユーザーの場合 - 上位ディレクトリに公開設定されている場合', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        // ディレクトリを作成
+        await storageService.createDirs(null, [`${userDirPath}/d1/d11`])
+        // ファイルのアップロード
         const uploadItem: UploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
-          path: `${userDirPath}/d1/fileA.txt`,
+          path: `${userDirPath}/d1/d11/fileA.txt`,
         }
         await storageService.uploadAsFiles(null, [uploadItem])
+        // ディレクトリの公開フラグをオンに設定
+        await storageService.setDirShareSettings(null, `${userDirPath}/d1`, { isPublic: true })
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
           .set({ ...APP_ADMIN_USER_HEADER })
-          .expect(403)
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
       })
 
-      it('他ユーザーの場合 - ファイルの共有ユーザーIDにマッチする場合', async () => {
+      it('他ユーザーの場合 - ファイル自体に共有ユーザーIDが設定されている場合', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         const uploadItem: UploadDataItem = {
           data: 'test',
@@ -374,6 +480,67 @@ describe('StorageService', () => {
               expect(res.text).toEqual(uploadItem.data)
             })
         )
+      })
+
+      it('他ユーザーの場合 - 上位ディレクトリに共有ユーザーIDが設定されている場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        // ディレクトリを作成
+        await storageService.createDirs(null, [`${userDirPath}/d1/d11`])
+        // ファイルのアップロード
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+        // ディレクトリの共有ユーザーIDを設定
+        await storageService.setDirShareSettings(null, `${userDirPath}/d1`, { uids: [APP_ADMIN_USER.uid] })
+
+        return (
+          request(app.getHttpServer())
+            .get(`/storage/${uploadItem.path}`)
+            // 共有ユーザーIDにマッチするユーザーを設定
+            .set({ ...APP_ADMIN_USER_HEADER })
+            .expect(200)
+            .then((res: Response) => {
+              expect(res.text).toEqual(uploadItem.data)
+            })
+        )
+      })
+
+      it('ログインしていない場合 - ファイルが公開されている場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+        // ファイルの公開フラグをオンに設定
+        await storageService.setFileShareSettings(null, uploadItem.path, { isPublic: true })
+
+        // Authorizationヘッダーを設定しない
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.text).toEqual(uploadItem.data)
+          })
+      })
+
+      it('ログインしていない場合 - ファイルが公開されていない場合', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
+        const uploadItem: UploadDataItem = {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userDirPath}/d1/fileA.txt`,
+        }
+        await storageService.uploadAsFiles(null, [uploadItem])
+
+        // Authorizationヘッダーを設定しない
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .expect(401)
       })
     })
   })

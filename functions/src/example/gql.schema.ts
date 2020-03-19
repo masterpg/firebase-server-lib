@@ -28,7 +28,7 @@ export interface SignedUploadUrlInput {
 }
 
 export interface StorageNodeShareSettingsInput {
-    isPublic: boolean;
+    isPublic?: boolean;
     uids?: string[];
 }
 
@@ -81,7 +81,7 @@ export interface IMutation {
     moveUserStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
     renameUserStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
     renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
-    setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode[] | Promise<StorageNode[]>;
+    setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setUserStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     handleUploadedFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
@@ -91,7 +91,7 @@ export interface IMutation {
     moveStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
     renameStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
-    setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode[] | Promise<StorageNode[]>;
+    setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
 }
 
@@ -131,8 +131,8 @@ export interface StorageNode {
 }
 
 export interface StorageNodeShareSettings {
-    isPublic: boolean;
-    uids: string[];
+    isPublic?: boolean;
+    uids?: string[];
 }
 
 export type DateTime = any;

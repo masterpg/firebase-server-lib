@@ -3,7 +3,9 @@ import { File } from '@google-cloud/storage'
 import { IdToken } from '../../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 
-export type StorageUser = Pick<IdToken, 'uid' | 'myDirName'> | Pick<UserRecord, 'uid' | 'customClaims'>
+//--------------------------------------------------
+//  For GraphQL
+//--------------------------------------------------
 
 export enum StorageNodeType {
   File = 'File',
@@ -23,6 +25,38 @@ export interface StorageNode {
   updated: Dayjs
 }
 
+export interface StorageNodeShareSettings {
+  isPublic?: boolean
+  uids?: string[]
+}
+
+export interface StorageNodeShareSettingsInput {
+  isPublic?: boolean
+  uids?: string[]
+}
+
+export class SignedUploadUrlInput {
+  filePath!: string
+  contentType?: string
+}
+
+export interface UploadDataItem {
+  data: string | Buffer
+  path: string
+  contentType: string
+}
+
+//--------------------------------------------------
+//  For inside of Storage
+//--------------------------------------------------
+
+export type StorageUser = Pick<IdToken, 'uid' | 'myDirName'> | Pick<UserRecord, 'uid' | 'customClaims'>
+
+export interface GCSStorageNode extends StorageNode {
+  exists: boolean
+  gcsNode: File
+}
+
 export interface StorageMetadata {
   id: string
   share: StorageNodeShareSettings
@@ -36,27 +70,4 @@ export interface StorageMetadataInput {
 export interface StorageRawMetadata {
   id?: string | null
   share?: string | null
-}
-
-export interface StorageNodeShareSettings {
-  isPublic: boolean
-  uids: string[]
-}
-
-export type StorageNodeShareSettingsInput = Partial<StorageNodeShareSettings>
-
-export class SignedUploadUrlInput {
-  filePath!: string
-  contentType?: string
-}
-
-export interface GCSStorageNode extends StorageNode {
-  exists: boolean
-  gcsNode: File
-}
-
-export interface UploadDataItem {
-  data: string | Buffer
-  path: string
-  contentType: string
 }

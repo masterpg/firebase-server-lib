@@ -12,7 +12,6 @@ import {
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
   StorageNodeType,
   UploadDataItem,
 } from '../../../../../src/lib'
@@ -38,8 +37,8 @@ initLibTestApp()
 const TEST_FILES_DIR = 'test-files'
 
 const EMPTY_SHARE_SETTINGS: StorageNodeShareSettings = {
-  isPublic: false,
-  uids: [],
+  isPublic: undefined,
+  uids: undefined,
 }
 
 //========================================================================
@@ -165,7 +164,7 @@ describe('BaseStorageService', () => {
     await storageService.removeDirs(null, [`${TEST_FILES_DIR}`])
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-    await sleep(2000)
+    await sleep(2500)
   })
 
   describe('getHierarchicalDescendants', () => {
@@ -611,62 +610,12 @@ describe('BaseStorageService', () => {
       expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d1`)
       expect(explanation.calls[1].args[0]).toBe(`${TEST_FILES_DIR}/d2`)
     })
-
-    it('共有設定', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d12`])
-      // 'd1'ディレクトリに共有設定しておく
-      const d1Settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, d1Settings)
-      // 'd1/d12'ディレクトリに共有設定しておく
-      const d12Settings: StorageNodeShareSettings = { isPublic: true, uids: ['juniro'] }
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1/d12`, d12Settings)
-
-      // 'd1/d11', 'd1/d11/d111', 'd1/d12/d121', 'd2' ディレクトリを作成
-      const actual = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`, `${TEST_FILES_DIR}/d1/d12/d121`, `${TEST_FILES_DIR}/d2`])
-
-      expect(actual.length).toBe(4)
-      expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-      expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
-      expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d12/d121`)
-      expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d2`)
-
-      expect(actual[0].share).toEqual(d1Settings)
-      expect(actual[1].share).toEqual(d1Settings)
-      expect(actual[2].share).toEqual(d12Settings)
-      expect(actual[3].share).toEqual(EMPTY_SHARE_SETTINGS)
-
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - basePathを指定した場合', async () => {
-      // 'd1'ディレクトリを作成しておく
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
-      // 'd1'ディレクトリに共有設定しておく
-      const d1Settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d1`, d1Settings)
-
-      // 'd1/d11'ディレクトリを作成
-      const actual = await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
-
-      expect(actual.length).toBe(1)
-      expect(actual[0].path).toBe(`d1/d11`)
-      expect(actual[0].share).toEqual(d1Settings)
-
-      await existsNodes(`${TEST_FILES_DIR}`, actual)
-    })
   })
 
   describe('handleUploadedFiles', () => {
-    it('ディレクトリ作成と共有設定', async () => {
+    it('ベーシックケース', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d12`])
-      // 'd1'ディレクトリに共有設定しておく
-      const d1Settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, d1Settings)
-      // 'd1/d12'ディレクトリに共有設定しておく
-      const d12Settings: StorageNodeShareSettings = { isPublic: true, uids: ['juniro'] }
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1/d12`, d12Settings)
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
@@ -695,19 +644,12 @@ describe('BaseStorageService', () => {
       expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d12/fileB.txt`)
 
-      expect(actual[0].share).toEqual(d1Settings)
-      expect(actual[1].share).toEqual(d1Settings)
-      expect(actual[2].share).toEqual(d12Settings)
-
       await existsNodes(null, actual)
     })
 
-    it('ディレクトリ作成と共有設定 - basePathを指定した場合', async () => {
+    it('basePathを指定した場合', async () => {
       // ディレクトリを作成
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
-      // 'd1'ディレクトリに共有設定しておく
-      const d1Settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d1`, d1Settings)
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
@@ -729,9 +671,6 @@ describe('BaseStorageService', () => {
       // 'd1/d11'ディレクトリが作成された
       expect(actual[0].path).toBe(`d1/d11`)
       expect(actual[1].path).toBe(`d1/d11/fileA.txt`)
-
-      expect(actual[0].share).toEqual(d1Settings)
-      expect(actual[1].share).toEqual(d1Settings)
 
       await existsNodes(`${TEST_FILES_DIR}`, actual)
     })
@@ -1400,367 +1339,6 @@ describe('BaseStorageService', () => {
       expect(explanation.calls.length).toBe(1)
       expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d2`)
     })
-
-    it('共有設定 - 移動元ディレクトリの共有設定はなく、かつ移動先ディレクトリは公開フラグがオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動先'd2'の公開フラグをオンにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動先'd2'の公開フラグ(オン)が適用されていることを検証
-          expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオンで、かつ移動先ディレクトリの公開フラグもオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'の公開フラグをオンにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-
-      // 移動先'd2'の公開フラグをオンにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動先'd2'の公開フラグ(オン)が適用されていることを検証
-          expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオンで、かつ移動先ディレクトリの公開フラグもオフの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'の公開フラグをオンにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-
-      // 移動先'd2'の公開フラグをオフにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: false })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動先'd2'の公開フラグ(オフ)が適用されていることを検証
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオフで、かつ移動先ディレクトリの公開フラグがオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'の公開フラグをオフにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: false })
-
-      // 移動先'd2'の公開フラグをオンにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動先'd2'の公開フラグ(オン)が適用されていることを検証
-          expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオフで、かつ配下に公開フラグがオンのノードがあり、かつ移動先ディレクトリの公開フラグがオフの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'の公開フラグをオフにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: false })
-      // 移動元'd1'配下ノードの公開フラグをオンにしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileA.txt`, { isPublic: true })
-      // 移動先'd2'の公開フラグをオフにしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: false })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        expect(nodes[0].share).toEqual(EMPTY_SHARE_SETTINGS)
-        // 'fileA.txt'に設定された公開フラグが維持されていることを検証
-        expect(nodes[1].share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリに共有設定はなく、かつ移動先ディレクトリにユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動先'd2'にユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動先'd2'のユーザーIDが適用されていることを検証
-          expect(node.share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつ移動先ディレクトリにユーザーIDの共有設定がない場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 'd1'にユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動元'd1'のユーザーIDは除去され、移動先'd2'はユーザーIDの設定がないので、
-          // 結果としてユーザーIDが未設定であることを検証
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつ移動先ディレクトリに別のユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'にユーザーIDを設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-      // 移動先'd2'にユーザーIDを設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDが適用されていることを検証
-          expect(node.share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつ配下ノードに別のユーザーIDが設定されていて、かつ移動先ディレクトリに別のユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-      // 移動元配下ノードにユーザーIDの共有設定をしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileA.txt`, { uids: ['saburo'] })
-      // 移動先'd2'ユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(null, `${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2/d11`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d11/fileA.txt`)
-
-        expect(nodes[0].share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-        // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDと'fileA.txt'のユーザーID
-        // がマージされていることを検証
-        expect(nodes[1].share).toEqual({ isPublic: false, uids: ['saburo', 'jiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-    })
-
-    it('共有設定 - basePathを指定した場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`, `d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/d11/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
-
-      // 移動元'd1'にユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d1`, { uids: ['ichiro'] })
-      // 移動先'd2'にユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d2`, { uids: ['jiro'] })
-
-      // 'd1/d11'を'd2/d11'へ移動
-      const actual = await storageService.moveDir(`${TEST_FILES_DIR}`, `d1/d11`, `d2/d11`)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(2)
-        expect(nodes[0].path).toBe(`d2/d11`)
-        expect(nodes[1].path).toBe(`d2/d11/fileA.txt`)
-
-        for (const node of nodes) {
-          // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDが適用されていることを検証
-          expect(node.share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(`${TEST_FILES_DIR}`, actual))
-    })
   })
 
   describe('moveFile', () => {
@@ -1922,316 +1500,6 @@ describe('BaseStorageService', () => {
       const explanation = td.explain(validatePath)
       expect(explanation.calls.length).toBe(1)
       expect(explanation.calls[0].args[0]).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-    })
-
-    it('共有設定 - 移動元ディレクトリの共有設定はなく、かつ移動先ディレクトリは公開フラグがオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動先'd2'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動先'd2'の公開フラグが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: true, uids: [] })
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオンで、かつ移動先ディレクトリの公開フラグもオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'に共有設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-      // 移動元'd2'に共有設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動先'd2'の公開フラグが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオンで、かつ移動先ディレクトリの公開フラグがオフの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-      // 移動元'd2'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: false })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動先'd2'の公開フラグが適用されていることを検証
-        expect(fileNode.share).toEqual(EMPTY_SHARE_SETTINGS)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオフで、かつ移動先ディレクトリの公開フラグがオンの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: false })
-      // 移動元'd2'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動先'd2'の公開フラグが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリの公開フラグがオフで、かつ配下に公開フラグがオンのノードがあり、かつ移動先ディレクトリの公開フラグがオフの場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: false })
-      // 移動ファイルに公開フラグを設定しておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { isPublic: true })
-      // 移動先'd2'に公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: false })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 'fileA.txt'に独自設定された公開フラグが維持されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリに共有設定がなく、かつ移動先ディレクトリにユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動先'd2'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動先'd2'のユーザーIDが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: false, uids: ['jiro'] })
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつ移動先ディレクトリにユーザーIDの共有設定がない場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'に共有設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動元'd1'のユーザーIDは除去され、移動先'd2'はユーザーIDの設定がないので、
-        // 結果としてユーザーIDが未設定であることを検証
-        expect(fileNode.share).toEqual(EMPTY_SHARE_SETTINGS)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつ移動先ディレクトリに別のユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-      // 移動先'd2'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - 移動元ディレクトリにユーザーIDの共有設定があり、かつファイルに別のユーザーIDが設定されていて、かつ移動先ディレクトリに別のユーザーIDの共有設定がある場合', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(null, uploadItems)
-
-      // 移動元'd1'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-      // 移動ファイルにユーザーIDを設定しておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { uids: ['saburo'] })
-      // 移動先'd2'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { uids: ['jiro'] })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(null, `${TEST_FILES_DIR}/d1/fileA.txt`, `${TEST_FILES_DIR}/d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`${TEST_FILES_DIR}/d2/fileA.txt`)
-        // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDと'fileA.txt'のユーザーID
-        // がマージされていることを検証
-        expect(fileNode.share).toEqual({ isPublic: false, uids: ['saburo', 'jiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(null, actual.path))
-    })
-
-    it('共有設定 - basePathを指定', async () => {
-      // ディレクトリを作成
-      await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`, `d2`])
-
-      // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
-        },
-      ]
-      await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
-
-      // 移動元'd1'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d1`, { uids: ['ichiro'] })
-      // 移動先'd2'にユーザーIDを設定しておく
-      await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d2`, { uids: ['jiro'] })
-
-      // 'd1/fileA.txt'を'd2/fileA.txt'へ移動
-      const actual = await storageService.moveFile(`${TEST_FILES_DIR}`, `d1/fileA.txt`, `d2/fileA.txt`)
-
-      const verify = (fileNode: StorageNode) => {
-        expect(fileNode.path).toBe(`d2/fileA.txt`)
-        // 移動元'd1'のユーザーIDは除去され、移動先'd2'のユーザーIDが適用されていることを検証
-        expect(fileNode.share).toEqual({ isPublic: false, uids: ['jiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await storageService.getFileNode(`${TEST_FILES_DIR}`, actual.path))
     })
   })
 
@@ -2537,423 +1805,149 @@ describe('BaseStorageService', () => {
   describe('setDirShareSettings', () => {
     beforeEach(async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
-        },
-        {
-          data: 'testB',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/d11/fileB.txt`,
-        },
-        {
-          data: 'testC',
-          contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d2/d21/fileC.txt`,
+          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
     })
 
-    it('共有設定 - 共有未設定の状態から公開フラグをオンに設定', async () => {
+    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
       const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(actual.length).toBe(4)
-        expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of actual) {
-          expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual({ isPublic: true } as StorageNodeShareSettings)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
-    it('共有設定 - 公開フラグをオンの状態からオフに設定', async () => {
-      // 自身のディレクトリの公開フラグをオンにしておく
+    it('共有設定 - 設定なしの状態からユーザーIDを設定', async () => {
+      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
+
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual({ uids: ['ichiro'] } as StorageNodeShareSettings)
+      }
+      verify(actual)
+      verify(await storageService.getDirNode(null, actual.path))
+    })
+
+    it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
+      // 公開フラグをオンに設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
 
-      // 自身のディレクトリの共有解除
+      // 公開フラグをオフに設定
       const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: false })
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual({ isPublic: false } as StorageNodeShareSettings)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
-    it('共有設定 - 公開フラグのみを変更した場合、他の項目に影響がないことを検証', async () => {
-      // 自身のディレクトリにユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      // 自身のディレクトリの公開フラグのみ変更
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(actual.length).toBe(4)
-        expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        // 公開フラグのみが変更され、他の項目に影響がないことを検証
-        for (const node of actual) {
-          expect(node.share).toEqual({ isPublic: true, uids: ['ichiro'] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - 自身のディレクトリの公開フラグがオンの状態でかつ配下に公開フラグがオフのノードがある場合、この状態で自身のディレクトリに再度公開フラグをオンにした場合', async () => {
-      // 自身のディレクトリの公開フラグをオンにしておく
+    it('共有設定 - 公開フラグがオンの状態からundefinedを設定', async () => {
+      // 公開フラグをオンに設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-      // 配下ノードにの公開フラグをオフにしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileB.txt`, { isPublic: false })
 
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
+      // 公開フラグをnullに設定
+      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: undefined })
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(actual.length).toBe(4)
-        expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        expect(nodes[0].share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        expect(nodes[1].share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        expect(nodes[2].share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        // 独自に設定された公開フラグは維持されていることを検証
-        expect(nodes[3].share).toEqual(EMPTY_SHARE_SETTINGS)
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
-    it('共有設定 - ユーザーIDの共有が未設定の状態からユーザーIDを設定', async () => {
-      const settings: StorageNodeShareSettingsInput = { uids: ['ichiro'] }
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, settings)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(actual.length).toBe(4)
-        expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of actual) {
-          expect(node.share).toEqual({ isPublic: false, uids: settings.uids } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - ユーザーIDを除去', async () => {
-      // 自身のディレクトリに共有設定しておく
+    it('共有設定 - ユーザーIDが設定されているの状態から空を設定', async () => {
+      // ユーザーIDを設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
 
-      // 自身のディレクトリに空のユーザーIDを設定
+      // ユーザーIDを未設定へ変更
       const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: [] })
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual({ uids: [] } as StorageNodeShareSettings)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
-    it('共有設定 - ユーザーIDのみを変更した場合、他の項目に影響がないことを検証', async () => {
-      // 自身のディレクトリに公開フラグを設定しておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
-
-      // 自身のディレクトリのユーザーIDのみ変更
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(actual.length).toBe(4)
-        expect(actual[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(actual[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(actual[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(actual[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        // ユーザーIDのみが変更され、他の項目に影響がないことを検証
-        for (const node of actual) {
-          expect(node.share).toEqual({ isPublic: true, uids: ['ichiro'] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - 自身のディレクトリにユーザーIDの共有設定がされている状態で、自身のディレクトリに別のユーザーIDを設定した場合', async () => {
-      // 自身のディレクトリにユーザーIDの共有設定をしておく
-      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['jiro'] })
-
-      // ディレクトリにユーザーIDの共有設定を行う
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        // 今回の設定が以前の設定を上書きしていることを検証
-        expect(nodes[0].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[1].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[2].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[3].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - 自身のディレクトリにユーザーIDの共有設定がされていてかつ配下ノードに別のユーザーIDが共有設定されている状態で、自身のディレクトリに別のユーザーIDを設定した場合', async () => {
-      // 自身のディレクトリにユーザーIDの共有設定をしておく
+    it('共有設定 - ユーザーIDが設定されているの状態からundefinedを設定', async () => {
+      // ユーザーIDを設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-      // 配下ノードにユーザーIDの共有設定をしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileB.txt`, { uids: ['jiro'] })
 
-      // ディレクトリにユーザーIDの共有設定を行う
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['saburo'] })
+      // ユーザーIDを未設定へ変更
+      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: undefined })
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        expect(nodes[0].share).toEqual({ isPublic: false, uids: ['saburo'] } as StorageNodeShareSettings)
-        expect(nodes[1].share).toEqual({ isPublic: false, uids: ['saburo'] } as StorageNodeShareSettings)
-        expect(nodes[2].share).toEqual({ isPublic: false, uids: ['saburo'] } as StorageNodeShareSettings)
-        // 'ichiro'は除去され、独自設定の'jiro'と今回設定された'saburo'が設定されていることを検証
-        expect(actual[3].share).toEqual({ isPublic: false, uids: ['jiro', 'saburo'] } as StorageNodeShareSettings)
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
-    it('共有設定 - 配下ノードにユーザーIDの共有設定がされている状態で、祖先のディレクトリに別のユーザーIDを設定した場合', async () => {
-      // 配下ノードにユーザーIDの共有設定をしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileB.txt`, { uids: ['jiro'] })
-
-      // ディレクトリにユーザーIDの共有設定を行う
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        expect(nodes[0].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[1].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[2].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        // 既存のユーザーIDと新規のユーザーIDがマージされていることを検証
-        expect(nodes[3].share).toEqual({ isPublic: false, uids: ['jiro', 'ichiro'] } as StorageNodeShareSettings)
+    it('存在しないファイルを指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/dXXX`, { isPublic: true })
+      } catch (err) {
+        actual = err
       }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+
+      expect(actual.message).toBe(`The specified directory does not exist: '${TEST_FILES_DIR}/dXXX'`)
     })
 
-    it('共有設定 - 配下ノードにユーザーIDの共有設定がされている状態で、祖先のディレクトリに同じユーザーIDを設定した場合', async () => {
-      // 配下ノードにユーザーIDの共有設定をしておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileB.txt`, { uids: ['ichiro'] })
-
-      // ディレクトリにユーザーIDの共有設定を行う
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        expect(nodes[0].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[1].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        expect(nodes[2].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-        // 既存のユーザーIDと今回設定しようとしたユーザーIDが重複登録されていないことを検証
-        expect(nodes[3].share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('共有設定 - ファイルは存在するが親(または祖先)ディレクトリが存在しないディレクトリパスを指定した場合', async () => {
-      // 'd2'はCloud Storageに存在しない(ただし配下に'fileC.txt'が存在する)
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d2`, { isPublic: true })
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(3)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d2`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d2/d21`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d2/d21/fileC.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('nullを指定 - 共有設定なしから', async () => {
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, null)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('nullを指定 - 共有設定ありから', async () => {
-      // 公開フラグ、ユーザーIDを設定しておく
+    it('settingsにnullを指定した場合', async () => {
+      // 共有設定をしておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true, uids: ['ichiro'] })
 
+      // nullを指定
       const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, null)
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1`)
+        expect(node.share).toEqual(EMPTY_SHARE_SETTINGS)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
-    })
-
-    it('nullを指定 - 配下ノードの公開フラグとユーザーID設定ありから', async () => {
-      // 配下ノードに公開フラグ、ユーザーIDを設定しておく
-      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/d11/fileB.txt`, { isPublic: true, uids: ['ichiro'] })
-
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, null)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-        expect(nodes[1].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
-        expect(nodes[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileB.txt`)
-
-        expect(nodes[0].share).toEqual(EMPTY_SHARE_SETTINGS)
-        expect(nodes[1].share).toEqual(EMPTY_SHARE_SETTINGS)
-        expect(nodes[2].share).toEqual(EMPTY_SHARE_SETTINGS)
-        // 独自に設定された項目は維持されていることを検証
-        expect(nodes[3].share).toEqual({ isPublic: true, uids: ['ichiro'] } as StorageNodeShareSettings)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
-      await existsNodes(null, actual)
+      verify(await storageService.getDirNode(null, actual.path))
     })
 
     it('basePathを指定した場合', async () => {
       const settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
       const actual = await storageService.setDirShareSettings(`${TEST_FILES_DIR}`, `d1`, settings)
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`d1`)
-        expect(nodes[1].path).toBe(`d1/d11`)
-        expect(nodes[2].path).toBe(`d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(settings)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`d1`)
+        expect(node.share).toEqual(settings)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(`${TEST_FILES_DIR}`, actual))
-      await existsNodes(`${TEST_FILES_DIR}`, actual)
+      verify(await storageService.getDirNode(`${TEST_FILES_DIR}`, actual.path))
     })
 
-    it(`パスの先頭・末尾に'/'を付与`, async () => {
+    it(`basePathの先頭・末尾に'/'を付与`, async () => {
       const settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
       const actual = await storageService.setDirShareSettings(`/${TEST_FILES_DIR}/`, `/d1/`, settings)
 
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(4)
-        expect(nodes[0].path).toBe(`d1`)
-        expect(nodes[1].path).toBe(`d1/d11`)
-        expect(nodes[2].path).toBe(`d1/d11/fileA.txt`)
-        expect(nodes[3].path).toBe(`d1/d11/fileB.txt`)
-
-        for (const node of nodes) {
-          expect(node.share).toEqual(settings)
-        }
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`d1`)
+        expect(node.share).toEqual(settings)
       }
       verify(actual)
-      verify(await getNodesByActualNodes(`${TEST_FILES_DIR}`, actual))
-      await existsNodes(`${TEST_FILES_DIR}`, actual)
-    })
-
-    it('存在しないディレクトリを指定した場合', async () => {
-      const settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
-      const actual = await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/XXX`, settings)
-
-      const verify = (nodes: StorageNode[]) => {
-        expect(nodes.length).toBe(0)
-      }
-      verify(actual)
-      verify(await getNodesByActualNodes(null, actual))
+      verify(await storageService.getDirNode(`${TEST_FILES_DIR}`, actual.path))
     })
   })
 
@@ -2978,7 +1972,7 @@ describe('BaseStorageService', () => {
 
       const verify = (node: StorageNode) => {
         expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
-        expect(node.share).toEqual({ isPublic: true, uids: [] } as StorageNodeShareSettings)
+        expect(node.share).toEqual({ isPublic: true } as StorageNodeShareSettings)
       }
       verify(actual)
       verify(await storageService.getFileNode(null, actual.path))
@@ -2989,18 +1983,33 @@ describe('BaseStorageService', () => {
 
       const verify = (node: StorageNode) => {
         expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
-        expect(node.share).toEqual({ isPublic: false, uids: ['ichiro'] } as StorageNodeShareSettings)
+        expect(node.share).toEqual({ uids: ['ichiro'] } as StorageNodeShareSettings)
       }
       verify(actual)
       verify(await storageService.getFileNode(null, actual.path))
     })
 
     it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
-      // 公開フラグをオフに設定しておく
+      // 公開フラグをオンに設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { isPublic: true })
 
-      // 公開フラグをオンに設定
+      // 公開フラグをオフに設定
       const actual = await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { isPublic: false })
+
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+        expect(node.share).toEqual({ isPublic: false } as StorageNodeShareSettings)
+      }
+      verify(actual)
+      verify(await storageService.getFileNode(null, actual.path))
+    })
+
+    it('共有設定 - 公開フラグがオンの状態からundefinedを設定', async () => {
+      // 公開フラグをオンに設定しておく
+      await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { isPublic: true })
+
+      // 公開フラグをnullに設定
+      const actual = await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { isPublic: undefined })
 
       const verify = (node: StorageNode) => {
         expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
@@ -3010,12 +2019,27 @@ describe('BaseStorageService', () => {
       verify(await storageService.getFileNode(null, actual.path))
     })
 
-    it('共有設定 - ユーザーIDが設定されているの状態からユーザーIDを未設定へ変更', async () => {
+    it('共有設定 - ユーザーIDが設定されている状態から空を設定', async () => {
       // ユーザーIDを設定しておく
       await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
 
       // ユーザーIDを未設定へ変更
       const actual = await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { uids: [] })
+
+      const verify = (node: StorageNode) => {
+        expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+        expect(node.share).toEqual({ uids: [] } as StorageNodeShareSettings)
+      }
+      verify(actual)
+      verify(await storageService.getFileNode(null, actual.path))
+    })
+
+    it('共有設定 - ユーザーIDが設定されているの状態からundefinedを設定', async () => {
+      // ユーザーIDを設定しておく
+      await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { uids: ['ichiro'] })
+
+      // ユーザーIDを未設定へ変更
+      const actual = await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/fileA.txt`, { uids: undefined })
 
       const verify = (node: StorageNode) => {
         expect(node.path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
@@ -3026,14 +2050,14 @@ describe('BaseStorageService', () => {
     })
 
     it('存在しないファイルを指定した場合', async () => {
-      let actual: Error
+      let actual!: Error
       try {
         await storageService.setFileShareSettings(null, `${TEST_FILES_DIR}/d1/zzz.txt`, { isPublic: true })
       } catch (err) {
         actual = err
       }
 
-      expect(actual!.message).toBe(`The specified file does not exist: '${TEST_FILES_DIR}/d1/zzz.txt'`)
+      expect(actual.message).toBe(`The specified file does not exist: '${TEST_FILES_DIR}/d1/zzz.txt'`)
     })
 
     it('nullを指定した場合', async () => {
@@ -3063,7 +2087,7 @@ describe('BaseStorageService', () => {
       verify(await storageService.getFileNode(`${TEST_FILES_DIR}`, actual.path))
     })
 
-    it(`filePath、basePathの先頭・末尾に'/'を付与`, async () => {
+    it(`basePathの先頭・末尾に'/'を付与`, async () => {
       const settings: StorageNodeShareSettings = { isPublic: true, uids: ['ichiro'] }
       const actual = await storageService.setFileShareSettings(`/${TEST_FILES_DIR}/`, `/d1/fileA.txt/`, settings)
 
@@ -3916,13 +2940,13 @@ describe('BaseStorageService', () => {
       const d1 = await storageService.getDirNode(null, `${TEST_FILES_DIR}/d1`)
       const d1_gcsNode = d1.gcsNode
       expect(d1.exists).toBeFalsy()
-      expect(d1.share).toEqual({ isPublic: false, uids: [] })
+      expect(d1.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveDirNode(null, d1, { share: { isPublic: true, uids: ['ichiro'] } })
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] } as StorageNodeShareSettings)
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBe(d1_gcsNode)
       await existsNodes(null, [actual])
@@ -3932,13 +2956,13 @@ describe('BaseStorageService', () => {
       const d1 = await storageService.getDirNode(null, `${TEST_FILES_DIR}/d1`)
       const d1_gcsNode = d1.gcsNode
       expect(d1.exists).toBeFalsy()
-      expect(d1.share).toEqual({ isPublic: false, uids: [] })
+      expect(d1.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveDirNode(null, d1)
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBe(d1_gcsNode)
       await existsNodes(null, [actual])
@@ -3953,14 +2977,14 @@ describe('BaseStorageService', () => {
       const d1_gcsNode = d1.gcsNode
       expect(shortid.isValid(d1.id)).toBeTruthy()
       expect(d1.exists).toBeTruthy()
-      expect(d1.share).toEqual({ isPublic: false, uids: [] })
+      expect(d1.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       // saveDirNode()を再度実行する
       const actual = await storageService.saveDirNode(null, d1, { share: { isPublic: true, uids: ['ichiro'] } })
 
       expect(actual.id).toBe(id)
       expect(actual.path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] } as StorageNodeShareSettings)
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBe(d1_gcsNode)
       await existsNodes(null, [actual])
@@ -3983,13 +3007,13 @@ describe('BaseStorageService', () => {
       const d1 = await storageService.getDirNode(`${TEST_FILES_DIR}`, `d1`)
       const d1_gcsNode = d1.gcsNode
       expect(d1.exists).toBeFalsy()
-      expect(d1.share).toEqual({ isPublic: false, uids: [] })
+      expect(d1.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveDirNode(`${TEST_FILES_DIR}`, d1)
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`d1`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBe(d1_gcsNode)
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
@@ -3999,13 +3023,13 @@ describe('BaseStorageService', () => {
       const d1 = await storageService.getDirNode(`${TEST_FILES_DIR}`, `d1`)
       const d1_gcsNode = d1.gcsNode
       expect(d1.exists).toBeFalsy()
-      expect(d1.share).toEqual({ isPublic: false, uids: [] })
+      expect(d1.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveDirNode(`/${TEST_FILES_DIR}/`, d1)
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`d1`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.exists).toBeTruthy()
       expect(actual.gcsNode).toBe(d1_gcsNode)
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
@@ -4017,7 +3041,7 @@ describe('BaseStorageService', () => {
       const fileA = await storageService.getFileNode(null, `${TEST_FILES_DIR}/fileA.txt`)
       const fileA_gcsNode = fileA.gcsNode
       expect(fileA.exists).toBeFalsy()
-      expect(fileA.share).toEqual({ isPublic: false, uids: [] })
+      expect(fileA.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveFileNode(
         null,
@@ -4041,7 +3065,7 @@ describe('BaseStorageService', () => {
       const fileA = await storageService.getFileNode(null, `${TEST_FILES_DIR}/fileA.txt`)
       const fileA_gcsNode = fileA.gcsNode
       expect(fileA.exists).toBeFalsy()
-      expect(fileA.share).toEqual({ isPublic: false, uids: [] })
+      expect(fileA.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveFileNode(null, fileA, 'testA', { contentType: 'text/plain; charset=utf-8' })
       const [buffer] = await actual.gcsNode.download()
@@ -4049,7 +3073,7 @@ describe('BaseStorageService', () => {
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`${TEST_FILES_DIR}/fileA.txt`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.gcsNode).toBe(fileA_gcsNode)
       expect(fileA_content).toBe('testA')
       await existsNodes(null, [actual])
@@ -4064,7 +3088,7 @@ describe('BaseStorageService', () => {
       const d1_gcsNode = fileA.gcsNode
       expect(shortid.isValid(fileA.id)).toBeTruthy()
       expect(fileA.exists).toBeTruthy()
-      expect(fileA.share).toEqual({ isPublic: false, uids: [] })
+      expect(fileA.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       // saveDirNode()を再度実行する
       const actual = await storageService.saveFileNode(
@@ -4103,7 +3127,7 @@ describe('BaseStorageService', () => {
       const fileA = await storageService.getFileNode(`${TEST_FILES_DIR}`, `fileA.txt`)
       const fileA_gcsNode = fileA.gcsNode
       expect(fileA.exists).toBeFalsy()
-      expect(fileA.share).toEqual({ isPublic: false, uids: [] })
+      expect(fileA.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveFileNode(`${TEST_FILES_DIR}`, fileA, 'testA', { contentType: 'text/plain; charset=utf-8' })
       const [buffer] = await actual.gcsNode.download()
@@ -4111,7 +3135,7 @@ describe('BaseStorageService', () => {
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`fileA.txt`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.gcsNode).toBe(fileA_gcsNode)
       expect(fileA_content).toBe('testA')
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
@@ -4121,7 +3145,7 @@ describe('BaseStorageService', () => {
       const fileA = await storageService.getFileNode(`${TEST_FILES_DIR}`, `fileA.txt`)
       const fileA_gcsNode = fileA.gcsNode
       expect(fileA.exists).toBeFalsy()
-      expect(fileA.share).toEqual({ isPublic: false, uids: [] })
+      expect(fileA.share).toEqual(EMPTY_SHARE_SETTINGS)
 
       const actual = await storageService.saveFileNode(`/${TEST_FILES_DIR}/`, fileA, 'testA', { contentType: 'text/plain; charset=utf-8' })
       const [buffer] = await actual.gcsNode.download()
@@ -4129,7 +3153,7 @@ describe('BaseStorageService', () => {
 
       expect(shortid.isValid(actual.id)).toBeTruthy()
       expect(actual.path).toBe(`fileA.txt`)
-      expect(actual.share).toEqual({ isPublic: false, uids: [] })
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
       expect(actual.gcsNode).toBe(fileA_gcsNode)
       expect(fileA_content).toBe('testA')
       await existsNodes(`${TEST_FILES_DIR}`, [actual])

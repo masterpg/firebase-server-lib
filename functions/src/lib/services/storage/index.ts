@@ -8,6 +8,7 @@ import { BaseStorageService } from './base'
 import { IdToken } from '../../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import { config } from '../../../config'
+import { removeBothEndsSlash } from 'web-base-lib'
 
 @Injectable()
 export class LibStorageService extends BaseStorageService {
@@ -63,10 +64,20 @@ export class LibStorageService extends BaseStorageService {
    * @param filePath
    */
   async serveAppFile(req: Request, res: Response, filePath: string): Promise<Response> {
+    filePath = removeBothEndsSlash(filePath)
+
+    // 引数のファイルノードを取得
     const fileNode = await this.getFileNode(null, filePath)
+    if (!fileNode.exists) {
+      return res.sendStatus(404)
+    }
+
+    // ファイルの共有設定を取得
+    const hierarchicalNodes = await this.getHierarchicalFileNodes(null, fileNode)
+    const share = this.getInheritedShareSettings(hierarchicalNodes)
 
     // ファイルの公開フラグがオンの場合
-    if (fileNode.share.isPublic) {
+    if (share.isPublic) {
       return this.serveFile(req, res, fileNode)
     }
 
@@ -75,7 +86,6 @@ export class LibStorageService extends BaseStorageService {
     if (!validated.result) {
       return res.sendStatus(validated.error!.getStatus())
     }
-
     const user = validated.idToken!
 
     // 自ユーザーがアプリケーション管理者の場合
@@ -84,7 +94,7 @@ export class LibStorageService extends BaseStorageService {
     }
 
     // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (fileNode.share.uids.includes(user.uid)) {
+    if (share.uids.includes(user.uid)) {
       return this.serveFile(req, res, fileNode)
     }
 
@@ -98,10 +108,20 @@ export class LibStorageService extends BaseStorageService {
    * @param filePath
    */
   async serveUserFile(req: Request, res: Response, filePath: string): Promise<Response> {
+    filePath = removeBothEndsSlash(filePath)
+
+    // 引数のファイルノードを取得
     const fileNode = await this.getFileNode(null, filePath)
+    if (!fileNode.exists) {
+      return res.sendStatus(404)
+    }
+
+    // ファイルの共有設定を取得
+    const hierarchicalNodes = await this.getHierarchicalFileNodes(null, fileNode)
+    const share = this.getInheritedShareSettings(hierarchicalNodes)
 
     // ファイルの公開フラグがオンの場合
-    if (fileNode.share.isPublic) {
+    if (share.isPublic) {
       return this.serveFile(req, res, fileNode)
     }
 
@@ -125,7 +145,7 @@ export class LibStorageService extends BaseStorageService {
     }
 
     // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (fileNode.share.uids.includes(user.uid)) {
+    if (share.uids.includes(user.uid)) {
       return this.serveFile(req, res, fileNode)
     }
 
@@ -187,7 +207,7 @@ export class LibStorageService extends BaseStorageService {
     return this.renameFile(userDirPath, filePath, newName)
   }
 
-  async setUserDirShareSettings(user: StorageUser, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode[]> {
+  async setUserDirShareSettings(user: StorageUser, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.setDirShareSettings(userDirPath, dirPath, settings)
   }

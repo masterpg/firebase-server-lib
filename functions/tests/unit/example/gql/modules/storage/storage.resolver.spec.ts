@@ -531,13 +531,13 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setUserDirShareSettings = td.replace(storageService, 'setUserDirShareSettings')
-      td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER), dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
+      td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER), dir1.path, SHARE_SETTINGS)).thenResolve(dir1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.setUserStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
+      expect(response.body.data.setUserStorageDirShareSettings).toEqual(toResponseStorageNode(dir1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1058,13 +1058,13 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
-      td.when(setDirShareSettings(null, dir1.path, SHARE_SETTINGS)).thenResolve([dir1])
+      td.when(setDirShareSettings(null, dir1.path, SHARE_SETTINGS)).thenResolve(dir1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.setStorageDirShareSettings).toEqual(toResponseStorageNodes([dir1]))
+      expect(response.body.data.setStorageDirShareSettings).toEqual(toResponseStorageNode(dir1))
     })
 
     it('サインインしていない場合', async () => {

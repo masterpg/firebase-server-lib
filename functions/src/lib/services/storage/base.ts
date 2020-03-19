@@ -25,7 +25,6 @@ import { AuthServiceDI } from '../../nest'
 import { Inject } from '@nestjs/common'
 import { InputValidationError } from '../../base'
 const dayjs = require('dayjs')
-const cloneDeep = require('lodash/cloneDeep')
 
 export class BaseStorageService {
   //----------------------------------------------------------------------
@@ -217,24 +216,17 @@ export class BaseStorageService {
     // 指定されたパスのバリデーションチェック
     dirPaths.forEach(dirPath => this.validatePath(dirPath))
 
-    // 引数ディレクトリのノードを取得
-    // ※存在する、しないディレクトリが混在する
-    const dirNodes = await Promise.all(dirPaths.map(dirPath => this.getDirNode(basePath, dirPath)))
-
-    // 上記で取得したディレクトリノードの階層構造に必要なノードを取得/格納したストアを取得
-    const hierarchicalNodeStore = await this.getHierarchicalNodeStore(basePath, dirNodes)
+    // 引数ディレクトリの階層構造形成に必要なノードを取得
+    const hierarchicalDirNodes = await this.getHierarchicalDirNodes(basePath, ...dirPaths)
 
     // ディレクトリを作成
     const result: GCSStorageNode[] = []
     await Promise.all(
-      hierarchicalNodeStore.nodes.map(async dirNode => {
+      hierarchicalDirNodes.map(async dirNode => {
         // ディレクトリが存在する場合はディレクトリを作成せず終了
         if (dirNode.exists) return
-        // 直近の祖先ディレクトリの共有設定を取得
-        const share = hierarchicalNodeStore.getNearestShareSettings(dirNode.path)
         // ディレクトリを作成
-        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode, { share }))
-
+        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
         result.push(dirNode)
       })
     )
@@ -267,31 +259,32 @@ export class BaseStorageService {
       })
     )
 
-    // 引数ファイルノードの階層構造形成に必要なノードを格納したストアを取得
-    const hierarchicalNodeStore = await this.getHierarchicalNodeStore(basePath, fileNodes)
+    // 引数ディレクトリの階層構造形成に必要なノードを取得
+    const hierarchicalFileNodes = await this.getHierarchicalFileNodes(basePath, ...fileNodes)
 
-    // ディレクトリ作成と共有設定の継承
+    // 祖先ディレクトリの穴埋め
     const result: GCSStorageNode[] = []
     await Promise.all(
-      hierarchicalNodeStore.nodes.map(async node => {
-        // 直近の祖先ディレクトリの共有設定を取得
-        const share = hierarchicalNodeStore.getNearestShareSettings(node.path)
+      hierarchicalFileNodes.map(async node => {
         switch (node.nodeType) {
           case StorageNodeType.Dir: {
             // ディレクトリが実際に存在する場合、何もせず終了
             if (node.exists) return
             // ディレクトリが実際は存在しない場合、ディレクトリを作成
-            Object.assign(node, await this.saveDirNode(basePath, node, { share }))
+            Object.assign(node, await this.saveDirNode(basePath, node))
+            // ディレクトリにIDが振られていない場合、IDを採番
+            // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
+            if (!node.id) {
+              Object.assign(node, await this.assignIdToNode(basePath, node))
+            }
+            result.push(node)
             break
           }
           case StorageNodeType.File: {
-            if (share) {
-              Object.assign(node, await this.saveMetadata(basePath, node, { share }))
-            }
+            result.push(node)
             break
           }
         }
-        result.push(node)
       })
     )
 
@@ -460,27 +453,13 @@ export class BaseStorageService {
       }
     }
 
-    // 移動元ディレクトリの配下ノードを取得
-    const movingDescendantMap = await this.getDescendantMap(basePath, fromDirPath)
-    // 古い親ディレクトリの共有設定を移動元ディレクトリ＋配下のノードから削除
-    await this.setDirShareSettings(basePath, fromDirPath, null)
-    // 新しい親ディレクトリの共有設定を移動元ディレクトリ＋配下のノードに設定
-    if (toDirParentNode) {
-      await this.setDirShareSettings(basePath, fromDirPath, toDirParentNode.share)
-    }
-
     const resultMap: { [path: string]: GCSStorageNode } = {}
-
-    // 移動元ディレクトリの移動処理
-    {
-      const newDirNodePath = path.join(toDirPath, '/')
-      await dirNode.gcsNode.move(path.join(basePath, newDirNodePath))
-      const newDirNode = (await this.getDirNode(basePath, newDirNodePath))!
-      resultMap[newDirNode.path] = newDirNode
-    }
 
     // 移動元ディレクトリ配下のノードの移動処理
     {
+      // 移動元ディレクトリの配下ノードを取得
+      const movingDescendantMap = await this.getDescendantMap(basePath, fromDirPath)
+
       const promises: Promise<void>[] = []
       for (const node of Object.values(movingDescendantMap)) {
         const promise = (async () => {
@@ -503,6 +482,14 @@ export class BaseStorageService {
         promises.push(promise)
       }
       await Promise.all(promises)
+    }
+
+    // 移動元ディレクトリの移動処理
+    {
+      const newDirNodePath = path.join(toDirPath, '/')
+      await dirNode.gcsNode.move(path.join(basePath, newDirNodePath))
+      const newDirNode = (await this.getDirNode(basePath, newDirNodePath))!
+      resultMap[newDirNode.path] = newDirNode
     }
 
     // 移動を行ったノード一覧をソート
@@ -556,10 +543,7 @@ export class BaseStorageService {
 
     // ファイルの移動
     await fileNode.gcsNode.move(path.join(basePath, toFilePath))
-
-    // 移動先ディレクトリの共有設定を継承
-    this.m_mergeShareSettings(fileNode.share, fromDirNode.share, toDirNode.share)
-    const result = await this.setFileShareSettings(basePath, toFilePath, fileNode.share)
+    const result = await this.getFileNode(basePath, toFilePath)
 
     return result
   }
@@ -651,59 +635,27 @@ export class BaseStorageService {
    * @param dirPath
    * @param settings
    */
-  async setDirShareSettings(basePath: string | null, dirPath: string, settings: StorageNodeShareSettingsInput | null): Promise<GCSStorageNode[]> {
+  async setDirShareSettings(basePath: string | null, dirPath: string, settings: StorageNodeShareSettingsInput | null): Promise<GCSStorageNode> {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
-    // 引数ディレクトリと配下ノードを取得
-    const descendantMap = await this.getDirDescendantMap(basePath, dirPath)
-    if (Object.keys(descendantMap).length === 0) {
-      return []
+    const dirNode = await this.getDirNode(basePath, dirPath)
+    if (!dirNode.exists) {
+      throw new Error(`The specified directory does not exist: '${path.join(basePath, dirPath)}'`)
     }
-    const dirNode = descendantMap[dirPath]
-    // 引数ディレクトリと配下のノードは別処理を行うので、descendantMapから引数ディレクトリを削除
-    delete descendantMap[dirPath]
 
-    const result: GCSStorageNode[] = []
-
-    //
-    // 引数ディレクトリの共有設定
-    //
-    const oldDirSettings = dirNode.share
-    const newDirSettings: StorageNodeShareSettings = cloneDeep(dirNode.share)
-    if (settings === null) {
-      newDirSettings.isPublic = false
-      newDirSettings.uids = []
-    } else {
+    const share: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
+    if (settings) {
       if (typeof settings.isPublic === 'boolean') {
-        newDirSettings.isPublic = settings.isPublic
+        share.isPublic = settings.isPublic
       }
       if (settings.uids) {
-        newDirSettings.uids = settings.uids
+        share.uids = settings.uids
       }
     }
-    Object.assign(dirNode, await this.saveMetadata(basePath, dirNode, { share: newDirSettings }))
-    result.push(dirNode)
+    Object.assign(dirNode, await this.saveMetadata(basePath, dirNode, { share }))
 
-    //
-    // 引数ディレクトリの配下ノードの共有設定
-    //
-    const promises: Promise<void>[] = []
-    for (const descendantNode of Object.values(descendantMap)) {
-      const promise = (async () => {
-        const newSettings = cloneDeep(descendantNode.share)
-        // ループノードの共有設定と前回/今回の親ディレクトリの共有設定をマージする
-        this.m_mergeShareSettings(newSettings, oldDirSettings, newDirSettings)
-        // 現ノードの共有設定を保存
-        Object.assign(descendantNode, await this.saveMetadata(basePath, descendantNode, { share: newSettings }))
-
-        result.push(descendantNode)
-      })()
-      promises.push(promise)
-    }
-    await Promise.all(promises)
-
-    return this.sortStorageNodes(result)
+    return dirNode
   }
 
   /**
@@ -721,14 +673,15 @@ export class BaseStorageService {
       throw new Error(`The specified file does not exist: '${path.join(basePath, filePath)}'`)
     }
 
-    const share: StorageNodeShareSettings = { isPublic: false, uids: [] }
-    if (settings && typeof settings.isPublic === 'boolean') {
-      share.isPublic = settings.isPublic
+    const share: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
+    if (settings) {
+      if (typeof settings.isPublic === 'boolean') {
+        share.isPublic = settings.isPublic
+      }
+      if (settings.uids) {
+        share.uids = settings.uids
+      }
     }
-    if (settings && settings.uids) {
-      share.uids = settings.uids
-    }
-
     Object.assign(fileNode, await this.saveMetadata(basePath, fileNode, { share }))
 
     return fileNode
@@ -1350,64 +1303,61 @@ export class BaseStorageService {
   }
 
   /**
-   * 指定されたノード一覧の階層構造に必要なノードを取得し、
-   * 指定ノードと取得ノードへのアクセスを容易にするためのストアクラスを返します。
+   * 指定されたディレクトリの階層構造を形成するのに必要なノードを取得します。
    * @param basePath
-   * @param nodes
+   * @param dirs
    */
-  protected async getHierarchicalNodeStore(basePath: string | null, nodes: GCSStorageNode[]) {
-    // 引数のノード一覧をマップ化
-    const hierarchicalNodeMap = nodes.reduce((result, node) => {
-      result[node.path] = node
-      return result
-    }, {} as { [path: string]: GCSStorageNode })
-
-    // 引数ノードの階層構造に必要なノードを取得
-    {
-      const dirPaths = Object.keys(hierarchicalNodeMap)
-      const hierarchicalDirPaths = splitHierarchicalPaths(...dirPaths)
-      const promises: Promise<void>[] = []
-      for (const dirPath of hierarchicalDirPaths) {
-        if (hierarchicalNodeMap[dirPath]) continue
-        promises.push(
-          (async () => {
-            hierarchicalNodeMap[dirPath] = await this.getDirNode(basePath, dirPath)
-          })()
-        )
+  protected async getHierarchicalDirNodes(basePath: string | null, ...dirs: string[] | GCSStorageNode[]): Promise<GCSStorageNode[]> {
+    const dirNodeMap: { [path: string]: GCSStorageNode } = {}
+    for (const dir of dirs) {
+      if (typeof dir === 'string') {
+        const dirNode = await this.getDirNode(basePath, dir)
+        dirNodeMap[dirNode.path] = dirNode
+      } else {
+        dirNodeMap[dir.path] = dir
       }
-      await Promise.all(promises)
     }
 
-    // 引数ノードの階層構造にアクセスするためのストアクラスを作成
-    const result = new (class {
-      constructor(private m_nodeMap: { [path: string]: GCSStorageNode }) {}
+    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(dirNodeMap))
+    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(dirNodeMap)]
+    await Promise.all(
+      hierarchicalPaths.map(async nodePath => {
+        if (dirNodeMap[nodePath]) return
+        const dirNode = await this.getDirNode(basePath, nodePath)
+        hierarchicalNodes.push(dirNode)
+      })
+    )
 
-      get nodes(): GCSStorageNode[] {
-        return Object.values(this.m_nodeMap)
+    return this.sortStorageNodes(hierarchicalNodes)
+  }
+
+  /**
+   * 指定されたファイルの階層構造を形成するのに必要なノードを取得します。
+   * @param basePath
+   * @param files
+   */
+  protected async getHierarchicalFileNodes(basePath: string | null, ...files: string[] | GCSStorageNode[]): Promise<GCSStorageNode[]> {
+    const fileNodeMap: { [path: string]: GCSStorageNode } = {}
+    for (const file of files) {
+      if (typeof file === 'string') {
+        const fileNode = await this.getFileNode(basePath, file)
+        fileNodeMap[fileNode.path] = fileNode
+      } else {
+        fileNodeMap[file.path] = file
       }
+    }
 
-      getNode(dirPath: string): GCSStorageNode | undefined {
-        return this.m_nodeMap[dirPath]
-      }
+    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(fileNodeMap))
+    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(fileNodeMap)]
+    await Promise.all(
+      hierarchicalPaths.map(async nodePath => {
+        if (fileNodeMap[nodePath]) return
+        const dirNode = await this.getDirNode(basePath, nodePath)
+        hierarchicalNodes.push(dirNode)
+      })
+    )
 
-      getNearestShareSettings(nodePath: string): StorageNodeShareSettings | undefined {
-        const node = this.m_nodeMap[nodePath]
-        if (!node) {
-          return
-        }
-
-        const parentDirNode = this.m_nodeMap[node.dir]
-        if (!parentDirNode) return
-
-        if (parentDirNode.exists) {
-          return parentDirNode.share
-        } else {
-          return this.getNearestShareSettings(parentDirNode.path)
-        }
-      }
-    })(hierarchicalNodeMap)
-
-    return result
+    return this.sortStorageNodes(hierarchicalNodes)
   }
 
   /**
@@ -1564,50 +1514,11 @@ export class BaseStorageService {
   //--------------------------------------------------
 
   /**
-   * targetからfromParentの設定を除去し、その後targetへtoParentの設定をマージします。
-   * @param target
-   * @param fromParent
-   * @param toParent
-   */
-  private m_mergeShareSettings(target: StorageNodeShareSettings, fromParent: StorageNodeShareSettings, toParent: StorageNodeShareSettings): void {
-    // targetの公開フラグを設定する
-    // 例1: target.isPublic === fromParent.isPublic の場合、
-    //      targetはfromParentの設定を受け継いでおりfromParentの設定を尊重しているが、
-    //      今回は親がtoParentに代わるためtoParentの公開フラグを設定する。
-    // 例2: targetとfromParentの公開フラグが異なる場合、
-    //      targetはfromParentの設定を受け継いでおらず、targetにはあえて公開フラグの
-    //      設定がされているので、条件文は実行せず公開フラグは現状を維持する。
-    if (target.isPublic === fromParent.isPublic) {
-      target.isPublic = toParent.isPublic
-    }
-
-    // 親がfromParentからtoParentへ代わるので、targetからfromParentのユーザーIDは除去する
-    // ※targetにあえて設定されたユーザーIDは維持される
-    for (let i = 0; i < target.uids.length; i++) {
-      const targetUID = target.uids[i]
-      if (fromParent.uids.includes(targetUID)) {
-        target.uids.splice(i--, 1)
-      }
-    }
-
-    // targetのユーザーIDにtoParentのユーザーIDをマージ
-    for (const toParentUID of toParent.uids) {
-      if (!target.uids.includes(toParentUID)) {
-        target.uids.push(toParentUID)
-      }
-    }
-  }
-
-  /**
    * 共有設定をJSON文字列へ変換します。
    * @param settings
    */
   private m_toShareSettingsString(settings: StorageNodeShareSettings): string | null {
-    if (!settings.isPublic && settings.uids.length === 0) {
-      return null
-    } else {
-      return JSON.stringify(settings)
-    }
+    return JSON.stringify(settings)
   }
 
   /**
@@ -1615,13 +1526,35 @@ export class BaseStorageService {
    * @param gcsNode
    */
   private m_extractShareSettings(gcsNode: File): StorageNodeShareSettings {
-    let result: StorageNodeShareSettings = { isPublic: false, uids: [] }
+    let result: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
 
     if (gcsNode.metadata.metadata && gcsNode.metadata.metadata.share) {
       try {
         result = JSON.parse(gcsNode.metadata.metadata.share)
       } catch (err) {
         // TODO どのようにログ出力するか検討が必要!!!
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
+   * @param hierarchicalNodes
+   *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
+   */
+  protected getInheritedShareSettings(hierarchicalNodes: GCSStorageNode[]): Required<StorageNodeShareSettings> {
+    hierarchicalNodes = this.sortStorageNodes([...hierarchicalNodes])
+
+    const result: Required<StorageNodeShareSettings> = { isPublic: false, uids: [] }
+    for (let i = hierarchicalNodes.length - 1; i >= 0; i--) {
+      const node = hierarchicalNodes[i]
+      if (node.share.isPublic) {
+        result.isPublic = true
+      }
+      if (node.share.uids) {
+        result.uids = node.share.uids
       }
     }
 

@@ -103,7 +103,7 @@ export class StorageResolver {
     @User() user: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
-  ): Promise<StorageNode[]> {
+  ): Promise<StorageNode> {
     return this.storageService.setUserDirShareSettings(user, dirPath, settings)
   }
 
@@ -212,7 +212,7 @@ export class StorageResolver {
   async setStorageDirShareSettings(
     @Args('dirPath') dirPath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
-  ): Promise<StorageNode[]> {
+  ): Promise<StorageNode> {
     return this.storageService.setDirShareSettings(null, dirPath, settings)
   }
 
