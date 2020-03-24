@@ -1,8 +1,8 @@
 import * as path from 'path'
 import * as shortid from 'shortid'
 import * as td from 'testdouble'
+import { GetStorageResult, StorageNodeShareSettings, StorageNodeType } from '../../../../../../src/lib'
 import { StorageNode, StorageServiceDI } from '../../../../../../src/example/services'
-import { StorageNodeShareSettings, StorageNodeType } from '../../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
 import { AppModule } from '../../../../../../src/example/app.module'
@@ -152,43 +152,44 @@ describe('StorageResolver', () => {
     storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
   })
 
-  describe('hierarchicalUserStorageDescendants', () => {
+  //--------------------------------------------------
+  //  User
+  //--------------------------------------------------
+
+  describe('userStorageNode', () => {
     const gql = {
       query: `
-        query GetHierarchicalUserStorageDirDescendants($dirPath: String) {
-          hierarchicalUserStorageDescendants(dirPath: $dirPath) {
+        query GetUserStorageNode($nodePath: String!) {
+          userStorageNode(nodePath: $nodePath) {
             id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1.path,
+        nodePath: dir1.path,
       },
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalUserDescendants = td.replace(storageService, 'getHierarchicalUserDescendants')
-      td.when(getHierarchicalUserDescendants(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getUserNode = td.replace(storageService, 'getUserNode')
+      td.when(getUserNode(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve(dir1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageNode).toEqual(toResponseStorageNode(dir1))
     })
 
-    it('疎通確認 - td.explain()バージョン', async () => {
-      const getHierarchicalUserDescendants = td.replace(storageService, 'getHierarchicalUserDescendants')
-      td.when(getHierarchicalUserDescendants(td.matchers.anything(), td.matchers.anything())).thenResolve([dir1_1])
+    it('疎通確認 - 結果が空だった場合', async () => {
+      const getUserNode = td.replace(storageService, 'getUserNode')
+      td.when(getUserNode(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve(undefined)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
-      const explanation = td.explain(getHierarchicalUserDescendants)
-      expect(explanation.calls[0].args[0]).toMatchObject(GENERAL_USER)
-      expect(explanation.calls[0].args[1]).toBe(dir1.path)
+      expect(response.body.data.userStorageNode).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -197,29 +198,130 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalUserStorageChildren', () => {
+  describe('userStorageDirDescendants', () => {
     const gql = {
       query: `
-        query GetHierarchicalUserStorageDirChildren($dirPath: String) {
-          hierarchicalUserStorageChildren(dirPath: $dirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
+        query GetUserStorageDirDirDescendants($dirPath: String, $options: GetStorageOptionsInput) {
+          userStorageDirDescendants(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
           }
         }
       `,
       variables: {
         dirPath: dir1.path,
+        options: { maxResults: 3 },
       },
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalUserChildren = td.replace(storageService, 'getHierarchicalUserChildren')
-      td.when(getHierarchicalUserChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      const getUserDirDescendants = td.replace(storageService, 'getUserDirDescendants')
+      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER), dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1, dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalUserStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageDirDescendants.list).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+      expect(response.body.data.userStorageDirDescendants.nextPageToken).toBe('abcdefg')
+    })
+
+    it('疎通確認 - 結果が空だった場合', async () => {
+      const getUserDirDescendants = td.replace(storageService, 'getUserDirDescendants')
+      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER), dir1.path, { maxResults: 3 })).thenResolve({
+        list: [],
+        nextPageToken: undefined,
+      } as GetStorageResult)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageDirDescendants.list).toEqual(toResponseStorageNodes([]))
+      expect(response.body.data.userStorageDirDescendants.nextPageToken).toBe(null)
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('userStorageDescendants', () => {
+    const gql = {
+      query: `
+        query GetUserStorageDescendants($dirPath: String, $options: GetStorageOptionsInput) {
+          userStorageDescendants(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        options: { maxResults: 3 },
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getUserDescendants = td.replace(storageService, 'getUserDescendants')
+      td.when(getUserDescendants(td.matchers.contains(GENERAL_USER), dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageDescendants.list).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageDescendants.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('userStorageDirChildren', () => {
+    const gql = {
+      query: `
+        query GetUserStorageDirChildren($dirPath: String, $options: GetStorageOptionsInput) {
+          userStorageDirChildren(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        options: { maxResults: 3 },
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getUserDirChildren = td.replace(storageService, 'getUserDirChildren')
+      td.when(getUserDirChildren(td.matchers.contains(GENERAL_USER), dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1, dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageDirChildren.list).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+      expect(response.body.data.userStorageDirChildren.nextPageToken).toBe('abcdefg')
     })
 
     it('サインインしていない場合', async () => {
@@ -231,26 +333,34 @@ describe('StorageResolver', () => {
   describe('userStorageChildren', () => {
     const gql = {
       query: `
-        query GetUserStorageDirChildren($dirPath: String) {
-          userStorageChildren(dirPath: $dirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
+        query GetUserStorageChildren($dirPath: String, $options: GetStorageOptionsInput) {
+          userStorageChildren(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
           }
         }
       `,
       variables: {
         dirPath: dir1.path,
+        options: { maxResults: 3 },
       },
     }
 
     it('疎通確認', async () => {
       const getUserChildren = td.replace(storageService, 'getUserChildren')
-      td.when(getUserChildren(td.matchers.contains(GENERAL_USER), dir1.path)).thenResolve([dir1_1])
+      td.when(getUserChildren(td.matchers.contains(GENERAL_USER), dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.userStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageChildren.list).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.userStorageChildren.nextPageToken).toBe('abcdefg')
     })
 
     it('サインインしていない場合', async () => {
@@ -263,9 +373,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation HandleUploadedUserFiles($filePaths: [String!]!) {
-          handleUploadedUserFiles(filePaths: $filePaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          handleUploadedUserFiles(filePaths: $filePaths)
         }
       `,
       variables: {
@@ -275,16 +383,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const handleUploadedUserFiles = td.replace(storageService, 'handleUploadedUserFiles')
-      td.when(handleUploadedUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([
-        dir1_1_fileA,
-        dir1_1_fileB,
-      ])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.handleUploadedUserFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
+      expect(response.body.data.handleUploadedUserFiles).toBe(true)
+
+      const exp = td.explain(handleUploadedUserFiles)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toEqual([dir1_1_fileA.path, dir1_1_fileB.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -328,9 +436,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RemoveUserStorageDirs($dirPaths: [String!]!) {
-          removeUserStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          removeUserStorageDirs(dirPaths: $dirPaths)
         }
       `,
       variables: {
@@ -340,13 +446,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeUserDirs = td.replace(storageService, 'removeUserDirs')
-      td.when(removeUserDirs(td.matchers.contains(GENERAL_USER), [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.removeUserStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
+      expect(response.body.data.removeUserStorageDirs).toBe(true)
+
+      const exp = td.explain(removeUserDirs)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toEqual([dir1.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -359,9 +468,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RemoveUserStorageFiles($filePaths: [String!]!) {
-          removeUserStorageFiles(filePaths: $filePaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          removeUserStorageFiles(filePaths: $filePaths)
         }
       `,
       variables: {
@@ -371,13 +478,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeUserFiles = td.replace(storageService, 'removeUserFiles')
-      td.when(removeUserFiles(td.matchers.contains(GENERAL_USER), [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.removeUserStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
+      expect(response.body.data.removeUserStorageFiles).toBe(true)
+
+      const exp = td.explain(removeUserFiles)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toEqual([dir1_1_fileA.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -390,9 +500,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) {
-          moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath)
         }
       `,
       variables: {
@@ -403,13 +511,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveUserDir = td.replace(storageService, 'moveUserDir')
-      td.when(moveUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.moveUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
+      expect(response.body.data.moveUserStorageDir).toBe(true)
+
+      const exp = td.explain(moveUserDir)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toBe(dir1_1.path)
+      expect(exp.calls[0].args[2]).toBe(dir1_2.path)
     })
 
     it('サインインしていない場合', async () => {
@@ -422,9 +534,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
-          moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath)
         }
       `,
       variables: {
@@ -435,13 +545,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveUserFile = td.replace(storageService, 'moveUserFile')
-      td.when(moveUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.moveUserStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
+      expect(response.body.data.moveUserStorageFile).toBe(true)
+
+      const exp = td.explain(moveUserFile)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toBe(dir1_1_fileA.path)
+      expect(exp.calls[0].args[2]).toBe(dir1_2_fileA.path)
     })
 
     it('サインインしていない場合', async () => {
@@ -454,9 +568,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RenameUserStorageDir($dirPath: String!, $newName: String!) {
-          renameUserStorageDir(dirPath: $dirPath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          renameUserStorageDir(dirPath: $dirPath, newName: $newName)
         }
       `,
       variables: {
@@ -467,13 +579,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameUserDir = td.replace(storageService, 'renameUserDir')
-      td.when(renameUserDir(td.matchers.contains(GENERAL_USER), dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.renameUserStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
+      expect(response.body.data.renameUserStorageDir).toBe(true)
+
+      const exp = td.explain(renameUserDir)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toBe(dir1_1.path)
+      expect(exp.calls[0].args[2]).toBe(dir1_2.name)
     })
 
     it('サインインしていない場合', async () => {
@@ -486,9 +602,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RenameUserStorageFile($filePath: String!, $newName: String!) {
-          renameUserStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          renameUserStorageFile(filePath: $filePath, newName: $newName)
         }
       `,
       variables: {
@@ -499,13 +613,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameUserFile = td.replace(storageService, 'renameUserFile')
-      td.when(renameUserFile(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
       })
 
-      expect(response.body.data.renameUserStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
+      expect(response.body.data.renameUserStorageFile).toBe(true)
+
+      const exp = td.explain(renameUserFile)
+      expect(exp.calls[0].args[0]).toMatchObject(GENERAL_USER)
+      expect(exp.calls[0].args[1]).toBe(dir1_1_fileA.path)
+      expect(exp.calls[0].args[2]).toBe(dir1_1_fileB.name)
     })
 
     it('サインインしていない場合', async () => {
@@ -578,6 +696,10 @@ describe('StorageResolver', () => {
     })
   })
 
+  //--------------------------------------------------
+  //  Application
+  //--------------------------------------------------
+
   describe('signedUploadUrls', () => {
     const gql = {
       query: `
@@ -619,29 +741,40 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalStorageDescendants', () => {
+  describe('storageNode', () => {
     const gql = {
       query: `
-        query GetHierarchicalStorageDirDescendants($dirPath: String) {
-          hierarchicalStorageDescendants(dirPath: $dirPath) {
+        query GetStorageNode($nodePath: String!) {
+          storageNode(nodePath: $nodePath) {
             id nodeType name dir path contentType size share { isPublic uids } created updated
           }
         }
       `,
       variables: {
-        dirPath: dir1.path,
+        nodePath: dir1.path,
       },
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalDescendants = td.replace(storageService, 'getHierarchicalDescendants')
-      td.when(getHierarchicalDescendants(null, dir1.path)).thenResolve([dir1_1])
+      const getNode = td.replace(storageService, 'getNode')
+      td.when(getNode(null, dir1.path)).thenResolve(dir1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalStorageDescendants).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageNode).toEqual(toResponseStorageNode(dir1))
+    })
+
+    it('疎通確認 - 結果が空だった場合', async () => {
+      const getNode = td.replace(storageService, 'getNode')
+      td.when(getNode(null, dir1.path)).thenResolve(undefined)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageNode).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -657,29 +790,129 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('hierarchicalStorageChildren', () => {
+  describe('storageDirDescendants', () => {
     const gql = {
       query: `
-        query GetHierarchicalStorageDirChildren($dirPath: String) {
-          hierarchicalStorageChildren(dirPath: $dirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
+        query GetStorageDirDescendants($dirPath: String, $options: GetStorageOptionsInput) {
+          storageDirDescendants(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
           }
         }
       `,
       variables: {
         dirPath: dir1.path,
+        options: { maxResults: 3 },
       },
     }
 
     it('疎通確認', async () => {
-      const getHierarchicalChildren = td.replace(storageService, 'getHierarchicalChildren')
-      td.when(getHierarchicalChildren(null, dir1.path)).thenResolve([dir1_1])
+      const getDirDescendants = td.replace(storageService, 'getDirDescendants')
+      td.when(getDirDescendants(null, dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1, dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.hierarchicalStorageChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageDirDescendants.list).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+      expect(response.body.data.storageDirDescendants.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('storageDescendants', () => {
+    const gql = {
+      query: `
+        query GetStorageDescendants($dirPath: String, $options: GetStorageOptionsInput) {
+          storageDescendants(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        options: { maxResults: 3 },
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getDescendants = td.replace(storageService, 'getDescendants')
+      td.when(getDescendants(null, dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageDescendants.list).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('storageDirChildren', () => {
+    const gql = {
+      query: `
+        query GetStorageDirChildren($dirPath: String, $options: GetStorageOptionsInput) {
+          storageDirChildren(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
+          }
+        }
+      `,
+      variables: {
+        dirPath: dir1.path,
+        options: { maxResults: 3 },
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getDirChildren = td.replace(storageService, 'getDirChildren')
+      td.when(getDirChildren(null, dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1, dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageDirChildren.list).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+      expect(response.body.data.storageDirChildren.nextPageToken).toBe('abcdefg')
     })
 
     it('サインインしていない場合', async () => {
@@ -698,26 +931,34 @@ describe('StorageResolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageDirChildren($dirPath: String) {
-          storageChildren(dirPath: $dirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
+        query GetStorageChildren($dirPath: String, $options: GetStorageOptionsInput) {
+          storageChildren(dirPath: $dirPath, options: $options) {
+            list {
+              id nodeType name dir path contentType size share { isPublic uids } created updated
+            }
+            nextPageToken
           }
         }
       `,
       variables: {
         dirPath: dir1.path,
+        options: { maxResults: 3 },
       },
     }
 
     it('疎通確認', async () => {
       const getChildren = td.replace(storageService, 'getChildren')
-      td.when(getChildren(null, dir1.path)).thenResolve([dir1_1])
+      td.when(getChildren(null, dir1.path, { maxResults: 3 })).thenResolve({
+        list: [dir1_1],
+        nextPageToken: 'abcdefg',
+      } as GetStorageResult)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.storageChildren).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageChildren.list).toEqual(toResponseStorageNodes([dir1_1]))
+      expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
     })
 
     it('サインインしていない場合', async () => {
@@ -737,9 +978,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation HandleUploadedFiles($filePaths: [String!]!) {
-          handleUploadedFiles(filePaths: $filePaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          handleUploadedFiles(filePaths: $filePaths)
         }
       `,
       variables: {
@@ -749,13 +988,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const handleUploadedFiles = td.replace(storageService, 'handleUploadedFiles')
-      td.when(handleUploadedFiles(null, [dir1_1_fileA.path, dir1_1_fileB.path])).thenResolve([dir1_1_fileA, dir1_1_fileB])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.handleUploadedFiles).toEqual(toResponseStorageNodes([dir1_1_fileA, dir1_1_fileB]))
+      expect(response.body.data.handleUploadedFiles).toBe(true)
+
+      const exp = td.explain(handleUploadedFiles)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual([dir1_1_fileA.path, dir1_1_fileB.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -812,10 +1054,8 @@ describe('StorageResolver', () => {
   describe('removeStorageDirs', () => {
     const gql = {
       query: `
-        mutation RemoveStorageDirNodes($dirPaths: [String!]!) {
-          removeStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+        mutation RemoveStorageDirs($dirPaths: [String!]!) {
+          removeStorageDirs(dirPaths: $dirPaths)
         }
       `,
       variables: {
@@ -825,13 +1065,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeDirs = td.replace(storageService, 'removeDirs')
-      td.when(removeDirs(null, [dir1.path])).thenResolve([dir1, dir1_1, dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.removeStorageDirs).toEqual(toResponseStorageNodes([dir1, dir1_1, dir1_2]))
+      expect(response.body.data.removeStorageDirs).toBe(true)
+
+      const exp = td.explain(removeDirs)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual([dir1.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -851,9 +1094,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RemoveStorageFiles($filePaths: [String!]!) {
-          removeStorageFiles(filePaths: $filePaths) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          removeStorageFiles(filePaths: $filePaths)
         }
       `,
       variables: {
@@ -863,13 +1104,16 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeFiles = td.replace(storageService, 'removeFiles')
-      td.when(removeFiles(null, [dir1_1_fileA.path])).thenResolve([dir1_1_fileA])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.removeStorageFiles).toEqual(toResponseStorageNodes([dir1_1_fileA]))
+      expect(response.body.data.removeStorageFiles).toBe(true)
+
+      const exp = td.explain(removeFiles)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual([dir1_1_fileA.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -889,9 +1133,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
-          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath)
         }
       `,
       variables: {
@@ -902,13 +1144,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(null, dir1_1.path, dir1_2.path)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.moveStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
+      expect(response.body.data.moveStorageDir).toBe(true)
+
+      const exp = td.explain(moveDir)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual(dir1_1.path)
+      expect(exp.calls[0].args[2]).toEqual(dir1_2.path)
     })
 
     it('サインインしていない場合', async () => {
@@ -928,9 +1174,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
-          moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath)
         }
       `,
       variables: {
@@ -941,13 +1185,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveFile = td.replace(storageService, 'moveFile')
-      td.when(moveFile(null, dir1_1_fileA.path, dir1_2_fileA.path)).thenResolve(dir1_2_fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.moveStorageFile).toEqual(toResponseStorageNode(dir1_2_fileA))
+      expect(response.body.data.moveStorageFile).toBe(true)
+
+      const exp = td.explain(moveFile)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual(dir1_1_fileA.path)
+      expect(exp.calls[0].args[2]).toEqual(dir1_2_fileA.path)
     })
 
     it('サインインしていない場合', async () => {
@@ -967,9 +1215,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RenameStorageDir($dirPath: String!, $newName: String!) {
-          renameStorageDir(dirPath: $dirPath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          renameStorageDir(dirPath: $dirPath, newName: $newName)
         }
       `,
       variables: {
@@ -980,13 +1226,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(null, dir1_1.path, dir1_2.name)).thenResolve([dir1_2])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.renameStorageDir).toEqual(toResponseStorageNodes([dir1_2]))
+      expect(response.body.data.renameStorageDir).toBe(true)
+
+      const exp = td.explain(renameDir)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual(dir1_1.path)
+      expect(exp.calls[0].args[2]).toEqual(dir1_2.name)
     })
 
     it('サインインしていない場合', async () => {
@@ -1006,9 +1256,7 @@ describe('StorageResolver', () => {
     const gql = {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
-          renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic uids } created updated
-          }
+          renameStorageFile(filePath: $filePath, newName: $newName)
         }
       `,
       variables: {
@@ -1019,13 +1267,17 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameFile = td.replace(storageService, 'renameFile')
-      td.when(renameFile(null, dir1_1_fileA.path, dir1_1_fileB.name)).thenResolve(dir1_1_fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
       })
 
-      expect(response.body.data.renameStorageFile).toEqual(toResponseStorageNode(dir1_1_fileB))
+      expect(response.body.data.renameStorageFile).toBe(true)
+
+      const exp = td.explain(renameFile)
+      expect(exp.calls[0].args[0]).toBe(null)
+      expect(exp.calls[0].args[1]).toEqual(dir1_1_fileA.path)
+      expect(exp.calls[0].args[2]).toEqual(dir1_1_fileB.name)
     })
 
     it('サインインしていない場合', async () => {

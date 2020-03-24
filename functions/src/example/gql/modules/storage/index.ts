@@ -4,6 +4,8 @@ import {
   AuthRoleType,
   GQLContext,
   GQLCtx,
+  GetStorageOptionsInput,
+  GetStorageResult,
   IdToken,
   Roles,
   SignedUploadUrlInput,
@@ -25,26 +27,55 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async hierarchicalUserStorageDescendants(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalUserDescendants(user, dirPath)
+  async userStorageNode(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
+    return this.storageService.getUserNode(user, nodePath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
-  async hierarchicalUserStorageChildren(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalUserChildren(user, dirPath)
+  async userStorageDirDescendants(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: GetStorageOptionsInput
+  ): Promise<GetStorageResult> {
+    return this.storageService.getUserDirDescendants(user, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageChildren(@User() user: IdToken, @Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getUserChildren(user, dirPath)
+  async userStorageDescendants(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: GetStorageOptionsInput
+  ): Promise<GetStorageResult> {
+    return this.storageService.getUserDescendants(user, dirPath, options)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  async userStorageDirChildren(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: GetStorageOptionsInput
+  ): Promise<GetStorageResult> {
+    return this.storageService.getUserDirChildren(user, dirPath, options)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  async userStorageChildren(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: GetStorageOptionsInput
+  ): Promise<GetStorageResult> {
+    return this.storageService.getUserChildren(user, dirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async handleUploadedUserFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.handleUploadedUserFiles(user, filePaths)
+  async handleUploadedUserFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<boolean> {
+    await this.storageService.handleUploadedUserFiles(user, filePaths)
+    return true
   }
 
   @Mutation()
@@ -55,24 +86,23 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeUserDirs(user, dirPaths)
+  async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<boolean> {
+    await this.storageService.removeUserDirs(user, dirPaths)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeUserStorageFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeUserFiles(user, filePaths)
+  async removeUserStorageFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<boolean> {
+    await this.storageService.removeUserFiles(user, filePaths)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async moveUserStorageDir(
-    @User() user: IdToken,
-    @Args('fromDirPath') fromDirPath: string,
-    @Args('toDirPath') toDirPath: string
-  ): Promise<StorageNode[]> {
-    return this.storageService.moveUserDir(user, fromDirPath, toDirPath)
+  async moveUserStorageDir(@User() user: IdToken, @Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<boolean> {
+    await this.storageService.moveUserDir(user, fromDirPath, toDirPath)
+    return true
   }
 
   @Mutation()
@@ -81,20 +111,23 @@ export class StorageResolver {
     @User() user: IdToken,
     @Args('fromFilePath') fromFilePath: string,
     @Args('toFilePath') toFilePath: string
-  ): Promise<StorageNode> {
-    return this.storageService.moveUserFile(user, fromFilePath, toFilePath)
+  ): Promise<boolean> {
+    await this.storageService.moveUserFile(user, fromFilePath, toFilePath)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode[]> {
-    return this.storageService.renameUserDir(user, dirPath, newName)
+  async renameUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
+    await this.storageService.renameUserDir(user, dirPath, newName)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameUserFile(user, filePath, newName)
+  async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<boolean> {
+    await this.storageService.renameUserFile(user, filePath, newName)
+    return true
   }
 
   @Mutation()
@@ -124,30 +157,44 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async signedUploadUrls(@GQLCtx() context: GQLContext, @Args('inputs') inputs: SignedUploadUrlInput[]): Promise<string[]> {
-    const requestOrigin = (context.req.headers.origin as string) || ''
-    return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
+  async storageNode(@Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
+    return this.storageService.getNode(null, nodePath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async hierarchicalStorageDescendants(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalDescendants(null, dirPath)
+  async storageDirDescendants(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    return this.storageService.getDirDescendants(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async hierarchicalStorageChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalChildren(null, dirPath)
+  async storageDescendants(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    return this.storageService.getDescendants(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageChildren(@Args('dirPath') dirPath?: string): Promise<StorageNode[]> {
-    return this.storageService.getChildren(null, dirPath)
+  async storageDirChildren(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    return this.storageService.getDirChildren(null, dirPath, options)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async storageChildren(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    return this.storageService.getChildren(null, dirPath, options)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async handleUploadedFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
+    await this.storageService.handleUploadedFiles(null, filePaths)
+    return true
   }
 
   @Mutation()
@@ -160,50 +207,49 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async handleUploadedFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.handleUploadedFiles(null, filePaths)
+  async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<boolean> {
+    await this.storageService.removeDirs(null, dirPaths)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeDirs(null, dirPaths)
+  async removeStorageFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
+    await this.storageService.removeFiles(null, filePaths)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async removeStorageFiles(@Args('filePaths') filePaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.removeFiles(null, filePaths)
+  async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<boolean> {
+    await this.storageService.moveDir(null, fromDirPath, toDirPath)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<StorageNode[]> {
-    return this.storageService.moveDir(null, fromDirPath, toDirPath)
+  async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<boolean> {
+    await this.storageService.moveFile(null, fromFilePath, toFilePath)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return this.storageService.moveFile(null, fromFilePath, toFilePath)
+  async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
+    await this.storageService.renameDir(null, dirPath, newName)
+    return true
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode[]> {
-    return this.storageService.renameDir(null, dirPath, newName)
-  }
-
-  @Mutation()
-  @UseGuards(AuthGuard)
-  @Roles(AuthRoleType.AppAdmin)
-  async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameFile(null, filePath, newName)
+  async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<boolean> {
+    await this.storageService.renameFile(null, filePath, newName)
+    return true
   }
 
   @Mutation()
@@ -224,6 +270,14 @@ export class StorageResolver {
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
     return this.storageService.setFileShareSettings(null, filePath, settings)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async signedUploadUrls(@GQLCtx() context: GQLContext, @Args('inputs') inputs: SignedUploadUrlInput[]): Promise<string[]> {
+    const requestOrigin = (context.req.headers.origin as string) || ''
+    return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
   }
 }
 

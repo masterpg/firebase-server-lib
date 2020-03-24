@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { GCSStorageNode, StorageNodeShareSettingsInput, StorageUser } from './types'
+import { GCSStorageNode, GetStorageOptionsInput, GetStorageResult, StorageNodeShareSettingsInput, StorageUser } from './types'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseStorageService } from './base'
@@ -38,7 +38,7 @@ export class LibStorageService extends BaseStorageService {
 
     // ユーザーディレクトリの作成(存在しない場合のみ)
     const userDirPath = this.getUserDirPath({ uid, myDirName })
-    const userDirNode = await this.getDirNode(null, userDirPath)
+    const userDirNode = await this.getRealDirNode(null, userDirPath)
     if (!userDirNode.exists) {
       await this.createDirs(null, [userDirNode.path])
     }
@@ -67,7 +67,7 @@ export class LibStorageService extends BaseStorageService {
     filePath = removeBothEndsSlash(filePath)
 
     // 引数のファイルノードを取得
-    const fileNode = await this.getFileNode(null, filePath)
+    const fileNode = await this.getRealFileNode(null, filePath)
     if (!fileNode.exists) {
       return res.sendStatus(404)
     }
@@ -111,7 +111,7 @@ export class LibStorageService extends BaseStorageService {
     filePath = removeBothEndsSlash(filePath)
 
     // 引数のファイルノードを取得
-    const fileNode = await this.getFileNode(null, filePath)
+    const fileNode = await this.getRealFileNode(null, filePath)
     if (!fileNode.exists) {
       return res.sendStatus(404)
     }
@@ -152,19 +152,29 @@ export class LibStorageService extends BaseStorageService {
     return res.sendStatus(403)
   }
 
-  async getHierarchicalUserDescendants(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getUserNode(user: StorageUser, nodePath: string): Promise<GCSStorageNode | undefined> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalDescendants(userDirPath, dirPath)
+    return this.getNode(userDirPath, nodePath)
   }
 
-  async getHierarchicalUserChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getUserDirDescendants(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalChildren(userDirPath, dirPath)
+    return this.getDirDescendants(userDirPath, dirPath, options)
   }
 
-  async getUserChildren(user: StorageUser, dirPath?: string): Promise<GCSStorageNode[]> {
+  async getUserDescendants(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getChildren(userDirPath, dirPath)
+    return this.getDescendants(userDirPath, dirPath, options)
+  }
+
+  async getUserDirChildren(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.getDirChildren(userDirPath, dirPath, options)
+  }
+
+  async getUserChildren(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+    const userDirPath = this.getUserDirPath(user)
+    return this.getChildren(userDirPath, dirPath, options)
   }
 
   async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
@@ -172,39 +182,39 @@ export class LibStorageService extends BaseStorageService {
     return this.createDirs(userDirPath, dirPaths)
   }
 
-  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
+  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.handleUploadedFiles(userDirPath, filePaths)
+    await this.handleUploadedFiles(userDirPath, filePaths)
   }
 
-  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
+  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.removeDirs(userDirPath, dirPaths)
+    await this.removeDirs(userDirPath, dirPaths)
   }
 
-  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<GCSStorageNode[]> {
+  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.removeFiles(userDirPath, filePaths)
+    await this.removeFiles(userDirPath, filePaths)
   }
 
-  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<GCSStorageNode[]> {
+  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.moveDir(userDirPath, fromDirPath, toDirPath)
+    await this.moveDir(userDirPath, fromDirPath, toDirPath)
   }
 
-  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
+  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.moveFile(userDirPath, fromFilePath, toDirPath)
+    await this.moveFile(userDirPath, fromFilePath, toDirPath)
   }
 
-  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<GCSStorageNode[]> {
+  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.renameDir(userDirPath, dirPath, newName)
+    await this.renameDir(userDirPath, dirPath, newName)
   }
 
-  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<GCSStorageNode> {
+  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<void> {
     const userDirPath = this.getUserDirPath(user)
-    return this.renameFile(userDirPath, filePath, newName)
+    await this.renameFile(userDirPath, filePath, newName)
   }
 
   async setUserDirShareSettings(user: StorageUser, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {

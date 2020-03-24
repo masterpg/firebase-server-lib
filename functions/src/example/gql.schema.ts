@@ -17,6 +17,11 @@ export interface AddCartItemInput {
     quantity: number;
 }
 
+export interface GetStorageOptionsInput {
+    maxResults?: number;
+    pageToken?: string;
+}
+
 export interface PutTestDataInput {
     collectionName: string;
     collectionRecords: JSONObject[];
@@ -65,6 +70,16 @@ export interface EditCartItemResponse {
     product: Product;
 }
 
+export interface GetStorageDict {
+    dict: StorageNode[];
+    nextPageToken?: string;
+}
+
+export interface GetStorageResult {
+    list: StorageNode[];
+    nextPageToken?: string;
+}
+
 export interface IMutation {
     addCartItems(inputs: AddCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
     updateCartItems(inputs: UpdateCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
@@ -73,24 +88,24 @@ export interface IMutation {
     putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
+    handleUploadedUserFiles(filePaths: string[]): boolean | Promise<boolean>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    handleUploadedUserFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeUserStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    moveUserStorageDir(fromDirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
-    moveUserStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
-    renameUserStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
-    renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
+    removeUserStorageDirs(dirPaths: string[]): boolean | Promise<boolean>;
+    removeUserStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
+    moveUserStorageDir(fromDirPath: string, toDirPath: string): boolean | Promise<boolean>;
+    moveUserStorageFile(fromFilePath: string, toFilePath: string): boolean | Promise<boolean>;
+    renameUserStorageDir(dirPath: string, newName: string): boolean | Promise<boolean>;
+    renameUserStorageFile(filePath: string, newName: string): boolean | Promise<boolean>;
     setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setUserStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    handleUploadedFiles(filePaths: string[]): boolean | Promise<boolean>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    handleUploadedFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeStorageFiles(filePaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    moveStorageDir(fromDirPath: string, toDirPath: string): StorageNode[] | Promise<StorageNode[]>;
-    moveStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
-    renameStorageDir(dirPath: string, newName: string): StorageNode[] | Promise<StorageNode[]>;
-    renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
+    removeStorageDirs(dirPaths: string[]): boolean | Promise<boolean>;
+    removeStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
+    moveStorageDir(fromDirPath: string, toDirPath: string): boolean | Promise<boolean>;
+    moveStorageFile(fromFilePath: string, toFilePath: string): boolean | Promise<boolean>;
+    renameStorageDir(dirPath: string, newName: string): boolean | Promise<boolean>;
+    renameStorageFile(filePath: string, newName: string): boolean | Promise<boolean>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
 }
@@ -108,13 +123,17 @@ export interface IQuery {
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    hierarchicalUserStorageDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    hierarchicalUserStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    userStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageNode(nodePath: string): StorageNode | Promise<StorageNode>;
+    userStorageDirDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    userStorageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    userStorageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    userStorageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
+    storageDirDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    storageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    storageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    storageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
-    hierarchicalStorageDescendants(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    hierarchicalStorageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
-    storageChildren(dirPath?: string): StorageNode[] | Promise<StorageNode[]>;
 }
 
 export interface StorageNode {

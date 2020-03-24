@@ -12,6 +12,16 @@ export enum StorageNodeType {
   Dir = 'Dir',
 }
 
+export interface GetStorageOptionsInput {
+  maxResults?: number
+  pageToken?: string
+}
+
+export interface GetStorageResult {
+  list: StorageNode[]
+  nextPageToken?: string
+}
+
 export interface StorageNode {
   id: string
   nodeType: StorageNodeType

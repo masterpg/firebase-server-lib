@@ -47,6 +47,8 @@ export {
 export {
   BaseFoundationService,
   GCSStorageNode,
+  GetStorageOptionsInput,
+  GetStorageResult,
   JSON,
   JSONObject,
   LibDevUtilsService,

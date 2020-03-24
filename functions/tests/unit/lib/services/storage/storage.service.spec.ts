@@ -109,7 +109,7 @@ describe('StorageService', () => {
       expect((afterUser.customClaims as any).myDirName).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
-      const userDirNode = await storageService.getDirNode(null, userDirPath)
+      const userDirNode = await storageService.getRealDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
@@ -124,7 +124,7 @@ describe('StorageService', () => {
       expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath(afterUser)
-      const userDirNode = await storageService.getDirNode(null, userDirPath)
+      const userDirNode = await storageService.getRealDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
 
@@ -143,7 +143,7 @@ describe('StorageService', () => {
       // ユーザーディレクトリに変化がないことを検証
       const afterUserDirPath = storageService.getUserDirPath(afterUser)
       expect(afterUserDirPath).toBe(beforeUserDirPath)
-      const afterUserDirNode = await storageService.getDirNode(null, afterUserDirPath)
+      const afterUserDirNode = await storageService.getRealDirNode(null, afterUserDirPath)
       expect(afterUserDirNode.created).toEqual(beforeUserDirNode.created)
     })
   })

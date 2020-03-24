@@ -5,6 +5,21 @@ enum StorageNodeType {
   Dir
 }
 
+input GetStorageOptionsInput {
+  maxResults: Int
+  pageToken: String
+}
+
+type GetStorageResult {
+  list: [StorageNode!]!
+  nextPageToken: String
+}
+
+type GetStorageDict {
+  dict: [StorageNode!]!
+  nextPageToken: String
+}
+
 type StorageNode {
   id: String!
   nodeType: StorageNodeType!
@@ -34,35 +49,40 @@ input SignedUploadUrlInput {
 }
 
 type Mutation {
+  handleUploadedUserFiles(filePaths: [String!]!): Boolean!
   createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  handleUploadedUserFiles(filePaths: [String!]!): [StorageNode!]!
-  removeUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeUserStorageFiles(filePaths: [String!]!): [StorageNode!]!
-  moveUserStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
-  moveUserStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
-  renameUserStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
-  renameUserStorageFile(filePath: String!, newName: String!): StorageNode!
+  removeUserStorageDirs(dirPaths: [String!]!): Boolean!
+  removeUserStorageFiles(filePaths: [String!]!): Boolean!
+  moveUserStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
+  moveUserStorageFile(fromFilePath: String!, toFilePath: String!): Boolean!
+  renameUserStorageDir(dirPath: String!, newName: String!): Boolean!
+  renameUserStorageFile(filePath: String!, newName: String!): Boolean!
   setUserStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
   setUserStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 
+  handleUploadedFiles(filePaths: [String!]!): Boolean!
   createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  handleUploadedFiles(filePaths: [String!]!): [StorageNode!]!
-  removeStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeStorageFiles(filePaths: [String!]!): [StorageNode!]!
-  moveStorageDir(fromDirPath: String!, toDirPath: String!): [StorageNode!]!
-  moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
-  renameStorageDir(dirPath: String!, newName: String!): [StorageNode!]!
-  renameStorageFile(filePath: String!, newName: String!): StorageNode!
+  removeStorageDirs(dirPaths: [String!]!): Boolean!
+  removeStorageFiles(filePaths: [String!]!): Boolean!
+  moveStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
+  moveStorageFile(fromFilePath: String!, toFilePath: String!): Boolean!
+  renameStorageDir(dirPath: String!, newName: String!): Boolean!
+  renameStorageFile(filePath: String!, newName: String!): Boolean!
   setStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 }
 
 type Query {
-  hierarchicalUserStorageDescendants(dirPath: String): [StorageNode!]!
-  hierarchicalUserStorageChildren(dirPath: String): [StorageNode!]!
-  userStorageChildren(dirPath: String): [StorageNode!]!
+  userStorageNode(nodePath: String!): StorageNode
+  userStorageDirDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  userStorageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  userStorageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  userStorageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+
+  storageNode(nodePath: String!): StorageNode
+  storageDirDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  storageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  storageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  storageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  hierarchicalStorageDescendants(dirPath: String): [StorageNode!]!
-  hierarchicalStorageChildren(dirPath: String): [StorageNode!]!
-  storageChildren(dirPath: String): [StorageNode!]!
 }
