@@ -62,7 +62,7 @@ export class BaseStorageService {
     }
 
     const _getNode: (pageToken?: string) => Promise<GCSStorageNode | undefined> = async pageToken => {
-      const nodeData = await this.getChildMap(basePath, parentPath, { pageToken, maxResults: maxChunk })
+      const nodeData = await this.getChildDict(basePath, parentPath, { pageToken, maxResults: maxChunk })
       // 引数ノード含め兄弟ノードが存在しない場合、終了
       if (Object.keys(nodeData.dict).length === 0) return undefined
       // 引数ノードが存在する場合、それを戻り値にして終了
@@ -101,7 +101,7 @@ export class BaseStorageService {
    * @param options
    */
   async getDirDescendants(basePath: string | null, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
-    const nodeData = await this.getDirDescendantMap(basePath, dirPath, options)
+    const nodeData = await this.getDirDescendantDict(basePath, dirPath, options)
     return {
       nextPageToken: nodeData.nextPageToken,
       list: this.sortStorageNodes(Object.values(nodeData.dict)),
@@ -130,7 +130,7 @@ export class BaseStorageService {
    * @param options
    */
   async getDescendants(basePath: string | null, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
-    const nodeData = await this.getDescendantMap(basePath, dirPath, options)
+    const nodeData = await this.getDescendantDict(basePath, dirPath, options)
     return {
       nextPageToken: nodeData.nextPageToken,
       list: this.sortStorageNodes(Object.values(nodeData.dict)),
@@ -159,7 +159,7 @@ export class BaseStorageService {
    * @param options
    */
   async getDirChildren(basePath: string | null, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
-    const nodeData = await this.getDirChildMap(basePath, dirPath, options)
+    const nodeData = await this.getDirChildDict(basePath, dirPath, options)
     return {
       nextPageToken: nodeData.nextPageToken,
       list: this.sortStorageNodes(Object.values(nodeData.dict)),
@@ -186,7 +186,7 @@ export class BaseStorageService {
    * @param options
    */
   async getChildren(basePath: string | null, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
-    const nodeData = await this.getChildMap(basePath, dirPath, options)
+    const nodeData = await this.getChildDict(basePath, dirPath, options)
     return {
       nextPageToken: nodeData.nextPageToken,
       list: this.sortStorageNodes(Object.values(nodeData.dict)),
@@ -297,7 +297,7 @@ export class BaseStorageService {
       if (!dirPath) return
 
       // 引数ディレクトリと配下ノードを取得
-      const nodeData = await this.getDirDescendantMap(basePath, dirPath, { pageToken, maxResults: maxChunk })
+      const nodeData = await this.getDirDescendantDict(basePath, dirPath, { pageToken, maxResults: maxChunk })
 
       // 引数ディレクトリと配下ノードを削除
       const promises: Promise<GCSStorageNode>[] = []
@@ -425,7 +425,7 @@ export class BaseStorageService {
     //
     const moveDescendants = async (pageToken?: string) => {
       // 配下ノードを取得
-      const nodeData = await this.getDescendantMap(basePath, fromDirPath, { maxResults: maxChunk, pageToken })
+      const nodeData = await this.getDescendantDict(basePath, fromDirPath, { maxResults: maxChunk, pageToken })
 
       // 配下ノードの移動処理
       const promises: Promise<void>[] = []
@@ -660,7 +660,7 @@ export class BaseStorageService {
    */
   async getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
     const bucket = admin.storage().bucket()
-    const urlMap: { [path: string]: string } = {}
+    const urlDict: { [path: string]: string } = {}
 
     for (const input of inputs) {
       const { filePath, contentType } = input
@@ -669,10 +669,10 @@ export class BaseStorageService {
         origin: requestOrigin,
         metadata: { contentType },
       })
-      urlMap[filePath] = url
+      urlDict[filePath] = url
     }
 
-    return inputs.map(input => urlMap[input.filePath])
+    return inputs.map(input => urlDict[input.filePath])
   }
 
   /**
@@ -823,7 +823,7 @@ export class BaseStorageService {
     basePath = removeBothEndsSlash(basePath)
     const bucket = admin.storage().bucket()
 
-    const uploadedFileMap: { [path: string]: GCSStorageNode } = {}
+    const uploadedFileDict: { [path: string]: GCSStorageNode } = {}
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       const destination = path.join(basePath, removeBothEndsSlash(uploadItem.toFilePath))
@@ -832,14 +832,14 @@ export class BaseStorageService {
           const [file, metadata] = response
           const fileNode = this.toStorageNode(basePath, file)
           Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
-          uploadedFileMap[fileNode.path] = fileNode
+          uploadedFileDict[fileNode.path] = fileNode
         })
       )
     }
     await Promise.all(promises)
 
     return uploadList.reduce<GCSStorageNode[]>((result, item) => {
-      result.push(uploadedFileMap[removeStartSlash(item.toFilePath)])
+      result.push(uploadedFileDict[removeStartSlash(item.toFilePath)])
       return result
     }, [])
   }
@@ -853,7 +853,7 @@ export class BaseStorageService {
     basePath = removeBothEndsSlash(basePath)
     const bucket = admin.storage().bucket()
 
-    const uploadedFileMap: { [path: string]: GCSStorageNode } = {}
+    const uploadedFileDict: { [path: string]: GCSStorageNode } = {}
     const promises: Promise<void>[] = []
     for (const uploadItem of uploadList) {
       promises.push(
@@ -862,14 +862,14 @@ export class BaseStorageService {
           const fileNode = this.toStorageNode(basePath, gcsFileNode)
           const options = { contentType: uploadItem.contentType }
           Object.assign(fileNode, await this.saveFileNode(basePath, fileNode, uploadItem.data, options))
-          uploadedFileMap[fileNode.path] = fileNode
+          uploadedFileDict[fileNode.path] = fileNode
         })()
       )
     }
     await Promise.all(promises)
 
     return uploadList.reduce<GCSStorageNode[]>((result, item) => {
-      result.push(uploadedFileMap[removeStartSlash(item.path)])
+      result.push(uploadedFileDict[removeStartSlash(item.path)])
       return result
     }, [])
   }
@@ -886,7 +886,7 @@ export class BaseStorageService {
    * @param dirPath
    * @param options
    */
-  async getDirDescendantMap(
+  async getDirDescendantDict(
     basePath: string | null,
     dirPath?: string,
     options?: GetStorageOptionsInput
@@ -938,7 +938,7 @@ export class BaseStorageService {
    * @param dirPath
    * @param options
    */
-  async getDescendantMap(
+  async getDescendantDict(
     basePath: string | null,
     dirPath?: string,
     options?: GetStorageOptionsInput
@@ -946,7 +946,7 @@ export class BaseStorageService {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
-    const nodeData = await this.getDirDescendantMap(basePath, dirPath, options)
+    const nodeData = await this.getDirDescendantDict(basePath, dirPath, options)
     if (dirPath) {
       delete nodeData.dict[dirPath]
     }
@@ -959,7 +959,7 @@ export class BaseStorageService {
    * @param dirPath
    * @param options
    */
-  protected async getDirChildMap(
+  protected async getDirChildDict(
     basePath: string | null,
     dirPath?: string,
     options?: GetStorageOptionsInput
@@ -1064,7 +1064,7 @@ export class BaseStorageService {
    * @param dirPath
    * @param options
    */
-  protected async getChildMap(
+  protected async getChildDict(
     basePath: string | null,
     dirPath?: string,
     options?: GetStorageOptionsInput
@@ -1072,7 +1072,7 @@ export class BaseStorageService {
     basePath = removeBothEndsSlash(basePath)
     dirPath = removeBothEndsSlash(dirPath)
 
-    const nodeData = await this.getDirChildMap(basePath, dirPath, options)
+    const nodeData = await this.getDirChildDict(basePath, dirPath, options)
     if (dirPath) {
       delete nodeData.dict[dirPath]
     }
@@ -1312,8 +1312,8 @@ export class BaseStorageService {
     nodeDict: { [path: string]: GCSStorageNode },
     topPath: string | null
   ): Promise<{ [path: string]: GCSStorageNode }> {
-    const paddedNodeMap = await this.padVirtualDirNodes(basePath, nodeDict, topPath)
-    const result = Object.assign({}, nodeDict, paddedNodeMap)
+    const paddedNodeDict = await this.padVirtualDirNodes(basePath, nodeDict, topPath)
+    const result = Object.assign({}, nodeDict, paddedNodeDict)
     await Promise.all(
       Object.values(result).map(async node => {
         // ディレクトリが実際には存在しない場合、ディレクトリを作成
@@ -1336,21 +1336,21 @@ export class BaseStorageService {
    * @param dirs
    */
   protected async getHierarchicalDirNodes(basePath: string | null, ...dirs: string[] | GCSStorageNode[]): Promise<GCSStorageNode[]> {
-    const dirNodeMap: { [path: string]: GCSStorageNode } = {}
+    const dirNodeDict: { [path: string]: GCSStorageNode } = {}
     for (const dir of dirs) {
       if (typeof dir === 'string') {
         const dirNode = await this.getRealDirNode(basePath, dir)
-        dirNodeMap[dirNode.path] = dirNode
+        dirNodeDict[dirNode.path] = dirNode
       } else {
-        dirNodeMap[dir.path] = dir
+        dirNodeDict[dir.path] = dir
       }
     }
 
-    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(dirNodeMap))
-    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(dirNodeMap)]
+    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(dirNodeDict))
+    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(dirNodeDict)]
     await Promise.all(
       hierarchicalPaths.map(async nodePath => {
-        if (dirNodeMap[nodePath]) return
+        if (dirNodeDict[nodePath]) return
         const dirNode = await this.getRealDirNode(basePath, nodePath)
         hierarchicalNodes.push(dirNode)
       })
@@ -1365,21 +1365,21 @@ export class BaseStorageService {
    * @param files
    */
   protected async getHierarchicalFileNodes(basePath: string | null, ...files: string[] | GCSStorageNode[]): Promise<GCSStorageNode[]> {
-    const fileNodeMap: { [path: string]: GCSStorageNode } = {}
+    const fileNodeDict: { [path: string]: GCSStorageNode } = {}
     for (const file of files) {
       if (typeof file === 'string') {
         const fileNode = await this.getRealFileNode(basePath, file)
-        fileNodeMap[fileNode.path] = fileNode
+        fileNodeDict[fileNode.path] = fileNode
       } else {
-        fileNodeMap[file.path] = file
+        fileNodeDict[file.path] = file
       }
     }
 
-    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(fileNodeMap))
-    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(fileNodeMap)]
+    const hierarchicalPaths = splitHierarchicalPaths(...Object.keys(fileNodeDict))
+    const hierarchicalNodes: GCSStorageNode[] = [...Object.values(fileNodeDict)]
     await Promise.all(
       hierarchicalPaths.map(async nodePath => {
-        if (fileNodeMap[nodePath]) return
+        if (fileNodeDict[nodePath]) return
         const dirNode = await this.getRealDirNode(basePath, nodePath)
         hierarchicalNodes.push(dirNode)
       })

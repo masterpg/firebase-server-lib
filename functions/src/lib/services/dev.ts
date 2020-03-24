@@ -47,7 +47,7 @@ export class LibDevUtilsService {
 
   async getTestSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): Promise<string[]> {
     const bucket = admin.storage().bucket()
-    const urlMap: { [path: string]: string } = {}
+    const urlDict: { [path: string]: string } = {}
 
     for (const input of inputs) {
       const { filePath, contentType } = input
@@ -55,7 +55,7 @@ export class LibDevUtilsService {
       const gcsFilePath = path.join(dirPath, fileName)
       const gcsFileNode = bucket.file(gcsFilePath)
 
-      urlMap[filePath] = (
+      urlDict[filePath] = (
         await gcsFileNode.createResumableUpload({
           origin: '*',
           metadata: { contentType },
@@ -63,7 +63,7 @@ export class LibDevUtilsService {
       )[0]
     }
 
-    return inputs.map(input => urlMap[input.filePath])
+    return inputs.map(input => urlDict[input.filePath])
   }
 
   async removeTestStorageFiles(filePaths: string[]): Promise<void> {

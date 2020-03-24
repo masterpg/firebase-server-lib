@@ -65,7 +65,7 @@ abstract class HttpLoggingService {
   //
   //----------------------------------------------------------------------
 
-  private m_logMap: { [logName: string]: Log } = {}
+  private m_logDict: { [logName: string]: Log } = {}
 
   //----------------------------------------------------------------------
   //
@@ -175,10 +175,10 @@ abstract class HttpLoggingService {
   }
 
   private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HttpLoggingData) {
-    let targetLog = this.m_logMap[logName]
+    let targetLog = this.m_logDict[logName]
     if (!targetLog) {
       targetLog = new Logging().log(logName)
-      this.m_logMap[logName] = targetLog
+      this.m_logDict[logName] = targetLog
     }
     const entry = targetLog.entry(metadata, data)
     return targetLog.write(entry)

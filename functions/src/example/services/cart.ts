@@ -37,7 +37,7 @@ class CartService {
     const db = admin.firestore()
 
     if (ids && ids.length) {
-      const itemMap: { [id: string]: CartItem } = {}
+      const itemDict: { [id: string]: CartItem } = {}
       const promises: Promise<void>[] = []
       for (const id of ids) {
         promises.push(
@@ -47,7 +47,7 @@ class CartService {
               .doc(id)
               .get()
             if (doc.exists) {
-              itemMap[doc.id] = { id: doc.id, ...doc.data() } as CartItem
+              itemDict[doc.id] = { id: doc.id, ...doc.data() } as CartItem
             }
           })()
         )
@@ -55,7 +55,7 @@ class CartService {
       await Promise.all(promises)
 
       return ids.reduce<CartItem[]>((result, id) => {
-        const item = itemMap[id]
+        const item = itemDict[id]
         item && result.push(item)
         return result
       }, [])

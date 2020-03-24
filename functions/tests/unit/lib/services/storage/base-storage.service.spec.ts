@@ -56,10 +56,10 @@ let devUtilsService!: LibDevUtilsServiceDI.type
 type TestStorageService = LibStorageService & {
   saveDirNode: LibStorageService['saveDirNode']
   saveFileNode: LibStorageService['saveFileNode']
-  getDirDescendantMap: LibStorageService['getDirDescendantMap']
-  getDescendantMap: LibStorageService['getDescendantMap']
-  getDirChildMap: LibStorageService['getDirChildMap']
-  getChildMap: LibStorageService['getChildMap']
+  getDirDescendantDict: LibStorageService['getDirDescendantDict']
+  getDescendantDict: LibStorageService['getDescendantDict']
+  getDirChildDict: LibStorageService['getDirChildDict']
+  getChildDict: LibStorageService['getChildDict']
   toStorageNode: LibStorageService['toStorageNode']
   sortStorageNodes: LibStorageService['sortStorageNodes']
   padVirtualDirNodes: LibStorageService['padVirtualDirNodes']
@@ -2338,7 +2338,7 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('getDirDescendantMap', () => {
+  describe('getDirDescendantDict', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
@@ -2353,7 +2353,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -2372,7 +2372,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -2401,7 +2401,7 @@ describe('BaseStorageService', () => {
         })
       )
 
-      const actual = (await storageService.getDirDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -2423,7 +2423,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = (await storageService.getDirDescendantMap(`${TEST_FILES_DIR}`, `d1`)).dict
+      const actual = (await storageService.getDirDescendantDict(`${TEST_FILES_DIR}`, `d1`)).dict
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`d1`].exists).toBeTruthy()
@@ -2432,7 +2432,7 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('getDirChildMap', () => {
+  describe('getDirChildDict', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
@@ -2452,7 +2452,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -2477,7 +2477,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -2506,14 +2506,14 @@ describe('BaseStorageService', () => {
       await storageService.uploadAsFiles(null, uploadItems)
 
       // IDを強制的に未設定にする
-      const nodeDict = (await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const nodeDict = (await storageService.getDirChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
       await Promise.all(
         Object.values(nodeDict).map(async node => {
           await storageService.saveMetadata(null, node, { id: null })
         })
       )
 
-      const actual = (await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(shortid.isValid(actual[`${TEST_FILES_DIR}/d1`].id)).toBeTruthy()
@@ -2525,7 +2525,7 @@ describe('BaseStorageService', () => {
     it('存在しないディレクトリを指定した場合', async () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}`])
 
-      const actual = (await storageService.getDirChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDirChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(0)
     })
@@ -2549,7 +2549,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = (await storageService.getDirChildMap(`/${TEST_FILES_DIR}/`, `/d1/`)).dict
+      const actual = (await storageService.getDirChildDict(`/${TEST_FILES_DIR}/`, `/d1/`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`d1`].exists).toBeTruthy()
@@ -2578,7 +2578,7 @@ describe('BaseStorageService', () => {
         ]
         await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-        const actual = (await storageService.getDirChildMap(`${TEST_FILES_DIR}`, `d1`)).dict
+        const actual = (await storageService.getDirChildDict(`${TEST_FILES_DIR}`, `d1`)).dict
 
         expect(Object.keys(actual).length).toBe(3)
         expect(actual[`d1`].exists).toBeTruthy()
@@ -2603,7 +2603,7 @@ describe('BaseStorageService', () => {
         ]
         await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-        const actual = (await storageService.getDirChildMap(`${TEST_FILES_DIR}`, `d1`)).dict
+        const actual = (await storageService.getDirChildDict(`${TEST_FILES_DIR}`, `d1`)).dict
 
         expect(Object.keys(actual).length).toBe(3)
         expect(actual[`d1`].exists).toBeTruthy()
@@ -2616,7 +2616,7 @@ describe('BaseStorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`, `d2/d21`])
 
-        const actual = (await storageService.getDirChildMap(`${TEST_FILES_DIR}`)).dict
+        const actual = (await storageService.getDirChildDict(`${TEST_FILES_DIR}`)).dict
 
         expect(Object.keys(actual).length).toBe(2)
         expect(actual[`d1`].exists).toBeTruthy()
@@ -2626,7 +2626,7 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('getChildMap', () => {
+  describe('getChildDict', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
@@ -2646,7 +2646,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getChildMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getChildDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(2)
       expect(actual[`${TEST_FILES_DIR}/d1/d11`].exists).toBeTruthy()
@@ -2655,7 +2655,7 @@ describe('BaseStorageService', () => {
     })
   })
 
-  describe('getDescendantMap', () => {
+  describe('getDescendantDict', () => {
     it('ノードの格納ディレクトリが存在する場合', async () => {
       // ディレクトリを作成
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
@@ -2675,7 +2675,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`${TEST_FILES_DIR}/d1/d11`].exists).toBeTruthy()
@@ -2700,7 +2700,7 @@ describe('BaseStorageService', () => {
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = (await storageService.getDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`${TEST_FILES_DIR}/d1/d11`].exists).toBeTruthy()
@@ -2729,7 +2729,7 @@ describe('BaseStorageService', () => {
       await storageService.uploadAsFiles(null, uploadItems)
 
       // IDを強制的に未設定にする
-      storageService.getDescendantMap(null, `${TEST_FILES_DIR}/d1`).then(async ({ dict }) => {
+      storageService.getDescendantDict(null, `${TEST_FILES_DIR}/d1`).then(async ({ dict }) => {
         await Promise.all(
           Object.values(dict).map(async node => {
             await storageService.saveMetadata(null, node, { id: null })
@@ -2737,7 +2737,7 @@ describe('BaseStorageService', () => {
         )
       })
 
-      const actual = (await storageService.getDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(3)
       expect(shortid.isValid(actual[`${TEST_FILES_DIR}/d1/d11`].id)).toBeTruthy()
@@ -2749,7 +2749,7 @@ describe('BaseStorageService', () => {
     it('存在しないディレクトリを指定した場合', async () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}`])
 
-      const actual = (await storageService.getDescendantMap(null, `${TEST_FILES_DIR}/d1`)).dict
+      const actual = (await storageService.getDescendantDict(null, `${TEST_FILES_DIR}/d1`)).dict
 
       expect(Object.keys(actual).length).toBe(0)
     })
@@ -2769,7 +2769,7 @@ describe('BaseStorageService', () => {
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       // パスの先頭・末尾に'/'を付与
-      const actual = (await storageService.getDescendantMap(`/${TEST_FILES_DIR}/`, `/d1/`)).dict
+      const actual = (await storageService.getDescendantDict(`/${TEST_FILES_DIR}/`, `/d1/`)).dict
 
       expect(Object.keys(actual).length).toBe(1)
       expect(actual[`d1/fileA.txt`].exists).toBeTruthy()
@@ -2797,10 +2797,10 @@ describe('BaseStorageService', () => {
 
       // 大量データを想定して分割読み込みを行う
       const nodeDict: { [path: string]: GCSStorageNode } = {}
-      let nodeData = await storageService.getDescendantMap(`${TEST_FILES_DIR}`, `d1`, { maxResults: 3 })
+      let nodeData = await storageService.getDescendantDict(`${TEST_FILES_DIR}`, `d1`, { maxResults: 3 })
       Object.assign(nodeDict, nodeData.dict)
       while (nodeData.nextPageToken) {
-        nodeData = await storageService.getDescendantMap(`${TEST_FILES_DIR}`, `d1`, {
+        nodeData = await storageService.getDescendantDict(`${TEST_FILES_DIR}`, `d1`, {
           pageToken: nodeData.nextPageToken,
           maxResults: 3,
         })
@@ -2844,7 +2844,7 @@ describe('BaseStorageService', () => {
         ]
         await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-        const actual = (await storageService.getDescendantMap(`${TEST_FILES_DIR}`, `d1`)).dict
+        const actual = (await storageService.getDescendantDict(`${TEST_FILES_DIR}`, `d1`)).dict
 
         expect(Object.keys(actual).length).toBe(3)
         expect(actual[`d1/d11`].exists).toBeTruthy()
@@ -2869,7 +2869,7 @@ describe('BaseStorageService', () => {
         ]
         await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-        const actual = (await storageService.getDescendantMap(`${TEST_FILES_DIR}`, `d1`)).dict
+        const actual = (await storageService.getDescendantDict(`${TEST_FILES_DIR}`, `d1`)).dict
 
         expect(Object.keys(actual).length).toBe(3)
         expect(actual[`d1/d11`].exists).toBeTruthy()
@@ -2892,7 +2892,7 @@ describe('BaseStorageService', () => {
         ]
         await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-        const actual = (await storageService.getDescendantMap(`${TEST_FILES_DIR}`)).dict
+        const actual = (await storageService.getDescendantDict(`${TEST_FILES_DIR}`)).dict
 
         expect(Object.keys(actual).length).toBe(3)
         expect(actual[`d1`].exists).toBeTruthy()
@@ -3388,13 +3388,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(null, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - topPathを指定しない
-      const actual = await storageService.padVirtualDirNodes(null, nodeMap, null)
+      const actual = await storageService.padVirtualDirNodes(null, nodeDict, null)
 
       expect(Object.keys(actual).length).toBe(2)
       const d2 = actual[`${TEST_FILES_DIR}/d2`]
@@ -3422,13 +3422,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(null, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - topPathを指定
-      const actual = await storageService.padVirtualDirNodes(null, nodeMap, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.padVirtualDirNodes(null, nodeDict, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(1)
       const d11 = actual[`${TEST_FILES_DIR}/d1/d11`]
@@ -3442,13 +3442,13 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs].reduce((result, node) => {
+      const nodeDict = [...dirs].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - topPathを指定
-      const actual = await storageService.padVirtualDirNodes(null, nodeMap, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.padVirtualDirNodes(null, nodeDict, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(0)
     })
@@ -3476,13 +3476,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(null, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...files].reduce((result, node) => {
+      const nodeDict = [...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - topPathを指定
-      const actual = await storageService.padVirtualDirNodes(null, nodeMap, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.padVirtualDirNodes(null, nodeDict, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(2)
       const d1 = actual[`${TEST_FILES_DIR}/d1`]
@@ -3510,13 +3510,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - bsePathを指定 - topPathを指定しない
-      const actual = await storageService.padVirtualDirNodes(`${TEST_FILES_DIR}`, nodeMap, null)
+      const actual = await storageService.padVirtualDirNodes(`${TEST_FILES_DIR}`, nodeDict, null)
 
       expect(Object.keys(actual).length).toBe(1)
       const d11 = actual[`d1/d11`]
@@ -3540,13 +3540,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - basePathを指定 - topPathを指定
-      const actual = await storageService.padVirtualDirNodes(`${TEST_FILES_DIR}`, nodeMap, `d1`)
+      const actual = await storageService.padVirtualDirNodes(`${TEST_FILES_DIR}`, nodeDict, `d1`)
 
       expect(Object.keys(actual).length).toBe(1)
       const d11 = actual[`d1/d11`]
@@ -3570,13 +3570,13 @@ describe('BaseStorageService', () => {
       const files = await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
       // 歯抜け状態のノードマップを取得
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを取得 - パスの先頭・末尾に'/'を付与
-      const actual = await storageService.padVirtualDirNodes(`/${TEST_FILES_DIR}/`, nodeMap, `/d1/`)
+      const actual = await storageService.padVirtualDirNodes(`/${TEST_FILES_DIR}/`, nodeDict, `/d1/`)
 
       expect(Object.keys(actual).length).toBe(1)
       const d11 = actual[`d1/d11`]
@@ -3603,13 +3603,13 @@ describe('BaseStorageService', () => {
 
       // 歯抜け状態のノードマップを取得
       // 'd1', 'd1/d11/fileA.txt'
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを穴埋め - topPathを指定しない
-      const actual = await storageService.padRealDirNodes(null, nodeMap, null)
+      const actual = await storageService.padRealDirNodes(null, nodeDict, null)
 
       expect(Object.keys(actual).length).toBe(4)
       expect(actual[`${TEST_FILES_DIR}`].exists).toBeTruthy()
@@ -3635,13 +3635,13 @@ describe('BaseStorageService', () => {
 
       // 歯抜け状態のノードマップを取得
       // 'd1', 'd1/d11/fileA.txt'
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを穴埋め - topPathを指定
-      const actual = await storageService.padRealDirNodes(null, nodeMap, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.padRealDirNodes(null, nodeDict, `${TEST_FILES_DIR}/d1`)
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`${TEST_FILES_DIR}/d1`].exists).toBeTruthy()
@@ -3666,13 +3666,13 @@ describe('BaseStorageService', () => {
 
       // 歯抜け状態のノードマップを取得
       // 'd1', 'd1/d11/fileA.txt'
-      const nodeMap = [...dirs, ...files].reduce((result, node) => {
+      const nodeDict = [...dirs, ...files].reduce((result, node) => {
         result[node.path] = node
         return result
       }, {} as { [path: string]: GCSStorageNode })
 
       // ノードマップの歯抜けノードを穴埋め - topPathを指定
-      const actual = await storageService.padRealDirNodes(`${TEST_FILES_DIR}`, nodeMap, `d1`)
+      const actual = await storageService.padRealDirNodes(`${TEST_FILES_DIR}`, nodeDict, `d1`)
 
       expect(Object.keys(actual).length).toBe(3)
       expect(actual[`d1`].exists).toBeTruthy()
