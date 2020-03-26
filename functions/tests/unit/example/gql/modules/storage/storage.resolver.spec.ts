@@ -369,6 +369,68 @@ describe('StorageResolver', () => {
     })
   })
 
+  describe('userStorageHierarchicalNode', () => {
+    const gql = {
+      query: `
+        query GetUserStorageHierarchicalNode($nodePath: String!) {
+          userStorageHierarchicalNode(nodePath: $nodePath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        nodePath: dir1_1_fileA.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getUserHierarchicalNode = td.replace(storageService, 'getUserHierarchicalNode')
+      td.when(getUserHierarchicalNode(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path)).thenResolve([dir1, dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageHierarchicalNode).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('userStorageAncestorDirs', () => {
+    const gql = {
+      query: `
+        query GetUserStorageAncestorDirs($nodePath: String!) {
+          userStorageAncestorDirs(nodePath: $nodePath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        nodePath: dir1_1_fileA.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getUserAncestorDirs = td.replace(storageService, 'getUserAncestorDirs')
+      td.when(getUserAncestorDirs(td.matchers.contains(GENERAL_USER), dir1_1_fileA.path)).thenResolve([dir1, dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+
+      expect(response.body.data.userStorageAncestorDirs).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
   describe('handleUploadedUserFiles', () => {
     const gql = {
       query: `
@@ -959,6 +1021,82 @@ describe('StorageResolver', () => {
 
       expect(response.body.data.storageChildren.list).toEqual(toResponseStorageNodes([dir1_1]))
       expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('storageHierarchicalNode', () => {
+    const gql = {
+      query: `
+        query GetStorageHierarchicalNode($nodePath: String!) {
+          storageHierarchicalNode(nodePath: $nodePath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        nodePath: dir1_1_fileA.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getHierarchicalNode = td.replace(storageService, 'getHierarchicalNode')
+      td.when(getHierarchicalNode(null, dir1_1_fileA.path)).thenResolve([dir1, dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageHierarchicalNode).toEqual(toResponseStorageNodes([dir1, dir1_1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const response = await requestGQL(app, gql)
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アプリケーション管理者でない場合', async () => {
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, GENERAL_USER_HEADER),
+      })
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('storageAncestorDirs', () => {
+    const gql = {
+      query: `
+        query GetStorageAncestorDirs($nodePath: String!) {
+          storageAncestorDirs(nodePath: $nodePath) {
+            id nodeType name dir path contentType size share { isPublic uids } created updated
+          }
+        }
+      `,
+      variables: {
+        nodePath: dir1_1_fileA.path,
+      },
+    }
+
+    it('疎通確認', async () => {
+      const getAncestorDirs = td.replace(storageService, 'getAncestorDirs')
+      td.when(getAncestorDirs(null, dir1_1_fileA.path)).thenResolve([dir1, dir1_1])
+
+      const response = await requestGQL(app, gql, {
+        headers: Object.assign({}, APP_ADMIN_USER_HEADER),
+      })
+
+      expect(response.body.data.storageAncestorDirs).toEqual(toResponseStorageNodes([dir1, dir1_1]))
     })
 
     it('サインインしていない場合', async () => {

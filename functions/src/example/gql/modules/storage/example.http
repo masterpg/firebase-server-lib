@@ -83,6 +83,34 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
+  "operationName": "GetUserStorageHierarchicalNode",
+  "query": "query GetUserStorageHierarchicalNode($nodePath: String!) { userStorageHierarchicalNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "nodePath": "d1/d11/d111"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
+
+{
+  "operationName": "GetUserStorageAncestorDirs",
+  "query": "query GetUserStorageAncestorDirs($nodePath: String!) { userStorageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "nodePath": "d1/d11/d111"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
+
+{
   "operationName": "HandleUploadedUserFiles",
   "query": "mutation HandleUploadedUserFiles($filePaths: [String!]!) { handleUploadedUserFiles(filePaths: $filePaths) }",
   "variables": {
@@ -319,6 +347,34 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
   "variables": {
     "dirPath": "test-files/d1",
     "options": { "maxResults": 3 }
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+  "operationName": "GetStorageHierarchicalNode",
+  "query": "query GetStorageHierarchicalNode($nodePath: String!) { storageHierarchicalNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "nodePath": "test-files/d1/d11/d111"
+  }
+}
+
+###
+
+POST {{host}}/api/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
+
+{
+"operationName": "GetStorageAncestorDirs",
+"query": "query GetStorageAncestorDirs($nodePath: String!) { storageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "variables": {
+    "nodePath": "test-files/d1/d11/d111"
   }
 }
 

@@ -194,6 +194,31 @@ export class BaseStorageService {
   }
 
   /**
+   * 指定されたノードとノードの階層構造を形成するディレクトリを取得します。
+   * @param basePath
+   * @param nodePath
+   */
+  async getHierarchicalNode(basePath: string | null, nodePath: string): Promise<GCSStorageNode[]> {
+    const nodeDict = await this.getHierarchicalNodeDict(basePath, nodePath)
+    return Object.values(nodeDict)
+  }
+
+  /**
+   * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
+   * @param basePath
+   * @param nodePath
+   */
+  async getAncestorDirs(basePath: string | null, nodePath: string): Promise<GCSStorageNode[]> {
+    basePath = removeBothEndsSlash(basePath)
+    nodePath = removeBothEndsSlash(nodePath)
+
+    const nodeDict = await this.getHierarchicalNodeDict(basePath, nodePath)
+    delete nodeDict[nodePath]
+
+    return Object.values(nodeDict)
+  }
+
+  /**
    * Cloud Storageのディレクトリを作成します。
    *
    * 引数が次のように指定された場合、
@@ -257,8 +282,10 @@ export class BaseStorageService {
         if (!fileNode.exists) {
           throw new Error(`Uploaded file not found: '${path.join(basePath!, filePath)}'`)
         }
-        // この時点でファイルノードにIDは振られていないためここで設定
-        Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
+        // ファイルにIDが振られていない場合は設定
+        if (!fileNode.id) {
+          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
+        }
         fileNodeDict[fileNode.path] = fileNode
       })
     )
@@ -1386,6 +1413,45 @@ export class BaseStorageService {
     )
 
     return this.sortStorageNodes(hierarchicalNodes)
+  }
+
+  /**
+   * 指定されたノードとノードの階層構造を形成するディレクトリを取得します。
+   * @param basePath
+   * @param nodePath
+   */
+  protected async getHierarchicalNodeDict(basePath: string | null, nodePath: string): Promise<{ [path: string]: GCSStorageNode }> {
+    basePath = removeBothEndsSlash(basePath)
+    nodePath = removeBothEndsSlash(nodePath)
+
+    const dirPaths = splitHierarchicalPaths(nodePath)
+    dirPaths.pop()
+
+    let dirDict: { [path: string]: GCSStorageNode } = {}
+    const node = await this.getNode(basePath, nodePath)
+
+    // 引数ノードが存在する場合
+    if (node) {
+      // 引数ノードが存在するので、祖先ディレクトリも存在しなくてはならない
+      // ※もし上位ディレクトリがなかった場合は以降で穴埋めする
+      dirDict = (await this.getRealDirNodes(basePath, dirPaths)).reduce((result, dirNode) => {
+        result[dirNode.path] = dirNode
+        return result
+      }, {} as { [path: string]: GCSStorageNode })
+      // 引数ノードも設定
+      dirDict[node.path] = node
+    }
+    // 引数ノードが存在しない場合
+    else {
+      // 引数ノードは存在しないので、実際に存在する祖先ディレクトリのみを取得する
+      dirDict = (await this.getRealDirNodes(basePath, dirPaths)).reduce((result, dirNode) => {
+        if (dirNode.exists) result[dirNode.path] = dirNode
+        return result
+      }, {} as { [path: string]: GCSStorageNode })
+    }
+
+    // 祖先ディレクトリの穴埋め
+    return Object.assign(dirDict, await this.padRealDirNodes(basePath, dirDict, null))
   }
 
   /**

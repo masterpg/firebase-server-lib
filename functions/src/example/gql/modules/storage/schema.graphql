@@ -78,11 +78,15 @@ type Query {
   userStorageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   userStorageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   userStorageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  userStorageHierarchicalNode(nodePath: String!): [StorageNode!]!
+  userStorageAncestorDirs(nodePath: String!): [StorageNode!]!
 
   storageNode(nodePath: String!): StorageNode
   storageDirDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   storageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   storageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
   storageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
+  storageHierarchicalNode(nodePath: String!): [StorageNode!]!
+  storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
 }

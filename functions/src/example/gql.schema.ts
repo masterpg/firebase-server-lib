@@ -128,11 +128,15 @@ export interface IQuery {
     userStorageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     userStorageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     userStorageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    userStorageHierarchicalNode(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
     storageDirDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     storageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     storageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
     storageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
+    storageHierarchicalNode(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
+    storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
 }
 
