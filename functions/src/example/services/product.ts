@@ -12,10 +12,7 @@ class ProductService {
       for (const id of ids) {
         promises.push(
           (async () => {
-            const doc = await db
-              .collection('products')
-              .doc(id)
-              .get()
+            const doc = await db.collection('products').doc(id).get()
             if (doc.exists) {
               productDict[doc.id] = { id: doc.id, ...doc.data() } as Product
             }

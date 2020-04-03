@@ -5,6 +5,7 @@
  */
 
 /* tslint:disable */
+/* eslint-disable */
 export enum StorageNodeType {
     File = "File",
     Dir = "Dir"

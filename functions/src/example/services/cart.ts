@@ -42,10 +42,7 @@ class CartService {
       for (const id of ids) {
         promises.push(
           (async () => {
-            const doc = await db
-              .collection('cart')
-              .doc(id)
-              .get()
+            const doc = await db.collection('cart').doc(id).get()
             if (doc.exists) {
               itemDict[doc.id] = { id: doc.id, ...doc.data() } as CartItem
             }
@@ -61,10 +58,7 @@ class CartService {
       }, [])
     } else {
       const items: CartItem[] = []
-      const snapshot = await db
-        .collection('cart')
-        .where('uid', '==', user.uid)
-        .get()
+      const snapshot = await db.collection('cart').where('uid', '==', user.uid).get()
       snapshot.forEach(doc => {
         items.push({ id: doc.id, ...doc.data() } as CartItem)
       })
@@ -117,10 +111,7 @@ class CartService {
   async checkoutCart(user: { uid: string }): Promise<boolean> {
     const db = admin.firestore()
 
-    const snapshot = await db
-      .collection('cart')
-      .where('uid', '==', user.uid)
-      .get()
+    const snapshot = await db.collection('cart').where('uid', '==', user.uid).get()
 
     await db.runTransaction(async transaction => {
       snapshot.forEach(doc => {
@@ -156,10 +147,7 @@ class CartService {
     const product = await this.m_getProductById(transaction, itemInput.productId)
 
     // 追加しようとするカートアイテムが存在しないことをチェック
-    const query = db
-      .collection('cart')
-      .where('uid', '==', uid)
-      .where('productId', '==', itemInput.productId)
+    const query = db.collection('cart').where('uid', '==', uid).where('productId', '==', itemInput.productId)
     const snapshot = await transaction.get(query)
     if (snapshot.size > 0) {
       const doc = snapshot.docs[0]

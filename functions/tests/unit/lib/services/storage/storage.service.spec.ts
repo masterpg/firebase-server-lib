@@ -376,9 +376,7 @@ describe('StorageService', () => {
         await storageService.uploadAsFiles(null, [uploadItem])
 
         // Authorizationヘッダーを設定しない
-        return request(app.getHttpServer())
-          .get(`/storage/${uploadItem.path}`)
-          .expect(401)
+        return request(app.getHttpServer()).get(`/storage/${uploadItem.path}`).expect(401)
       })
     })
 
@@ -538,9 +536,7 @@ describe('StorageService', () => {
         await storageService.uploadAsFiles(null, [uploadItem])
 
         // Authorizationヘッダーを設定しない
-        return request(app.getHttpServer())
-          .get(`/storage/${uploadItem.path}`)
-          .expect(401)
+        return request(app.getHttpServer()).get(`/storage/${uploadItem.path}`).expect(401)
       })
     })
   })

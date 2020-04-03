@@ -2445,9 +2445,7 @@ describe('BaseStorageService', () => {
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
 
-        return request(app.getHttpServer())
-          .get(`/storage/${uploadItem.path}`)
-          .expect(404)
+        return request(app.getHttpServer()).get(`/storage/${uploadItem.path}`).expect(404)
       })
 
       it('basePathを指定した場合', async () => {

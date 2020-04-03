@@ -1,18 +1,18 @@
+import { ExecutionContext, createParamDecorator } from '@nestjs/common'
 import { GQLContext } from '../types'
 import { GraphQLResolveInfo } from 'graphql'
 import { Request } from 'express'
-import { createParamDecorator } from '@nestjs/common'
 
-export const User = createParamDecorator((data, reqOrGQLParams) => {
-  let req: Request
-  if (Array.isArray(reqOrGQLParams)) {
-    const root = reqOrGQLParams[0]
-    const args = reqOrGQLParams[1]
-    const ctx = reqOrGQLParams[2] as GQLContext
-    const info = reqOrGQLParams[3] as GraphQLResolveInfo
-    req = ctx.req
-  } else {
-    req = reqOrGQLParams as Request
+export const User = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
+  const type = ctx.getType() as 'http' | 'graphql'
+  let req!: Request
+
+  if (type === 'graphql') {
+    const gqlContext = ctx.getArgByIndex(2) as GQLContext
+    const info = ctx.getArgByIndex(2) as GraphQLResolveInfo
+    req = gqlContext.req
+  } else if (type === 'http') {
+    req = ctx.switchToHttp().getRequest()
   }
 
   return (req as any).__idToken
