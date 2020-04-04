@@ -29,6 +29,8 @@ import { InputValidationError } from '../../base'
 const dayjs = require('dayjs')
 
 const MAX_CHUNK = 50
+const ID_CHECK_COUNT = 5
+const ID_CHECK_DURATION = 100
 
 export class BaseStorageService {
   //----------------------------------------------------------------------
@@ -77,7 +79,7 @@ export class BaseStorageService {
   }
 
   /**
-   * Cloud Storageから指定されたディレクトリと配下のノードを取得します。
+   * Cloud Storageから指定されたディレクトリ＋配下のノードを取得します。
    *
    * 引数が次のように指定された場合、
    *   + basePath: 'home'
@@ -138,7 +140,7 @@ export class BaseStorageService {
   }
 
   /**
-   * Cloud Storageから指定されたディレクトリと直下のノードを取得します。
+   * Cloud Storageから指定されたディレクトリ＋直下のノードを取得します。
    *
    * 引数が次のように指定された場合、
    *   + basePath: 'home'
@@ -283,7 +285,7 @@ export class BaseStorageService {
           throw new Error(`Uploaded file not found: '${path.join(basePath!, filePath)}'`)
         }
         // ファイルにIDが振られていない場合は設定
-        if (!fileNode.id) {
+        else if (!fileNode.id) {
           Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
         }
         fileNodeDict[fileNode.path] = fileNode
@@ -716,10 +718,7 @@ export class BaseStorageService {
     const bucket = admin.storage().bucket()
     const gcsNodePath = path.join(basePath, nodePath)
     const gcsNode = bucket.file(gcsNodePath)
-    const [exists] = await gcsNode.exists()
-
-    const result = this.toStorageNode(basePath, gcsNode) as GCSStorageNode
-    result.exists = exists
+    const result = await this.toStorageNodeAsync(basePath, gcsNode)
 
     return result
   }
@@ -908,7 +907,7 @@ export class BaseStorageService {
   //----------------------------------------------------------------------
 
   /**
-   * Cloud Storageから指定されたディレクトリ配下のノードをマップ形式取得します。
+   * Cloud Storageから指定されたディレクトリ＋配下のノードをマップ形式取得します。
    * @param basePath
    * @param dirPath
    * @param options
@@ -941,8 +940,7 @@ export class BaseStorageService {
         continue
       }
 
-      const node = this.toStorageNode(basePath, gcsNode)
-      node.exists = true
+      const node = await this.toStorageNodeAsync(basePath, gcsNode)
 
       // ノードにIDが振られていない場合、IDを採番
       // ※Cloud Storageに手動でディレクトリ作成またはアップロードされた場合がこの状況にあたる
@@ -1020,8 +1018,7 @@ export class BaseStorageService {
           return
         }
 
-        const node = this.toStorageNode(basePath, gcsNode) as GCSStorageNode
-        node.exists = true
+        const node = await this.toStorageNodeAsync(basePath, gcsNode)
 
         // ファイルにIDが振られていない場合は設定
         // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
@@ -1121,7 +1118,7 @@ export class BaseStorageService {
       throw new Error(`The specified node is not directory: { path: '${dirNode.path}', nodeType: '${dirNode.nodeType}' }`)
     }
 
-    const result = Object.assign({}, dirNode)
+    const result = await this.toStorageNodeAsync(basePath, dirNode.gcsNode)
 
     const _metadata = (metadata || {}) as StorageMetadataInput
 
@@ -1140,7 +1137,6 @@ export class BaseStorageService {
       await result.gcsNode.save('')
     }
     Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
-    result.exists = true
 
     return result
   }
@@ -1164,7 +1160,7 @@ export class BaseStorageService {
       throw new Error(`The specified node is not file: { path: '${fileNode.path}', nodeType: '${fileNode.nodeType}' }`)
     }
 
-    const result = Object.assign({}, fileNode)
+    const result = await this.toStorageNodeAsync(basePath, fileNode.gcsNode)
 
     const _metadata = (metadata || {}) as StorageMetadataInput
 
@@ -1181,7 +1177,6 @@ export class BaseStorageService {
     // TODO saveとsaveMetadataを別にした理由: saveにメタデータを指定すると、単体テストでメタデータが保存されない状態がごくまれに発生するため別にしている。
     await result.gcsNode.save(data, options)
     Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
-    result.exists = true
 
     return result
   }
@@ -1231,6 +1226,42 @@ export class BaseStorageService {
       exists: false,
       gcsNode: gcsNode,
     }
+  }
+
+  /**
+   * Cloud Storageから取得したノードをStorageNodeへ変換します。
+   * 基本機能は`toStorageNode()`で、これに加えて「ノードの存在チェック」と
+   * 「メタデータの取得」をCloud Storageに実際にアクセスして行います。
+   * @param basePath
+   * @param gcsNode
+   */
+  protected async toStorageNodeAsync(basePath: string | null, gcsNode: File): Promise<GCSStorageNode> {
+    // ノードが実際に存在するか取得
+    // TODO 重要:
+    //  gcsNode.exists()ではごくたまに本当はノードが存在するのに関わらず、
+    //  存在しないという結果が返ってくるという致命的な不具合が存在する(2020/04/04現在)。
+    //  このため存在チェックを複数回行うことでこの不具合を回避している。
+    let exists = false
+    for (let i = 1; i <= ID_CHECK_COUNT; i++) {
+      const [_exists] = await gcsNode.exists()
+      if (_exists) {
+        exists = _exists
+        break
+      }
+      await this.sleep(ID_CHECK_DURATION)
+    }
+
+    // メタデータの取得
+    const storageMetadata: StorageMetadata = { id: '', share: {} }
+    if (exists) {
+      Object.assign(storageMetadata, this.extractMetaData(gcsNode))
+    }
+
+    return Object.assign(this.toStorageNode(basePath, gcsNode), {
+      id: storageMetadata.id,
+      share: storageMetadata.share,
+      exists,
+    })
   }
 
   /**
@@ -1349,7 +1380,7 @@ export class BaseStorageService {
         }
         // ディレクトリにIDが振られていない場合、IDを採番
         // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
-        if (!node.id) {
+        else if (!node.id) {
           Object.assign(node, await this.assignIdToNode(basePath, node))
         }
       })
@@ -1571,10 +1602,7 @@ export class BaseStorageService {
     const result = Object.assign({}, node)
 
     await result.gcsNode.setMetadata({ metadata: this.toRawMetadata(metadata) })
-
-    const exists = result.exists
-    Object.assign(result, this.toStorageNode(basePath, result.gcsNode))
-    result.exists = exists
+    Object.assign(result, await this.toStorageNodeAsync(basePath, result.gcsNode))
 
     return result
   }
@@ -1585,9 +1613,6 @@ export class BaseStorageService {
    */
   protected extractMetaData(gcsNode: File): StorageMetadata {
     const share = this.m_extractShareSettings(gcsNode)
-
-    const result = { id: '', share }
-    if (!gcsNode.metadata) return result
 
     const metadata = gcsNode.metadata.metadata || {}
     return {
@@ -1616,6 +1641,12 @@ export class BaseStorageService {
     }
 
     return result
+  }
+
+  protected async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(resolve, ms)
+    }) as Promise<void>
   }
 
   //--------------------------------------------------

@@ -61,6 +61,7 @@ type TestStorageService = LibStorageService & {
   getDirChildDict: LibStorageService['getDirChildDict']
   getChildDict: LibStorageService['getChildDict']
   toStorageNode: LibStorageService['toStorageNode']
+  toStorageNodeAsync: LibStorageService['toStorageNodeAsync']
   sortStorageNodes: LibStorageService['sortStorageNodes']
   padVirtualDirNodes: LibStorageService['padVirtualDirNodes']
   padRealDirNodes: LibStorageService['padRealDirNodes']
@@ -3345,22 +3346,87 @@ describe('BaseStorageService', () => {
     })
 
     it('basePathを指定した場合', async () => {
-      const fileA = await storageService.getRealFileNode(`${TEST_FILES_DIR}`, `d1/fileA.txt`)
+      const d1 = await storageService.getRealDirNode(`${TEST_FILES_DIR}`, `d1`)
+      Object.assign(d1, await storageService.saveDirNode(`${TEST_FILES_DIR}`, d1, { share: { isPublic: true, uids: ['ichiro'] } }))
 
-      const actual = storageService.toStorageNode(`${TEST_FILES_DIR}`, fileA.gcsNode)
+      const actual = storageService.toStorageNode(`${TEST_FILES_DIR}`, d1.gcsNode)
 
-      expect(actual.id).toBe('')
-      expect(actual.nodeType).toBe(StorageNodeType.File)
-      expect(actual.name).toBe(`fileA.txt`)
-      expect(actual.dir).toBe(`d1`)
-      expect(actual.path).toBe(`d1/fileA.txt`)
+      expect(shortid.isValid(actual.id)).toBeTruthy()
+      expect(actual.nodeType).toBe(StorageNodeType.Dir)
+      expect(actual.name).toBe(`d1`)
+      expect(actual.dir).toBe(``)
+      expect(actual.path).toBe(`d1`)
       expect(actual.contentType).toBe('')
       expect(actual.size).toBe(0)
-      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
       expect(dayjs(actual.created).isValid()).toBeTruthy()
       expect(dayjs(actual.updated).isValid()).toBeTruthy()
       expect(actual.exists).toBeFalsy()
       expect(actual.gcsNode).toBeDefined()
+    })
+  })
+
+  describe('toStorageNodeAsync', () => {
+    it('ディレクトリノードの変換 - 存在しないディレクトリ', async () => {
+      const d1 = await storageService.getRealDirNode(null, `${TEST_FILES_DIR}/d1`)
+
+      const actual = await storageService.toStorageNodeAsync(null, d1.gcsNode)
+
+      expect(actual.id).toBe('')
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
+      expect(actual.exists).toBeFalsy()
+    })
+
+    it('ディレクトリノードの変換 - 存在するディレクトリ', async () => {
+      const d1 = await storageService.getRealDirNode(null, `${TEST_FILES_DIR}/d1`)
+      Object.assign(d1, await storageService.saveDirNode(null, d1, { share: { isPublic: true, uids: ['ichiro'] } }))
+
+      const actual = await storageService.toStorageNodeAsync(null, d1.gcsNode)
+
+      expect(shortid.isValid(actual.id)).toBeTruthy()
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
+      expect(actual.exists).toBeTruthy()
+    })
+
+    it('ファイルノードの変換 - 存在しないファイル', async () => {
+      const fileA = await storageService.getRealFileNode(null, `${TEST_FILES_DIR}/d1/fileA.txt`)
+
+      const actual = await storageService.toStorageNodeAsync(null, fileA.gcsNode)
+
+      expect(actual.id).toBe('')
+      expect(actual.share).toEqual(EMPTY_SHARE_SETTINGS)
+      expect(actual.exists).toBeFalsy()
+    })
+
+    it('ファイルノードの変換 - 存在するディレクトリ', async () => {
+      const fileA = await storageService.getRealFileNode(null, `${TEST_FILES_DIR}/d1/fileA.txt`)
+      Object.assign(
+        fileA,
+        await storageService.saveFileNode(
+          null,
+          fileA,
+          'testA',
+          { contentType: 'text/plain; charset=utf-8' },
+          { share: { isPublic: true, uids: ['ichiro'] } }
+        )
+      )
+
+      const actual = await storageService.toStorageNodeAsync(null, fileA.gcsNode)
+
+      expect(shortid.isValid(actual.id)).toBeTruthy()
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
+      expect(actual.exists).toBeTruthy()
+    })
+
+    it('basePathを指定した場合', async () => {
+      const d1 = await storageService.getRealDirNode(`${TEST_FILES_DIR}`, `d1`)
+      Object.assign(d1, await storageService.saveDirNode(`${TEST_FILES_DIR}`, d1, { share: { isPublic: true, uids: ['ichiro'] } }))
+
+      const actual = await storageService.toStorageNodeAsync(`${TEST_FILES_DIR}`, d1.gcsNode)
+
+      expect(shortid.isValid(actual.id)).toBeTruthy()
+      expect(actual.share).toEqual({ isPublic: true, uids: ['ichiro'] })
+      expect(actual.exists).toBeTruthy()
     })
   })
 
