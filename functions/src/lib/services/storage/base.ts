@@ -30,7 +30,7 @@ const dayjs = require('dayjs')
 
 const MAX_CHUNK = 50
 const ID_CHECK_COUNT = 5
-const ID_CHECK_DURATION = 100
+const ID_CHECK_DURATION = 40
 
 export class BaseStorageService {
   //----------------------------------------------------------------------
@@ -940,7 +940,8 @@ export class BaseStorageService {
         continue
       }
 
-      const node = await this.toStorageNodeAsync(basePath, gcsNode)
+      const node = await this.toStorageNode(basePath, gcsNode)
+      node.exists = true
 
       // ノードにIDが振られていない場合、IDを採番
       // ※Cloud Storageに手動でディレクトリ作成またはアップロードされた場合がこの状況にあたる
@@ -1018,7 +1019,8 @@ export class BaseStorageService {
           return
         }
 
-        const node = await this.toStorageNodeAsync(basePath, gcsNode)
+        const node = await this.toStorageNode(basePath, gcsNode)
+        node.exists = true
 
         // ファイルにIDが振られていない場合は設定
         // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
