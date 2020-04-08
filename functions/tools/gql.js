@@ -2,7 +2,7 @@ const { GraphQLDefinitionsFactory } = require('@nestjs/graphql')
 const chokidar = require('chokidar')
 const fs = require('fs')
 const glob = require('glob')
-const path = require('path')
+const _path = require('path')
 const { removeBothEndsSlash } = require('web-base-lib')
 
 function removeExtraPart(path) {
@@ -25,8 +25,8 @@ function generateSchema(srcPath, outPath, watch) {
 
   const definitionsFactory = new GraphQLDefinitionsFactory()
   definitionsFactory.generate({
-    typePaths: [path.resolve(process.cwd(), `${srcPath}/**/*.graphql`)],
-    path: path.resolve(process.cwd(), `${outPath}/gql.schema.ts`),
+    typePaths: [_path.resolve(process.cwd(), `${srcPath}/**/*.graphql`)],
+    path: _path.resolve(process.cwd(), `${outPath}/gql.schema.ts`),
     outputAs: 'interface',
     watch: !!watch,
   })
@@ -47,22 +47,22 @@ function setupSchema(srcPath, outPath, watch) {
   srcPath = removeExtraPart(srcPath)
   outPath = removeExtraPart(outPath)
 
-  // "src"配下の"*.graphql"ファイルの一覧を取得
-  const graphqlFiles = glob.sync(path.resolve(process.cwd(), `${srcPath}/**/*.graphql`))
+  // `src`配下の`*.graphql`ファイルの一覧を取得
+  const graphqlFiles = glob.sync(_path.resolve(process.cwd(), `${srcPath}/**/*.graphql`))
   for (const srcFilePath of graphqlFiles) {
-    // "src"ベースのパスを"out"ベースへ置き換え
+    // `src`ベースのパスを`out`ベースへ置き換え
     // 例: src/gql/modules/product/product.graphql → lib/gql/modules/product/product.graphql
     const srcReg = new RegExp(`/?(${srcPath})/`)
     const outFilePath = srcFilePath.replace(srcReg, (match, $1, offset) => {
       return match.replace($1, outPath)
     })
-    // "src"から"out"へ".graphql"ファイルをコピー
-    fs.mkdirSync(path.dirname(outFilePath), { recursive: true })
+    // `src`から`out`へ`.graphql`ファイルをコピー
+    fs.mkdirSync(_path.dirname(outFilePath), { recursive: true })
     fs.copyFileSync(srcFilePath, outFilePath)
     if (!watch) continue
 
-    // "src"配下の".graphql"ファイルに変更があった場合、
-    // "src"から"lib"へ".graphql"ファイルをコピー
+    // `src`配下の`.graphql`ファイルに変更があった場合、
+    // `src`から`lib`へ`.graphql`ファイルをコピー
     chokidar.watch(srcFilePath, { persistent: true }).on('change', path => {
       fs.copyFileSync(srcFilePath, outFilePath)
     })
