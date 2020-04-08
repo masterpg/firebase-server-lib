@@ -329,13 +329,11 @@ export class BaseStorageService {
       const nodeData = await this.getDirDescendantDict(basePath, dirPath, { pageToken, maxResults: maxChunk })
 
       // 引数ディレクトリと配下ノードを削除
-      const promises: Promise<GCSStorageNode>[] = []
       for (const node of Object.values(nodeData.dict)) {
         if (node.exists) {
-          promises.push(node.gcsNode.delete().then(() => node))
+          await node.gcsNode.delete()
         }
       }
-      await Promise.all(promises)
 
       // 配下ノードがまだある場合
       if (nodeData.nextPageToken) {
@@ -370,18 +368,13 @@ export class BaseStorageService {
    */
   async removeFiles(basePath: string | null, filePaths: string[], options?: { maxChunk: number }): Promise<void> {
     basePath = removeBothEndsSlash(basePath)
-    const { maxChunk } = options || { maxChunk: MAX_CHUNK }
 
-    for (const chunk of this.arrayChunk(filePaths, maxChunk)) {
-      await Promise.all(
-        chunk.map(async filePath => {
-          if (!filePath) return
-          const node = await this.getRealFileNode(basePath, filePath)
-          if (node.exists) {
-            await node.gcsNode.delete()
-          }
-        })
-      )
+    for (const filePath of filePaths) {
+      if (!filePath) return
+      const node = await this.getRealFileNode(basePath, filePath)
+      if (node.exists) {
+        await node.gcsNode.delete()
+      }
     }
   }
 
