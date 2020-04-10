@@ -4,7 +4,7 @@ module.exports = {
   roots: ['<rootDir>/tests/'],
   testRegex: '.spec.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': 'ts-jest',
   },
   coverageDirectory: './coverage',
   testEnvironment: 'node',
