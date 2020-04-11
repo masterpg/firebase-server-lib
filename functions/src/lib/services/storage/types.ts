@@ -70,14 +70,20 @@ export interface GCSStorageNode extends StorageNode {
 export interface StorageMetadata {
   id: string
   share: StorageNodeShareSettings
+  created: Dayjs
+  updated: Dayjs
 }
 
 export interface StorageMetadataInput {
   id?: string | null
   share?: StorageNodeShareSettings | null
+  created?: Dayjs
+  updated?: Dayjs
 }
 
 export interface StorageRawMetadata {
   id?: string | null
   share?: string | null
+  created?: string | null
+  updated?: string | null
 }

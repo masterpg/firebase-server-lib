@@ -256,7 +256,7 @@ export class BaseStorageService {
         // ディレクトリが存在する場合はディレクトリを作成せず終了
         if (dirNode.exists) return
         // ディレクトリを作成
-        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
+        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path))
         result.push(dirNode)
       })
     )
@@ -286,7 +286,7 @@ export class BaseStorageService {
         }
         // ファイルにIDが振られていない場合は設定
         else if (!fileNode.id) {
-          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
+          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode.gcsNode))
         }
         fileNodeDict[fileNode.path] = fileNode
       })
@@ -483,8 +483,8 @@ export class BaseStorageService {
     //
     // 移動元ディレクトリの移動処理
     //
-    const newDirNodePath = path.join(toDirPath, '/')
-    await dirNode.gcsNode.move(path.join(basePath, newDirNodePath))
+    await dirNode.gcsNode.move(path.join(basePath, toDirPath, '/'))
+    await this.saveDirNode(basePath, toDirPath)
   }
 
   /**
@@ -523,7 +523,7 @@ export class BaseStorageService {
     }
 
     // 移動先ディレクトリの存在確認
-    const toDirPath = path.join(path.dirname(toFilePath))
+    const toDirPath = removeStartSlash(path.dirname(toFilePath))
     const toDirNode = await this.getRealDirNode(basePath, toDirPath)
     if (!toDirNode.exists) {
       throw new Error(`The destination directory does not exist: '${path.join(basePath, toDirNode.path)}'`)
@@ -534,6 +534,7 @@ export class BaseStorageService {
 
     // ファイルの移動
     await fileNode.gcsNode.move(path.join(basePath, toFilePath))
+    await this.saveFileNode(basePath, toFilePath)
   }
 
   /**
@@ -641,7 +642,7 @@ export class BaseStorageService {
         share.uids = settings.uids
       }
     }
-    Object.assign(dirNode, await this.saveMetadata(basePath, dirNode, { share }))
+    Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path, { share }))
 
     return dirNode
   }
@@ -670,7 +671,7 @@ export class BaseStorageService {
         share.uids = settings.uids
       }
     }
-    Object.assign(fileNode, await this.saveMetadata(basePath, fileNode, { share }))
+    Object.assign(fileNode, await this.saveFileNode(basePath, fileNode.path, null, { share }))
 
     return fileNode
   }
@@ -818,7 +819,7 @@ export class BaseStorageService {
       return res.sendStatus(404)
     }
 
-    const lastModified = dayjs(fileNode.gcsNode.metadata.updated).toString()
+    const lastModified = fileNode.updated.toString()
     const ifModifiedSinceStr = req.header('If-Modified-Since')
     const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
     if (lastModified === ifModifiedSince) {
@@ -850,7 +851,7 @@ export class BaseStorageService {
         bucket.upload(uploadItem.localFilePath, { destination }).then(async response => {
           const [file, metadata] = response
           const fileNode = this.toStorageNode(basePath, file)
-          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode))
+          Object.assign(fileNode, await this.assignIdToNode(basePath, fileNode.gcsNode))
           uploadedFileDict[fileNode.path] = fileNode
         })
       )
@@ -880,7 +881,7 @@ export class BaseStorageService {
           const gcsFileNode = bucket.file(path.join(basePath, uploadItem.path))
           const fileNode = this.toStorageNode(basePath, gcsFileNode)
           const options = { contentType: uploadItem.contentType }
-          Object.assign(fileNode, await this.saveFileNode(basePath, fileNode, uploadItem.data, options))
+          Object.assign(fileNode, await this.saveFileNode(basePath, fileNode.path, { data: uploadItem.data, options }))
           uploadedFileDict[fileNode.path] = fileNode
         })()
       )
@@ -939,7 +940,7 @@ export class BaseStorageService {
       // ノードにIDが振られていない場合、IDを採番
       // ※Cloud Storageに手動でディレクトリ作成またはアップロードされた場合がこの状況にあたる
       if (!node.id) {
-        Object.assign(node, await this.assignIdToNode(basePath, node))
+        Object.assign(node, await this.assignIdToNode(basePath, node.gcsNode))
       }
 
       dict[node.path] = node
@@ -1018,7 +1019,7 @@ export class BaseStorageService {
         // ファイルにIDが振られていない場合は設定
         // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
         if (!node.id) {
-          Object.assign(node, await this.assignIdToNode(basePath, node))
+          Object.assign(node, await this.assignIdToNode(basePath, node.gcsNode))
         }
 
         return node
@@ -1038,13 +1039,13 @@ export class BaseStorageService {
         // ディレクトリが存在しない場合、ディレクトリを作成
         // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
         if (!childDirNode.exists) {
-          Object.assign(childDirNode, await this.saveDirNode(basePath, childDirNode))
+          Object.assign(childDirNode, await this.saveDirNode(basePath, childDirNode.path))
         }
 
         // ディレクトリにIDが振られていない場合は設定
         // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
         if (!childDirNode.id) {
-          Object.assign(childDirNode, await this.assignIdToNode(basePath, childDirNode))
+          Object.assign(childDirNode, await this.assignIdToNode(basePath, childDirNode.gcsNode))
         }
 
         return childDirNode
@@ -1069,7 +1070,7 @@ export class BaseStorageService {
       if (!dirNode && Object.keys(dict).length > 0) {
         // 引数ディレクトリを作成
         dirNode = await this.getRealDirNode(basePath, dirPath)
-        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode))
+        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path))
         dict[dirNode.path] = dirNode
       }
     }
@@ -1101,37 +1102,29 @@ export class BaseStorageService {
   /**
    * Cloud Storageへディレクトリノードを保存します。
    * @param basePath
-   * @param dirNode
+   * @param dirPath
    * @param metadata
    */
-  protected async saveDirNode(
-    basePath: string | null,
-    dirNode: GCSStorageNode,
-    metadata?: Omit<StorageMetadataInput, 'id'>
-  ): Promise<GCSStorageNode> {
-    if (dirNode.nodeType !== StorageNodeType.Dir) {
-      throw new Error(`The specified node is not directory: { path: '${dirNode.path}', nodeType: '${dirNode.nodeType}' }`)
-    }
+  protected async saveDirNode(basePath: string | null, dirPath: string, metadata?: Omit<StorageMetadataInput, 'id'>): Promise<GCSStorageNode> {
+    const result = await this.getRealDirNode(basePath, dirPath)
 
-    const result = await this.toStorageNodeAsync(basePath, dirNode.gcsNode)
-
-    const _metadata = (metadata || {}) as StorageMetadataInput
-
-    // idが設定されている場合、そのidを引き続き設定
-    if (result.id) {
-      _metadata.id = result.id
-    }
-    // idが設定されていない場合、idを生成して設定
-    else {
-      _metadata.id = shortid.generate()
-    }
-
-    // Cloud Storageへノードを保存
-    // TODO saveとsaveMetadataを別にした理由: saveにメタデータを指定すると、単体テストでメタデータが保存されない状態がごくまれに発生するため別にしている。
+    // ディレクトリを保存
     if (!result.exists) {
       await result.gcsNode.save('')
     }
-    Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
+
+    // 現在のメタデータと引数のメタデータをマージ
+    // ※作成日時と更新日時は引数の内容を優先するため、現在のメタデータは削除
+    // ※引数に作成日時または更新日時が指定されなかった場合、saveMetadata()で規定の設定処理が行われる
+    const curMetadata = this.extractMetaData(result.gcsNode)
+    delete curMetadata.created
+    delete curMetadata.updated
+    const newMetadata = Object.assign(curMetadata, metadata)
+    // IDが設定されている場合はそのIDを引き続き使用し、設定されていない場合はIDを生成
+    newMetadata.id = result.id ? result.id : shortid.generate()
+
+    // メタデータの保存
+    Object.assign(result, await this.saveMetadata(basePath, result.gcsNode, newMetadata))
 
     return result
   }
@@ -1139,39 +1132,47 @@ export class BaseStorageService {
   /**
    * Cloud Storageへファイルノードを保存します。
    * @param basePath
-   * @param fileNode
-   * @param data
-   * @param options
+   * @param filePath
+   * @param dataParams
    * @param metadata
    */
   protected async saveFileNode(
     basePath: string | null,
-    fileNode: GCSStorageNode,
-    data: any,
-    options: SaveOptions,
+    filePath: string,
+    dataParams?: { data: any; options?: SaveOptions } | null,
     metadata?: Omit<StorageMetadataInput, 'id'>
   ): Promise<GCSStorageNode> {
-    if (fileNode.nodeType !== StorageNodeType.File) {
-      throw new Error(`The specified node is not file: { path: '${fileNode.path}', nodeType: '${fileNode.nodeType}' }`)
+    const result = await this.getRealFileNode(basePath, filePath)
+
+    //
+    // ファイルのコンテンツデータを保存
+    //
+    // コンテンツデータのパラメータが指定された場合
+    if (dataParams) {
+      const curRawMetadata = this.toRawMetadata(this.extractMetaData(result.gcsNode))
+      const options = Object.assign({ metadata: { metadata: curRawMetadata } }, dataParams.options)
+      await result.gcsNode.save(dataParams.data, options)
     }
-
-    const result = await this.toStorageNodeAsync(basePath, fileNode.gcsNode)
-
-    const _metadata = (metadata || {}) as StorageMetadataInput
-
-    // idが設定されている場合、そのidを引き続き設定
-    if (result.id) {
-      _metadata.id = result.id
-    }
-    // idが設定されていない場合、idを生成して設定
+    // コンテンツデータのパラメータが指定されなかった場合
     else {
-      _metadata.id = shortid.generate()
+      // まだファイルが存在しない場合、空ファイルを作成
+      if (!result.exists) {
+        await result.gcsNode.save('')
+      }
     }
 
-    // Cloud Storageへノードを保存
-    // TODO saveとsaveMetadataを別にした理由: saveにメタデータを指定すると、単体テストでメタデータが保存されない状態がごくまれに発生するため別にしている。
-    await result.gcsNode.save(data, options)
-    Object.assign(result, await this.saveMetadata(basePath, result, _metadata))
+    // 現在のメタデータと引数のメタデータをマージ
+    // ※作成日時と更新日時は引数の内容を優先するため、現在のメタデータは削除
+    // ※引数に作成日時または更新日時が指定されなかった場合、saveMetadata()で規定の設定処理が行われる
+    const curMetadata = this.extractMetaData(result.gcsNode)
+    delete curMetadata.created
+    delete curMetadata.updated
+    const newMetadata = Object.assign(curMetadata, metadata)
+    // IDが設定されている場合はそのIDを引き続き使用し、設定されていない場合はIDを生成
+    newMetadata.id = result.id ? result.id : shortid.generate()
+
+    // メタデータの保存
+    Object.assign(result, await this.saveMetadata(basePath, result.gcsNode, newMetadata))
 
     return result
   }
@@ -1216,8 +1217,8 @@ export class BaseStorageService {
       contentType: gcsNode.metadata.contentType || '',
       size: Number(gcsNode.metadata.size || '0'),
       share: storageMetadata.share,
-      created: dayjs(gcsNode.metadata.timeCreated),
-      updated: dayjs(gcsNode.metadata.updated),
+      created: storageMetadata.created,
+      updated: storageMetadata.updated,
       exists: false,
       gcsNode: gcsNode,
     }
@@ -1247,7 +1248,7 @@ export class BaseStorageService {
     }
 
     // メタデータの取得
-    const storageMetadata: StorageMetadata = { id: '', share: {} }
+    const storageMetadata: StorageMetadata = { id: '', share: {}, created: dayjs(0), updated: dayjs(0) }
     if (exists) {
       Object.assign(storageMetadata, this.extractMetaData(gcsNode))
     }
@@ -1255,6 +1256,8 @@ export class BaseStorageService {
     return Object.assign(this.toStorageNode(basePath, gcsNode), {
       id: storageMetadata.id,
       share: storageMetadata.share,
+      created: storageMetadata.created,
+      updated: storageMetadata.updated,
       exists,
     })
   }
@@ -1371,12 +1374,12 @@ export class BaseStorageService {
       Object.values(result).map(async node => {
         // ディレクトリが実際には存在しない場合、ディレクトリを作成
         if (!node.exists) {
-          Object.assign(node, await this.saveDirNode(basePath, node))
+          Object.assign(node, await this.saveDirNode(basePath, node.path))
         }
         // ディレクトリにIDが振られていない場合、IDを採番
         // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
         else if (!node.id) {
-          Object.assign(node, await this.assignIdToNode(basePath, node))
+          Object.assign(node, await this.assignIdToNode(basePath, node.gcsNode))
         }
       })
     )
@@ -1579,41 +1582,44 @@ export class BaseStorageService {
   /**
    * ノードにIDを割り当てます。
    * @param basePath
-   * @param node
+   * @param gcsNode
    */
-  protected async assignIdToNode(basePath: string | null, node: GCSStorageNode): Promise<GCSStorageNode> {
-    if (node.id) return node
-
-    return Object.assign(node, await this.saveMetadata(basePath, node, { id: shortid.generate() }))
+  protected async assignIdToNode(basePath: string | null, gcsNode: File): Promise<GCSStorageNode> {
+    return await this.saveMetadata(basePath, gcsNode, { id: shortid.generate() })
   }
 
   /**
    * 指定されたGCSノードのメタデータを保存します。
    * @param basePath
-   * @param node
+   * @param gcsNode
    * @param metadata
    */
-  protected async saveMetadata(basePath: string | null, node: GCSStorageNode, metadata: StorageMetadataInput): Promise<GCSStorageNode> {
-    const result = Object.assign({}, node)
+  protected async saveMetadata(basePath: string | null, gcsNode: File, metadata: StorageMetadataInput): Promise<GCSStorageNode> {
+    const curMetadata = this.extractMetaData(gcsNode)
+    const newMetadata = Object.assign({}, metadata)
+    const now = dayjs()
 
-    await result.gcsNode.setMetadata({ metadata: this.toRawMetadata(metadata) })
-    Object.assign(result, await this.toStorageNodeAsync(basePath, result.gcsNode))
-
-    return result
-  }
-
-  /**
-   * 指定されたGCSノードからメタデータを取得します。
-   * @param gcsNode
-   */
-  protected extractMetaData(gcsNode: File): StorageMetadata {
-    const share = this.m_extractShareSettings(gcsNode)
-
-    const metadata = gcsNode.metadata.metadata || {}
-    return {
-      id: metadata.id || '',
-      share,
+    // 作成日時
+    // 引数に作成日時が指定されてなく、かつまだ作成日時が設定されていない場合
+    const hasArgCreated = metadata.created && !metadata.created.isSame(dayjs(0))
+    if (!hasArgCreated && curMetadata.created.isSame(dayjs(0))) {
+      newMetadata.created = now // 現在時刻を作成日時に設定
     }
+
+    // 更新日時
+    // 引数に更新時刻が指定されていない場合
+    const hasArgUpdated = metadata.updated && !metadata.updated.isSame(dayjs(0))
+    if (!hasArgUpdated) {
+      newMetadata.updated = now // 現在時刻を更新日時に設定
+    }
+
+    // メタデータを保存
+    await gcsNode.setMetadata({ metadata: this.toRawMetadata(newMetadata) })
+
+    // 戻り値
+    const result = this.toStorageNode(basePath, gcsNode)
+    result.exists = true
+    return result
   }
 
   /**
@@ -1635,7 +1641,31 @@ export class BaseStorageService {
       }
     }
 
+    if (metadata.created) {
+      result.created = metadata.created.toISOString()
+    }
+
+    if (metadata.updated) {
+      result.updated = metadata.updated.toISOString()
+    }
+
     return result
+  }
+
+  /**
+   * 指定されたGCSノードからメタデータを取得します。
+   * @param gcsNode
+   */
+  protected extractMetaData(gcsNode: File): StorageMetadata {
+    const metadata = gcsNode.metadata.metadata || {}
+    const share = this.m_extractShareSettings(gcsNode)
+
+    return {
+      id: metadata.id || '',
+      share,
+      created: metadata.created ? dayjs(metadata.created) : dayjs(0),
+      updated: metadata.updated ? dayjs(metadata.updated) : dayjs(0),
+    }
   }
 
   protected async sleep(ms: number): Promise<void> {
