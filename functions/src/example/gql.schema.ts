@@ -18,11 +18,6 @@ export interface AddCartItemInput {
     quantity: number;
 }
 
-export interface GetStorageOptionsInput {
-    maxResults?: number;
-    pageToken?: string;
-}
-
 export interface PutTestDataInput {
     collectionName: string;
     collectionRecords: JSONObject[];
@@ -36,6 +31,11 @@ export interface SignedUploadUrlInput {
 export interface StorageNodeShareSettingsInput {
     isPublic?: boolean;
     uids?: string[];
+}
+
+export interface StoragePaginationOptionsInput {
+    maxChunk?: number;
+    pageToken?: string;
 }
 
 export interface TestSignedUploadUrlInput {
@@ -76,11 +76,6 @@ export interface GetStorageDict {
     nextPageToken?: string;
 }
 
-export interface GetStorageResult {
-    list: StorageNode[];
-    nextPageToken?: string;
-}
-
 export interface IMutation {
     addCartItems(inputs: AddCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
     updateCartItems(inputs: UpdateCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
@@ -89,24 +84,24 @@ export interface IMutation {
     putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
-    handleUploadedUserFiles(filePaths: string[]): boolean | Promise<boolean>;
+    handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeUserStorageDirs(dirPaths: string[]): boolean | Promise<boolean>;
-    removeUserStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
-    moveUserStorageDir(fromDirPath: string, toDirPath: string): boolean | Promise<boolean>;
-    moveUserStorageFile(fromFilePath: string, toFilePath: string): boolean | Promise<boolean>;
-    renameUserStorageDir(dirPath: string, newName: string): boolean | Promise<boolean>;
-    renameUserStorageFile(filePath: string, newName: string): boolean | Promise<boolean>;
+    removeUserStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    removeUserStorageFile(filePath: string): StorageNode | Promise<StorageNode>;
+    moveUserStorageDir(fromDirPath: string, toDirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    moveUserStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
+    renameUserStorageDir(dirPath: string, newName: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setUserStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
-    handleUploadedFiles(filePaths: string[]): boolean | Promise<boolean>;
+    handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeStorageDirs(dirPaths: string[]): boolean | Promise<boolean>;
-    removeStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
-    moveStorageDir(fromDirPath: string, toDirPath: string): boolean | Promise<boolean>;
-    moveStorageFile(fromFilePath: string, toFilePath: string): boolean | Promise<boolean>;
-    renameStorageDir(dirPath: string, newName: string): boolean | Promise<boolean>;
-    renameStorageFile(filePath: string, newName: string): boolean | Promise<boolean>;
+    removeStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    removeStorageFile(filePath: string): StorageNode | Promise<StorageNode>;
+    moveStorageDir(fromDirPath: string, toDirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    moveStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
+    renameStorageDir(dirPath: string, newName: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
 }
@@ -125,18 +120,18 @@ export interface IQuery {
     customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
     userStorageNode(nodePath: string): StorageNode | Promise<StorageNode>;
-    userStorageDirDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    userStorageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    userStorageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    userStorageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    userStorageHierarchicalNode(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
+    userStorageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    userStorageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    userStorageDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    userStorageChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    userStorageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     userStorageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
-    storageDirDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    storageDescendants(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    storageDirChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    storageChildren(dirPath?: string, options?: GetStorageOptionsInput): GetStorageResult | Promise<GetStorageResult>;
-    storageHierarchicalNode(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
+    storageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
 }
@@ -157,6 +152,11 @@ export interface StorageNode {
 export interface StorageNodeShareSettings {
     isPublic?: boolean;
     uids?: string[];
+}
+
+export interface StoragePaginationResult {
+    list: StorageNode[];
+    nextPageToken?: string;
 }
 
 export type DateTime = any;

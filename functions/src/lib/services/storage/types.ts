@@ -12,13 +12,13 @@ export enum StorageNodeType {
   Dir = 'Dir',
 }
 
-export interface GetStorageOptionsInput {
-  maxResults?: number
+export interface StoragePaginationOptionsInput {
+  maxChunk?: number
   pageToken?: string
 }
 
-export interface GetStorageResult {
-  list: StorageNode[]
+export interface StoragePaginationResult<T extends StorageNode = StorageNode> {
+  list: T[]
   nextPageToken?: string
 }
 

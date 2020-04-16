@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { GCSStorageNode, GetStorageOptionsInput, GetStorageResult, StorageNodeShareSettingsInput, StorageUser } from './types'
+import { GCSStorageNode, StorageNodeShareSettingsInput, StoragePaginationOptionsInput, StoragePaginationResult, StorageUser } from './types'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseStorageService } from './base'
@@ -157,29 +157,29 @@ export class LibStorageService extends BaseStorageService {
     return this.getNode(userDirPath, nodePath)
   }
 
-  async getUserDirDescendants(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async getUserDirDescendants(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDirDescendants(userDirPath, dirPath, options)
   }
 
-  async getUserDescendants(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async getUserDescendants(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDescendants(userDirPath, dirPath, options)
   }
 
-  async getUserDirChildren(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async getUserDirChildren(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDirChildren(userDirPath, dirPath, options)
   }
 
-  async getUserChildren(user: StorageUser, dirPath?: string, options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async getUserChildren(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getChildren(userDirPath, dirPath, options)
   }
 
   async getUserHierarchicalNode(user: StorageUser, nodePath: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
-    return this.getHierarchicalNode(userDirPath, nodePath)
+    return this.getHierarchicalNodes(userDirPath, nodePath)
   }
 
   async getUserAncestorDirs(user: StorageUser, nodePath: string): Promise<GCSStorageNode[]> {
@@ -192,39 +192,49 @@ export class LibStorageService extends BaseStorageService {
     return this.createDirs(userDirPath, dirPaths)
   }
 
-  async handleUploadedUserFiles(user: StorageUser, filePaths: string[]): Promise<void> {
+  async handleUploadedUserFile(user: StorageUser, filePath: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
-    await this.handleUploadedFiles(userDirPath, filePaths)
+    return await this.handleUploadedFile(userDirPath, filePath)
   }
 
-  async removeUserDirs(user: StorageUser, dirPaths: string[]): Promise<void> {
+  async removeUserDir(user: StorageUser, dirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
-    await this.removeDirs(userDirPath, dirPaths)
+    return await this.removeDir(userDirPath, dirPath, options)
   }
 
-  async removeUserFiles(user: StorageUser, filePaths: string[]): Promise<void> {
+  async removeUserFile(user: StorageUser, filePath: string): Promise<GCSStorageNode | undefined> {
     const userDirPath = this.getUserDirPath(user)
-    await this.removeFiles(userDirPath, filePaths)
+    return await this.removeFile(userDirPath, filePath)
   }
 
-  async moveUserDir(user: StorageUser, fromDirPath: string, toDirPath: string): Promise<void> {
+  async moveUserDir(
+    user: StorageUser,
+    fromDirPath: string,
+    toDirPath: string,
+    options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
-    await this.moveDir(userDirPath, fromDirPath, toDirPath)
+    return await this.moveDir(userDirPath, fromDirPath, toDirPath, options)
   }
 
-  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<void> {
+  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
-    await this.moveFile(userDirPath, fromFilePath, toDirPath)
+    return await this.moveFile(userDirPath, fromFilePath, toDirPath)
   }
 
-  async renameUserDir(user: StorageUser, dirPath: string, newName: string): Promise<void> {
+  async renameUserDir(
+    user: StorageUser,
+    dirPath: string,
+    newName: string,
+    options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
-    await this.renameDir(userDirPath, dirPath, newName)
+    return await this.renameDir(userDirPath, dirPath, newName, options)
   }
 
-  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<void> {
+  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
-    await this.renameFile(userDirPath, filePath, newName)
+    return await this.renameFile(userDirPath, filePath, newName)
   }
 
   async setUserDirShareSettings(user: StorageUser, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {

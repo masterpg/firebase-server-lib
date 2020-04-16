@@ -22,11 +22,6 @@ const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isA
 
 const TEST_FILES_DIR = 'test-files'
 
-const EMPTY_SHARE_SETTINGS: StorageNodeShareSettings = {
-  isPublic: false,
-  uids: [],
-}
-
 //========================================================================
 //
 //  Test helpers
@@ -57,8 +52,8 @@ describe('StorageService', () => {
 
     storageService = testingModule.get<LibStorageService>(LibStorageServiceDI.symbol)
 
-    await storageService.removeDirs(null, [`${TEST_FILES_DIR}`])
-    await storageService.removeDirs(null, [`${storageService.getUserDirPath(STORAGE_TEST_USER)}`])
+    await storageService.removeDir(null, `${TEST_FILES_DIR}`)
+    await storageService.removeDir(null, `${storageService.getUserDirPath(STORAGE_TEST_USER)}`)
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(2000)
@@ -90,7 +85,7 @@ describe('StorageService', () => {
 
       if (userDirPath) {
         // ユーザーディレクトリを削除
-        await storageService.removeDirs(null, [userDirPath])
+        await storageService.removeDir(null, userDirPath)
         // カスタムクレイムのユーザーディレクトリ名をクリア
         await admin.auth().setCustomUserClaims(STORAGE_TEST_USER.uid, { myDirName: undefined })
       }

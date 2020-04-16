@@ -24,10 +24,10 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirDirDescendants",
-  "query": "query GetUserStorageDirDirDescendants($dirPath: String, $options: GetStorageOptionsInput) { userStorageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetUserStorageDirDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -39,10 +39,10 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDescendants",
-  "query": "query GetUserStorageDescendants($dirPath: String, $options: GetStorageOptionsInput) { userStorageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetUserStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -54,10 +54,10 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageDirChildren",
-  "query": "query GetUserStorageDirChildren($dirPath: String, $options: GetStorageOptionsInput) { userStorageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetUserStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -69,10 +69,10 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "GetUserStorageChildren",
-  "query": "query GetUserStorageChildren($dirPath: String, $options: GetStorageOptionsInput) { userStorageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetUserStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -83,8 +83,8 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
-  "operationName": "GetUserStorageHierarchicalNode",
-  "query": "query GetUserStorageHierarchicalNode($nodePath: String!) { userStorageHierarchicalNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "operationName": "GetUserStorageHierarchicalNodes",
+  "query": "query GetUserStorageHierarchicalNodes($nodePath: String!) { userStorageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "nodePath": "d1/d11/d111"
   }
@@ -111,10 +111,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
-  "operationName": "HandleUploadedUserFiles",
-  "query": "mutation HandleUploadedUserFiles($filePaths: [String!]!) { handleUploadedUserFiles(filePaths: $filePaths) }",
+  "operationName": "HandleUploadedUserFile",
+  "query": "mutation HandleUploadedUserFile($filePath: String!) { handleUploadedUserFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
-    "filePaths": ["d1/fileA.txt"]
+    "filePath": "d1/fileA.txt"
   }
 }
 
@@ -144,10 +144,11 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
-  "operationName": "RemoveUserStorageDirs",
-  "query": "mutation RemoveUserStorageDirs($dirPaths: [String!]!) { removeUserStorageDirs(dirPaths: $dirPaths) }",
+  "operationName": "RemoveUserStorageDir",
+  "query": "mutation RemoveUserStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) { removeUserStorageDir(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
-    "dirPaths": ["d1"]
+    "dirPath": "d1",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -158,12 +159,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
-  "operationName": "RemoveUserStorageFiles",
-  "query": "mutation RemoveUserStorageFiles($filePaths: [String!]!) { removeUserStorageFiles(filePaths: $filePaths) }",
+  "operationName": "RemoveUserStorageFile",
+  "query": "mutation RemoveUserStorageFile($filePath: String!) { removeUserStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
-    "filePaths": [
-      "d1/d11/fileA.txt"
-    ]
+    "filePath": "d1/d11/fileA.txt"
   }
 }
 
@@ -175,10 +174,11 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "MoveUserStorageDir",
-  "query": "mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!) { moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) }",
+  "query": "mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) { moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "fromDirPath": "d1/d11",
-    "toDirPath": "d1/d1X"
+    "toDirPath": "d1/d1X",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -190,7 +190,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "MoveUserStorageFile",
-  "query": "mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) { moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) }",
+  "query": "mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) { moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "fromFilePath": "d1/fileA.txt",
     "toFilePath": "d1/d11/fileA.txt"
@@ -205,10 +205,11 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RenameUserStorageDir",
-  "query": "mutation RenameUserStorageDir($dirPath: String!, $newName: String!) { renameUserStorageDir(dirPath: $dirPath, newName: $newName) }",
+  "query": "mutation RenameUserStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) { renameUserStorageDir(dirPath: $dirPath, newName: $newName, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "d1/d11",
-    "newName": "d1X"
+    "newName": "d1X",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -220,7 +221,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 {
   "operationName": "RenameUserStorageFile",
-  "query": "mutation RenameUserStorageFile($filePath: String!, $newName: String!) { renameUserStorageFile(filePath: $filePath, newName: $newName) }",
+  "query": "mutation RenameUserStorageFile($filePath: String!, $newName: String!) { renameUserStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "filePath": "d1/fileA.txt",
     "newName": "fileB.txt"
@@ -298,10 +299,10 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "GetStorageDirDescendants",
-  "query": "query GetStorageDirDescendants($dirPath: String, $options: GetStorageOptionsInput) { storageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -313,10 +314,10 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($dirPath: String, $options: GetStorageOptionsInput) { storageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -328,10 +329,10 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "GetStorageDirChildren",
-  "query": "query GetStorageDirChildren($dirPath: String, $options: GetStorageOptionsInput) { storageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -343,10 +344,10 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($dirPath: String, $options: GetStorageOptionsInput) { storageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
+  "query": "query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1",
-    "options": { "maxResults": 3 }
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -357,8 +358,8 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "GetStorageHierarchicalNode",
-  "query": "query GetStorageHierarchicalNode($nodePath: String!) { storageHierarchicalNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
+  "operationName": "GetStorageHierarchicalNodes",
+  "query": "query GetStorageHierarchicalNodes($nodePath: String!) { storageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "nodePath": "test-files/d1/d11/d111"
   }
@@ -385,10 +386,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "HandleUploadedFiles",
-  "query": "mutation HandleUploadedFiles($filePaths: [String!]!) { handleUploadedFiles(filePaths: $filePaths) }",
+  "operationName": "HandleUploadedFile",
+  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
-    "filePaths": ["test-files/d1/fileA.txt"]
+    "filePath": "test-files/d1/fileA.txt"
   }
 }
 
@@ -418,10 +419,11 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "RemoveStorageDirs",
-  "query": "mutation RemoveStorageDirs($dirPaths: [String!]!) { removeStorageDirs(dirPaths: $dirPaths) }",
+  "operationName": "RemoveStorageDir",
+  "query": "mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) { removeStorageDir(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
-    "dirPaths": ["test-files/d1"]
+    "dirPath": "test-files/d1",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -432,12 +434,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
 {
-  "operationName": "RemoveStorageFiles",
-  "query": "mutation RemoveStorageFiles($filePaths: [String!]!) { removeStorageFiles(filePaths: $filePaths) }",
+  "operationName": "RemoveStorageFile",
+  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
-    "filePaths": [
-      "test-files/d1/fileA.txt"
-    ]
+    "filePath": "test-files/d1/fileA.txt"
   }
 }
 
@@ -449,10 +449,11 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) }",
+  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "fromDirPath": "test-files/d1/d11",
-    "toDirPath": "test-files/d1/d1X"
+    "toDirPath": "test-files/d1/d1X",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -464,7 +465,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "MoveStorageFile",
-  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) }",
+  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "fromFilePath": "test-files/d1/fileA.txt",
     "toFilePath": "test-files/d1/d11/fileA.txt"
@@ -479,10 +480,11 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "RenameStorageDir",
-  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!) { renameStorageDir(dirPath: $dirPath, newName: $newName) }",
+  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) { list { id nodeType name dir path contentType size share { isPublic uids } created updated } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1/d11",
-    "newName": "d1X"
+    "newName": "d1X",
+    "options": { "maxChunk": 3 }
   }
 }
 
@@ -494,7 +496,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 {
   "operationName": "RenameStorageFile",
-  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) }",
+  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic uids } created updated } }",
   "variables": {
     "filePath": "test-files/d1/fileA.txt",
     "newName": "fileB.txt"

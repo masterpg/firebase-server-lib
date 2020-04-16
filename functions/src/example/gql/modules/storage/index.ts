@@ -4,13 +4,13 @@ import {
   AuthRoleType,
   GQLContext,
   GQLCtx,
-  GetStorageOptionsInput,
-  GetStorageResult,
   IdToken,
   Roles,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettingsInput,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
   User,
 } from '../../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
@@ -36,8 +36,8 @@ export class StorageResolver {
   async userStorageDirDescendants(
     @User() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: GetStorageOptionsInput
-  ): Promise<GetStorageResult> {
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getUserDirDescendants(user, dirPath, options)
   }
 
@@ -46,8 +46,8 @@ export class StorageResolver {
   async userStorageDescendants(
     @User() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: GetStorageOptionsInput
-  ): Promise<GetStorageResult> {
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getUserDescendants(user, dirPath, options)
   }
 
@@ -56,8 +56,8 @@ export class StorageResolver {
   async userStorageDirChildren(
     @User() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: GetStorageOptionsInput
-  ): Promise<GetStorageResult> {
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getUserDirChildren(user, dirPath, options)
   }
 
@@ -66,14 +66,14 @@ export class StorageResolver {
   async userStorageChildren(
     @User() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: GetStorageOptionsInput
-  ): Promise<GetStorageResult> {
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getUserChildren(user, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageHierarchicalNode(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+  async userStorageHierarchicalNodes(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
     return this.storageService.getUserHierarchicalNode(user, nodePath)
   }
 
@@ -85,9 +85,8 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async handleUploadedUserFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<boolean> {
-    await this.storageService.handleUploadedUserFiles(user, filePaths)
-    return true
+  async handleUploadedUserFile(@User() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode> {
+    return await this.storageService.handleUploadedUserFile(user, filePath)
   }
 
   @Mutation()
@@ -98,23 +97,29 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<boolean> {
-    await this.storageService.removeUserDirs(user, dirPaths)
-    return true
+  async removeUserStorageDir(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.removeUserDir(user, dirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeUserStorageFiles(@User() user: IdToken, @Args('filePaths') filePaths: string[]): Promise<boolean> {
-    await this.storageService.removeUserFiles(user, filePaths)
-    return true
+  async removeUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
+    return await this.storageService.removeUserFile(user, filePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async moveUserStorageDir(@User() user: IdToken, @Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<boolean> {
-    await this.storageService.moveUserDir(user, fromDirPath, toDirPath)
-    return true
+  async moveUserStorageDir(
+    @User() user: IdToken,
+    @Args('fromDirPath') fromDirPath: string,
+    @Args('toDirPath') toDirPath: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.moveUserDir(user, fromDirPath, toDirPath, options)
   }
 
   @Mutation()
@@ -123,23 +128,25 @@ export class StorageResolver {
     @User() user: IdToken,
     @Args('fromFilePath') fromFilePath: string,
     @Args('toFilePath') toFilePath: string
-  ): Promise<boolean> {
-    await this.storageService.moveUserFile(user, fromFilePath, toFilePath)
-    return true
+  ): Promise<StorageNode> {
+    return await this.storageService.moveUserFile(user, fromFilePath, toFilePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameUserStorageDir(@User() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.renameUserDir(user, dirPath, newName)
-    return true
+  async renameUserStorageDir(
+    @User() user: IdToken,
+    @Args('dirPath') dirPath: string,
+    @Args('newName') newName: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.renameUserDir(user, dirPath, newName, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.renameUserFile(user, filePath, newName)
-    return true
+  async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
+    return await this.storageService.renameUserFile(user, filePath, newName)
   }
 
   @Mutation()
@@ -176,36 +183,48 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDirDescendants(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async storageDirDescendants(
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getDirDescendants(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDescendants(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async storageDescendants(
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getDescendants(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageDirChildren(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async storageDirChildren(
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getDirChildren(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageChildren(@Args('dirPath') dirPath?: string, @Args('options') options?: GetStorageOptionsInput): Promise<GetStorageResult> {
+  async storageChildren(
+    @Args('dirPath') dirPath?: string,
+    @Args('options') options?: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
     return this.storageService.getChildren(null, dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async storageHierarchicalNode(@Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalNode(null, nodePath)
+  async storageHierarchicalNodes(@Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalNodes(null, nodePath)
   }
 
   @Query()
@@ -218,9 +237,8 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async handleUploadedFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
-    await this.storageService.handleUploadedFiles(null, filePaths)
-    return true
+  async handleUploadedFile(@Args('filePath') filePath: string): Promise<StorageNode> {
+    return await this.storageService.handleUploadedFile(null, filePath)
   }
 
   @Mutation()
@@ -233,49 +251,54 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async removeStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<boolean> {
-    await this.storageService.removeDirs(null, dirPaths)
-    return true
+  async removeStorageDir(
+    @Args('dirPath') dirPath: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.removeDir(null, dirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async removeStorageFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
-    await this.storageService.removeFiles(null, filePaths)
-    return true
+  async removeStorageFile(@Args('filePath') filePath: string): Promise<StorageNode | undefined> {
+    return await this.storageService.removeFile(null, filePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageDir(@Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<boolean> {
-    await this.storageService.moveDir(null, fromDirPath, toDirPath)
-    return true
+  async moveStorageDir(
+    @Args('fromDirPath') fromDirPath: string,
+    @Args('toDirPath') toDirPath: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.moveDir(null, fromDirPath, toDirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<boolean> {
-    await this.storageService.moveFile(null, fromFilePath, toFilePath)
-    return true
+  async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
+    return await this.storageService.moveFile(null, fromFilePath, toFilePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.renameDir(null, dirPath, newName)
-    return true
+  async renameStorageDir(
+    @Args('dirPath') dirPath: string,
+    @Args('newName') newName: string,
+    @Args('options') options: StoragePaginationOptionsInput
+  ): Promise<StoragePaginationResult> {
+    return await this.storageService.renameDir(null, dirPath, newName, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.renameFile(null, filePath, newName)
-    return true
+  async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
+    return await this.storageService.renameFile(null, filePath, newName)
   }
 
   @Mutation()

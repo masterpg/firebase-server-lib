@@ -47,8 +47,6 @@ export {
 export {
   BaseFoundationService,
   GCSStorageNode,
-  GetStorageOptionsInput,
-  GetStorageResult,
   JSON,
   JSONObject,
   LibDevUtilsService,
@@ -61,6 +59,8 @@ export {
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
   StorageNodeType,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
   StorageUser,
   TestSignedUploadUrlInput,
   UploadDataItem,

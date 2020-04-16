@@ -5,12 +5,12 @@ enum StorageNodeType {
   Dir
 }
 
-input GetStorageOptionsInput {
-  maxResults: Int
+input StoragePaginationOptionsInput {
+  maxChunk: Int
   pageToken: String
 }
 
-type GetStorageResult {
+type StoragePaginationResult {
   list: [StorageNode!]!
   nextPageToken: String
 }
@@ -49,44 +49,44 @@ input SignedUploadUrlInput {
 }
 
 type Mutation {
-  handleUploadedUserFiles(filePaths: [String!]!): Boolean!
+  handleUploadedUserFile(filePath: String!): StorageNode!
   createUserStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeUserStorageDirs(dirPaths: [String!]!): Boolean!
-  removeUserStorageFiles(filePaths: [String!]!): Boolean!
-  moveUserStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
-  moveUserStorageFile(fromFilePath: String!, toFilePath: String!): Boolean!
-  renameUserStorageDir(dirPath: String!, newName: String!): Boolean!
-  renameUserStorageFile(filePath: String!, newName: String!): Boolean!
+  removeUserStorageDir(dirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  removeUserStorageFile(filePath: String!): StorageNode
+  moveUserStorageDir(fromDirPath: String!, toDirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  moveUserStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
+  renameUserStorageDir(dirPath: String!, newName: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  renameUserStorageFile(filePath: String!, newName: String!): StorageNode!
   setUserStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
   setUserStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 
-  handleUploadedFiles(filePaths: [String!]!): Boolean!
+  handleUploadedFile(filePath: String!): StorageNode!
   createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeStorageDirs(dirPaths: [String!]!): Boolean!
-  removeStorageFiles(filePaths: [String!]!): Boolean!
-  moveStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
-  moveStorageFile(fromFilePath: String!, toFilePath: String!): Boolean!
-  renameStorageDir(dirPath: String!, newName: String!): Boolean!
-  renameStorageFile(filePath: String!, newName: String!): Boolean!
+  removeStorageDir(dirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  removeStorageFile(filePath: String!): StorageNode
+  moveStorageDir(fromDirPath: String!, toDirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
+  renameStorageDir(dirPath: String!, newName: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  renameStorageFile(filePath: String!, newName: String!): StorageNode!
   setStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
 }
 
 type Query {
   userStorageNode(nodePath: String!): StorageNode
-  userStorageDirDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  userStorageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  userStorageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  userStorageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  userStorageHierarchicalNode(nodePath: String!): [StorageNode!]!
+  userStorageDirDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  userStorageDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  userStorageDirChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  userStorageChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  userStorageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   userStorageAncestorDirs(nodePath: String!): [StorageNode!]!
 
   storageNode(nodePath: String!): StorageNode
-  storageDirDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  storageDescendants(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  storageDirChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  storageChildren(dirPath: String, options: GetStorageOptionsInput): GetStorageResult!
-  storageHierarchicalNode(nodePath: String!): [StorageNode!]!
+  storageDirDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  storageDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  storageDirChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  storageChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
 }
