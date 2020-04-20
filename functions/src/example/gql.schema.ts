@@ -11,10 +11,15 @@ export enum StorageNodeType {
     Dir = "Dir"
 }
 
-export interface AddCartItemInput {
+export interface CartItemAddInput {
     productId: string;
     title: string;
     price: number;
+    quantity: number;
+}
+
+export interface CartItemUpdateInput {
+    id: string;
     quantity: number;
 }
 
@@ -43,16 +48,15 @@ export interface TestSignedUploadUrlInput {
     contentType?: string;
 }
 
-export interface UpdateCartItemInput {
+export interface DocumentData {
     id: string;
-    quantity: number;
 }
 
 export interface AppConfigResponse {
     usersDir: string;
 }
 
-export interface CartItem {
+export interface CartItem extends DocumentData {
     id: string;
     uid: string;
     productId: string;
@@ -61,7 +65,7 @@ export interface CartItem {
     quantity: number;
 }
 
-export interface EditCartItemResponse {
+export interface CartItemEditResponse {
     id: string;
     uid: string;
     productId: string;
@@ -77,9 +81,9 @@ export interface GetStorageDict {
 }
 
 export interface IMutation {
-    addCartItems(inputs: AddCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
-    updateCartItems(inputs: UpdateCartItemInput[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
-    removeCartItems(ids: string[]): EditCartItemResponse[] | Promise<EditCartItemResponse[]>;
+    addCartItems(inputs: CartItemAddInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
+    updateCartItems(inputs: CartItemUpdateInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
+    removeCartItems(ids: string[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
     checkoutCart(): boolean | Promise<boolean>;
     putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
@@ -106,7 +110,7 @@ export interface IMutation {
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
 }
 
-export interface Product {
+export interface Product extends DocumentData {
     id: string;
     title: string;
     price: number;

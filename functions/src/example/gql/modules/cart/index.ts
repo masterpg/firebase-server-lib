@@ -1,6 +1,6 @@
-import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, UpdateCartItemInput } from '../../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { AuthGuard, IdToken, User } from '../../../../lib'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI } from '../../../services'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
@@ -15,17 +15,17 @@ export class CartResolver {
   }
 
   @Mutation()
-  async updateCartItems(@User() user: IdToken, @Args('inputs') inputs: UpdateCartItemInput[]): Promise<EditCartItemResponse[]> {
+  async updateCartItems(@User() user: IdToken, @Args('inputs') inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
     return this.cartService.updateList(user, inputs)
   }
 
   @Mutation()
-  async addCartItems(@User() user: IdToken, @Args('inputs') inputs: AddCartItemInput[]): Promise<EditCartItemResponse[]> {
+  async addCartItems(@User() user: IdToken, @Args('inputs') inputs: CartItemAddInput[]): Promise<CartItemEditResponse[]> {
     return this.cartService.addList(user, inputs)
   }
 
   @Mutation()
-  async removeCartItems(@User() user: IdToken, @Args('ids') ids: string[]): Promise<EditCartItemResponse[]> {
+  async removeCartItems(@User() user: IdToken, @Args('ids') ids: string[]): Promise<CartItemEditResponse[]> {
     return this.cartService.removeList(user, ids)
   }
 

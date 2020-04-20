@@ -1,0 +1,3 @@
+interface DocumentData {
+  id: ID!
+}

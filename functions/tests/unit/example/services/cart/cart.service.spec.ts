@@ -1,4 +1,4 @@
-import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, Product, ProductServiceDI } from '../../../../../src/example/services'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
@@ -138,14 +138,14 @@ describe('CartService', () => {
       delete item.id
       delete item.uid
       return item
-    }) as AddCartItemInput[]
+    }) as CartItemAddInput[]
 
     it('ベーシックケース', async () => {
       await devUtilsService.putTestData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItems = cloneDeep(ADD_CART_ITEMS) as AddCartItemInput[]
+      const addItems = cloneDeep(ADD_CART_ITEMS) as CartItemAddInput[]
       const expectedItems = addItems.map(addItem => {
         const product = PRODUCTS.find(product => product.id === addItem.productId)!
         return {
@@ -155,7 +155,7 @@ describe('CartService', () => {
             stock: product.stock - addItem.quantity,
           },
         }
-      }) as EditCartItemResponse[]
+      }) as CartItemEditResponse[]
 
       const actual = await cartService.addList(GENERAL_USER, addItems)
 
@@ -180,7 +180,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: [] },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as AddCartItemInput
+      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
       addItem.productId = 'abcdefg'
 
       let actual!: InputValidationError
@@ -190,7 +190,7 @@ describe('CartService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified product was not found.')
+      expect(actual.detail.message).toBe('The specified product could not be found.')
     })
 
     it('既に存在するカートアイテムを追加しようとした場合', async () => {
@@ -198,7 +198,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as AddCartItemInput
+      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
 
       let actual!: InputValidationError
       try {
@@ -215,7 +215,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as AddCartItemInput
+      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
       addItem.quantity = 4 // 在庫数を上回る数を設定
 
       let actual!: InputValidationError
@@ -233,7 +233,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as AddCartItemInput
+      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
       addItem.quantity = -1 // マイナス値を設定
 
       let actual!: ValidationErrors
@@ -252,7 +252,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItems = cloneDeep(ADD_CART_ITEMS) as AddCartItemInput[]
+      const addItems = cloneDeep(ADD_CART_ITEMS) as CartItemAddInput[]
       addItems[1].productId = 'abcdefg' // 2件目に存在しない商品IDを指定
 
       let actual!: Error
@@ -324,7 +324,7 @@ describe('CartService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('You can not access the specified cart item.')
+      expect(actual.detail.message).toBe('You cannot access the specified cart item.')
     })
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
@@ -449,7 +449,7 @@ describe('CartService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('You can not access the specified cart item.')
+      expect(actual.detail.message).toBe('You cannot access the specified cart item.')
     })
 
     it('トランザクションが効いているか検証', async () => {

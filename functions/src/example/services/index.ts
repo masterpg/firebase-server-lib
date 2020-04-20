@@ -5,4 +5,4 @@ export * from './handlers'
 export * from './product'
 export * from './storage'
 
-export { AddCartItemInput, UpdateCartItemInput } from './cart'
+export { CartItemAddInput, CartItemUpdateInput } from './cart'

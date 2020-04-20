@@ -1,6 +1,6 @@
-import { AddCartItemInput, CartItem, CartServiceDI, EditCartItemResponse, UpdateCartItemInput } from '../../../services'
 import { AuthGuard, IdToken, User } from '../../../../lib'
 import { Body, Controller, Delete, Get, Inject, Module, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI } from '../../../services'
 
 @Controller('rest/cartItems')
 @UseGuards(AuthGuard)
@@ -19,17 +19,17 @@ export class CartController {
   }
 
   @Put()
-  async update(@User() user: IdToken, @Body() inputs: UpdateCartItemInput[]): Promise<EditCartItemResponse[]> {
+  async update(@User() user: IdToken, @Body() inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
     return await this.cartService.updateList(user, inputs)
   }
 
   @Post()
-  async addList(@User() user: IdToken, @Body() inputs: AddCartItemInput[]): Promise<EditCartItemResponse[]> {
+  async addList(@User() user: IdToken, @Body() inputs: CartItemAddInput[]): Promise<CartItemEditResponse[]> {
     return await this.cartService.addList(user, inputs)
   }
 
   @Delete()
-  async removeList(@User() user: IdToken, @Query('ids') ids: string[]): Promise<EditCartItemResponse[]> {
+  async removeList(@User() user: IdToken, @Query('ids') ids: string[]): Promise<CartItemEditResponse[]> {
     return await this.cartService.removeList(user, ids)
   }
 

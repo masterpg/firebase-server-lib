@@ -1,4 +1,4 @@
-type Product {
+type Product implements DocumentData {
   id: ID!
   title: String!
   price: Float!

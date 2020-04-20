@@ -32,7 +32,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 {
   "operationName": "AddCartItems",
-  "query": "mutation AddCartItems($inputs: [AddCartItemInput!]!) { addCartItems(inputs: $inputs) { id uid productId title price quantity product { id stock } } }",
+  "query": "mutation AddCartItems($inputs: [CartItemAddInput!]!) { addCartItems(inputs: $inputs) { id uid productId title price quantity product { id stock } } }",
   "variables": {
     "inputs": [
       {
@@ -59,7 +59,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 {
   "operationName": "UpdateCartItems",
-  "query": "mutation UpdateCartItems($inputs: [UpdateCartItemInput!]!) { updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id stock } } }",
+  "query": "mutation UpdateCartItems($inputs: [CartItemUpdateInput!]!) { updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id stock } } }",
   "variables": {
     "inputs": [
       {

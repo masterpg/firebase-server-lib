@@ -1,9 +1,9 @@
 import * as path from 'path'
 import { Context, ContextFunction } from 'apollo-server-core'
+import { IResolverValidationOptions, IResolvers } from 'graphql-tools'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
 import { GQLContext } from '../nest'
 import GraphQLJSON from 'graphql-type-json'
-import { IResolvers } from 'graphql-tools'
 import { print } from 'graphql/language/printer'
 
 /**
@@ -26,6 +26,7 @@ export function getGqlModuleBaseOptions(
   context: Context | ContextFunction
   typeDefs: string
   resolvers: IResolvers | Array<IResolvers>
+  resolverValidationOptions?: IResolverValidationOptions
 } {
   return {
     context: async (ctx: any) => {
@@ -34,6 +35,14 @@ export function getGqlModuleBaseOptions(
     },
     typeDefs: getTypeDefs(scanPath),
     resolvers: { JSON: GraphQLJSON },
+    resolverValidationOptions: {
+      // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。
+      // この設定値について:
+      //   https://github.com/Urigo/graphql-tools/blob/master/docs/source/generate-schema.md
+      // リゾルバについて:
+      //   https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type
+      requireResolversForResolveType: false,
+    },
   }
 }
 

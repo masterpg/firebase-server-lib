@@ -9,7 +9,7 @@ import { Module } from '@nestjs/common'
 const merge = require('lodash/merge')
 
 const gqlOptions: GqlModuleOptions = {
-  ...getGqlModuleBaseOptions('dist/example/gql/modules'),
+  ...getGqlModuleBaseOptions('dist/example/gql'),
   path: '/gql',
 }
 

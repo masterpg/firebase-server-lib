@@ -1,4 +1,4 @@
-type CartItem {
+type CartItem implements DocumentData {
   id: ID!
   uid: ID!
   productId: ID!
@@ -7,19 +7,19 @@ type CartItem {
   quantity: Int!
 }
 
-input AddCartItemInput {
+input CartItemAddInput {
   productId: ID!
   title: String!
   price: Float!
   quantity: Int!
 }
 
-input UpdateCartItemInput {
+input CartItemUpdateInput {
   id: ID!
   quantity: Int!
 }
 
-type EditCartItemResponse {
+type CartItemEditResponse {
   id: ID!
   uid: ID!
   productId: ID!
@@ -30,9 +30,9 @@ type EditCartItemResponse {
 }
 
 type Mutation {
-  addCartItems(inputs: [AddCartItemInput!]!): [EditCartItemResponse!]!
-  updateCartItems(inputs: [UpdateCartItemInput!]!): [EditCartItemResponse!]!
-  removeCartItems(ids: [ID!]!): [EditCartItemResponse!]!
+  addCartItems(inputs: [CartItemAddInput!]!): [CartItemEditResponse!]!
+  updateCartItems(inputs: [CartItemUpdateInput!]!): [CartItemEditResponse!]!
+  removeCartItems(ids: [ID!]!): [CartItemEditResponse!]!
   checkoutCart: Boolean!
 }
 
