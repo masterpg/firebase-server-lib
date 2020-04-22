@@ -2,8 +2,8 @@ import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Produc
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
+import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/initializer'
-const cloneDeep = require('lodash/cloneDeep')
 
 jest.setTimeout(25000)
 initApp()
@@ -134,7 +134,7 @@ describe('CartService', () => {
   })
 
   describe('addList', () => {
-    const ADD_CART_ITEMS = cloneDeep(CART_ITEMS).map((item: CartItem) => {
+    const ADD_CART_ITEMS = cloneDeep(CART_ITEMS).map(item => {
       delete item.id
       delete item.uid
       return item
@@ -145,7 +145,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItems = cloneDeep(ADD_CART_ITEMS) as CartItemAddInput[]
+      const addItems = cloneDeep(ADD_CART_ITEMS)
       const expectedItems = addItems.map(addItem => {
         const product = PRODUCTS.find(product => product.id === addItem.productId)!
         return {
@@ -180,7 +180,7 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: [] },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
+      const addItem = cloneDeep(ADD_CART_ITEMS[0])
       addItem.productId = 'abcdefg'
 
       let actual!: InputValidationError

@@ -3,8 +3,8 @@ import * as shortid from 'shortid'
 import { StorageNodeShareSettings, StorageNodeType } from '../../../src/lib/services/storage'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { StorageNode } from '../../../src/example/gql.schema'
-const cloneDeep = require('lodash/cloneDeep')
-const dayjs = require('dayjs')
+import cloneDeep = require('lodash/cloneDeep')
+import dayjs = require('dayjs')
 
 const EMPTY_SHARE_SETTINGS: StorageNodeShareSettings = {
   isPublic: undefined,

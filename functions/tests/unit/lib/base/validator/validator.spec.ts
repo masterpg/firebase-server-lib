@@ -1,6 +1,6 @@
 import { IsInt, IsNotEmpty, IsPositive } from 'class-validator'
 import { ValidationErrors, validate } from '../../../../../src/lib'
-const has = require('lodash/has')
+import { has } from 'lodash'
 
 export class CreateProductInput {
   @IsNotEmpty()

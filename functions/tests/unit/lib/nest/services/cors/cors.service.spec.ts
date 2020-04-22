@@ -3,8 +3,8 @@ import { MockCORSBaseAppModule } from '../../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
-import { initLibTestApp } from '../../../../../helpers/lib'
-const request = require('supertest')
+import { initLibTestApp } from '../../../../../helpers/lib/init'
+import request = require('supertest')
 
 jest.setTimeout(25000)
 initLibTestApp()

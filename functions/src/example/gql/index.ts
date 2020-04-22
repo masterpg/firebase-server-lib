@@ -7,7 +7,7 @@ import { GQLProductModule } from './product'
 import { GQLStorageModule } from './storage'
 import { Module } from '@nestjs/common'
 import { config } from '../../config'
-const merge = require('lodash/merge')
+import { merge } from 'lodash'
 
 const gqlOptions: GqlModuleOptions = {
   ...getGqlModuleBaseOptions(config.gql.scanPaths),

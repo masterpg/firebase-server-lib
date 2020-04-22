@@ -1,7 +1,7 @@
 import { CustomScalar, Scalar } from '@nestjs/graphql'
 import { Dayjs } from 'dayjs'
 import { Kind } from 'graphql'
-const dayjs = require('dayjs')
+import dayjs = require('dayjs')
 
 @Scalar('DateTime')
 export class DateTimeScalar implements CustomScalar<string, Dayjs | null> {

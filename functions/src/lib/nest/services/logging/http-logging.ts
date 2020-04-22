@@ -9,10 +9,10 @@ import { LogEntry } from '@google-cloud/logging/build/src/entry'
 import { LoggingLatencyTimer } from './base'
 import { config } from '../../../../config'
 import { google } from '@google-cloud/logging/build/protos/protos'
+import { merge } from 'lodash'
 import { removeBothEndsSlash } from 'web-base-lib'
 import IHttpRequest = google.logging.type.IHttpRequest
 import IMonitoredResource = google.api.IMonitoredResource
-const merge = require('lodash/merge')
 
 //========================================================================
 //

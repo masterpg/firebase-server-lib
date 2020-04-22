@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { MockBaseAppModule } from '../../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
-import { initLibTestApp } from '../../../../../helpers/lib'
-const request = require('supertest')
+import { initLibTestApp } from '../../../../../helpers/lib/init'
+import request = require('supertest')
 
 jest.setTimeout(25000)
 initLibTestApp()

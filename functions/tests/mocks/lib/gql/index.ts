@@ -3,7 +3,7 @@ import { AuthGuard, AuthRoleType, DateTimeScalar, IdToken, Roles, User, getGqlMo
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { Module, UseGuards } from '@nestjs/common'
 import { config } from '../../../../src/config'
-const merge = require('lodash/merge')
+import merge = require('lodash/merge')
 
 @Resolver()
 export class UnitTestResolver {

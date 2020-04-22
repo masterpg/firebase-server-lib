@@ -26,7 +26,7 @@ import { arrayToDict, removeBothEndsSlash, removeEndSlash, removeStartSlash, spl
 import { AuthServiceDI } from '../../nest'
 import { Inject } from '@nestjs/common'
 import { InputValidationError } from '../../base'
-const dayjs = require('dayjs')
+import dayjs = require('dayjs')
 
 const MAX_CHUNK = 50
 const ID_CHECK_COUNT = 5

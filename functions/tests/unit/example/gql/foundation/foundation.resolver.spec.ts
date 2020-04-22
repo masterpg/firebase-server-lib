@@ -1,4 +1,4 @@
-import { getGQLErrorStatus, requestGQL } from '../../../../helpers/example'
+import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { AppModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/initializer'

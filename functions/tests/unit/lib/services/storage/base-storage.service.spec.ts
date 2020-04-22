@@ -17,14 +17,14 @@ import {
 } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { arrayToDict, removeBothEndsSlash } from 'web-base-lib'
-import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common'
+import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
 import { MockBaseAppModule } from '../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
 import { config } from '../../../../../src/config'
-import { initLibTestApp } from '../../../../helpers/lib'
-const dayjs = require('dayjs')
-const request = require('supertest')
+import { initLibTestApp } from '../../../../helpers/lib/init'
+import dayjs = require('dayjs')
+import request = require('supertest')
 
 jest.setTimeout(900000)
 initLibTestApp()

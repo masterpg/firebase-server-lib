@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { getGQLErrorStatus, requestGQL } from '../../../../helpers/example'
+import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { AppModule } from '../../../../../src/example/app.module'
 import { initApp } from '../../../../../src/example/initializer'
 

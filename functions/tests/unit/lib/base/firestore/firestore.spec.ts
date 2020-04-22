@@ -6,7 +6,7 @@ import { MockBaseAppModule } from '../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Transaction } from '@google-cloud/firestore'
 import { arrayToDict } from 'web-base-lib'
-import { initLibTestApp } from '../../../../helpers/lib'
+import { initLibTestApp } from '../../../../helpers/lib/init'
 
 jest.setTimeout(25000)
 initLibTestApp()

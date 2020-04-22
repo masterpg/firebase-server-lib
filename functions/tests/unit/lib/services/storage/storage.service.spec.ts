@@ -3,9 +3,9 @@ import { LibStorageService, LibStorageServiceDI, StorageUser, UploadDataItem } f
 import { Test, TestingModule } from '@nestjs/testing'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Response } from 'supertest'
+import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/initializer'
-const request = require('supertest')
-const cloneDeep = require('lodash/cloneDeep')
+import request = require('supertest')
 
 jest.setTimeout(25000)
 initApp()
