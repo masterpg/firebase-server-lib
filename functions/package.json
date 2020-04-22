@@ -6,7 +6,7 @@
   },
   "main": "dist/example/index.js",
   "scripts": {
-    "build:gql": "node ./tools/gql.setup.schema.js ./src/example ./dist/example",
+    "build:gql": "node ./tools/gql.setup.schema.js ./src ./src/example ./dist",
     "watch:gql": "npm run build:gql -- --watch",
     "build": "rm -rf dist && npm run build:gql && tsc --project ./tsconfig.build.json",
     "serve": "npm run build && (npm run watch:gql & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --port=5010)",

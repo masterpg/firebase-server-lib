@@ -12,10 +12,10 @@ import {
   StoragePaginationOptionsInput,
   StoragePaginationResult,
   User,
-} from '../../../../lib'
+} from '../../../lib'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Module } from '@nestjs/common'
-import { StorageServiceDI } from '../../../services'
+import { StorageServiceDI } from '../../services'
 
 @Resolver('StorageNode')
 export class StorageResolver {

@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { MockBaseAppModule } from '../../../../../mocks/lib'
 import { Module } from '@nestjs/common'
 import { Response } from 'supertest'
-import { config } from '../../../../../../src/config'
 import { initLibTestApp } from '../../../../../helpers/lib'
 const request = require('supertest')
 
@@ -52,23 +51,21 @@ describe('AuthService', () => {
 
   describe('REST', () => {
     it('認証ユーザーが権限を満たしている場合', async () => {
-      const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/rest/site/admin/config')
+          .get('/rest/unit/admin/settings')
           // 権限を満たすユーザーを設定
           .set(APP_ADMIN_USER_HEADER)
           .expect(200)
           .then((res: Response) => {
-            expect(res.body.data).toEqual({ uid: APP_ADMIN_USER.uid, apiKey: '162738495' })
+            expect(res.body.data).toEqual({ adminKey: 'Admin Key' })
           })
       )
     })
 
     it('サインインしていない場合', async () => {
-      const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/rest/site/admin/config')
+        .get('/rest/unit/admin/settings')
         .expect(401)
         .then((res: Response) => {
           expect(res.header['www-authenticate']).toEqual(`Bearer realm="token_required"`)
@@ -77,10 +74,9 @@ describe('AuthService', () => {
     })
 
     it('認証トークンが不正な場合', async () => {
-      const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/rest/site/admin/config')
+          .get('/rest/unit/admin/settings')
           // 不正な認証トークンを設定
           .set({ Authorization: `Bearer ABCDEFG` })
           .expect(401)
@@ -92,10 +88,9 @@ describe('AuthService', () => {
     })
 
     it('認証ユーザーのロール権限が足りない場合', async () => {
-      const requestOrigin = config.cors.whitelist[0]
       return (
         request(app.getHttpServer())
-          .get('/rest/site/admin/config')
+          .get('/rest/unit/admin/settings')
           // ロール権限が足りないユーザーを設定
           .set(GENERAL_USER_HEADER)
           .expect(403)
@@ -108,10 +103,10 @@ describe('AuthService', () => {
   })
 
   describe('GQL', () => {
-    const getSiteAdminConfigRequestData = {
+    const adminSettingsRequestData = {
       query: `
-        query GetSiteAdminConfig {
-          siteAdminConfig { uid apiKey }
+        query GetAdminSettings {
+          adminSettings { adminKey }
         }
       `,
     }
@@ -120,13 +115,13 @@ describe('AuthService', () => {
       return (
         request(app.getHttpServer())
           .post('/gql')
-          .send(getSiteAdminConfigRequestData)
+          .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 権限を満たすユーザーを設定
           .set(APP_ADMIN_USER_HEADER)
           .expect(200)
           .then((res: Response) => {
-            expect(res.body.data.siteAdminConfig).toEqual({ uid: APP_ADMIN_USER.uid, apiKey: '162738495' })
+            expect(res.body.data.adminSettings).toEqual({ adminKey: 'Admin Key' })
           })
       )
     })
@@ -134,7 +129,7 @@ describe('AuthService', () => {
     it('サインインしていない場合', async () => {
       return request(app.getHttpServer())
         .post('/gql')
-        .send(getSiteAdminConfigRequestData)
+        .send(adminSettingsRequestData)
         .set('Content-Type', 'application/json')
         .expect(200)
         .then((res: Response) => {
@@ -147,7 +142,7 @@ describe('AuthService', () => {
       return (
         request(app.getHttpServer())
           .post('/gql')
-          .send(getSiteAdminConfigRequestData)
+          .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 不正な認証トークンを設定
           .set({ Authorization: `Bearer ABCDEFG` })
@@ -163,7 +158,7 @@ describe('AuthService', () => {
       return (
         request(app.getHttpServer())
           .post('/gql')
-          .send(getSiteAdminConfigRequestData)
+          .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // ロール権限が足りないユーザーを設定
           .set(GENERAL_USER_HEADER)

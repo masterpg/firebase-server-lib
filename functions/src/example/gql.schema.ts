@@ -75,19 +75,7 @@ export interface CartItemEditResponse {
     product: Product;
 }
 
-export interface GetStorageDict {
-    dict: StorageNode[];
-    nextPageToken?: string;
-}
-
 export interface IMutation {
-    addCartItems(inputs: CartItemAddInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
-    updateCartItems(inputs: CartItemUpdateInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
-    removeCartItems(ids: string[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
-    checkoutCart(): boolean | Promise<boolean>;
-    putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
-    removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
-    removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
     handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
@@ -108,6 +96,13 @@ export interface IMutation {
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
+    removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
+    removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
+    addCartItems(inputs: CartItemAddInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
+    updateCartItems(inputs: CartItemUpdateInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
+    removeCartItems(ids: string[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
+    checkoutCart(): boolean | Promise<boolean>;
 }
 
 export interface Product extends DocumentData {
@@ -118,11 +113,8 @@ export interface Product extends DocumentData {
 }
 
 export interface IQuery {
-    cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
-    testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
-    products(ids?: string[]): Product[] | Promise<Product[]>;
     userStorageNode(nodePath: string): StorageNode | Promise<StorageNode>;
     userStorageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     userStorageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
@@ -138,6 +130,9 @@ export interface IQuery {
     storageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
+    testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
+    cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
+    products(ids?: string[]): Product[] | Promise<Product[]>;
 }
 
 export interface StorageNode {

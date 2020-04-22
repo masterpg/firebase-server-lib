@@ -1,4 +1,4 @@
-import { AppConfig, CORSConfig, FunctionsConfig, StorageConfig } from './base'
+import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
 
 export class ProdAppConfig implements AppConfig {
   readonly functions: FunctionsConfig = {
@@ -19,5 +19,9 @@ export class ProdAppConfig implements AppConfig {
   readonly storage: StorageConfig = {
     bucket: 'gs://vue-base-project-7295.appspot.com/',
     usersDir: 'users',
+  }
+
+  readonly gql: GQLConfig = {
+    scanPaths: ['dist/lib/services', 'dist/example/gql', 'dist/example/services'],
   }
 }

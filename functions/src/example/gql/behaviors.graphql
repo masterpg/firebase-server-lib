@@ -1,52 +1,22 @@
-scalar DateTime
+#========================================================================
+#
+#  foundation
+#
+#========================================================================
 
-enum StorageNodeType {
-  File
-  Dir
+type Query {
+  appConfig: AppConfigResponse!
 }
 
-input StoragePaginationOptionsInput {
-  maxChunk: Int
-  pageToken: String
+type Query {
+  customToken: String!
 }
 
-type StoragePaginationResult {
-  list: [StorageNode!]!
-  nextPageToken: String
-}
-
-type GetStorageDict {
-  dict: [StorageNode!]!
-  nextPageToken: String
-}
-
-type StorageNode {
-  id: String!
-  nodeType: StorageNodeType!
-  name: String!
-  dir: String!
-  path: String!
-  contentType: String!
-  size: Int!
-  share: StorageNodeShareSettings!
-  created: DateTime!
-  updated: DateTime!
-}
-
-type StorageNodeShareSettings {
-  isPublic: Boolean
-  uids: [String!]
-}
-
-input StorageNodeShareSettingsInput {
-  isPublic: Boolean
-  uids: [String!]
-}
-
-input SignedUploadUrlInput {
-  filePath: String!
-  contentType: String
-}
+#========================================================================
+#
+#  storage
+#
+#========================================================================
 
 type Mutation {
   handleUploadedUserFile(filePath: String!): StorageNode!
@@ -89,4 +59,47 @@ type Query {
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+}
+
+#========================================================================
+#
+#  dev
+#
+#========================================================================
+
+type Mutation {
+  putTestData(inputs: [PutTestDataInput!]!): Boolean!
+  removeTestStorageDir(dirPath: String!): Boolean!
+  removeTestStorageFiles(filePaths: [String!]!): Boolean!
+}
+
+type Query {
+  testSignedUploadUrls(inputs: [TestSignedUploadUrlInput!]!): [String!]!
+}
+
+#========================================================================
+#
+#  cart
+#
+#========================================================================
+
+type Mutation {
+  addCartItems(inputs: [CartItemAddInput!]!): [CartItemEditResponse!]!
+  updateCartItems(inputs: [CartItemUpdateInput!]!): [CartItemEditResponse!]!
+  removeCartItems(ids: [ID!]!): [CartItemEditResponse!]!
+  checkoutCart: Boolean!
+}
+
+type Query {
+  cartItems(ids: [ID!]): [CartItem!]!
+}
+
+#========================================================================
+#
+#  product
+#
+#========================================================================
+
+type Query {
+  products(ids: [ID!]): [Product!]!
 }

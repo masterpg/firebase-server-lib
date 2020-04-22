@@ -1,12 +1,12 @@
 import * as td from 'testdouble'
-import { StorageNode, StorageServiceDI } from '../../../../../../src/example/services'
-import { StorageNodeShareSettings, StorageNodeType, StoragePaginationResult } from '../../../../../../src/lib'
+import { StorageNode, StorageServiceDI } from '../../../../../src/example/services'
+import { StorageNodeShareSettings, StorageNodeType, StoragePaginationResult } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
-import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../../helpers/common'
-import { AppModule } from '../../../../../../src/example/app.module'
-import { StorageResolver } from '../../../../../../src/example/gql/modules/storage'
-import { initApp } from '../../../../../../src/example/initializer'
+import { getGQLErrorStatus, requestGQL } from '../../../../helpers/example'
+import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common'
+import { AppModule } from '../../../../../src/example/app.module'
+import { StorageResolver } from '../../../../../src/example/gql/storage'
+import { initApp } from '../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
 initApp()

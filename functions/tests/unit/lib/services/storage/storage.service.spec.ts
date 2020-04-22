@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { LibStorageService, LibStorageServiceDI, StorageNodeShareSettings, StorageUser, UploadDataItem } from '../../../../../src/lib'
+import { LibStorageService, LibStorageServiceDI, StorageUser, UploadDataItem } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AppBaseModule } from '../../../../../src/example/app.module'
 import { Response } from 'supertest'

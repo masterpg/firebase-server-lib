@@ -1,7 +1,7 @@
-import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/example'
-import { AppModule } from '../../../../../../src/example/app.module'
+import { getGQLErrorStatus, requestGQL } from '../../../../helpers/example'
+import { AppModule } from '../../../../../src/example/app.module'
 import { Test } from '@nestjs/testing'
-import { initApp } from '../../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/initializer'
 
 jest.setTimeout(25000)
 initApp()

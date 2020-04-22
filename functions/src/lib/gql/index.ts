@@ -9,19 +9,23 @@ import { print } from 'graphql/language/printer'
 /**
  * 指定されたパス配下にある`.graphql`ファイルを走査し、
  * 見つかったファイルをマージしてGraphQL定義文字列を取得します。
- * @param scanPath `.graphql`ファイルが配置されているパス
+ * @param scanPaths `.graphql`ファイルが配置されているディレクトリ
  */
-export function getTypeDefs(scanPath: string): string {
-  const targetPath = path.resolve(process.cwd(), scanPath)
-  return print(mergeTypeDefs(loadSchemaFiles(targetPath)))
+export function getTypeDefs(scanPaths: string[]): string {
+  const typeDefs: string[] = []
+  for (const scanPath of scanPaths) {
+    const targetPath = path.resolve(process.cwd(), scanPath)
+    typeDefs.push(...loadSchemaFiles(targetPath))
+  }
+  return print(mergeTypeDefs(typeDefs))
 }
 
 /**
  * `@nestjs/graphql`の`GqlModuleOptions`のベースを取得します。
- * @param scanPath `.graphql`ファイルが配置されているパス
+ * @param scanPaths `.graphql`ファイルが配置されているディレクトリ
  */
 export function getGqlModuleBaseOptions(
-  scanPath: string
+  scanPaths: string[]
 ): {
   context: Context | ContextFunction
   typeDefs: string
@@ -33,7 +37,7 @@ export function getGqlModuleBaseOptions(
       const { req, res } = ctx
       return { req, res } as GQLContext
     },
-    typeDefs: getTypeDefs(scanPath),
+    typeDefs: getTypeDefs(scanPaths),
     resolvers: { JSON: GraphQLJSON },
     resolverValidationOptions: {
       // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。

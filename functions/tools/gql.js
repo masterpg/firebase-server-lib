@@ -15,18 +15,18 @@ function removeExtraPart(path) {
  * TypeScript用のGraphQL定義ファイルを生成します。
  * 生成されるファイル名は`gql.schema.ts`になります。
  *
- * @param srcPath `.graphql`ファイルが配置されているパスを指定。
- * @param outPath 生成されるTypeScript用のGraphQL定義ファイルを配置するパス
+ * @param scanDir `.graphql`ファイルが配置されているディレクトリを指定。
+ * @param outDir TypeScript用GraphQL定義ファイルの出力ディレクトリを指定。
  * @param watch
  */
-function generateSchema(srcPath, outPath, watch) {
-  srcPath = removeExtraPart(srcPath)
-  outPath = removeExtraPart(outPath)
+function generateSchema(scanDir, outDir, watch) {
+  scanDir = removeExtraPart(scanDir)
+  outDir = removeExtraPart(outDir)
 
   const definitionsFactory = new GraphQLDefinitionsFactory()
   definitionsFactory.generate({
-    typePaths: [_path.resolve(process.cwd(), `${srcPath}/**/*.graphql`)],
-    path: _path.resolve(process.cwd(), `${outPath}/gql.schema.ts`),
+    typePaths: [_path.resolve(process.cwd(), `${scanDir}/**/*.graphql`)],
+    path: _path.resolve(process.cwd(), `${outDir}/gql.schema.ts`),
     outputAs: 'interface',
     watch: !!watch,
   })
@@ -36,39 +36,40 @@ module.exports.generateSchema = generateSchema
 /**
  * GraphQLの定義ファイルの処理を行います。
  * このメソッドでは次の処理が行われます。
- * + `srcPath`配下にある`.graphql`ファイルを`outPath`へコピー。
- * + `srcPath`配下にある`.graphql`ファイルをもとに、TypeScript用のGraphQL定義ファイルとなる`gql.schema.ts`を`srcPath`直下に生成。
+ * + `scanDir`配下にある`.graphql`ファイルを`copyDir`へコピー。
+ * + `scanDir`配下にある`.graphql`ファイルをもとに、TypeScript用GraphQL定義ファイル`gql.schema.ts`を`outDir`に生成。
  *
- * @param srcPath .graphqlファイルが配置されているパスを指定。またこのパス直下にTypeScript用のGraphQL定義ファイルとなる`gql.schema.ts`が生成される。
- * @param outPath .graphqlファイルのコピー先パスを指定。
+ * @param scanDir .graphqlファイルが配置されているディレクトリを指定。
+ * @param outDir TypeScript用GraphQL定義ファイルの出力ディレクトリを指定。
+ * @param copyDir .graphqlファイルのコピー先ディレクトリを指定。
  * @param watch
  */
-function setupSchema(srcPath, outPath, watch) {
-  srcPath = removeExtraPart(srcPath)
-  outPath = removeExtraPart(outPath)
+function setupSchema(scanDir, outDir, copyDir, watch) {
+  scanDir = removeExtraPart(scanDir)
+  copyDir = removeExtraPart(copyDir)
 
-  // `src`配下の`*.graphql`ファイルの一覧を取得
-  const graphqlFiles = glob.sync(_path.resolve(process.cwd(), `${srcPath}/**/*.graphql`))
-  for (const srcFilePath of graphqlFiles) {
-    // `src`ベースのパスを`out`ベースへ置き換え
-    // 例: src/gql/modules/product/product.graphql → lib/gql/modules/product/product.graphql
-    const srcReg = new RegExp(`/?(${srcPath})/`)
-    const outFilePath = srcFilePath.replace(srcReg, (match, $1, offset) => {
-      return match.replace($1, outPath)
+  // `scanDir`配下の`*.graphql`ファイルの一覧を取得
+  const graphqlFiles = glob.sync(_path.resolve(process.cwd(), `${scanDir}/**/*.graphql`))
+  for (const graphqlFile of graphqlFiles) {
+    // `scanDir`ベースのパスを`copyDir`ベースへ置き換え
+    // 例: src/gql/modules/product/product.graphql → dist/gql/modules/product/product.graphql
+    const srcReg = new RegExp(`/?(${scanDir})/`)
+    const copyGraphqlFile = graphqlFile.replace(srcReg, (match, $1, offset) => {
+      return match.replace($1, copyDir)
     })
-    // `src`から`out`へ`.graphql`ファイルをコピー
-    fs.mkdirSync(_path.dirname(outFilePath), { recursive: true })
-    fs.copyFileSync(srcFilePath, outFilePath)
+    // `scanDir`から`copyDir`へ`.graphql`ファイルをコピー
+    fs.mkdirSync(_path.dirname(copyGraphqlFile), { recursive: true })
+    fs.copyFileSync(graphqlFile, copyGraphqlFile)
     if (!watch) continue
 
-    // `src`配下の`.graphql`ファイルに変更があった場合、
-    // `src`から`lib`へ`.graphql`ファイルをコピー
-    chokidar.watch(srcFilePath, { persistent: true }).on('change', path => {
-      fs.copyFileSync(srcFilePath, outFilePath)
+    // `scanDir`配下の`.graphql`ファイルに変更があった場合、
+    // `scanDir`から`copyDir`へ`.graphql`ファイルをコピー
+    chokidar.watch(graphqlFile, { persistent: true }).on('change', path => {
+      fs.copyFileSync(graphqlFile, copyGraphqlFile)
     })
   }
 
   // GraphQLの定義からTypeScriptの型定義を作成
-  generateSchema(srcPath, srcPath, watch)
+  generateSchema(scanDir, outDir, watch)
 }
 module.exports.setupSchema = setupSchema

@@ -6,26 +6,20 @@
 
 /* tslint:disable */
 /* eslint-disable */
-export interface Product {
-    id: string;
-    name: string;
+export interface AdminSettings {
+    adminKey: string;
+}
+
+export interface PartnerSettings {
+    partnerKey: string;
+}
+
+export interface PublicSettings {
+    publicKey: string;
 }
 
 export interface IQuery {
-    products(): Product[] | Promise<Product[]>;
-    sitePublicConfig(): SitePublicConfig | Promise<SitePublicConfig>;
-    siteAdminConfig(): SiteAdminConfig | Promise<SiteAdminConfig>;
+    publicSettings(): PublicSettings | Promise<PublicSettings>;
+    partnerSettings(): PartnerSettings | Promise<PartnerSettings>;
+    adminSettings(): AdminSettings | Promise<AdminSettings>;
 }
-
-export interface SiteAdminConfig {
-    uid: string;
-    apiKey: string;
-}
-
-export interface SitePublicConfig {
-    siteName: string;
-}
-
-export type DateTime = any;
-export type JSON = any;
-export type JSONObject = any;

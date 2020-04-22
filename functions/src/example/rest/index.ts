@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
-import { RESTCartModule } from './modules/cart'
-import { RESTProductModule } from './modules/product'
-import { RESTStorageModule } from './modules/storage'
+import { RESTCartModule } from './cart'
+import { RESTProductModule } from './product'
+import { RESTStorageModule } from './storage'
 
 @Module({
   imports: [RESTStorageModule, RESTProductModule, RESTCartModule],

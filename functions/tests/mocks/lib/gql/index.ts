@@ -1,36 +1,35 @@
+import { AdminSettings, PartnerSettings, PublicSettings } from '../services/types'
 import { AuthGuard, AuthRoleType, DateTimeScalar, IdToken, Roles, User, getGqlModuleBaseOptions } from '../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { Module, UseGuards } from '@nestjs/common'
-import { Product, SiteAdminConfig, SitePublicConfig } from '../services/types'
+import { config } from '../../../../src/config'
 const merge = require('lodash/merge')
 
-@Resolver('Product')
-export class MockProductResolver {
-  @Query('products')
-  async products(): Promise<Product[]> {
-    return [{ id: 'product1', name: 'Product1' }]
-  }
-}
-
 @Resolver()
-export class MockSiteResolver {
-  @Query('sitePublicConfig')
-  async getPublicConfig(): Promise<SitePublicConfig> {
-    return { siteName: 'TestSite' }
+export class UnitTestResolver {
+  @Query('publicSettings')
+  async getPublicSettings(): Promise<PublicSettings> {
+    return { publicKey: 'Public Key' }
   }
 
-  @Query('siteAdminConfig')
+  @Query('partnerSettings')
+  async getPartnerSettings(): Promise<PartnerSettings> {
+    return { partnerKey: 'Partner Key' }
+  }
+
+  @Query('adminSettings')
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async getAdminConfig(@User() user: IdToken): Promise<SiteAdminConfig> {
-    return { uid: user.uid, apiKey: '162738495' }
+  async getAdminSettings(@User() user: IdToken): Promise<AdminSettings> {
+    // console.log(`User '${user.uid}' has accessed the GraphQL's 'adminSettings'.`)
+    return { adminKey: 'Admin Key' }
   }
 }
 
-const baseOptions = getGqlModuleBaseOptions('tests/mocks/lib/gql')
+const baseOptions = getGqlModuleBaseOptions(config.gql.scanPaths)
 
 @Module({
-  providers: [DateTimeScalar, MockProductResolver, MockSiteResolver],
+  providers: [DateTimeScalar, UnitTestResolver],
   imports: [
     GraphQLModule.forRoot(
       merge(baseOptions, {

@@ -1,31 +1,27 @@
 import { AuthGuard, AuthRoleType, IdToken, LibStorageServiceDI, Roles, User } from '../../../../src/lib'
 import { Controller, Get, Inject, Module, Param, Req, Res, UseGuards, UseInterceptors } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { Product } from '../services/types'
 import { TransformInterceptor } from '../../../../src/lib/nest'
 
-@Controller('rest/products')
+@Controller('rest/unit')
 @UseInterceptors(TransformInterceptor)
-export class MockProductController {
-  @Get()
-  async findList(): Promise<Product[]> {
-    return [{ id: 'product1', name: 'Product1' }]
-  }
-}
-
-@Controller('rest/site')
-@UseInterceptors(TransformInterceptor)
-export class MockSiteController {
-  @Get('public/config')
-  async getPublicConfig(): Promise<{ siteName: string }> {
-    return { siteName: 'TestSite' }
+export class UnitTestController {
+  @Get('public/settings')
+  async getPublicSettings(): Promise<{ publicKey: string }> {
+    return { publicKey: 'Public Key' }
   }
 
-  @Get('admin/config')
+  @Get('partner/settings')
+  async getPartnerSettings(): Promise<{ partnerKey: string }> {
+    return { partnerKey: 'Partner Key' }
+  }
+
+  @Get('admin/settings')
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async getAdminConfig(@User() user: IdToken): Promise<{ uid: string; apiKey: string }> {
-    return { uid: user.uid, apiKey: '162738495' }
+  async getAdminSettings(@User() user: IdToken): Promise<{ adminKey: string }> {
+    // console.log(`User '${user.uid}' has accessed the REST's 'admin/settings'.`)
+    return { adminKey: 'Admin Key' }
   }
 }
 
@@ -41,7 +37,7 @@ export class MockStorageController {
 }
 
 @Module({
-  controllers: [MockProductController, MockSiteController, MockStorageController],
+  controllers: [UnitTestController, MockStorageController],
   providers: [LibStorageServiceDI.provider],
 })
 export class MockRESTContainerModule {}

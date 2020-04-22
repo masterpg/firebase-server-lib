@@ -2,7 +2,7 @@ import { SUPPORTED_REGIONS } from 'firebase-functions'
 
 //========================================================================
 //
-//  LibConfig
+//  Configs
 //
 //========================================================================
 
@@ -39,6 +39,16 @@ export interface StorageConfig {
   readonly usersDir: string
 }
 
+export interface GQLConfig {
+  readonly scanPaths: string[]
+}
+
+//========================================================================
+//
+//  LibConfig
+//
+//========================================================================
+
 export interface LibConfig {
   readonly functions: FunctionsConfig
   readonly cors: CORSConfig
@@ -51,4 +61,6 @@ export interface LibConfig {
 //
 //========================================================================
 
-export interface AppConfig extends LibConfig {}
+export interface AppConfig extends LibConfig {
+  readonly gql: GQLConfig
+}

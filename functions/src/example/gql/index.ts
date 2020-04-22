@@ -1,15 +1,16 @@
 import { DateTimeScalar, getGqlModuleBaseOptions } from '../../lib'
 import { GqlModuleOptions, GraphQLModule } from '@nestjs/graphql'
-import { GQLCartModule } from './modules/cart'
-import { GQLDevUtilsModule } from './modules/dev'
-import { GQLFoundationModule } from './modules/foundation'
-import { GQLProductModule } from './modules/product'
-import { GQLStorageModule } from './modules/storage'
+import { GQLCartModule } from './cart'
+import { GQLDevUtilsModule } from './dev'
+import { GQLFoundationModule } from './foundation'
+import { GQLProductModule } from './product'
+import { GQLStorageModule } from './storage'
 import { Module } from '@nestjs/common'
+import { config } from '../../config'
 const merge = require('lodash/merge')
 
 const gqlOptions: GqlModuleOptions = {
-  ...getGqlModuleBaseOptions('dist/example/gql'),
+  ...getGqlModuleBaseOptions(config.gql.scanPaths),
   path: '/gql',
 }
 

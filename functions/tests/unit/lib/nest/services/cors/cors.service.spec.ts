@@ -42,31 +42,31 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/rest/products')
+        .get('/rest/unit/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
         .then((res: Response) => {
-          expect(res.body.data).toEqual([{ id: 'product1', name: 'Product1' }])
+          expect(res.body.data).toEqual({ publicKey: 'Public Key' })
         })
     })
 
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/rest/products')
+        .get('/rest/unit/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(200)
         .then((res: Response) => {
-          expect(res.body.data).toEqual([{ id: 'product1', name: 'Product1' }])
+          expect(res.body.data).toEqual({ publicKey: 'Public Key' })
         })
     })
 
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/rest/products')
+        .options('/rest/unit/public/settings')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -78,7 +78,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/rest/products')
+        .options('/rest/unit/public/settings')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -87,44 +87,36 @@ describe('CORSService', () => {
         .expect(204)
     })
 
-    it('除外リストが設定されている場合 - リクエストオリジンあり', async () => {
-      // 除外リストの設定は`functions/functions.env.test.sh`を参照
+    it('CORSの除外リストに設定されているURLにアクセスした場合 - リクエストオリジンあり', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/rest/site/public/config')
+        .get('/rest/unit/partner/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
         .expect(200)
         .then((res: Response) => {
-          expect(res.body.data).toEqual({ siteName: 'TestSite' })
+          // 正常にレスポンスを受け取れることを検証
+          expect(res.body.data).toEqual({ partnerKey: 'Partner Key' })
         })
     })
 
-    it('除外リストが設定されている場合 - リクエストオリジンなし', async () => {
-      // 除外リストの設定は`functions/functions.env.test.sh`を参照
+    it('CORSの除外リストに設定されているURLにアクセスした場合 - リクエストオリジンなし', async () => {
       return request(app.getHttpServer())
-        .get('/rest/site/public/config')
+        .get('/rest/unit/partner/settings')
         .expect(200)
         .then((res: Response) => {
+          // 正常にレスポンスを受け取れることを検証
           expect(res.get('Access-Control-Allow-Origin')).toBe('*')
-          expect(res.body.data).toEqual({ siteName: 'TestSite' })
+          expect(res.body.data).toEqual({ partnerKey: 'Partner Key' })
         })
     })
   })
 
   describe('GQL', () => {
-    const productsRequestData = {
+    const publicSettingsRequestData = {
       query: `
-        query GetProducts {
-          products { id name }
-        }
-      `,
-    }
-
-    const getSitePublicConfigRequestData = {
-      query: `
-        query GetSitePublicConfig {
-          sitePublicConfig { siteName }
+        query GetPublicSettings {
+          publicSettings { publicKey }
         }
       `,
     }
@@ -133,13 +125,13 @@ describe('CORSService', () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
         .post('/gql')
-        .send(productsRequestData)
+        .send(publicSettingsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
         .expect(200)
         .then((res: Response) => {
-          expect(res.body.data.products).toEqual([{ id: 'product1', name: 'Product1' }])
+          expect(res.body.data.publicSettings).toEqual({ publicKey: 'Public Key' })
         })
     })
 
@@ -148,7 +140,7 @@ describe('CORSService', () => {
       return (
         request(app.getHttpServer())
           .post('/gql')
-          .send(productsRequestData)
+          .send(publicSettingsRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
           // ここではGraphQLライブラリにより'*'が設定される。
@@ -158,7 +150,7 @@ describe('CORSService', () => {
           .expect('Access-Control-Allow-Origin', '*')
           .expect(200)
           .then((res: Response) => {
-            expect(res.body.data.products).toEqual([{ id: 'product1', name: 'Product1' }])
+            expect(res.body.data.publicSettings).toEqual({ publicKey: 'Public Key' })
           })
       )
     })

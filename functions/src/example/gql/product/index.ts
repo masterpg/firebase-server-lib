@@ -1,5 +1,5 @@
 import { Args, Query, Resolver } from '@nestjs/graphql'
-import { Product, ProductServiceDI } from '../../../services'
+import { Product, ProductServiceDI } from '../../services'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 

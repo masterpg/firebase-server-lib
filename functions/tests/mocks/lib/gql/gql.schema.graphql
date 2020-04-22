@@ -1,23 +1,17 @@
-scalar JSON
-scalar JSONObject
-scalar DateTime
-
-type Product {
-  id: ID!
-  name: String!
+type PublicSettings {
+  publicKey: String!
 }
 
-type SitePublicConfig {
-  siteName: String!
+type PartnerSettings {
+  partnerKey: String!
 }
 
-type SiteAdminConfig {
-  uid: String!
-  apiKey: String!
+type AdminSettings {
+  adminKey: String!
 }
 
 type Query {
-  products: [Product!]!
-  sitePublicConfig: SitePublicConfig!
-  siteAdminConfig: SiteAdminConfig!
+  publicSettings: PublicSettings!
+  partnerSettings: PartnerSettings!
+  adminSettings: AdminSettings!
 }

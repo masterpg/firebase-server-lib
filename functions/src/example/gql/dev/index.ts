@@ -1,5 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { LibDevUtilsServiceDI, PutTestDataInput, TestSignedUploadUrlInput } from '../../../../lib'
+import { LibDevUtilsServiceDI, PutTestDataInput, TestSignedUploadUrlInput } from '../../../lib'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
