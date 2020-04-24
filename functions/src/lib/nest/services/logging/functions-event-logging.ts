@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common'
+import { HttpException, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { clone, merge } from 'lodash'
@@ -12,26 +12,26 @@ import IMonitoredResource = google.api.IMonitoredResource
 //
 //========================================================================
 
-export interface HandlerLoggingSource {
+export interface FunctionsEventLoggingSource {
   functionName: string
   logName?: string
   error?: Error
-  metadata?: Partial<HandlerLoggingMetadata>
-  data?: Partial<HandlerLoggingData>
+  metadata?: Partial<FunctionsEventLoggingMetadata>
+  data?: Partial<FunctionsEventLoggingData>
 }
 
-export interface HandlerLoggingMetadata extends LogEntry {
-  resource: HandlerLoggingResourceData
+export interface FunctionsEventLoggingMetadata extends LogEntry {
+  resource: FunctionsEventLoggingResourceData
 }
 
-export interface HandlerLoggingResourceData extends IMonitoredResource {
+export interface FunctionsEventLoggingResourceData extends IMonitoredResource {
   type: string
   labels: {
     function_name: string
   }
 }
 
-export interface HandlerLoggingData {
+export interface FunctionsEventLoggingData {
   user?: {
     uid: string
     customClaims?: any
@@ -44,7 +44,7 @@ export interface HandlerLoggingData {
 
 const DEFAULT_LOG_NAME = 'handler'
 
-abstract class HandlerLoggingService {
+abstract class FunctionsEventLoggingService {
   //----------------------------------------------------------------------
   //
   //  Variables
@@ -59,7 +59,7 @@ abstract class HandlerLoggingService {
   //
   //----------------------------------------------------------------------
 
-  async log(loggingSource: HandlerLoggingSource): Promise<void> {
+  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {
     const { logName, error, metadata } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
@@ -88,17 +88,17 @@ abstract class HandlerLoggingService {
   //
   //----------------------------------------------------------------------
 
-  protected getBaseMetadata(loggingSource: { functionName: string }): HandlerLoggingMetadata {
+  protected getBaseMetadata(loggingSource: { functionName: string }): FunctionsEventLoggingMetadata {
     return {
       resource: this.m_getResourceData(loggingSource),
     }
   }
 
-  protected getData(loggingSource: { data?: Partial<HandlerLoggingData>; error?: Error }): HandlerLoggingData {
+  protected getData(loggingSource: { data?: Partial<FunctionsEventLoggingData>; error?: Error }): FunctionsEventLoggingData {
     const data = clone(loggingSource.data)
     const error = loggingSource.error
 
-    const result = {} as HandlerLoggingData
+    const result = {} as FunctionsEventLoggingData
 
     if (data) {
       if (data.user) {
@@ -133,7 +133,7 @@ abstract class HandlerLoggingService {
     return result
   }
 
-  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HandlerLoggingData) {
+  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | FunctionsEventLoggingData) {
     let targetLog = this.m_logDict[logName]
     if (!targetLog) {
       targetLog = new Logging().log(logName)
@@ -143,7 +143,7 @@ abstract class HandlerLoggingService {
     return targetLog.write(entry)
   }
 
-  private m_getResourceData(loggingSource: { functionName: string }): HandlerLoggingResourceData {
+  private m_getResourceData(loggingSource: { functionName: string }): FunctionsEventLoggingResourceData {
     const { functionName } = loggingSource
     return {
       type: 'cloud_function',
@@ -161,11 +161,11 @@ abstract class HandlerLoggingService {
 //========================================================================
 
 @Injectable()
-class ProdHandlerLoggingService extends HandlerLoggingService {}
+class ProdFunctionsEventLoggingService extends FunctionsEventLoggingService {}
 
 @Injectable()
-class DevHandlerLoggingService extends HandlerLoggingService {
-  async log(loggingSource: HandlerLoggingSource): Promise<void> {
+class DevFunctionsEventLoggingService extends FunctionsEventLoggingService {
+  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {
     const { error } = loggingSource
     const functionName = this.getBaseMetadata(loggingSource).resource.labels.function_name
     const detail = {
@@ -182,23 +182,29 @@ class DevHandlerLoggingService extends HandlerLoggingService {
 }
 
 @Injectable()
-class TestHandlerLoggingService extends HandlerLoggingService {
-  async log(loggingSource: HandlerLoggingSource): Promise<void> {}
+class TestFunctionsEventLoggingService extends FunctionsEventLoggingService {
+  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {}
 }
 
-export namespace HandlerLoggingServiceDI {
-  export const symbol = Symbol(HandlerLoggingService.name)
+export namespace FunctionsEventLoggingServiceDI {
+  export const symbol = Symbol(FunctionsEventLoggingService.name)
   export const provider = {
     provide: symbol,
     useClass: (() => {
       if (process.env.NODE_ENV === 'production') {
-        return ProdHandlerLoggingService
+        return ProdFunctionsEventLoggingService
       } else if (process.env.NODE_ENV === 'test') {
-        return TestHandlerLoggingService
+        return TestFunctionsEventLoggingService
       } else {
-        return DevHandlerLoggingService
+        return DevFunctionsEventLoggingService
       }
     })(),
   }
-  export type type = HandlerLoggingService
+  export type type = FunctionsEventLoggingService
 }
+
+@Module({
+  providers: [FunctionsEventLoggingServiceDI.provider],
+  exports: [FunctionsEventLoggingServiceDI.provider],
+})
+export class FunctionsEventLoggingServiceModule {}

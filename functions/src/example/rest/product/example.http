@@ -1,3 +1,4 @@
-GET {{host}}/api/rest/products
+GET {{host}}/productRESTService/products
+#Origin: https://vue-base-project-7295.web.app
 
 ###

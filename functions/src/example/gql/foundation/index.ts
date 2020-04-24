@@ -1,8 +1,11 @@
-import { AppConfigResponse, FoundationServiceDI } from '../../services'
-import { AuthGuard, IdToken, User } from '../../../lib'
+import * as path from 'path'
+import { AppConfigResponse, FoundationServiceDI, FoundationServiceModule } from '../../services'
+import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib'
+import { BaseGQLModule, getGQLModuleOptions } from '../base'
+import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { Inject, UseGuards } from '@nestjs/common'
-import { Query, Resolver } from '@nestjs/graphql'
 import { Module } from '@nestjs/common'
+import { config } from '../../../config'
 
 @Resolver()
 export class FoundationResolver {
@@ -20,7 +23,10 @@ export class FoundationResolver {
   }
 }
 
+const schemaFile = `${path.join(config.gql.schema.moduleDir, 'foundation/foundation.graphql')}`
+
 @Module({
   providers: [FoundationResolver],
+  imports: [BaseGQLModule, GraphQLModule.forRoot(getGQLModuleOptions([schemaFile])), FoundationServiceModule, AuthGuardModule],
 })
-export class GQLFoundationModule {}
+export default class FoundationGQLModule {}

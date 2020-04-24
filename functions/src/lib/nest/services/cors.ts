@@ -1,6 +1,6 @@
 import * as vary from 'vary'
-import { HttpLoggingData, HttpLoggingServiceDI, LoggingLatencyTimer } from './logging'
-import { Inject, Injectable } from '@nestjs/common'
+import { HttpLoggingData, HttpLoggingServiceDI, HttpLoggingServiceModule, LoggingLatencyTimer } from './logging'
+import { Inject, Injectable, Module } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
 import { config } from '../../../config'
@@ -352,3 +352,10 @@ export namespace CORSServiceDI {
   }
   export type type = CORSService
 }
+
+@Module({
+  providers: [CORSServiceDI.provider],
+  exports: [CORSServiceDI.provider],
+  imports: [HttpLoggingServiceModule],
+})
+export class CORSServiceModule {}

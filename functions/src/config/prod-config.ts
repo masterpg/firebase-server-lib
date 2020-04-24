@@ -22,6 +22,9 @@ export class ProdAppConfig implements AppConfig {
   }
 
   readonly gql: GQLConfig = {
-    scanPaths: ['dist/lib/services', 'dist/example/gql', 'dist/example/services'],
+    schema: {
+      presetFiles: ['dist/lib/services/dto.graphql', 'dist/example/services/dto.graphql'],
+      moduleDir: 'dist/example/gql',
+    },
   }
 }

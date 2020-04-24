@@ -1,7 +1,7 @@
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
-import { AppModule } from '../../../../../src/example/app.module'
+import FoundationGQLModule from '../../../../../src/example/gql/foundation'
 import { Test } from '@nestjs/testing'
-import { initApp } from '../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
 initApp()
@@ -14,7 +14,7 @@ describe('FoundationResolver', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [FoundationGQLModule],
     }).compile()
 
     app = testingModule.createNestApplication()

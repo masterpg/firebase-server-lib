@@ -1,8 +1,8 @@
 import * as admin from 'firebase-admin'
 import { BaseFoundationService, IdToken } from '../../lib'
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Module } from '@nestjs/common'
+import { StorageServiceDI, StorageServiceModule } from './storage'
 import { AppConfigResponse } from './types'
-import { StorageServiceDI } from './storage'
 import { config } from '../../config'
 
 @Injectable()
@@ -32,3 +32,10 @@ export namespace FoundationServiceDI {
   }
   export type type = FoundationService
 }
+
+@Module({
+  providers: [FoundationServiceDI.provider],
+  exports: [FoundationServiceDI.provider],
+  imports: [StorageServiceModule],
+})
+export class FoundationServiceModule {}

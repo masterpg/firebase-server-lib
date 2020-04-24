@@ -1,11 +1,11 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
+import { AuthServiceModule, IdToken } from '../../nest'
 import { GCSStorageNode, StorageNodeShareSettingsInput, StoragePaginationOptionsInput, StoragePaginationResult, StorageUser } from './types'
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseStorageService } from './base'
-import { IdToken } from '../../nest'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import { config } from '../../../config'
 import { removeBothEndsSlash } from 'web-base-lib'
@@ -281,3 +281,10 @@ export namespace LibStorageServiceDI {
   }
   export type type = LibStorageService
 }
+
+@Module({
+  providers: [LibStorageServiceDI.provider],
+  exports: [LibStorageServiceDI.provider],
+  imports: [AuthServiceModule],
+})
+export class LibStorageServiceModule {}

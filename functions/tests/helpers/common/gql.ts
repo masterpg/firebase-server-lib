@@ -17,7 +17,7 @@ export function requestGQL(
     Object.assign(headers, options.headers)
   }
   return request(app.getHttpServer())
-    .post('/gql')
+    .post('/')
     .send(gql)
     .set('Origin', config.cors.whitelist[0])
     .set('Content-Type', 'application/json')

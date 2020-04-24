@@ -1,0 +1,10 @@
+type Mutation {
+  addCartItems(inputs: [CartItemAddInput!]!): [CartItemEditResponse!]!
+  updateCartItems(inputs: [CartItemUpdateInput!]!): [CartItemEditResponse!]!
+  removeCartItems(ids: [ID!]!): [CartItemEditResponse!]!
+  checkoutCart: Boolean!
+}
+
+type Query {
+  cartItems(ids: [ID!]): [CartItem!]!
+}

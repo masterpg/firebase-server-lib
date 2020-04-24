@@ -1,3 +1,3 @@
 export * from './base'
-export * from './handler-logging'
+export * from './functions-event-logging'
 export * from './http-logging'

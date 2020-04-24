@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import { CartItem, CartItemEditResponse, Product, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from './types'
-import { ForbiddenException, Injectable } from '@nestjs/common'
+import { ForbiddenException, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
 import { RequiredDocumentSnapshot, getDocumentById } from '../../lib/base'
 import { IsPositive } from 'class-validator'
@@ -328,3 +328,9 @@ export namespace CartServiceDI {
   }
   export type type = CartService
 }
+
+@Module({
+  providers: [CartServiceDI.provider],
+  exports: [CartServiceDI.provider],
+})
+export class CartServiceModule {}

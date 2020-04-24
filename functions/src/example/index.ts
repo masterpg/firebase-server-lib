@@ -1,40 +1,61 @@
 import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
-import { AppModule } from './app.module'
-import { Express } from 'express'
-import { ExpressAdapter } from '@nestjs/platform-express'
-import { HandlersServiceDI } from './services'
-import { INestApplication } from '@nestjs/common'
-import { NestFactory } from '@nestjs/core'
+import { createNestHTTPApplication, initApp, isDevelopment } from './base'
 import { config } from '../config'
-import { initApp } from './initializer'
+import { forEach } from 'lodash'
 
 initApp()
 
-const server = express()
-let app: INestApplication
+//========================================================================
+//
+//  HTTP Functions
+//
+//========================================================================
 
-const createNestServer = async (expressInstance: Express) => {
-  const httpAdapter = new ExpressAdapter(expressInstance)
-  app = await NestFactory.create(AppModule, httpAdapter, {
-    logger: ['error', 'warn'],
-  })
-  return app.init()
+const prodHTTPFunctionDict = {
+  foundationService: './gql/foundation',
+  storageService: './gql/storage',
+  productService: './gql/product',
+  cartService: './gql/cart',
+  storage: './rest/storage',
+  productRESTService: './rest/product',
+  cartRESTService: './rest/cart',
 }
 
-createNestServer(server)
-  // .then(v => console.log('Nest Ready'))
-  .catch(err => console.error('Nest broken', err))
+const devHTTPFunctionDict = {
+  devService: './gql/dev',
+}
 
-export const api = functions.region(config.functions.region).https.onRequest(server)
+const serverFunctionDict = isDevelopment() ? { ...prodHTTPFunctionDict, ...devHTTPFunctionDict } : { ...prodHTTPFunctionDict }
 
-export const onCreateUser = functions.auth.user().onCreate(async (user, context) => {
-  const handlers = app.get(HandlersServiceDI.symbol) as HandlersServiceDI.type
-  await handlers.onCreateUser(user, context)
-})
+export function registryHTTPFunctions(functionMap: { [functionName: string]: string }): void {
+  forEach(functionMap, (path, functionName) => {
+    if (!process.env.FUNCTION_TARGET || process.env.FUNCTION_TARGET === functionName) {
+      const server = express()
+      createNestHTTPApplication(require(path).default, server)
+      module.exports[functionName] = functions.region(config.functions.region).https.onRequest(server)
+    }
+  })
+}
+registryHTTPFunctions(serverFunctionDict)
 
-export const onDeleteUser = functions.auth.user().onDelete(async (user, context) => {
-  const handlers = app.get(HandlersServiceDI.symbol) as HandlersServiceDI.type
-  await handlers.onDeleteUser(user, context)
-})
+//========================================================================
+//
+//  Event Functions
+//
+//========================================================================
+
+const prodEventFunctionDict = {
+  authOnCreateUser: './functions-event/auth-on-create-user',
+  authOnDeleteUser: './functions-event/auth-on-delete-user',
+}
+
+export function registryEventFunctions(functionMap: { [functionName: string]: string }): void {
+  forEach(functionMap, (path, functionName) => {
+    if (!process.env.FUNCTION_TARGET || process.env.FUNCTION_TARGET === functionName) {
+      module.exports[functionName] = require(path).default
+    }
+  })
+}
+registryEventFunctions(prodEventFunctionDict)

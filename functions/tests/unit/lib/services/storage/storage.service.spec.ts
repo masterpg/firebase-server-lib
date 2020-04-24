@@ -1,10 +1,10 @@
 import * as admin from 'firebase-admin'
-import { LibStorageService, LibStorageServiceDI, StorageUser, UploadDataItem } from '../../../../../src/lib'
+import { LibStorageServiceDI, StorageUser, UploadDataItem } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { AppBaseModule } from '../../../../../src/example/app.module'
+import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
 import { cloneDeep } from 'lodash'
-import { initApp } from '../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)
@@ -30,7 +30,7 @@ const TEST_FILES_DIR = 'test-files'
 
 let testingModule: TestingModule
 
-let storageService!: LibStorageService
+let storageService!: LibStorageServiceDI.type
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -47,10 +47,10 @@ async function sleep(ms: number): Promise<void> {
 describe('StorageService', () => {
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [AppBaseModule],
+      imports: [MockStorageRESTModule],
     }).compile()
 
-    storageService = testingModule.get<LibStorageService>(LibStorageServiceDI.symbol)
+    storageService = testingModule.get<LibStorageServiceDI.type>(LibStorageServiceDI.symbol)
 
     await storageService.removeDir(null, `${TEST_FILES_DIR}`)
     await storageService.removeDir(null, `${storageService.getUserDirPath(STORAGE_TEST_USER)}`)

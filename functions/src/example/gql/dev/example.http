@@ -1,4 +1,4 @@
-POST {{host}}/api/gql
+POST {{host}}/devService
 Content-Type: application/json
 
 {
@@ -82,7 +82,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/api/gql
+POST {{host}}/devService
 Content-Type: application/json
 
 {
@@ -93,7 +93,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/api/gql
+POST {{host}}/devService
 Content-Type: application/json
 
 {
@@ -104,7 +104,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/api/gql
+POST {{host}}/devService
 Content-Type: application/json
 
 {

@@ -1,10 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import { FirestoreServiceDI, FirestoreServiceModule } from '../nest'
+import { Inject, Module } from '@nestjs/common'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { DocumentReference } from '@google-cloud/firestore'
 import { File } from '@google-cloud/storage'
-import { FirestoreServiceDI } from '../nest'
-import { Inject } from '@nestjs/common'
 import { JSONObject } from './types'
 const firebaseTools = require('firebase-tools')
 
@@ -189,3 +189,10 @@ export namespace LibDevUtilsServiceDI {
   }
   export type type = LibDevUtilsService
 }
+
+@Module({
+  providers: [LibDevUtilsServiceDI.provider],
+  exports: [LibDevUtilsServiceDI.provider],
+  imports: [FirestoreServiceModule],
+})
+export class LibDevUtilsServiceModule {}

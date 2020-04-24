@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockCORSBaseAppModule } from '../../../../../mocks/lib'
-import { Module } from '@nestjs/common'
+import { DummyCORSGQLModule } from '../../../../../mocks/lib/gql/dummy'
+import { DummyCORSRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
 import { initLibTestApp } from '../../../../../helpers/lib/init'
@@ -8,17 +8,6 @@ import request = require('supertest')
 
 jest.setTimeout(25000)
 initLibTestApp()
-
-//========================================================================
-//
-//  Test helpers
-//
-//========================================================================
-
-@Module({
-  imports: [MockCORSBaseAppModule],
-})
-class MockAppModule {}
 
 //========================================================================
 //
@@ -30,11 +19,11 @@ describe('CORSService', () => {
   let app: any
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MockAppModule],
+    const testingModule: TestingModule = await Test.createTestingModule({
+      imports: [DummyCORSRESTModule, DummyCORSGQLModule],
     }).compile()
 
-    app = moduleFixture.createNestApplication()
+    app = testingModule.createNestApplication()
     await app.init()
   })
 
@@ -42,7 +31,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/rest/unit/public/settings')
+        .get('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
@@ -54,7 +43,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/rest/unit/public/settings')
+        .get('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(200)
@@ -66,7 +55,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/rest/unit/public/settings')
+        .options('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -78,7 +67,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/rest/unit/public/settings')
+        .options('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'GET')
@@ -90,7 +79,7 @@ describe('CORSService', () => {
     it('CORSの除外リストに設定されているURLにアクセスした場合 - リクエストオリジンあり', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/rest/unit/partner/settings')
+        .get('/dummyRESTService/partner/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '*')
         .expect(200)
@@ -102,7 +91,7 @@ describe('CORSService', () => {
 
     it('CORSの除外リストに設定されているURLにアクセスした場合 - リクエストオリジンなし', async () => {
       return request(app.getHttpServer())
-        .get('/rest/unit/partner/settings')
+        .get('/dummyRESTService/partner/settings')
         .expect(200)
         .then((res: Response) => {
           // 正常にレスポンスを受け取れることを検証
@@ -124,7 +113,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .post('/gql')
+        .post('/dummyService')
         .send(publicSettingsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
@@ -139,7 +128,7 @@ describe('CORSService', () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return (
         request(app.getHttpServer())
-          .post('/gql')
+          .post('/dummyService')
           .send(publicSettingsRequestData)
           .set('Content-Type', 'application/json')
           .set('Origin', requestOrigin)
@@ -158,7 +147,7 @@ describe('CORSService', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .options('/gql')
+        .options('/dummyService')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)
@@ -170,7 +159,7 @@ describe('CORSService', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合 - プリフライトリクエスト', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .options('/gql')
+        .options('/dummyService')
         .set('Access-Control-Request-Headers', 'authorization,content-type')
         .set('Access-Control-Request-Method', 'POST')
         .set('Origin', requestOrigin)

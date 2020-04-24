@@ -1,7 +1,7 @@
 export * from './types'
 export * from './cart'
 export * from './foundation'
-export * from './handlers'
+export * from './functions-event'
 export * from './product'
 export * from './storage'
 

@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { CORSGuardDI } from '../../../../../../src/lib'
-import { MockCORSBaseAppModule } from '../../../../../mocks/lib'
-import { Module } from '@nestjs/common'
+import { DummyCORSGuardGQLModule } from '../../../../../mocks/lib/gql/dummy'
+import { DummyCORSGuardRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
 import { initLibTestApp } from '../../../../../helpers/lib/init'
@@ -9,18 +8,6 @@ import request = require('supertest')
 
 jest.setTimeout(25000)
 initLibTestApp()
-
-//========================================================================
-//
-//  Test helpers
-//
-//========================================================================
-
-@Module({
-  providers: [CORSGuardDI.provider],
-  imports: [MockCORSBaseAppModule],
-})
-class MockAppModule {}
 
 //========================================================================
 //
@@ -33,7 +20,7 @@ describe('CORSGuard', () => {
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
-      imports: [MockAppModule],
+      imports: [DummyCORSGuardRESTModule, DummyCORSGuardGQLModule],
     }).compile()
 
     app = testingModule.createNestApplication()
@@ -44,7 +31,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .get('/rest/unit/public/settings')
+        .get('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', requestOrigin)
         .expect(200)
@@ -56,7 +43,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .get('/rest/unit/public/settings')
+        .get('/dummyRESTService/public/settings')
         .set('Origin', requestOrigin)
         .expect('Access-Control-Allow-Origin', '')
         .expect(403)
@@ -78,7 +65,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにあるオリジンからのリクエストの場合', async () => {
       const requestOrigin = config.cors.whitelist[0]
       return request(app.getHttpServer())
-        .post('/gql')
+        .post('/dummyService')
         .send(publicSettingsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)
@@ -92,7 +79,7 @@ describe('CORSGuard', () => {
     it('ホワイトリストにないオリジンからのリクエストの場合', async () => {
       const requestOrigin = 'http://aaa.bbb.ccc.co.jp'
       return request(app.getHttpServer())
-        .post('/gql')
+        .post('/dummyService')
         .send(publicSettingsRequestData)
         .set('Content-Type', 'application/json')
         .set('Origin', requestOrigin)

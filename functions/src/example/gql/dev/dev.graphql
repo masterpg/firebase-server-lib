@@ -1,0 +1,9 @@
+type Mutation {
+  putTestData(inputs: [PutTestDataInput!]!): Boolean!
+  removeTestStorageDir(dirPath: String!): Boolean!
+  removeTestStorageFiles(filePaths: [String!]!): Boolean!
+}
+
+type Query {
+  testSignedUploadUrls(inputs: [TestSignedUploadUrlInput!]!): [String!]!
+}

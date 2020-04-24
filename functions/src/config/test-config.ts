@@ -11,11 +11,7 @@ export class TestAppConfig implements AppConfig {
     excludes: [
       {
         method: 'GET',
-        pattern: '^rest/site',
-      },
-      {
-        method: 'GET',
-        pattern: '^rest/unit/partner/',
+        pattern: '^dummyRESTService/partner/',
       },
     ],
   }
@@ -26,6 +22,9 @@ export class TestAppConfig implements AppConfig {
   }
 
   readonly gql: GQLConfig = {
-    scanPaths: ['src/lib/services', 'src/example/gql', 'src/example/services', 'tests/mocks/lib/gql'],
+    schema: {
+      presetFiles: ['dist/lib/services/dto.graphql', 'dist/example/services/dto.graphql', 'tests/mocks/lib/gql/dummy/schema.graphql'],
+      moduleDir: 'dist/example/gql',
+    },
   }
 }

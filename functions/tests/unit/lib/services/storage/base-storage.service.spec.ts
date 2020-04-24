@@ -7,6 +7,7 @@ import {
   GCSStorageNode,
   InputValidationError,
   LibDevUtilsServiceDI,
+  LibDevUtilsServiceModule,
   LibStorageService,
   LibStorageServiceDI,
   SignedUploadUrlInput,
@@ -18,8 +19,7 @@ import {
 import { Test, TestingModule } from '@nestjs/testing'
 import { arrayToDict, removeBothEndsSlash } from 'web-base-lib'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
-import { MockBaseAppModule } from '../../../../mocks/lib'
-import { Module } from '@nestjs/common'
+import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
 import { config } from '../../../../../src/config'
 import { initLibTestApp } from '../../../../helpers/lib/init'
@@ -66,11 +66,6 @@ type TestStorageService = LibStorageService & {
   validateFileName: LibStorageService['validateFileName']
   saveMetadata: LibStorageService['saveMetadata']
 }
-
-@Module({
-  imports: [MockBaseAppModule],
-})
-class MockAppModule {}
 
 /**
  * 指定された`StorageNode`自体の検証と、対象のノードがCloud Storageに存在することを検証します。
@@ -152,7 +147,7 @@ async function sleep(ms: number): Promise<void> {
 describe('BaseStorageService', () => {
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [MockAppModule],
+      imports: [MockStorageRESTModule, LibDevUtilsServiceModule],
     }).compile()
 
     storageService = testingModule.get<TestStorageService>(LibStorageServiceDI.symbol)
@@ -3111,6 +3106,10 @@ describe('BaseStorageService', () => {
     //  Test helpers
     //--------------------------------------------------
 
+    const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
+
+    const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
+
     let app: any
 
     beforeEach(async () => {
@@ -3130,6 +3129,7 @@ describe('BaseStorageService', () => {
 
         return request(app.getHttpServer())
           .get(`/storage/${toFilePath}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
           .expect(200)
           .then((res: Response) => {
             const localFileBuffer = fs.readFileSync(localFilePath)
@@ -3147,6 +3147,7 @@ describe('BaseStorageService', () => {
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
           .expect(200)
           .then((res: Response) => {
             expect(res.text).toEqual(uploadItem.data)
@@ -3163,6 +3164,7 @@ describe('BaseStorageService', () => {
 
         return request(app.getHttpServer())
           .get(`/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
           .set('If-Modified-Since', uploadedFileNode.updated.toString())
           .expect(304)
       })
@@ -3174,7 +3176,10 @@ describe('BaseStorageService', () => {
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
         }
 
-        return request(app.getHttpServer()).get(`/storage/${uploadItem.path}`).expect(404)
+        return request(app.getHttpServer())
+          .get(`/storage/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
+          .expect(404)
       })
 
       it('basePathを指定した場合', async () => {
@@ -3187,6 +3192,7 @@ describe('BaseStorageService', () => {
 
         return request(app.getHttpServer())
           .get(`/storage/${TEST_FILES_DIR}/${uploadItem.path}`)
+          .set({ ...APP_ADMIN_USER_HEADER })
           .expect(200)
           .then((res: Response) => {
             expect(res.text).toEqual(uploadItem.data)

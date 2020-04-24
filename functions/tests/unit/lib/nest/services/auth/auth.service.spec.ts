@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockBaseAppModule } from '../../../../../mocks/lib'
-import { Module } from '@nestjs/common'
+import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
+import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import { initLibTestApp } from '../../../../../helpers/lib/init'
 import request = require('supertest')
@@ -22,17 +22,6 @@ const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMI
 
 //========================================================================
 //
-//  Test helpers
-//
-//========================================================================
-
-@Module({
-  imports: [MockBaseAppModule],
-})
-class MockAppModule {}
-
-//========================================================================
-//
 //  Tests
 //
 //========================================================================
@@ -41,11 +30,11 @@ describe('AuthService', () => {
   let app: any
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MockAppModule],
+    const testingModule: TestingModule = await Test.createTestingModule({
+      imports: [DummyRESTModule, DummyGQLModule],
     }).compile()
 
-    app = moduleFixture.createNestApplication()
+    app = testingModule.createNestApplication()
     await app.init()
   })
 
@@ -53,7 +42,7 @@ describe('AuthService', () => {
     it('認証ユーザーが権限を満たしている場合', async () => {
       return (
         request(app.getHttpServer())
-          .get('/rest/unit/admin/settings')
+          .get('/dummyRESTService/admin/settings')
           // 権限を満たすユーザーを設定
           .set(APP_ADMIN_USER_HEADER)
           .expect(200)
@@ -65,7 +54,7 @@ describe('AuthService', () => {
 
     it('サインインしていない場合', async () => {
       return request(app.getHttpServer())
-        .get('/rest/unit/admin/settings')
+        .get('/dummyRESTService/admin/settings')
         .expect(401)
         .then((res: Response) => {
           expect(res.header['www-authenticate']).toEqual(`Bearer realm="token_required"`)
@@ -76,7 +65,7 @@ describe('AuthService', () => {
     it('認証トークンが不正な場合', async () => {
       return (
         request(app.getHttpServer())
-          .get('/rest/unit/admin/settings')
+          .get('/dummyRESTService/admin/settings')
           // 不正な認証トークンを設定
           .set({ Authorization: `Bearer ABCDEFG` })
           .expect(401)
@@ -90,7 +79,7 @@ describe('AuthService', () => {
     it('認証ユーザーのロール権限が足りない場合', async () => {
       return (
         request(app.getHttpServer())
-          .get('/rest/unit/admin/settings')
+          .get('/dummyRESTService/admin/settings')
           // ロール権限が足りないユーザーを設定
           .set(GENERAL_USER_HEADER)
           .expect(403)
@@ -114,7 +103,7 @@ describe('AuthService', () => {
     it('認証ユーザーが権限を満たしている場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/gql')
+          .post('/dummyService')
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 権限を満たすユーザーを設定
@@ -128,7 +117,7 @@ describe('AuthService', () => {
 
     it('サインインしていない場合', async () => {
       return request(app.getHttpServer())
-        .post('/gql')
+        .post('/dummyService')
         .send(adminSettingsRequestData)
         .set('Content-Type', 'application/json')
         .expect(200)
@@ -141,7 +130,7 @@ describe('AuthService', () => {
     it('認証トークンが不正な場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/gql')
+          .post('/dummyService')
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 不正な認証トークンを設定
@@ -157,7 +146,7 @@ describe('AuthService', () => {
     it('認証ユーザーのロール権限が足りない場合', async () => {
       return (
         request(app.getHttpServer())
-          .post('/gql')
+          .post('/dummyService')
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // ロール権限が足りないユーザーを設定

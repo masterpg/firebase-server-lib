@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common'
+import { CanActivate, ExecutionContext, Inject, Injectable, Module } from '@nestjs/common'
 import { HttpLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
@@ -29,3 +29,9 @@ export class AuthGuard implements CanActivate {
     }
   }
 }
+
+@Module({
+  providers: [AuthServiceDI.provider, HttpLoggingServiceDI.provider],
+  exports: [AuthServiceDI.provider, HttpLoggingServiceDI.provider],
+})
+export class AuthGuardModule {}

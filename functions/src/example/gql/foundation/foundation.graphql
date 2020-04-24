@@ -1,0 +1,7 @@
+type Query {
+  appConfig: AppConfigResponse!
+}
+
+type Query {
+  customToken: String!
+}

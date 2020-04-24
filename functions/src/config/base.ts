@@ -40,7 +40,10 @@ export interface StorageConfig {
 }
 
 export interface GQLConfig {
-  readonly scanPaths: string[]
+  schema: {
+    presetFiles: string[]
+    moduleDir: string
+  }
 }
 
 //========================================================================

@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { HttpException, Injectable } from '@nestjs/common'
+import { HttpException, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { Request, Response } from 'express'
@@ -105,9 +105,15 @@ abstract class HttpLoggingService {
   getFunctionName(loggingSource: { req: Request; info?: GraphQLResolveInfo }): string {
     const { req, info } = loggingSource
     if (info) {
-      return `api/gql/${info.path.key}`
+      // 例: function_name = 'cartService/cartItems'
+      const segment1 = this.getBaseFunctionName(req)
+      const segment2 = String(info.path.key)
+      return removeBothEndsSlash(path.join(segment1, segment2))
     } else {
-      return this.getFunctionNameByRequest(req)
+      // 例: function_name = 'cartRESTService/cartItems'
+      const segment1 = this.getBaseFunctionName(req)
+      const segment2 = req.path
+      return removeBothEndsSlash(path.join(segment1, segment2))
     }
   }
 
@@ -117,9 +123,19 @@ abstract class HttpLoggingService {
   //
   //----------------------------------------------------------------------
 
-  protected abstract getFunctionNameByRequest(req: Request): string
+  protected abstract getBaseFunctionName(req: Request): string
 
-  protected abstract getRequestUrl(req: Request): string
+  protected getRequestUrl(req: Request, info?: GraphQLResolveInfo): string {
+    let segment: string
+    if (info) {
+      segment = `${this.getBaseFunctionName(req)}/${String(info.path.key)}`
+    } else {
+      const originalUrl = removeBothEndsSlash(req.originalUrl)
+      segment = `${this.getBaseFunctionName(req)}/${originalUrl}`
+    }
+    segment = removeBothEndsSlash(segment)
+    return `${this.getProtocol(req)}://${req.headers.host}/${segment}`
+  }
 
   protected getProtocol(req: Request): string {
     return req.get('X-Forwarded-Proto') || req.protocol
@@ -195,12 +211,17 @@ abstract class HttpLoggingService {
     }
   }
 
-  private m_getRequestData(loggingSource: { req: Request; res: Response; latencyTimer?: LoggingLatencyTimer }): IHttpRequest {
-    const { req, res, latencyTimer } = loggingSource
+  private m_getRequestData(loggingSource: {
+    req: Request
+    res: Response
+    latencyTimer?: LoggingLatencyTimer
+    info?: GraphQLResolveInfo
+  }): IHttpRequest {
+    const { req, res, latencyTimer, info } = loggingSource
     return {
       protocol: this.getProtocol(req),
       requestMethod: req.method,
-      requestUrl: this.getRequestUrl(req),
+      requestUrl: this.getRequestUrl(req, info),
       requestSize: parseInt(req.headers['content-length'] || ''),
       userAgent: req.headers['user-agent'],
       referer: req.headers.referer,
@@ -219,27 +240,8 @@ abstract class HttpLoggingService {
 
 @Injectable()
 class ProdHttpLoggingService extends HttpLoggingService {
-  getFunctionNameByRequest(req: Request): string {
-    // 例: function_name = 'api/rest/hello'
-    // ・req.path: '/api/gql'
-    // ・req.path: '/rest/hello'
-    const requestPath = req.path.replace(
-      /(^\/?api)/,
-      /**
-       * @param str マッチした文字列
-       * @param p1, p2 ..., pn 括弧の内容(ある場合)
-       * @param offset マッチした位置
-       * @param s 元の文字列
-       */
-      (str: string, p1: string, offset: number, s: string) => {
-        return ''
-      }
-    )
-    return removeBothEndsSlash(path.join('api', requestPath))
-  }
-
-  protected getRequestUrl(req: Request): string {
-    return `${this.getProtocol(req)}://${req.headers.host}${path.join('/api', req.originalUrl)}`
+  protected getBaseFunctionName(req: Request): string {
+    return String(process.env.FUNCTION_TARGET)
   }
 }
 
@@ -261,19 +263,12 @@ class DevHttpLoggingService extends HttpLoggingService {
     }
   }
 
-  getFunctionNameByRequest(req: Request): string {
-    // 例: function_name = 'api/rest/hello'
-    // ・req.baseUrl: '/vue-base-project-7295/asia-northeast1/api/rest'
-    // ・req.path: '/hello'
-    const matched = `${req.baseUrl}${req.path}`.match(/\/api\/.*[^/]/)
-    if (matched) {
-      return removeBothEndsSlash(matched[0])
-    }
-    return ''
-  }
-
-  protected getRequestUrl(req: Request): string {
-    return `${this.getProtocol(req)}://${req.headers.host}${req.originalUrl}`
+  protected getBaseFunctionName(req: Request): string {
+    // 例:
+    //   req.baseUrl: '/vue-base-project-7295/asia-northeast1/cartRESTService'
+    //   → 'cartRESTService'
+    const segments = removeBothEndsSlash(req.baseUrl).split('/')
+    return segments[segments.length - 1]
   }
 }
 
@@ -281,11 +276,7 @@ class DevHttpLoggingService extends HttpLoggingService {
 class TestHttpLoggingService extends HttpLoggingService {
   log(loggingSource: HttpLoggingSource): void {}
 
-  protected getFunctionNameByRequest(req: Request): string {
-    return ''
-  }
-
-  protected getRequestUrl(req: Request): string {
+  protected getBaseFunctionName(req: Request): string {
     return ''
   }
 }
@@ -306,3 +297,9 @@ export namespace HttpLoggingServiceDI {
   }
   export type type = HttpLoggingService
 }
+
+@Module({
+  providers: [HttpLoggingServiceDI.provider],
+  exports: [HttpLoggingServiceDI.provider],
+})
+export class HttpLoggingServiceModule {}

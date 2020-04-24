@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import { DocumentReference, Query, Transaction } from '@google-cloud/firestore'
-import { Injectable } from '@nestjs/common'
+import { Injectable, Module } from '@nestjs/common'
 
 //========================================================================
 //
@@ -81,3 +81,9 @@ export namespace FirestoreServiceDI {
   }
   export type type = FirestoreService
 }
+
+@Module({
+  providers: [FirestoreServiceDI.provider],
+  exports: [FirestoreServiceDI.provider],
+})
+export class FirestoreServiceModule {}

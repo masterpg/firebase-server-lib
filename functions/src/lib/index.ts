@@ -1,42 +1,41 @@
-import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, HandlerLoggingServiceDI, HttpLoggingServiceDI } from './nest'
+import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, FunctionsEventLoggingServiceDI, HttpLoggingServiceDI } from './nest'
 import { LibDevUtilsServiceDI, LibStorageServiceDI } from './services'
-
-export const libBaseProviders = [
-  AuthServiceDI.provider,
-  CORSServiceDI.provider,
-  FirestoreServiceDI.provider,
-  HandlerLoggingServiceDI.provider,
-  HttpLoggingServiceDI.provider,
-  LibDevUtilsServiceDI.provider,
-  LibStorageServiceDI.provider,
-]
 
 export { InputValidationError, ValidationErrors, WriteReadyObserver, initFirebaseApp, validate, validateSync } from './base'
 
-export { DateTimeScalar, GQLCtx, getGqlModuleBaseOptions, getTypeDefs } from './gql'
+export { DateTimeScalar, GQLCtx, getBaseGQLModuleOptions, getTypeDefs } from './gql'
 
 export {
   AuthGuard,
+  AuthGuardModule,
   AuthRoleType,
   AuthServiceDI,
+  AuthServiceModule,
   AuthValidateResult,
-  CORSGuardDI,
+  CORSAppGuardDI,
+  CORSGuardModule,
   CORSMiddleware,
+  CORSMiddlewareModule,
   CORSServiceDI,
+  CORSServiceModule,
   FirestoreServiceDI,
+  FirestoreServiceModule,
+  FunctionsEventLoggingData,
+  FunctionsEventLoggingMetadata,
+  FunctionsEventLoggingResourceData,
+  FunctionsEventLoggingServiceDI,
+  FunctionsEventLoggingServiceModule,
+  FunctionsEventLoggingSource,
   GQLContext,
-  HandlerLoggingData,
-  HandlerLoggingMetadata,
-  HandlerLoggingResourceData,
-  HandlerLoggingServiceDI,
-  HandlerLoggingSource,
+  HttpLoggingAppInterceptorDI,
   HttpLoggingData,
+  HttpLoggingInterceptorModule,
   HttpLoggingMetadata,
   HttpLoggingResourceData,
   HttpLoggingServiceDI,
+  HttpLoggingServiceModule,
   HttpLoggingSource,
   IdToken,
-  LoggingInterceptorDI,
   LoggingLatencyData,
   LoggingLatencyTimer,
   Roles,
@@ -51,8 +50,10 @@ export {
   JSONObject,
   LibDevUtilsService,
   LibDevUtilsServiceDI,
+  LibDevUtilsServiceModule,
   LibStorageService,
   LibStorageServiceDI,
+  LibStorageServiceModule,
   PutTestDataInput,
   SignedUploadUrlInput,
   StorageNode,

@@ -1,8 +1,9 @@
-import { AuthGuard, IdToken, User } from '../../../lib'
+import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib'
 import { Body, Controller, Delete, Get, Inject, Module, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI } from '../../services'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI, CartServiceModule } from '../../services'
+import { BaseRESTModule } from '../base'
 
-@Controller('rest/cartItems')
+@Controller('cartItems')
 @UseGuards(AuthGuard)
 export class CartController {
   constructor(@Inject(CartServiceDI.symbol) protected readonly cartService: CartServiceDI.type) {}
@@ -41,5 +42,6 @@ export class CartController {
 
 @Module({
   controllers: [CartController],
+  imports: [BaseRESTModule, CartServiceModule, AuthGuardModule],
 })
-export class RESTCartModule {}
+export default class CartRESTModule {}

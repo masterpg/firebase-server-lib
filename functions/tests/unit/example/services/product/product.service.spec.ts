@@ -1,8 +1,9 @@
 import { Product, ProductServiceDI } from '../../../../../src/example/services'
-import { AppBaseModule } from '../../../../../src/example/app.module'
+import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import { LibDevUtilsServiceDI } from '../../../../../src/lib'
+import ProductGQLModule from '../../../../../src/example/gql/product'
 import { Test } from '@nestjs/testing'
-import { initApp } from '../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
 initApp()
@@ -31,7 +32,7 @@ describe('ProductService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [AppBaseModule],
+      imports: [ProductGQLModule, DevUtilsGQLModule],
     }).compile()
 
     productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)

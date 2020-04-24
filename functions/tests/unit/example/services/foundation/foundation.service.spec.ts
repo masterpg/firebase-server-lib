@@ -1,7 +1,7 @@
-import { AppBaseModule } from '../../../../../src/example/app.module'
+import FoundationGQLModule from '../../../../../src/example/gql/foundation'
 import { FoundationServiceDI } from '../../../../../src/example/services'
 import { Test } from '@nestjs/testing'
-import { initApp } from '../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
 initApp()
@@ -25,7 +25,7 @@ describe('FoundationService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [AppBaseModule],
+      imports: [FoundationGQLModule],
     }).compile()
 
     foundationService = testingModule.get<FoundationServiceDI.type>(FoundationServiceDI.symbol)

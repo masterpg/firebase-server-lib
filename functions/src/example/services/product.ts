@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { Injectable } from '@nestjs/common'
+import { Injectable, Module } from '@nestjs/common'
 import { Product } from './types'
 
 @Injectable()
@@ -46,3 +46,9 @@ export namespace ProductServiceDI {
   }
   export type type = ProductService
 }
+
+@Module({
+  providers: [ProductServiceDI.provider],
+  exports: [ProductServiceDI.provider],
+})
+export class ProductServiceModule {}

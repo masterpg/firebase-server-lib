@@ -9,12 +9,12 @@ import { print } from 'graphql/language/printer'
 /**
  * 指定されたパス配下にある`.graphql`ファイルを走査し、
  * 見つかったファイルをマージしてGraphQL定義文字列を取得します。
- * @param scanPaths `.graphql`ファイルが配置されているディレクトリ
+ * @param schemaFilesOrDirs `.graphql`ファイルまたはファイルが配置されているディレクトリ
  */
-export function getTypeDefs(scanPaths: string[]): string {
+export function getTypeDefs(schemaFilesOrDirs: string[]): string {
   const typeDefs: string[] = []
-  for (const scanPath of scanPaths) {
-    const targetPath = path.resolve(process.cwd(), scanPath)
+  for (const schemaFileOrDir of schemaFilesOrDirs) {
+    const targetPath = path.resolve(process.cwd(), schemaFileOrDir)
     typeDefs.push(...loadSchemaFiles(targetPath))
   }
   return print(mergeTypeDefs(typeDefs))
@@ -22,10 +22,10 @@ export function getTypeDefs(scanPaths: string[]): string {
 
 /**
  * `@nestjs/graphql`の`GqlModuleOptions`のベースを取得します。
- * @param scanPaths `.graphql`ファイルが配置されているディレクトリ
+ * @param schemaFilesOrDirs `.graphql`ファイルまたはファイルが配置されているディレクトリ
  */
-export function getGqlModuleBaseOptions(
-  scanPaths: string[]
+export function getBaseGQLModuleOptions(
+  schemaFilesOrDirs: string[]
 ): {
   context: Context | ContextFunction
   typeDefs: string
@@ -37,7 +37,7 @@ export function getGqlModuleBaseOptions(
       const { req, res } = ctx
       return { req, res } as GQLContext
     },
-    typeDefs: getTypeDefs(scanPaths),
+    typeDefs: getTypeDefs(schemaFilesOrDirs),
     resolvers: { JSON: GraphQLJSON },
     resolverValidationOptions: {
       // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。

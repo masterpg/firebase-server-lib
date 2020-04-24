@@ -1,9 +1,11 @@
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
-import { AppBaseModule } from '../../../../../src/example/app.module'
+import CartGQLModule from '../../../../../src/example/gql/cart'
+import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
+import ProductGQLModule from '../../../../../src/example/gql/product'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
-import { initApp } from '../../../../../src/example/initializer'
+import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
 initApp()
@@ -54,7 +56,7 @@ describe('CartService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [AppBaseModule],
+      imports: [CartGQLModule, ProductGQLModule, DevUtilsGQLModule],
     }).compile()
 
     devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
