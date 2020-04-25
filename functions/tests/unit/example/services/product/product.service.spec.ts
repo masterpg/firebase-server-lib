@@ -1,7 +1,7 @@
 import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { LibDevUtilsServiceDI } from '../../../../../src/lib'
-import ProductGQLModule from '../../../../../src/example/gql/product'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
 
@@ -32,7 +32,7 @@ describe('ProductService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [ProductGQLModule, DevUtilsGQLModule],
+      imports: [GQLContainerModule, DevUtilsGQLModule],
     }).compile()
 
     productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)

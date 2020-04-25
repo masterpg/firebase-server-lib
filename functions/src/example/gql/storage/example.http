@@ -1,4 +1,4 @@
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -27,7 +27,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -42,7 +42,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -57,7 +57,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -72,7 +72,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -86,7 +86,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -100,7 +100,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -114,7 +114,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -133,7 +133,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -148,7 +148,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -162,7 +162,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -178,7 +178,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -193,7 +193,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -209,7 +209,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -224,7 +224,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -239,7 +239,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
@@ -254,7 +254,7 @@ Authorization: Bearer {"uid": "general.user", "myDirName": "general.user"}
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -273,7 +273,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -287,7 +287,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -302,7 +302,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -317,7 +317,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -332,7 +332,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -347,7 +347,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -361,7 +361,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -375,7 +375,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -389,7 +389,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -408,7 +408,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -423,7 +423,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -437,7 +437,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -453,7 +453,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -468,7 +468,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -484,7 +484,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -499,7 +499,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 
@@ -514,7 +514,7 @@ Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "
 
 ###
 
-POST {{host}}/storageService
+POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin.user", "myDirName": "app.admin.user", "isAppAdmin": true}
 

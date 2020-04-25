@@ -1,5 +1,4 @@
-import * as path from 'path'
-import { Args, GraphQLModule, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
   AuthGuard,
   AuthGuardModule,
@@ -15,11 +14,10 @@ import {
   StoragePaginationResult,
   User,
 } from '../../../lib'
-import { BaseGQLModule, getGQLModuleOptions } from '../base'
 import { Inject, UseGuards } from '@nestjs/common'
 import { StorageServiceDI, StorageServiceModule } from '../../services'
+import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
-import { config } from '../../../config'
 
 @Resolver('StorageNode')
 export class StorageResolver {
@@ -334,10 +332,8 @@ export class StorageResolver {
   }
 }
 
-const schemaFile = `${path.join(config.gql.schema.moduleDir, 'storage/storage.graphql')}`
-
 @Module({
   providers: [StorageResolver],
-  imports: [BaseGQLModule, GraphQLModule.forRoot(getGQLModuleOptions([schemaFile])), StorageServiceModule, AuthGuardModule],
+  imports: [BaseGQLModule, StorageServiceModule, AuthGuardModule],
 })
 export default class StorageGQLModule {}

@@ -1,11 +1,9 @@
-import * as path from 'path'
-import { Args, GraphQLModule, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib'
-import { BaseGQLModule, getGQLModuleOptions } from '../base'
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI, CartServiceModule } from '../../services'
 import { Inject, UseGuards } from '@nestjs/common'
+import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
-import { config } from '../../../config'
 
 @Resolver('CartItem')
 @UseGuards(AuthGuard)
@@ -38,10 +36,8 @@ export class CartResolver {
   }
 }
 
-const schemaFile = `${path.join(config.gql.schema.moduleDir, 'cart/cart.graphql')}`
-
 @Module({
   providers: [CartResolver],
-  imports: [BaseGQLModule, GraphQLModule.forRoot(getGQLModuleOptions([schemaFile])), CartServiceModule, AuthGuardModule],
+  imports: [BaseGQLModule, CartServiceModule, AuthGuardModule],
 })
 export default class CartGQLModule {}

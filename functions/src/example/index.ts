@@ -13,22 +13,6 @@ initApp()
 //
 //========================================================================
 
-const prodHTTPFunctionDict = {
-  foundationService: './gql/foundation',
-  storageService: './gql/storage',
-  productService: './gql/product',
-  cartService: './gql/cart',
-  storage: './rest/storage',
-  productRESTService: './rest/product',
-  cartRESTService: './rest/cart',
-}
-
-const devHTTPFunctionDict = {
-  devService: './gql/dev',
-}
-
-const serverFunctionDict = isDevelopment() ? { ...prodHTTPFunctionDict, ...devHTTPFunctionDict } : { ...prodHTTPFunctionDict }
-
 export function registryHTTPFunctions(functionMap: { [functionName: string]: string }): void {
   forEach(functionMap, (path, functionName) => {
     if (!process.env.FUNCTION_TARGET || process.env.FUNCTION_TARGET === functionName) {
@@ -38,7 +22,10 @@ export function registryHTTPFunctions(functionMap: { [functionName: string]: str
     }
   })
 }
-registryHTTPFunctions(serverFunctionDict)
+
+registryHTTPFunctions({ gql: './gql/gql.module' })
+registryHTTPFunctions({ rest: './rest/rest.module' })
+registryHTTPFunctions({ storage: './rest/storage.module' })
 
 //========================================================================
 //

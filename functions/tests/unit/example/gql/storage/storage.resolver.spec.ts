@@ -1,10 +1,11 @@
 import * as td from 'testdouble'
-import StorageGQLModule, { StorageResolver } from '../../../../../src/example/gql/storage'
 import { StorageNode, StorageServiceDI } from '../../../../../src/example/services'
 import { StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
+import { StorageResolver } from '../../../../../src/example/gql/storage'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -67,7 +68,7 @@ describe('StorageResolver', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [StorageGQLModule],
+      imports: [GQLContainerModule],
     }).compile()
 
     app = module.createNestApplication()

@@ -1,5 +1,5 @@
-import FoundationGQLModule from '../../../../../src/example/gql/foundation'
 import { FoundationServiceDI } from '../../../../../src/example/services'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
 
@@ -25,7 +25,7 @@ describe('FoundationService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [FoundationGQLModule],
+      imports: [GQLContainerModule],
     }).compile()
 
     foundationService = testingModule.get<FoundationServiceDI.type>(FoundationServiceDI.symbol)

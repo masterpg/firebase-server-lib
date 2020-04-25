@@ -1,10 +1,8 @@
-import * as path from 'path'
-import { Args, GraphQLModule, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { BaseGQLModule, getGQLModuleOptions } from '../base'
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { LibDevUtilsServiceDI, LibDevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput } from '../../../lib'
+import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
-import { config } from '../../../config'
 
 @Resolver()
 export class DevUtilsResolver {
@@ -34,10 +32,8 @@ export class DevUtilsResolver {
   }
 }
 
-const schemaFile = `${path.join(config.gql.schema.moduleDir, 'dev/dev.graphql')}`
-
 @Module({
   providers: [DevUtilsResolver],
-  imports: [BaseGQLModule, GraphQLModule.forRoot(getGQLModuleOptions([schemaFile])), LibDevUtilsServiceModule],
+  imports: [BaseGQLModule, LibDevUtilsServiceModule],
 })
 export default class DevUtilsGQLModule {}

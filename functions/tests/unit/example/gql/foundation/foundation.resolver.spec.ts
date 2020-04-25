@@ -1,5 +1,5 @@
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
-import FoundationGQLModule from '../../../../../src/example/gql/foundation'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
 
@@ -14,7 +14,7 @@ describe('FoundationResolver', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [FoundationGQLModule],
+      imports: [GQLContainerModule],
     }).compile()
 
     app = testingModule.createNestApplication()

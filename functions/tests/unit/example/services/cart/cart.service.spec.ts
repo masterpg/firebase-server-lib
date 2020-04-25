@@ -1,8 +1,7 @@
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
-import CartGQLModule from '../../../../../src/example/gql/cart'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
-import ProductGQLModule from '../../../../../src/example/gql/product'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/base'
@@ -56,7 +55,7 @@ describe('CartService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [CartGQLModule, ProductGQLModule, DevUtilsGQLModule],
+      imports: [GQLContainerModule, DevUtilsGQLModule],
     }).compile()
 
     devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)

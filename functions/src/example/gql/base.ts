@@ -1,15 +1,8 @@
-import {
-  CORSAppGuardDI,
-  CORSGuardModule,
-  CORSMiddleware,
-  DateTimeScalar,
-  HttpLoggingAppInterceptorDI,
-  HttpLoggingInterceptorModule,
-  getBaseGQLModuleOptions,
-} from '../../lib'
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
+import { DateTimeScalar, getBaseGQLModuleOptions } from '../../lib'
 import { GqlModuleOptions } from '@nestjs/graphql'
+import { Module } from '@nestjs/common'
 import { config } from '../../config'
+import { isDevelopment } from '../base'
 import { merge } from 'lodash'
 
 export function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
@@ -17,7 +10,7 @@ export function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
     ...getBaseGQLModuleOptions([...config.gql.schema.presetFiles, ...schemaFiles]),
     path: '/',
   }
-  if (process.env.NODE_ENV !== 'production') {
+  if (isDevelopment()) {
     merge(result, {
       debug: true,
       playground: true,
@@ -28,11 +21,6 @@ export function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
 }
 
 @Module({
-  providers: [DateTimeScalar, HttpLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [HttpLoggingInterceptorModule, CORSGuardModule],
+  providers: [DateTimeScalar],
 })
-export class BaseGQLModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
-  }
-}
+export class BaseGQLModule {}

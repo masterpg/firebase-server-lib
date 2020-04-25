@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
-import CartGQLModule from '../../../../../src/example/gql/cart'
+import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -11,7 +11,7 @@ describe('CartResolver', () => {
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
-      imports: [CartGQLModule],
+      imports: [GQLContainerModule],
     }).compile()
 
     app = testingModule.createNestApplication()
