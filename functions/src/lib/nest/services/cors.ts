@@ -45,7 +45,7 @@ abstract class CORSService {
       methods: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE'],
       credentials: false,
       optionsSuccessStatus: 204,
-      allowedBlankOrigin: false,
+      allowedBlankOrigin: true,
       isLogging: false,
     }
   }

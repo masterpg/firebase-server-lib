@@ -23,7 +23,7 @@ export class DevAppConfig implements AppConfig {
 
   readonly gql: GQLConfig = {
     schema: {
-      presetFiles: ['dist/lib/services/dto.graphql', 'dist/example/services/dto.graphql'],
+      presetFiles: ['dist/example/services/dto.graphql'],
       moduleDir: 'dist/example/gql',
     },
   }

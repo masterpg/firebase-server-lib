@@ -23,7 +23,7 @@ export class TestAppConfig implements AppConfig {
 
   readonly gql: GQLConfig = {
     schema: {
-      presetFiles: ['dist/lib/services/dto.graphql', 'dist/example/services/dto.graphql', 'tests/mocks/lib/gql/dummy/schema.graphql'],
+      presetFiles: ['dist/example/services/dto.graphql', 'tests/mocks/lib/gql/dummy/schema.graphql'],
       moduleDir: 'dist/example/gql',
     },
   }

@@ -1,5 +1,5 @@
 import { IsInt, IsNotEmpty, IsPositive } from 'class-validator'
-import { ValidationErrors, validate } from '../../../../../src/lib'
+import { ValidationErrors, validate, validateUID } from '../../../../../src/lib'
 import { has } from 'lodash'
 
 export class CreateProductInput {
@@ -52,5 +52,29 @@ describe('validator', () => {
       expect(has(actual.detail[1].constraints, 'isInt')).toBeTruthy()
       expect(has(actual.detail[2].constraints, 'isNotEmpty')).toBeTruthy()
     })
+  })
+})
+
+describe('validateUID', () => {
+  it('ベーシックケース', async () => {
+    const actual = validateUID('aaaBBB01234567890.-_')
+    expect(actual).toBeTruthy()
+  })
+
+  it(`'-'を含む場合`, async () => {
+    const actual = validateUID('aaa-bbb')
+    expect(actual).toBeTruthy()
+  })
+
+  it('禁則文字を含む場合', async () => {
+    // カンマを含む場合
+    const actual = validateUID('aaa,bbb')
+    expect(actual).toBeFalsy()
+  })
+
+  it('文字数制限を超える場合', async () => {
+    // 20文字以上
+    const actual = validateUID('012345678901234567890')
+    expect(actual).toBeFalsy()
   })
 })

@@ -35,7 +35,8 @@ export interface SignedUploadUrlInput {
 
 export interface StorageNodeShareSettingsInput {
     isPublic?: boolean;
-    uids?: string[];
+    readUIds?: string[];
+    writeUIds?: string[];
 }
 
 export interface StoragePaginationOptionsInput {
@@ -150,7 +151,8 @@ export interface StorageNode {
 
 export interface StorageNodeShareSettings {
     isPublic?: boolean;
-    uids?: string[];
+    readUIds?: string[];
+    writeUIds?: string[];
 }
 
 export interface StoragePaginationResult {

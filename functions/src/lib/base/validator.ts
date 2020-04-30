@@ -69,3 +69,17 @@ export function validateSync(objectClass: Constructor, objectOrObjects: any | an
     }
   }
 }
+
+/**
+ * ユーザーIDを検証します。
+ * @param uid
+ */
+export function validateUID(uid: string): boolean {
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\\.\\-_'
+  const ERR_PATTERN = new RegExp(`[^${CHARS}]+`)
+
+  if (uid.length > 20) return false
+  if (!uid) return false
+  if (ERR_PATTERN.test(uid)) return false
+  return true
+}

@@ -1,7 +1,7 @@
 import { AuthServiceDI, CORSServiceDI, FirestoreServiceDI, FunctionsEventLoggingServiceDI, HttpLoggingServiceDI } from './nest'
 import { LibDevUtilsServiceDI, LibStorageServiceDI } from './services'
 
-export { InputValidationError, ValidationErrors, WriteReadyObserver, initFirebaseApp, validate, validateSync } from './base'
+export { InputValidationError, ValidationErrors, WriteReadyObserver, initFirebaseApp, validate, validateSync, validateUID } from './base'
 
 export { DateTimeScalar, GQLCtx, getBaseGQLModuleOptions, getTypeDefs } from './gql'
 

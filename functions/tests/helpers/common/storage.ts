@@ -1,15 +1,9 @@
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { StorageNodeShareSettings, StorageNodeType } from '../../../src/lib/services/storage'
+import { StorageNode, StorageNodeType } from '../../../src/lib/services/storage'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
-import { StorageNode } from '../../../src/example/gql.schema'
-import cloneDeep = require('lodash/cloneDeep')
+import { cloneDeep } from 'lodash'
 import dayjs = require('dayjs')
-
-const EMPTY_SHARE_SETTINGS: StorageNodeShareSettings = {
-  isPublic: undefined,
-  uids: undefined,
-}
 
 export function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): StorageNode {
   dirPath = removeBothEndsSlash(dirPath)
@@ -24,7 +18,7 @@ export function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<Stora
     path: dirPath,
     contentType: data.contentType || '',
     size: data.size || 0,
-    share: data.share || cloneDeep(EMPTY_SHARE_SETTINGS),
+    share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
     created: data.created || dayjs(),
     updated: data.updated || dayjs(),
   }
@@ -44,7 +38,7 @@ export function newTestStorageFileNode(filePath: string, data?: Partial<Omit<Sto
     path: filePath,
     contentType: data.contentType || 'text/plain; charset=utf-8',
     size: data.size || 5,
-    share: data.share || cloneDeep(EMPTY_SHARE_SETTINGS),
+    share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
     created: data.created || dayjs(),
     updated: data.updated || dayjs(),
   }

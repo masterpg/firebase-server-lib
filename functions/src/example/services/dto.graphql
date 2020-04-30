@@ -1,5 +1,98 @@
 #========================================================================
 #
+#  Base types
+#
+#========================================================================
+
+scalar DateTime
+
+scalar JSON
+
+scalar JSONObject
+
+interface DocumentData {
+  id: ID!
+}
+
+#========================================================================
+#
+#  foundation
+#
+#========================================================================
+
+type AppConfigResponse {
+  usersDir: String!
+}
+
+#========================================================================
+#
+#  storage
+#
+#========================================================================
+
+enum StorageNodeType {
+  File
+  Dir
+}
+
+input StoragePaginationOptionsInput {
+  maxChunk: Int
+  pageToken: String
+}
+
+type StoragePaginationResult {
+  list: [StorageNode!]!
+  nextPageToken: String
+}
+
+type StorageNode {
+  id: String!
+  nodeType: StorageNodeType!
+  name: String!
+  dir: String!
+  path: String!
+  contentType: String!
+  size: Int!
+  share: StorageNodeShareSettings!
+  created: DateTime!
+  updated: DateTime!
+}
+
+type StorageNodeShareSettings {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeShareSettingsInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input SignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+#========================================================================
+#
+#  dev
+#
+#========================================================================
+
+input PutTestDataInput {
+  collectionName: String!
+  collectionRecords: [JSONObject!]!
+}
+
+input TestSignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+#========================================================================
+#
 #  cart
 #
 #========================================================================

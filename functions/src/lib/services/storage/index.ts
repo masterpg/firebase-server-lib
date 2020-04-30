@@ -93,8 +93,8 @@ export class LibStorageService extends BaseStorageService {
       return this.serveFile(req, res, fileNode)
     }
 
-    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (share.uids.includes(user.uid)) {
+    // ファイルの読み込み権限に自ユーザーが含まれている場合
+    if (share.readUIds && share.readUIds.includes(user.uid)) {
       return this.serveFile(req, res, fileNode)
     }
 
@@ -144,8 +144,8 @@ export class LibStorageService extends BaseStorageService {
       return this.serveFile(req, res, fileNode)
     }
 
-    // ファイルのユーザーIDの共有設定に自ユーザーが含まれている場合
-    if (share.uids.includes(user.uid)) {
+    // ファイルの読み込み権限に自ユーザーが含まれている場合
+    if (share.readUIds && share.readUIds.includes(user.uid)) {
       return this.serveFile(req, res, fileNode)
     }
 

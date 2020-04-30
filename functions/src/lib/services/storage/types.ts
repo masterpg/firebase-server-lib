@@ -36,13 +36,15 @@ export interface StorageNode {
 }
 
 export interface StorageNodeShareSettings {
-  isPublic?: boolean
-  uids?: string[]
+  isPublic: boolean | null
+  readUIds: string[] | null
+  writeUIds: string[] | null
 }
 
 export interface StorageNodeShareSettingsInput {
-  isPublic?: boolean
-  uids?: string[]
+  isPublic?: boolean | null
+  readUIds?: string[] | null
+  writeUIds?: string[] | null
 }
 
 export class SignedUploadUrlInput {
@@ -76,14 +78,16 @@ export interface StorageMetadata {
 
 export interface StorageMetadataInput {
   id?: string | null
-  share?: StorageNodeShareSettings | null
+  share?: StorageNodeShareSettingsInput | null
   created?: Dayjs
   updated?: Dayjs
 }
 
 export interface StorageRawMetadata {
   id?: string | null
-  share?: string | null
+  isPublic?: string | null
+  readUIds?: string | null
+  writeUIds?: string | null
   created?: string | null
   updated?: string | null
 }

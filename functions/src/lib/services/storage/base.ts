@@ -21,11 +21,11 @@ import {
   StorageRawMetadata,
   UploadDataItem,
 } from './types'
+import { InputValidationError, validateUID } from '../../base'
 import { Request, Response } from 'express'
 import { arrayToDict, removeBothEndsSlash, removeEndSlash, removeStartSlash, splitHierarchicalPaths } from 'web-base-lib'
 import { AuthServiceDI } from '../../nest'
 import { Inject } from '@nestjs/common'
-import { InputValidationError } from '../../base'
 import dayjs = require('dayjs')
 
 const MAX_CHUNK = 50
@@ -788,16 +788,19 @@ export class BaseStorageService {
       throw new Error(`The specified directory does not exist: '${path.join(basePath, dirPath)}'`)
     }
 
-    const share: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
-    if (settings) {
-      if (typeof settings.isPublic === 'boolean') {
-        share.isPublic = settings.isPublic
+    settings?.readUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
       }
-      if (settings.uids) {
-        share.uids = settings.uids
+    })
+
+    settings?.writeUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
       }
-    }
-    Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path, { share }))
+    })
+
+    Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path, { share: settings }))
 
     return dirNode
   }
@@ -817,16 +820,19 @@ export class BaseStorageService {
       throw new Error(`The specified file does not exist: '${path.join(basePath, filePath)}'`)
     }
 
-    const share: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
-    if (settings) {
-      if (typeof settings.isPublic === 'boolean') {
-        share.isPublic = settings.isPublic
+    settings?.readUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
       }
-      if (settings.uids) {
-        share.uids = settings.uids
+    })
+
+    settings?.writeUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
       }
-    }
-    Object.assign(fileNode, await this.saveFileNode(basePath, fileNode.path, null, { share }))
+    })
+
+    Object.assign(fileNode, await this.saveFileNode(basePath, fileNode.path, null, { share: settings }))
 
     return fileNode
   }
@@ -1353,7 +1359,12 @@ export class BaseStorageService {
     }
 
     // メタデータの取得
-    const storageMetadata: StorageMetadata = { id: '', share: {}, created: dayjs(0), updated: dayjs(0) }
+    const storageMetadata: StorageMetadata = {
+      id: '',
+      share: { isPublic: null, readUIds: null, writeUIds: null },
+      created: dayjs(0),
+      updated: dayjs(0),
+    }
     if (exists) {
       Object.assign(storageMetadata, this.extractMetaData(gcsNode))
     }
@@ -1663,9 +1674,33 @@ export class BaseStorageService {
 
     if (typeof metadata.share !== 'undefined') {
       if (metadata.share === null) {
-        result.share = null
+        result.isPublic = null
+        result.readUIds = null
+        result.writeUIds = null
       } else {
-        result.share = this.m_toShareSettingsString(metadata.share)
+        if (typeof metadata.share.isPublic !== 'undefined') {
+          if (metadata.share.isPublic === null) {
+            result.isPublic = null
+          } else {
+            result.isPublic = metadata.share.isPublic.toString()
+          }
+        }
+        if (typeof metadata.share.readUIds !== 'undefined') {
+          if (metadata.share.readUIds === null) {
+            result.readUIds = null
+          } else {
+            const readUIdsStr = metadata.share.readUIds.filter(uid => validateUID(uid)).join(',')
+            result.readUIds = readUIdsStr || null
+          }
+        }
+        if (typeof metadata.share.writeUIds !== 'undefined') {
+          if (metadata.share.writeUIds === null) {
+            result.writeUIds = null
+          } else {
+            const readUIdsStr = metadata.share.writeUIds.filter(uid => validateUID(uid)).join(',')
+            result.writeUIds = readUIdsStr || null
+          }
+        }
       }
     }
 
@@ -1686,14 +1721,25 @@ export class BaseStorageService {
    */
   protected extractMetaData(gcsNode: File): StorageMetadata {
     const metadata = gcsNode.metadata.metadata || {}
-    const share = this.m_extractShareSettings(gcsNode)
 
-    return {
+    const result: StorageMetadata = {
       id: metadata.id || '',
-      share,
+      share: { isPublic: null, readUIds: null, writeUIds: null },
       created: metadata.created ? dayjs(metadata.created) : dayjs(0),
       updated: metadata.updated ? dayjs(metadata.updated) : dayjs(0),
     }
+
+    if (metadata.isPublic) {
+      result.share.isPublic = metadata.isPublic === 'true' ? true : false
+    }
+    if (metadata.readUIds) {
+      result.share.readUIds = metadata.readUIds.split(',')
+    }
+    if (metadata.writeUIds) {
+      result.share.writeUIds = metadata.writeUIds.split(',')
+    }
+
+    return result
   }
 
   protected async sleep(ms: number): Promise<void> {
@@ -1715,24 +1761,6 @@ export class BaseStorageService {
   }
 
   /**
-   * 指定されたGCSノードのメタデータから共有設定を抽出します。
-   * @param gcsNode
-   */
-  private m_extractShareSettings(gcsNode: File): StorageNodeShareSettings {
-    let result: StorageNodeShareSettings = { isPublic: undefined, uids: undefined }
-
-    if (gcsNode.metadata.metadata && gcsNode.metadata.metadata.share) {
-      try {
-        result = JSON.parse(gcsNode.metadata.metadata.share)
-      } catch (err) {
-        // TODO どのようにログ出力するか検討が必要!!!
-      }
-    }
-
-    return result
-  }
-
-  /**
    * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
    * @param hierarchicalNodes
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
@@ -1740,14 +1768,16 @@ export class BaseStorageService {
   protected getInheritedShareSettings(hierarchicalNodes: GCSStorageNode[]): Required<StorageNodeShareSettings> {
     hierarchicalNodes = this.sortStorageNodes([...hierarchicalNodes])
 
-    const result: Required<StorageNodeShareSettings> = { isPublic: false, uids: [] }
-    for (let i = hierarchicalNodes.length - 1; i >= 0; i--) {
-      const node = hierarchicalNodes[i]
-      if (node.share.isPublic) {
-        result.isPublic = true
+    const result: Required<StorageNodeShareSettings> = { isPublic: false, readUIds: [], writeUIds: [] }
+    for (const node of hierarchicalNodes) {
+      if (typeof node.share.isPublic === 'boolean') {
+        result.isPublic = node.share.isPublic
       }
-      if (node.share.uids) {
-        result.uids = node.share.uids
+      if (node.share.readUIds) {
+        result.readUIds = node.share.readUIds
+      }
+      if (node.share.writeUIds) {
+        result.writeUIds = node.share.writeUIds
       }
     }
 
