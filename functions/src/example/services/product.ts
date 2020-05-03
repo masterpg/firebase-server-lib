@@ -1,6 +1,12 @@
 import * as admin from 'firebase-admin'
 import { Injectable, Module } from '@nestjs/common'
-import { Product } from './types'
+import { Product } from './base'
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 @Injectable()
 class ProductService {
@@ -38,7 +44,7 @@ class ProductService {
   }
 }
 
-export namespace ProductServiceDI {
+namespace ProductServiceDI {
   export const symbol = Symbol(ProductService.name)
   export const provider = {
     provide: symbol,
@@ -51,4 +57,12 @@ export namespace ProductServiceDI {
   providers: [ProductServiceDI.provider],
   exports: [ProductServiceDI.provider],
 })
-export class ProductServiceModule {}
+class ProductServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { ProductServiceDI, ProductServiceModule }

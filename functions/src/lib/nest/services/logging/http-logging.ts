@@ -16,27 +16,27 @@ import IMonitoredResource = google.api.IMonitoredResource
 
 //========================================================================
 //
-//  Basis
+//  Interfaces
 //
 //========================================================================
 
-export interface HttpLoggingSource {
+interface HTTPLoggingSource {
   req: Request
   res: Response
   latencyTimer?: LoggingLatencyTimer
   logName?: string
   info?: GraphQLResolveInfo
   error?: Error
-  metadata?: Partial<HttpLoggingMetadata>
-  data?: Partial<HttpLoggingData>
+  metadata?: Partial<HTTPLoggingMetadata>
+  data?: Partial<HTTPLoggingData>
 }
 
-export interface HttpLoggingMetadata extends LogEntry {
-  resource: HttpLoggingResourceData
+interface HTTPLoggingMetadata extends LogEntry {
+  resource: HTTPLoggingResourceData
   httpRequest: IHttpRequest
 }
 
-export interface HttpLoggingResourceData extends IMonitoredResource {
+interface HTTPLoggingResourceData extends IMonitoredResource {
   type: string
   labels: {
     function_name: string
@@ -44,7 +44,7 @@ export interface HttpLoggingResourceData extends IMonitoredResource {
   }
 }
 
-export interface HttpLoggingData {
+interface HTTPLoggingData {
   gql?: any
   user?: {
     uid: string
@@ -56,9 +56,15 @@ export interface HttpLoggingData {
   }
 }
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 const DEFAULT_LOG_NAME = 'api'
 
-abstract class HttpLoggingService {
+abstract class HTTPLoggingService {
   //----------------------------------------------------------------------
   //
   //  Variables
@@ -73,7 +79,7 @@ abstract class HttpLoggingService {
   //
   //----------------------------------------------------------------------
 
-  log(loggingSource: HttpLoggingSource): void {
+  log(loggingSource: HTTPLoggingSource): void {
     const { logName, req, res, error, metadata } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
@@ -146,7 +152,7 @@ abstract class HttpLoggingService {
     res: Response
     info?: GraphQLResolveInfo
     latencyTimer?: LoggingLatencyTimer
-  }): HttpLoggingMetadata {
+  }): HTTPLoggingMetadata {
     const { req, info } = loggingSource
     return {
       resource: this.m_getResourceData(loggingSource),
@@ -154,10 +160,10 @@ abstract class HttpLoggingService {
     }
   }
 
-  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; data?: Partial<HttpLoggingData>; error?: Error }): HttpLoggingData {
+  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; data?: Partial<HTTPLoggingData>; error?: Error }): HTTPLoggingData {
     const { req, info, data, error } = loggingSource
 
-    const result = {} as HttpLoggingData
+    const result = {} as HTTPLoggingData
 
     if (info) {
       result.gql = req.body
@@ -190,7 +196,7 @@ abstract class HttpLoggingService {
     return result
   }
 
-  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HttpLoggingData) {
+  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HTTPLoggingData) {
     let targetLog = this.m_logDict[logName]
     if (!targetLog) {
       targetLog = new Logging().log(logName)
@@ -200,7 +206,7 @@ abstract class HttpLoggingService {
     return targetLog.write(entry)
   }
 
-  private m_getResourceData(loggingSource: { req: Request; info?: GraphQLResolveInfo }): HttpLoggingResourceData {
+  private m_getResourceData(loggingSource: { req: Request; info?: GraphQLResolveInfo }): HTTPLoggingResourceData {
     const { req, info } = loggingSource
     return {
       type: 'cloud_function',
@@ -239,15 +245,15 @@ abstract class HttpLoggingService {
 //========================================================================
 
 @Injectable()
-class ProdHttpLoggingService extends HttpLoggingService {
+class ProdHTTPLoggingService extends HTTPLoggingService {
   protected getBaseFunctionName(req: Request): string {
     return String(process.env.FUNCTION_TARGET)
   }
 }
 
 @Injectable()
-class DevHttpLoggingService extends HttpLoggingService {
-  log(loggingSource: HttpLoggingSource): void {
+class DevHTTPLoggingService extends HTTPLoggingService {
+  log(loggingSource: HTTPLoggingSource): void {
     const { latencyTimer, error } = loggingSource
     const functionName = this.getBaseMetadata(loggingSource).resource.labels.function_name
     const detail = {
@@ -273,33 +279,41 @@ class DevHttpLoggingService extends HttpLoggingService {
 }
 
 @Injectable()
-class TestHttpLoggingService extends HttpLoggingService {
-  log(loggingSource: HttpLoggingSource): void {}
+class TestHTTPLoggingService extends HTTPLoggingService {
+  log(loggingSource: HTTPLoggingSource): void {}
 
   protected getBaseFunctionName(req: Request): string {
     return ''
   }
 }
 
-export namespace HttpLoggingServiceDI {
-  export const symbol = Symbol(HttpLoggingService.name)
+namespace HTTPLoggingServiceDI {
+  export const symbol = Symbol(HTTPLoggingService.name)
   export const provider = {
     provide: symbol,
     useClass: (() => {
       if (process.env.NODE_ENV === 'production') {
-        return ProdHttpLoggingService
+        return ProdHTTPLoggingService
       } else if (process.env.NODE_ENV === 'test') {
-        return TestHttpLoggingService
+        return TestHTTPLoggingService
       } else {
-        return DevHttpLoggingService
+        return DevHTTPLoggingService
       }
     })(),
   }
-  export type type = HttpLoggingService
+  export type type = HTTPLoggingService
 }
 
 @Module({
-  providers: [HttpLoggingServiceDI.provider],
-  exports: [HttpLoggingServiceDI.provider],
+  providers: [HTTPLoggingServiceDI.provider],
+  exports: [HTTPLoggingServiceDI.provider],
 })
-export class HttpLoggingServiceModule {}
+class HTTPLoggingServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { HTTPLoggingSource, HTTPLoggingMetadata, HTTPLoggingResourceData, HTTPLoggingData, HTTPLoggingServiceDI, HTTPLoggingServiceModule }

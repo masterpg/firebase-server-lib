@@ -4,24 +4,30 @@ import { Request, Response } from 'express'
 
 //========================================================================
 //
-//  Basis
+//  Interfaces
 //
 //========================================================================
 
-export interface IdToken extends admin.auth.DecodedIdToken {
+interface IdToken extends admin.auth.DecodedIdToken {
   isAppAdmin?: string
   myDirName?: string
 }
 
-export enum AuthRoleType {
+enum AuthRoleType {
   AppAdmin = 'AppAdmin',
 }
 
-export interface AuthValidateResult {
+interface AuthValidateResult {
   result: boolean
   idToken?: IdToken
   error?: HttpException
 }
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 abstract class AuthService {
   //----------------------------------------------------------------------
@@ -123,12 +129,6 @@ abstract class AuthService {
   }
 }
 
-//========================================================================
-//
-//  Concrete
-//
-//========================================================================
-
 @Injectable()
 class ProdAuthService extends AuthService {
   protected async decodeIdToken(idToken: string): Promise<IdToken> {
@@ -154,7 +154,7 @@ class DevAuthService extends AuthService {
   }
 }
 
-export namespace AuthServiceDI {
+namespace AuthServiceDI {
   export const symbol = Symbol(AuthService.name)
   export const provider = {
     provide: symbol,
@@ -167,4 +167,12 @@ export namespace AuthServiceDI {
   providers: [AuthServiceDI.provider],
   exports: [AuthServiceDI.provider],
 })
-export class AuthServiceModule {}
+class AuthServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { IdToken, AuthRoleType, AuthValidateResult, AuthServiceDI, AuthServiceModule }

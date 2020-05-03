@@ -1,8 +1,14 @@
 import { CanActivate, ExecutionContext, Inject, Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { CORSServiceDI } from '../services/cors'
-import { HttpLoggingServiceDI } from '../services/logging'
+import { HTTPLoggingServiceDI } from '../services/logging'
 import { getAllExecutionContext } from '../base'
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 class CORSGuard implements CanActivate {
   constructor(@Inject(CORSServiceDI.symbol) protected readonly corsService: CORSServiceDI.type) {}
@@ -13,7 +19,7 @@ class CORSGuard implements CanActivate {
   }
 }
 
-export namespace CORSAppGuardDI {
+namespace CORSAppGuardDI {
   export const provider = {
     provide: APP_GUARD,
     useClass: CORSGuard,
@@ -21,7 +27,15 @@ export namespace CORSAppGuardDI {
 }
 
 @Module({
-  providers: [CORSServiceDI.provider, HttpLoggingServiceDI.provider],
-  exports: [CORSServiceDI.provider, HttpLoggingServiceDI.provider],
+  providers: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
+  exports: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
 })
-export class CORSGuardModule {}
+class CORSGuardModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { CORSAppGuardDI, CORSGuardModule }

@@ -1,12 +1,18 @@
 import { CallHandler, ExecutionContext, Inject, Module, NestInterceptor } from '@nestjs/common'
-import { HttpLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
+import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { APP_INTERCEPTOR } from '@nestjs/core'
 import { Observable } from 'rxjs'
 import { getAllExecutionContext } from '../base'
 import { tap } from 'rxjs/operators'
 
-class HttpLoggingInterceptor implements NestInterceptor {
-  constructor(@Inject(HttpLoggingServiceDI.symbol) protected readonly loggingService: HttpLoggingServiceDI.type) {}
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+class HTTPLoggingInterceptor implements NestInterceptor {
+  constructor(@Inject(HTTPLoggingServiceDI.symbol) protected readonly loggingService: HTTPLoggingServiceDI.type) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const { req, res, info } = getAllExecutionContext(context)
@@ -30,15 +36,23 @@ class HttpLoggingInterceptor implements NestInterceptor {
   }
 }
 
-export namespace HttpLoggingAppInterceptorDI {
+namespace HTTPLoggingAppInterceptorDI {
   export const provider = {
     provide: APP_INTERCEPTOR,
-    useClass: HttpLoggingInterceptor,
+    useClass: HTTPLoggingInterceptor,
   }
 }
 
 @Module({
-  providers: [HttpLoggingServiceDI.provider],
-  exports: [HttpLoggingServiceDI.provider],
+  providers: [HTTPLoggingServiceDI.provider],
+  exports: [HTTPLoggingServiceDI.provider],
 })
-export class HttpLoggingInterceptorModule {}
+class HTTPLoggingInterceptorModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule }

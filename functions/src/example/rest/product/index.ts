@@ -2,8 +2,14 @@ import { Controller, Get, Inject, Module, Param } from '@nestjs/common'
 import { Product, ProductServiceDI } from '../../services'
 import { BaseRESTModule } from '../base'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Controller('products')
-export class ProductController {
+class ProductController {
   constructor(@Inject(ProductServiceDI.symbol) protected readonly productService: ProductServiceDI.type) {}
 
   @Get()
@@ -23,4 +29,12 @@ export class ProductController {
   providers: [ProductServiceDI.provider],
   imports: [BaseRESTModule],
 })
-export default class ProductRESTModule {}
+class ProductRESTModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default ProductRESTModule

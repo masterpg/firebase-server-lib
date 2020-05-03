@@ -2,22 +2,22 @@ import { SUPPORTED_REGIONS } from 'firebase-functions'
 
 //========================================================================
 //
-//  Configs
+//  Interfaces
 //
 //========================================================================
 
-export interface FunctionsConfig {
+interface FunctionsConfig {
   readonly region: typeof SUPPORTED_REGIONS[number]
 }
 
 const CORSExcludeConfigMethods = ['GET', 'PUT', 'POST', 'DELETE']
 
-export interface CORSExcludeConfig {
+interface CORSExcludeConfig {
   readonly method?: typeof CORSExcludeConfigMethods[number]
   readonly pattern: string
 }
 
-export interface CORSConfig {
+interface CORSConfig {
   /**
    * 設定例: [
    *   'http://localhost',
@@ -34,12 +34,12 @@ export interface CORSConfig {
   readonly excludes: CORSExcludeConfig[]
 }
 
-export interface StorageConfig {
+interface StorageConfig {
   readonly bucket: string
   readonly usersDir: string
 }
 
-export interface GQLConfig {
+interface GQLConfig {
   schema: {
     presetFiles: string[]
     moduleDir: string
@@ -48,22 +48,24 @@ export interface GQLConfig {
 
 //========================================================================
 //
-//  LibConfig
+//  Implementation
 //
 //========================================================================
 
-export interface LibConfig {
+interface LibConfig {
   readonly functions: FunctionsConfig
   readonly cors: CORSConfig
   readonly storage: StorageConfig
 }
 
+interface AppConfig extends LibConfig {
+  readonly gql: GQLConfig
+}
+
 //========================================================================
 //
-//  AppConfig
+//  Exports
 //
 //========================================================================
 
-export interface AppConfig extends LibConfig {
-  readonly gql: GQLConfig
-}
+export { FunctionsConfig, CORSExcludeConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig }

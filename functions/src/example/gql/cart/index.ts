@@ -5,9 +5,15 @@ import { Inject, UseGuards } from '@nestjs/common'
 import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver('CartItem')
 @UseGuards(AuthGuard)
-export class CartResolver {
+class CartResolver {
   constructor(@Inject(CartServiceDI.symbol) protected readonly cartService: CartServiceDI.type) {}
 
   @Query()
@@ -40,4 +46,12 @@ export class CartResolver {
   providers: [CartResolver],
   imports: [BaseGQLModule, CartServiceModule, AuthGuardModule],
 })
-export default class CartGQLModule {}
+class CartGQLModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default CartGQLModule

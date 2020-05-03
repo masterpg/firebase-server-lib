@@ -1,15 +1,21 @@
 import { CanActivate, ExecutionContext, Inject, Injectable, Module } from '@nestjs/common'
-import { HttpLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
+import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
 import { getAllExecutionContext } from '../base'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Injectable()
-export class AuthGuard implements CanActivate {
+class AuthGuard implements CanActivate {
   constructor(
     protected readonly reflector: Reflector,
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(HttpLoggingServiceDI.symbol) protected readonly loggingService: HttpLoggingServiceDI.type
+    @Inject(HTTPLoggingServiceDI.symbol) protected readonly loggingService: HTTPLoggingServiceDI.type
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,7 +37,15 @@ export class AuthGuard implements CanActivate {
 }
 
 @Module({
-  providers: [AuthServiceDI.provider, HttpLoggingServiceDI.provider],
-  exports: [AuthServiceDI.provider, HttpLoggingServiceDI.provider],
+  providers: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
+  exports: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
 })
-export class AuthGuardModule {}
+class AuthGuardModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { AuthGuard, AuthGuardModule }

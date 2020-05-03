@@ -4,7 +4,13 @@ import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { initFirebaseApp } from '../../lib'
 
-export function initApp() {
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+function initApp() {
   initFirebaseApp()
 }
 
@@ -13,7 +19,7 @@ export function initApp() {
  * @param module
  * @param expressInstance
  */
-export async function createNestHTTPApplication(module: any, expressInstance: Express): Promise<INestApplication> {
+async function createNestHTTPApplication(module: any, expressInstance: Express): Promise<INestApplication> {
   const httpAdapter = new ExpressAdapter(expressInstance)
   const nestApp = await NestFactory.create(module, httpAdapter, {
     logger: ['error', 'warn'],
@@ -25,7 +31,7 @@ export async function createNestHTTPApplication(module: any, expressInstance: Ex
  * Nestをプレーンなアプリケーションとして作成します。
  * @param module
  */
-export async function createNestApplication(module: any): Promise<INestApplication> {
+async function createNestApplication(module: any): Promise<INestApplication> {
   const nestApp = await NestFactory.create(module, {
     logger: ['error', 'warn'],
   })
@@ -38,4 +44,12 @@ export async function createNestApplication(module: any): Promise<INestApplicati
  * ローカル環境では`process.env.NODE_ENV`には値が設定されないため(本番環境では'production'が設定される)、
  * この関数では`process.env.NODE_ENV`を使用せずに開発環境か否かを判定しています。
  */
-export const isDevelopment = () => (process.env.node || '').includes('nodenv')
+const isDevelopment = () => (process.env.node || '').includes('nodenv')
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { initApp, createNestHTTPApplication, createNestApplication, isDevelopment }

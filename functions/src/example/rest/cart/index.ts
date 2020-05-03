@@ -3,9 +3,15 @@ import { Body, Controller, Delete, Get, Inject, Module, Param, Post, Put, Query,
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI, CartServiceModule } from '../../services'
 import { BaseRESTModule } from '../base'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Controller('cartItems')
 @UseGuards(AuthGuard)
-export class CartController {
+class CartController {
   constructor(@Inject(CartServiceDI.symbol) protected readonly cartService: CartServiceDI.type) {}
 
   @Get()
@@ -44,4 +50,12 @@ export class CartController {
   controllers: [CartController],
   imports: [BaseRESTModule, CartServiceModule, AuthGuardModule],
 })
-export default class CartRESTModule {}
+class CartRESTModule {}
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+export default CartRESTModule

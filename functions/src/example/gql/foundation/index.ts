@@ -5,6 +5,12 @@ import { Query, Resolver } from '@nestjs/graphql'
 import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver()
 export class FoundationResolver {
   constructor(@Inject(FoundationServiceDI.symbol) protected readonly foundationService: FoundationServiceDI.type) {}
@@ -25,4 +31,12 @@ export class FoundationResolver {
   providers: [FoundationResolver],
   imports: [BaseGQLModule, FoundationServiceModule, AuthGuardModule],
 })
-export default class FoundationGQLModule {}
+class FoundationGQLModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default FoundationGQLModule

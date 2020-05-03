@@ -4,6 +4,12 @@ import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver('Product')
 export class ProductResolver {
   constructor(@Inject(ProductServiceDI.symbol) protected readonly productService: ProductServiceDI.type) {}
@@ -18,4 +24,12 @@ export class ProductResolver {
   providers: [ProductResolver],
   imports: [BaseGQLModule, ProductServiceModule],
 })
-export default class ProductGQLModule {}
+class ProductGQLModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default ProductGQLModule

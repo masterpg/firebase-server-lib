@@ -2,16 +2,28 @@ import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
 import { AuthServiceModule, IdToken } from '../../nest'
-import { GCSStorageNode, StorageNodeShareSettingsInput, StoragePaginationOptionsInput, StoragePaginationResult, StorageUser } from './types'
+import {
+  BaseStorageService,
+  GCSStorageNode,
+  StorageNodeShareSettingsInput,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
+  StorageUser,
+} from './base'
 import { Injectable, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { BaseStorageService } from './base'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import { config } from '../../../config'
 import { removeBothEndsSlash } from 'web-base-lib'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Injectable()
-export class LibStorageService extends BaseStorageService {
+class LibStorageService extends BaseStorageService {
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -271,9 +283,7 @@ export class LibStorageService extends BaseStorageService {
   }
 }
 
-export * from './types'
-
-export namespace LibStorageServiceDI {
+namespace LibStorageServiceDI {
   export const symbol = Symbol(LibStorageService.name)
   export const provider = {
     provide: symbol,
@@ -287,4 +297,23 @@ export namespace LibStorageServiceDI {
   exports: [LibStorageServiceDI.provider],
   imports: [AuthServiceModule],
 })
-export class LibStorageServiceModule {}
+class LibStorageServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export {
+  StorageNodeType,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
+  StorageNode,
+  StorageNodeShareSettings,
+  StorageNodeShareSettingsInput,
+  SignedUploadUrlInput,
+  StorageUser,
+  GCSStorageNode,
+} from './base'
+export { LibStorageService, LibStorageServiceDI, LibStorageServiceModule }

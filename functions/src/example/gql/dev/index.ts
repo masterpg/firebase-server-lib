@@ -4,6 +4,12 @@ import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver()
 export class DevUtilsResolver {
   constructor(@Inject(LibDevUtilsServiceDI.symbol) protected readonly devUtilsService: LibDevUtilsServiceDI.type) {}
@@ -36,4 +42,12 @@ export class DevUtilsResolver {
   providers: [DevUtilsResolver],
   imports: [BaseGQLModule, LibDevUtilsServiceModule],
 })
-export default class DevUtilsGQLModule {}
+class DevUtilsGQLModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default DevUtilsGQLModule

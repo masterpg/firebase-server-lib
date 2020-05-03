@@ -1,4 +1,4 @@
-import { AdminSettings, PartnerSettings, PublicSettings } from '../../gql.schema'
+import { AdminSettings, PartnerSettings, PublicSettings } from '../../services'
 import {
   AuthGuard,
   AuthGuardModule,
@@ -15,8 +15,14 @@ import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { MiddlewareConsumer, Module, RequestMethod, UseGuards } from '@nestjs/common'
 import { getMockGQLModuleOptions } from '../base'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver()
-export class DummyResolver {
+class DummyResolver {
   @Query('publicSettings')
   async getPublicSettings(): Promise<PublicSettings> {
     return { publicKey: 'Public Key' }
@@ -40,13 +46,13 @@ export class DummyResolver {
   providers: [DummyResolver],
   imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule],
 })
-export class DummyGQLModule {}
+class DummyGQLModule {}
 
 @Module({
   providers: [DummyResolver],
   imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule, CORSMiddlewareModule],
 })
-export class DummyCORSGQLModule {
+class DummyCORSGQLModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
@@ -56,8 +62,16 @@ export class DummyCORSGQLModule {
   providers: [DummyResolver, CORSAppGuardDI.provider],
   imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule, CORSGuardModule],
 })
-export class DummyCORSGuardGQLModule {
+class DummyCORSGuardGQLModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { DummyGQLModule, DummyCORSGQLModule, DummyCORSGuardGQLModule }

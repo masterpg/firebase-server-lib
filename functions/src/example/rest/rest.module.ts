@@ -1,16 +1,30 @@
-import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HttpLoggingAppInterceptorDI, HttpLoggingInterceptorModule } from '../../lib/nest'
+import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib/nest'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import CartRESTModule from './cart'
 import ProductRESTModule from './product'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 const restModules = [CartRESTModule, ProductRESTModule]
 
 @Module({
-  providers: [HttpLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [HttpLoggingInterceptorModule, CORSGuardModule, ...restModules],
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
+  imports: [HTTPLoggingInterceptorModule, CORSGuardModule, ...restModules],
 })
-export default class RESTContainerModule {
+class RESTContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default RESTContainerModule

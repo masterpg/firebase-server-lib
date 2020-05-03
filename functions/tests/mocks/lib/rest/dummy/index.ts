@@ -13,9 +13,15 @@ import {
 import { Controller, Get, MiddlewareConsumer, Module, RequestMethod, UseGuards, UseInterceptors } from '@nestjs/common'
 import { TransformInterceptor } from '../../../../../src/lib/nest'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Controller('dummyRESTService')
 @UseInterceptors(TransformInterceptor)
-export class DummyController {
+class DummyController {
   @Get('public/settings')
   async getPublicSettings(): Promise<{ publicKey: string }> {
     return { publicKey: 'Public Key' }
@@ -39,13 +45,13 @@ export class DummyController {
   controllers: [DummyController],
   imports: [AuthGuardModule],
 })
-export class DummyRESTModule {}
+class DummyRESTModule {}
 
 @Module({
   controllers: [DummyController],
   imports: [AuthGuardModule, CORSMiddlewareModule],
 })
-export class DummyCORSRESTModule {
+class DummyCORSRESTModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
@@ -56,8 +62,16 @@ export class DummyCORSRESTModule {
   providers: [CORSAppGuardDI.provider],
   imports: [AuthGuardModule, CORSGuardModule],
 })
-export class DummyCORSGuardRESTModule {
+class DummyCORSGuardRESTModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { DummyRESTModule, DummyCORSRESTModule, DummyCORSGuardRESTModule }

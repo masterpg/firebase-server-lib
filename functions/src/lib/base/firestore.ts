@@ -1,25 +1,37 @@
 import * as admin from 'firebase-admin'
 import { DocumentReference, Transaction } from '@google-cloud/firestore'
 
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
 /**
  * ドキュメントデータの共通項目を定義したインタフェースです。
  */
-export interface DocumentData {
+interface DocumentData {
   id: string
 }
 
 /**
  * @see admin.firestore.DocumentSnapshot
  */
-export interface DocumentSnapshot<DOCUMENT extends DocumentData> extends admin.firestore.DocumentSnapshot<DOCUMENT> {}
+interface DocumentSnapshot<DOCUMENT extends DocumentData> extends admin.firestore.DocumentSnapshot<DOCUMENT> {}
 
 /**
  * ドキュメントがデータベースに実際に存在する場合、このインタフェースを使用してください。
  * これにより`data()`の戻り値が返却されることを前提にコーディングできます。
  */
-export interface RequiredDocumentSnapshot<DOCUMENT extends DocumentData> extends DocumentSnapshot<DOCUMENT> {
+interface RequiredDocumentSnapshot<DOCUMENT extends DocumentData> extends DocumentSnapshot<DOCUMENT> {
   data(): DOCUMENT
 }
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 /**
  * 指定されたIDのドキュメントを取得します。
@@ -27,7 +39,7 @@ export interface RequiredDocumentSnapshot<DOCUMENT extends DocumentData> extends
  * @param ids
  * @param transaction
  */
-export async function getDocumentsByIds<DOCUMENT extends DocumentData>(
+async function getDocumentsByIds<DOCUMENT extends DocumentData>(
   collectionPath: string,
   ids: string[],
   transaction?: Transaction
@@ -45,7 +57,7 @@ export async function getDocumentsByIds<DOCUMENT extends DocumentData>(
  * @param id
  * @param transaction
  */
-export async function getDocumentById<DOCUMENT extends DocumentData>(
+async function getDocumentById<DOCUMENT extends DocumentData>(
   collectionPath: string,
   id: string,
   transaction?: Transaction
@@ -71,9 +83,7 @@ export async function getDocumentById<DOCUMENT extends DocumentData>(
  * 指定されたドキュメントのIDをキーにした連想配列に変換します。
  * @param snaps
  */
-export function documentsToDict<DOCUMENT extends DocumentData>(
-  snaps: DocumentSnapshot<DOCUMENT>[]
-): { [id: string]: RequiredDocumentSnapshot<DOCUMENT> } {
+function documentsToDict<DOCUMENT extends DocumentData>(snaps: DocumentSnapshot<DOCUMENT>[]): { [id: string]: RequiredDocumentSnapshot<DOCUMENT> } {
   return snaps.reduce<{ [id: string]: RequiredDocumentSnapshot<DOCUMENT> }>((result, snap) => {
     result[snap.id] = snap as RequiredDocumentSnapshot<DOCUMENT>
     return result
@@ -84,7 +94,7 @@ export function documentsToDict<DOCUMENT extends DocumentData>(
  * Firestoreのトランザクションで複数の処理を並列実行する際、
  * 各処理の書き込み処理の準備が整うまで待機するのを制御するためのオブザーバーです。
  */
-export class WriteReadyObserver {
+class WriteReadyObserver {
   constructor(private m_num: number) {}
 
   private m_resolves: Array<() => void> = []
@@ -106,3 +116,11 @@ export class WriteReadyObserver {
     }
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { DocumentData, DocumentSnapshot, RequiredDocumentSnapshot, getDocumentsByIds, getDocumentById, documentsToDict, WriteReadyObserver }

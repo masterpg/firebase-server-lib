@@ -14,13 +14,13 @@ import {
   StorageNode,
   StorageNodeShareSettings,
   StorageNodeType,
-  UploadDataItem,
 } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { arrayToDict, removeBothEndsSlash } from 'web-base-lib'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
+import { UploadDataItem } from '../../../../../src/lib/services/storage/base'
 import { config } from '../../../../../src/config'
 import { initLibTestApp } from '../../../../helpers/lib/init'
 import dayjs = require('dayjs')

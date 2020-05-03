@@ -4,6 +4,12 @@ import { StorageServiceDI, StorageServiceModule } from './storage'
 import { EventContext } from 'firebase-functions'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Injectable()
 class FunctionsEventService {
   constructor(
@@ -27,7 +33,7 @@ class FunctionsEventService {
   }
 }
 
-export namespace FunctionsEventDI {
+namespace FunctionsEventDI {
   export const symbol = Symbol(FunctionsEventService.name)
   export const provider = {
     provide: symbol,
@@ -41,4 +47,12 @@ export namespace FunctionsEventDI {
   exports: [FunctionsEventDI.provider],
   imports: [StorageServiceModule, FunctionsEventLoggingServiceModule],
 })
-export class FunctionsEventServiceModule {}
+class FunctionsEventServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { FunctionsEventDI, FunctionsEventServiceModule }

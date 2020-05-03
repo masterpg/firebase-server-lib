@@ -6,12 +6,18 @@ import { GQLContext } from '../nest'
 import GraphQLJSON from 'graphql-type-json'
 import { print } from 'graphql/language/printer'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 /**
  * 指定されたパス配下にある`.graphql`ファイルを走査し、
  * 見つかったファイルをマージしてGraphQL定義文字列を取得します。
  * @param schemaFilesOrDirs `.graphql`ファイルまたはファイルが配置されているディレクトリ
  */
-export function getTypeDefs(schemaFilesOrDirs: string[]): string {
+function getTypeDefs(schemaFilesOrDirs: string[]): string {
   const typeDefs: string[] = []
   for (const schemaFileOrDir of schemaFilesOrDirs) {
     const targetPath = path.resolve(process.cwd(), schemaFileOrDir)
@@ -24,7 +30,7 @@ export function getTypeDefs(schemaFilesOrDirs: string[]): string {
  * `@nestjs/graphql`の`GqlModuleOptions`のベースを取得します。
  * @param schemaFilesOrDirs `.graphql`ファイルまたはファイルが配置されているディレクトリ
  */
-export function getBaseGQLModuleOptions(
+function getBaseGQLModuleOptions(
   schemaFilesOrDirs: string[]
 ): {
   context: Context | ContextFunction
@@ -50,5 +56,13 @@ export function getBaseGQLModuleOptions(
   }
 }
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 export * from './decorators/context'
 export * from './scalars/date-time'
+
+export { getTypeDefs, getBaseGQLModuleOptions }

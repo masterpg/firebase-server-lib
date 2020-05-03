@@ -1,6 +1,12 @@
 import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
 
-export class ProdAppConfig implements AppConfig {
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+class ProdAppConfig implements AppConfig {
   readonly functions: FunctionsConfig = {
     region: 'asia-northeast1',
   }
@@ -28,3 +34,11 @@ export class ProdAppConfig implements AppConfig {
     },
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { ProdAppConfig }

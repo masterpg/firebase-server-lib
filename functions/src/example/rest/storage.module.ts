@@ -1,10 +1,10 @@
-import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HttpLoggingAppInterceptorDI, HttpLoggingInterceptorModule } from '../../lib/nest'
+import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib/nest'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import StorageRESTModule from './storage'
 
 @Module({
-  providers: [HttpLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [HttpLoggingInterceptorModule, CORSGuardModule, StorageRESTModule],
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
+  imports: [HTTPLoggingInterceptorModule, CORSGuardModule, StorageRESTModule],
 })
 export default class StorageContainerModule {
   configure(consumer: MiddlewareConsumer) {

@@ -5,20 +5,32 @@ import { Inject, Module } from '@nestjs/common'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { DocumentReference } from '@google-cloud/firestore'
 import { File } from '@google-cloud/storage'
-import { JSONObject } from './types'
+import { JSONObject } from './base'
 const firebaseTools = require('firebase-tools')
 
-export interface PutTestDataInput {
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
+interface PutTestDataInput {
   collectionName: string
   collectionRecords: JSONObject[]
 }
 
-export interface TestSignedUploadUrlInput {
+interface TestSignedUploadUrlInput {
   filePath: string
   contentType?: string
 }
 
-export class LibDevUtilsService {
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+class LibDevUtilsService {
   constructor(@Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -181,7 +193,7 @@ export class LibDevUtilsService {
   }
 }
 
-export namespace LibDevUtilsServiceDI {
+namespace LibDevUtilsServiceDI {
   export const symbol = Symbol(LibDevUtilsService.name)
   export const provider = {
     provide: symbol,
@@ -195,4 +207,12 @@ export namespace LibDevUtilsServiceDI {
   exports: [LibDevUtilsServiceDI.provider],
   imports: [FirestoreServiceModule],
 })
-export class LibDevUtilsServiceModule {}
+class LibDevUtilsServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { PutTestDataInput, TestSignedUploadUrlInput, LibDevUtilsService, LibDevUtilsServiceDI, LibDevUtilsServiceModule }

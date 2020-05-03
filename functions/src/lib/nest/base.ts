@@ -1,10 +1,26 @@
 import { Request, Response } from 'express'
 import { ExecutionContext } from '@nestjs/common'
-import { GQLContext } from './types'
 import { GqlExecutionContext } from '@nestjs/graphql'
 import { GraphQLResolveInfo } from 'graphql'
 
-export function getAllExecutionContext(context: ExecutionContext): { req: Request; res: Response; info?: GraphQLResolveInfo } {
+//========================================================================
+//
+//  Interface
+//
+//========================================================================
+
+interface GQLContext {
+  readonly req: Request
+  readonly res: Response
+}
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
+function getAllExecutionContext(context: ExecutionContext): { req: Request; res: Response; info?: GraphQLResolveInfo } {
   const gqlExecContext = GqlExecutionContext.create(context)
   let info: GraphQLResolveInfo | undefined = gqlExecContext.getInfo<GraphQLResolveInfo>()
   const gqlContext = gqlExecContext.getContext<GQLContext>()
@@ -20,3 +36,11 @@ export function getAllExecutionContext(context: ExecutionContext): { req: Reques
 
   return { req, res, info }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { GQLContext, getAllExecutionContext }

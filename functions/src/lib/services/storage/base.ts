@@ -6,33 +6,122 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
+import { AuthServiceDI, IdToken } from '../../nest'
 import { File, GetFilesOptions, SaveOptions } from '@google-cloud/storage'
-import {
-  GCSStorageNode,
-  SignedUploadUrlInput,
-  StorageMetadata,
-  StorageMetadataInput,
-  StorageNode,
-  StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
-  StorageNodeType,
-  StoragePaginationOptionsInput,
-  StoragePaginationResult,
-  StorageRawMetadata,
-  UploadDataItem,
-} from './types'
 import { InputValidationError, validateUID } from '../../base'
 import { Request, Response } from 'express'
 import { arrayToDict, removeBothEndsSlash, removeEndSlash, removeStartSlash, splitHierarchicalPaths } from 'web-base-lib'
-import { AuthServiceDI } from '../../nest'
+import { Dayjs } from 'dayjs'
 import { Inject } from '@nestjs/common'
+import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import dayjs = require('dayjs')
+
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
+//--------------------------------------------------
+//  For GraphQL
+//--------------------------------------------------
+
+enum StorageNodeType {
+  File = 'File',
+  Dir = 'Dir',
+}
+
+interface StoragePaginationOptionsInput {
+  maxChunk?: number
+  pageToken?: string
+}
+
+interface StoragePaginationResult<T extends StorageNode = StorageNode> {
+  list: T[]
+  nextPageToken?: string
+}
+
+interface StorageNode {
+  id: string
+  nodeType: StorageNodeType
+  name: string
+  dir: string
+  path: string
+  contentType: string
+  size: number
+  share: StorageNodeShareSettings
+  created: Dayjs
+  updated: Dayjs
+}
+
+interface StorageNodeShareSettings {
+  isPublic: boolean | null
+  readUIds: string[] | null
+  writeUIds: string[] | null
+}
+
+interface StorageNodeShareSettingsInput {
+  isPublic?: boolean | null
+  readUIds?: string[] | null
+  writeUIds?: string[] | null
+}
+
+class SignedUploadUrlInput {
+  filePath!: string
+  contentType?: string
+}
+
+//--------------------------------------------------
+//  For inside of Storage
+//--------------------------------------------------
+
+type StorageUser = Pick<IdToken, 'uid' | 'myDirName'> | Pick<UserRecord, 'uid' | 'customClaims'>
+
+interface GCSStorageNode extends StorageNode {
+  exists: boolean
+  gcsNode: File
+}
+
+interface StorageMetadata {
+  id: string
+  share: StorageNodeShareSettings
+  created: Dayjs
+  updated: Dayjs
+}
+
+interface StorageMetadataInput {
+  id?: string | null
+  share?: StorageNodeShareSettingsInput | null
+  created?: Dayjs
+  updated?: Dayjs
+}
+
+interface StorageRawMetadata {
+  id?: string | null
+  isPublic?: string | null
+  readUIds?: string | null
+  writeUIds?: string | null
+  created?: string | null
+  updated?: string | null
+}
+
+interface UploadDataItem {
+  data: string | Buffer
+  path: string
+  contentType: string
+}
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 const MAX_CHUNK = 50
 const ID_CHECK_COUNT = 5
 const ID_CHECK_DURATION = 40
 
-export class BaseStorageService {
+class BaseStorageService {
   //----------------------------------------------------------------------
   //
   //  Constructor
@@ -1783,4 +1872,27 @@ export class BaseStorageService {
 
     return result
   }
+}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export {
+  StorageNodeType,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
+  StorageNode,
+  StorageNodeShareSettings,
+  StorageNodeShareSettingsInput,
+  SignedUploadUrlInput,
+  UploadDataItem,
+  StorageUser,
+  GCSStorageNode,
+  StorageMetadata,
+  StorageMetadataInput,
+  StorageRawMetadata,
+  BaseStorageService,
 }

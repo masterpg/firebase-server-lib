@@ -1,16 +1,21 @@
 import { ValidatorOptions, ValidationError as _ValidationError, validate as _validate, validateSync as _validateSync } from 'class-validator'
 import { BadRequestException } from '@nestjs/common'
+import { Constructor } from 'web-base-lib'
 import { plainToClass } from 'class-transformer'
 
-type Constructor<T = any> = new (...args: any[]) => T
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
-export class ValidationErrors extends BadRequestException {
+class ValidationErrors extends BadRequestException {
   constructor(readonly detail: _ValidationError[]) {
     super('Validation failed.')
   }
 }
 
-export class InputValidationError extends BadRequestException {
+class InputValidationError extends BadRequestException {
   constructor(message: string, values?: { [field: string]: any }) {
     super('Validation failed.')
     this.m_detail = { message, values }
@@ -23,11 +28,11 @@ export class InputValidationError extends BadRequestException {
   }
 }
 
-export async function validate(objectClass: Constructor, object: any, validatorOptions?: ValidatorOptions): Promise<void>
+async function validate(objectClass: Constructor, object: any, validatorOptions?: ValidatorOptions): Promise<void>
 
-export async function validate(objectClass: Constructor, object: any[], validatorOptions?: ValidatorOptions): Promise<void>
+async function validate(objectClass: Constructor, object: any[], validatorOptions?: ValidatorOptions): Promise<void>
 
-export async function validate(objectClass: Constructor, objectOrObjects: any | any[], validatorOptions?: ValidatorOptions): Promise<void> {
+async function validate(objectClass: Constructor, objectOrObjects: any | any[], validatorOptions?: ValidatorOptions): Promise<void> {
   if (Array.isArray(objectOrObjects)) {
     const errors: _ValidationError[] = []
     const promises: Promise<void>[] = []
@@ -50,11 +55,11 @@ export async function validate(objectClass: Constructor, objectOrObjects: any | 
   }
 }
 
-export function validateSync(objectClass: Constructor, object: any, validatorOptions?: ValidatorOptions): void
+function validateSync(objectClass: Constructor, object: any, validatorOptions?: ValidatorOptions): void
 
-export function validateSync(objectClass: Constructor, object: any[], validatorOptions?: ValidatorOptions): void
+function validateSync(objectClass: Constructor, object: any[], validatorOptions?: ValidatorOptions): void
 
-export function validateSync(objectClass: Constructor, objectOrObjects: any | any[], validatorOptions?: ValidatorOptions): void {
+function validateSync(objectClass: Constructor, objectOrObjects: any | any[], validatorOptions?: ValidatorOptions): void {
   if (Array.isArray(objectOrObjects)) {
     for (const object of objectOrObjects) {
       const validated = _validateSync(plainToClass(objectClass, object), validatorOptions)
@@ -74,7 +79,7 @@ export function validateSync(objectClass: Constructor, objectOrObjects: any | an
  * ユーザーIDを検証します。
  * @param uid
  */
-export function validateUID(uid: string): boolean {
+function validateUID(uid: string): boolean {
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\\.\\-_'
   const ERR_PATTERN = new RegExp(`[^${CHARS}]+`)
 
@@ -83,3 +88,11 @@ export function validateUID(uid: string): boolean {
   if (ERR_PATTERN.test(uid)) return false
   return true
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { ValidationErrors, InputValidationError, validate, validateSync, validateUID }

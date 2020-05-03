@@ -2,8 +2,14 @@ import * as admin from 'firebase-admin'
 import { BaseFoundationService, IdToken } from '../../lib'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { StorageServiceDI, StorageServiceModule } from './storage'
-import { AppConfigResponse } from './types'
+import { AppConfigResponse } from './base'
 import { config } from '../../config'
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 @Injectable()
 class FoundationService extends BaseFoundationService {
@@ -24,7 +30,7 @@ class FoundationService extends BaseFoundationService {
   }
 }
 
-export namespace FoundationServiceDI {
+namespace FoundationServiceDI {
   export const symbol = Symbol(FoundationService.name)
   export const provider = {
     provide: symbol,
@@ -38,4 +44,12 @@ export namespace FoundationServiceDI {
   exports: [FoundationServiceDI.provider],
   imports: [StorageServiceModule],
 })
-export class FoundationServiceModule {}
+class FoundationServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { FoundationServiceDI, FoundationServiceModule }

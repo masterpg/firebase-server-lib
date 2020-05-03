@@ -6,8 +6,14 @@ import { AuthGuardModule } from '../../../lib/nest'
 import { BaseRESTModule } from '../base'
 import { config } from '../../../config'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Controller()
-export class StorageController {
+class StorageController {
   constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
   @Get(path.join(config.storage.usersDir, '*'))
@@ -27,4 +33,12 @@ export class StorageController {
   controllers: [StorageController],
   imports: [BaseRESTModule, StorageServiceModule, AuthGuardModule],
 })
-export default class StorageRESTModule {}
+class StorageRESTModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default StorageRESTModule

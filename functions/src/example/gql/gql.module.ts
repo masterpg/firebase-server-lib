@@ -1,4 +1,4 @@
-import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HttpLoggingAppInterceptorDI, HttpLoggingInterceptorModule } from '../../lib/nest'
+import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib/nest'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import CartGQLModule from './cart'
 import DevUtilsGQLModule from './dev'
@@ -9,6 +9,12 @@ import StorageGQLModule from './storage'
 import { config } from '../../config'
 import { getGQLModuleOptions } from './base'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 const gqlOptions = getGQLModuleOptions([config.gql.schema.moduleDir])
 
 const gqlModules = [FoundationGQLModule, StorageGQLModule, CartGQLModule, ProductGQLModule]
@@ -17,11 +23,19 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 @Module({
-  providers: [HttpLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [HttpLoggingInterceptorModule, CORSGuardModule, GraphQLModule.forRoot(gqlOptions), ...gqlModules],
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
+  imports: [HTTPLoggingInterceptorModule, CORSGuardModule, GraphQLModule.forRoot(gqlOptions), ...gqlModules],
 })
-export default class GQLContainerModule {
+class GQLContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default GQLContainerModule

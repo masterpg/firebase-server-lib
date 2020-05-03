@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin'
-import { LibStorageServiceDI, StorageUser, UploadDataItem } from '../../../../../src/lib'
+import { LibStorageServiceDI, StorageUser } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
+import { UploadDataItem } from '../../../../../src/lib/services/storage/base'
 import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/base'
 import request = require('supertest')

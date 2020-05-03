@@ -1,19 +1,25 @@
 import * as admin from 'firebase-admin'
-import { CartItem, CartItemEditResponse, Product, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from './types'
+import { CartItem, CartItemEditResponse, Product, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from './base'
 import { ForbiddenException, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
 import { RequiredDocumentSnapshot, getDocumentById } from '../../lib/base'
 import { IsPositive } from 'class-validator'
 import { Transaction } from '@google-cloud/firestore'
 
-export class CartItemUpdateInput implements _UpdateCartItemInput {
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
+class CartItemUpdateInput implements _UpdateCartItemInput {
   id!: string
 
   @IsPositive()
   quantity!: number
 }
 
-export class CartItemAddInput implements _AddCartItemInput {
+class CartItemAddInput implements _AddCartItemInput {
   productId!: string
 
   title!: string
@@ -24,6 +30,12 @@ export class CartItemAddInput implements _AddCartItemInput {
   @IsPositive()
   quantity!: number
 }
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 @Injectable()
 class CartService {
@@ -320,7 +332,7 @@ class CartService {
   }
 }
 
-export namespace CartServiceDI {
+namespace CartServiceDI {
   export const symbol = Symbol(CartService.name)
   export const provider = {
     provide: symbol,
@@ -333,4 +345,12 @@ export namespace CartServiceDI {
   providers: [CartServiceDI.provider],
   exports: [CartServiceDI.provider],
 })
-export class CartServiceModule {}
+class CartServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { CartItemUpdateInput, CartItemAddInput, CartServiceDI, CartServiceModule }

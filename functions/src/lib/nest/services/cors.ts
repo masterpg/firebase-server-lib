@@ -1,5 +1,5 @@
 import * as vary from 'vary'
-import { HttpLoggingData, HttpLoggingServiceDI, HttpLoggingServiceModule, LoggingLatencyTimer } from './logging'
+import { HTTPLoggingData, HTTPLoggingServiceDI, HTTPLoggingServiceModule, LoggingLatencyTimer } from './logging'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
@@ -8,7 +8,7 @@ import { removeStartSlash } from 'web-base-lib'
 
 //========================================================================
 //
-//  Basis
+//  Interfaces
 //
 //========================================================================
 
@@ -24,6 +24,12 @@ interface CORSOptions {
   isLogging?: boolean
 }
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 abstract class CORSService {
   //----------------------------------------------------------------------
   //
@@ -31,7 +37,7 @@ abstract class CORSService {
   //
   //----------------------------------------------------------------------
 
-  constructor(@Inject(HttpLoggingServiceDI.symbol) protected readonly loggingService: HttpLoggingServiceDI.type) {}
+  constructor(@Inject(HTTPLoggingServiceDI.symbol) protected readonly loggingService: HTTPLoggingServiceDI.type) {}
 
   //----------------------------------------------------------------------
   //
@@ -289,7 +295,7 @@ abstract class CORSService {
     })
   }
 
-  protected getErrorData(req: Request, options: CORSOptions): Partial<HttpLoggingData> {
+  protected getErrorData(req: Request, options: CORSOptions): Partial<HTTPLoggingData> {
     return {
       error: {
         message: 'Not allowed by CORS.',
@@ -302,12 +308,6 @@ abstract class CORSService {
     }
   }
 }
-
-//========================================================================
-//
-//  Concrete
-//
-//========================================================================
 
 @Injectable()
 class ProdCORSService extends CORSService {}
@@ -336,7 +336,7 @@ class TestCORSService extends CORSService {
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {}
 }
 
-export namespace CORSServiceDI {
+namespace CORSServiceDI {
   export const symbol = Symbol(CORSService.name)
   export const provider = {
     provide: symbol,
@@ -356,6 +356,14 @@ export namespace CORSServiceDI {
 @Module({
   providers: [CORSServiceDI.provider],
   exports: [CORSServiceDI.provider],
-  imports: [HttpLoggingServiceModule],
+  imports: [HTTPLoggingServiceModule],
 })
-export class CORSServiceModule {}
+class CORSServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { CORSServiceDI, CORSServiceModule }

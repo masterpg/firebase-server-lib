@@ -8,11 +8,11 @@ import IMonitoredResource = google.api.IMonitoredResource
 
 //========================================================================
 //
-//  Basis
+//  Interfaces
 //
 //========================================================================
 
-export interface FunctionsEventLoggingSource {
+interface FunctionsEventLoggingSource {
   functionName: string
   logName?: string
   error?: Error
@@ -20,18 +20,18 @@ export interface FunctionsEventLoggingSource {
   data?: Partial<FunctionsEventLoggingData>
 }
 
-export interface FunctionsEventLoggingMetadata extends LogEntry {
+interface FunctionsEventLoggingMetadata extends LogEntry {
   resource: FunctionsEventLoggingResourceData
 }
 
-export interface FunctionsEventLoggingResourceData extends IMonitoredResource {
+interface FunctionsEventLoggingResourceData extends IMonitoredResource {
   type: string
   labels: {
     function_name: string
   }
 }
 
-export interface FunctionsEventLoggingData {
+interface FunctionsEventLoggingData {
   user?: {
     uid: string
     customClaims?: any
@@ -41,6 +41,12 @@ export interface FunctionsEventLoggingData {
     detail?: any
   }
 }
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 const DEFAULT_LOG_NAME = 'handler'
 
@@ -154,12 +160,6 @@ abstract class FunctionsEventLoggingService {
   }
 }
 
-//========================================================================
-//
-//  Concrete
-//
-//========================================================================
-
 @Injectable()
 class ProdFunctionsEventLoggingService extends FunctionsEventLoggingService {}
 
@@ -186,7 +186,7 @@ class TestFunctionsEventLoggingService extends FunctionsEventLoggingService {
   async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {}
 }
 
-export namespace FunctionsEventLoggingServiceDI {
+namespace FunctionsEventLoggingServiceDI {
   export const symbol = Symbol(FunctionsEventLoggingService.name)
   export const provider = {
     provide: symbol,
@@ -207,4 +207,19 @@ export namespace FunctionsEventLoggingServiceDI {
   providers: [FunctionsEventLoggingServiceDI.provider],
   exports: [FunctionsEventLoggingServiceDI.provider],
 })
-export class FunctionsEventLoggingServiceModule {}
+class FunctionsEventLoggingServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export {
+  FunctionsEventLoggingSource,
+  FunctionsEventLoggingMetadata,
+  FunctionsEventLoggingResourceData,
+  FunctionsEventLoggingData,
+  FunctionsEventLoggingServiceDI,
+  FunctionsEventLoggingServiceModule,
+}

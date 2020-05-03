@@ -4,8 +4,14 @@ import { LibStorageServiceDI, LibStorageServiceModule } from '../../../../../src
 import { Request, Response } from 'express'
 import { config } from '../../../../../src/config'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Controller('storage')
-export class MockStorageController {
+class MockStorageController {
   constructor(@Inject(LibStorageServiceDI.symbol) protected readonly storageService: LibStorageServiceDI.type) {}
 
   @Get(path.join(config.storage.usersDir, '*'))
@@ -25,4 +31,12 @@ export class MockStorageController {
   controllers: [MockStorageController],
   imports: [LibStorageServiceModule],
 })
-export class MockStorageRESTModule {}
+class MockStorageRESTModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { MockStorageRESTModule }

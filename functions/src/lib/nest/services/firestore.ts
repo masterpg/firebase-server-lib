@@ -4,7 +4,7 @@ import { Injectable, Module } from '@nestjs/common'
 
 //========================================================================
 //
-//  Basis
+//  Implementation
 //
 //========================================================================
 
@@ -67,13 +67,7 @@ class FirestoreService {
   }
 }
 
-//========================================================================
-//
-//  Concrete
-//
-//========================================================================
-
-export namespace FirestoreServiceDI {
+namespace FirestoreServiceDI {
   export const symbol = Symbol(FirestoreService.name)
   export const provider = {
     provide: symbol,
@@ -86,4 +80,12 @@ export namespace FirestoreServiceDI {
   providers: [FirestoreServiceDI.provider],
   exports: [FirestoreServiceDI.provider],
 })
-export class FirestoreServiceModule {}
+class FirestoreServiceModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export { FirestoreServiceDI, FirestoreServiceModule }

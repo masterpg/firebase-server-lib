@@ -19,6 +19,12 @@ import { StorageServiceDI, StorageServiceModule } from '../../services'
 import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
 
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
+
 @Resolver('StorageNode')
 export class StorageResolver {
   constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
@@ -336,4 +342,12 @@ export class StorageResolver {
   providers: [StorageResolver],
   imports: [BaseGQLModule, StorageServiceModule, AuthGuardModule],
 })
-export default class StorageGQLModule {}
+class StorageGQLModule {}
+
+//========================================================================
+//
+//  Exports
+//
+//========================================================================
+
+export default StorageGQLModule
