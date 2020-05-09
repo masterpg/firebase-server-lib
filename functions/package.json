@@ -16,7 +16,8 @@
     "test:users": "node ./dist/tools/setup.test.users.js",
     "test:coverage": "npm run test -- --coverage",
     "lint": "./node_modules/web-base-lib/tools/lint.sh",
-    "deploy": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && firebase deploy --only functions"
+    "deploy": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && firebase deploy --only functions",
+    "emulators:firestore": "firebase emulators:start --only firestore"
   },
   "dependencies": {
     "@google-cloud/logging": "^7.3.0",
@@ -30,6 +31,7 @@
     "class-transformer": "^0.2.3",
     "class-validator": "^0.11.1",
     "convert-hrtime": "^3.0.0",
+    "crypto": "^1.0.1",
     "dayjs": "^1.8.23",
     "firebase-admin": "^8.10.0",
     "firebase-functions": "^3.6.0",
