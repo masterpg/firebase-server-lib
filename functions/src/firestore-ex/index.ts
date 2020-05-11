@@ -7,4 +7,4 @@
 export { FirestoreEx } from './firestore-ex'
 export { Collection } from './collection'
 export { Query } from './query'
-export { Entity, DecodeFunc, DecodedObject, EncodeFunc, EncodedObject, OmitEntityDates, OmitEntityFields, OmitEntityId } from './types'
+export { DecodeFunc, DecodedObject, EncodeFunc, EncodedObject, Entity, EntityId, OmitEntityDates, OmitEntityFields, OmitEntityId } from './types'

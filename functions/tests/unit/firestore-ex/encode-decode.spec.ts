@@ -53,6 +53,7 @@ describe('encode and decode', () => {
       }
     },
   })
+
   const now = dayjs()
 
   afterAll(async () => {

@@ -1,6 +1,8 @@
-import { Entity, FirestoreEx } from '../../../src/firestore-ex'
+import { EncodeFunc, Entity, FirestoreEx } from '../../../src/firestore-ex'
 import { AdminFirestoreTestUtil } from './util'
+import { Dayjs } from 'dayjs'
 import { Timestamp } from '@google-cloud/firestore'
+import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
 const db = util.db
@@ -15,11 +17,9 @@ interface BookDoc {
   book_title: string
 }
 
-class BookClass {
-  constructor(public id: string, public bookTitle: string) {}
-}
-
 describe('encode', () => {
+  const now = dayjs()
+
   afterAll(async () => {
     await util.deleteApps()
   })
@@ -28,72 +28,156 @@ describe('encode', () => {
     await util.deleteCollection()
   })
 
-  describe('from object with different key', () => {
-    const dao = firestoreEx.collection<Book, BookDoc>({
-      path: collectionPath,
-      encode: book => {
-        return {
-          book_title: book.bookTitle,
-        }
-      },
-    })
+  function toDayjs(value: Timestamp): Dayjs {
+    expect(value).toBeInstanceOf(Timestamp)
+    return dayjs(value.toDate())
+  }
 
-    it('add with encode', async () => {
-      const title = 'add'
+  describe('from object', () => {
+    const encode: EncodeFunc<Book> = book => {
+      return {
+        book_title: book.bookTitle,
+      }
+    }
+
+    it('with encode', async () => {
+      // with encode
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode })
+
+      // add
       const doc = {
-        bookTitle: title,
+        bookTitle: 'hogehoge',
+        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        createdAt: now,
+        updatedAt: now,
       }
-      const addedId = await dao.add(doc)
+      const docId = await dao.add(doc)
 
-      const fetchedSnap = await dao.collectionRef.doc(addedId).get()
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
-      expect(fetchedDoc).toMatchObject({ book_title: title })
-      expect(fetchedDoc.createdAt).toBeInstanceOf(Timestamp)
-      expect(fetchedDoc.updatedAt).toBeInstanceOf(Timestamp)
+      expect(fetchedDoc).toMatchObject({ book_title: doc.bookTitle })
+      expect(toDayjs(fetchedDoc.createdAt).isAfter(now)).toBeTruthy()
+      expect(toDayjs(fetchedDoc.updatedAt).isAfter(now)).toBeTruthy()
     })
 
-    it('set with encode', async () => {
-      const existsDoc = await dao.collectionRef.add({
-        book_title: 'hogehoge',
-      })
-      const title = 'set'
-      const setDoc = {
-        id: existsDoc.id,
-        bookTitle: title,
-      }
-      await dao.set(setDoc)
+    it('without encode', async () => {
+      // without encode
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
-      const fetchedSnap = await dao.collectionRef.doc(existsDoc.id).get()
+      // add
+      const docId = await dao.add({
+        bookTitle: 'hogehoge',
+      })
+      const doc = (await dao.fetch(docId))!
+
+      // update
+      const updatedDoc = {
+        id: docId,
+        bookTitle: 'update',
+        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        createdAt: now,
+        updatedAt: now,
+      }
+      await dao.update(updatedDoc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
-      expect(fetchedDoc).toMatchObject({ book_title: title })
-      expect(fetchedDoc.createdAt).toBeInstanceOf(Timestamp)
-      expect(fetchedDoc.updatedAt).toBeInstanceOf(Timestamp)
+      expect(fetchedDoc).toMatchObject({ bookTitle: updatedDoc.bookTitle })
+      expect(toDayjs(fetchedDoc.createdAt)).toEqual(doc.createdAt)
+      expect(toDayjs(fetchedDoc.updatedAt).isAfter(doc.updatedAt)).toBeTruthy()
     })
   })
 
-  describe('from class instance with same key', () => {
-    const dao = firestoreEx.collection<Book>({
-      path: collectionPath,
-      encode: book => {
-        return {
-          bookTitle: book.bookTitle,
-        }
-      },
+  describe('from class', () => {
+    class BookClass {
+      constructor(params: { id?: string; bookTitle: string; createdAt: Dayjs; updatedAt: Dayjs }) {
+        this.id = params.id
+        this.bookTitle = params.bookTitle
+        this.createdAt = params.createdAt
+        this.updatedAt = params.updatedAt
+      }
+      public readonly id?: string
+      public bookTitle: string
+      public readonly createdAt: Dayjs
+      public readonly updatedAt: Dayjs
+    }
+
+    const encode: EncodeFunc<Book> = book => {
+      return {
+        bookTitle: book.bookTitle,
+      }
+    }
+
+    it('with encode', async () => {
+      // with encode
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode })
+
+      // add
+      const doc = new BookClass({
+        bookTitle: 'hogehoge',
+        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        createdAt: now,
+        updatedAt: now,
+      })
+      const docId = await dao.add(doc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
+      const fetchedDoc = fetchedSnap.data()!
+      expect(fetchedDoc).toMatchObject({ bookTitle: doc.bookTitle })
+      expect(toDayjs(fetchedDoc.createdAt).isAfter(now)).toBeTruthy()
+      expect(toDayjs(fetchedDoc.updatedAt).isAfter(now)).toBeTruthy()
     })
 
-    it('set with encode', async () => {
-      const existsDoc = await dao.collectionRef.add({
+    it('without encode', async () => {
+      // without encode
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+
+      // add
+      const docId = await dao.add({
         bookTitle: 'hogehoge',
       })
-      const title = 'set'
-      const setDoc = new BookClass(existsDoc.id, title)
-      await dao.set(setDoc)
+      const doc = (await dao.fetch(docId))!
 
-      const fetchedSnap = await dao.collectionRef.doc(existsDoc.id).get()
+      // update
+      const updatedDoc = new BookClass({
+        id: docId,
+        bookTitle: 'update',
+        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        createdAt: now,
+        updatedAt: now,
+      }) as Book
+      await dao.update(updatedDoc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
-      expect(fetchedDoc).toMatchObject({ bookTitle: title })
-      expect(fetchedDoc.createdAt).toBeInstanceOf(Timestamp)
-      expect(fetchedDoc.updatedAt).toBeInstanceOf(Timestamp)
+      expect(fetchedDoc).toMatchObject({ bookTitle: updatedDoc.bookTitle })
+      expect(toDayjs(fetchedDoc.createdAt)).toEqual(doc.createdAt)
+      expect(toDayjs(fetchedDoc.updatedAt).isAfter(now)).toBeTruthy()
+    })
+
+    describe('from class is in error', () => {
+      class BookClassWithFunc extends BookClass {
+        // This field type cannot contain be store in Firestore
+        anyFunc = () => {}
+      }
+
+      it('add without encode is in error', async () => {
+        // without encode
+        const dao = firestoreEx.collection<Book>({
+          path: collectionPath,
+        })
+
+        // add
+        const title = 'set'
+        const doc = new BookClassWithFunc({
+          bookTitle: 'update',
+          // It's a meaningless setting, but to verify that it doesn't cause any problems.
+          createdAt: now,
+          updatedAt: now,
+        })
+        // The 'anyFunc' filed cannot be stored in Firestore, so it's a error.
+        expect(dao.add(doc)).rejects.toThrow('Cannot encode value: () => { }')
+      })
     })
   })
 })

@@ -38,6 +38,7 @@ export class Converter<T, S = T> {
     }
 
     if ('id' in doc) delete (doc as any).id
+    if ('createdAt' in doc) delete (doc as any).createdAt
     Object.assign(doc, { updatedAt: FieldValue.serverTimestamp() })
 
     return doc
