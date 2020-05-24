@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import * as admin from 'firebase-admin'
-import { initFirebaseApp } from '../lib'
 import UserRecord = admin.auth.UserRecord
+import { initFirebaseApp } from '../lib/base'
 const exitHook = require('async-exit-hook')
 exitHook.forceExitTimeout(60000)
 

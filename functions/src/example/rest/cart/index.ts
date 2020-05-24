@@ -1,4 +1,4 @@
-import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib'
+import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib/nest'
 import { Body, Controller, Delete, Get, Inject, Module, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI, CartServiceModule } from '../../services'
 import { BaseRESTModule } from '../base'

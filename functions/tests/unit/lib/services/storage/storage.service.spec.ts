@@ -1,15 +1,14 @@
 import * as admin from 'firebase-admin'
-import { LibStorageServiceDI, StorageUser } from '../../../../../src/lib'
+import { LibStorageServiceDI, StorageUploadDataItem, StorageUser } from '../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
-import { UploadDataItem } from '../../../../../src/lib/services/storage/base'
 import { cloneDeep } from 'lodash'
-import { initApp } from '../../../../../src/example/base'
+import { initLib } from '../../../../../src/lib/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)
-initApp()
+initLib()
 
 //========================================================================
 //
@@ -217,7 +216,7 @@ describe('StorageService', () => {
 
     describe('serveAppFile', () => {
       it('アプリケーション管理者の場合 - ファイルは公開未設定', async () => {
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -237,7 +236,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -257,7 +256,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -281,7 +280,7 @@ describe('StorageService', () => {
 
       it('アプリケーション管理者でない場合 - ファイルに公開設定 - 上位ディレクトリは公開未設定', async () => {
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -307,7 +306,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -333,7 +332,7 @@ describe('StorageService', () => {
 
       it('アプリケーション管理者でない場合 - ファイルに読み込み権限設定 - 上位ディレクトリは読み込み権限未設定', async () => {
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -359,7 +358,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -387,7 +386,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -413,7 +412,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -430,7 +429,7 @@ describe('StorageService', () => {
 
       it('ログインしていない場合 - ファイルが公開されている', async () => {
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -450,7 +449,7 @@ describe('StorageService', () => {
 
       it('ログインしていない場合 - ファイルが公開されていない', async () => {
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -466,7 +465,7 @@ describe('StorageService', () => {
       it('自ユーザーの場合 - ファイルは公開未設定', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -485,7 +484,7 @@ describe('StorageService', () => {
       it('他ユーザーの場合 - ファイルは公開未設定 - 上位ディレクトリも公開未設定', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -503,7 +502,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -525,7 +524,7 @@ describe('StorageService', () => {
       it('他ユーザーの場合 - ファイルに公開設定 - 上位ディレクトリは公開未設定', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -549,7 +548,7 @@ describe('StorageService', () => {
         // ディレクトリを作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -573,7 +572,7 @@ describe('StorageService', () => {
       it('他ユーザーの場合 - ファイルに読み込み権限設定 - 上位ディレクトリは読み込み権限未設定', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -600,7 +599,7 @@ describe('StorageService', () => {
         // ディレクトリの作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -629,7 +628,7 @@ describe('StorageService', () => {
         // ディレクトリの作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -654,7 +653,7 @@ describe('StorageService', () => {
       it('ログインしていない場合 - ファイルが公開されている', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,
@@ -675,7 +674,7 @@ describe('StorageService', () => {
       it('ログインしていない場合 - ファイルが公開されていない', async () => {
         const userDirPath = storageService.getUserDirPath(STORAGE_TEST_USER)
         // ファイルのアップロード
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${userDirPath}/d1/fileA.txt`,

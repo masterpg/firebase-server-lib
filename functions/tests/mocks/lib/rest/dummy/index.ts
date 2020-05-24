@@ -8,10 +8,10 @@ import {
   CORSMiddlewareModule,
   IdToken,
   Roles,
+  TransformInterceptor,
   User,
-} from '../../../../../src/lib'
+} from '../../../../../src/lib/nest'
 import { Controller, Get, MiddlewareConsumer, Module, RequestMethod, UseGuards, UseInterceptors } from '@nestjs/common'
-import { TransformInterceptor } from '../../../../../src/lib/nest'
 
 //========================================================================
 //

@@ -3,11 +3,11 @@ import { DummyCORSGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyCORSRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
-import { initLibTestApp } from '../../../../../helpers/lib/init'
+import { initLib } from '../../../../../../src/lib/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)
-initLibTestApp()
+initLib()
 
 //========================================================================
 //

@@ -1,5 +1,5 @@
 import { AppConfigResponse, FoundationServiceDI, FoundationServiceModule } from '../../services'
-import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib'
+import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib/nest'
 import { Inject, UseGuards } from '@nestjs/common'
 import { Query, Resolver } from '@nestjs/graphql'
 import { BaseGQLModule } from '../base'

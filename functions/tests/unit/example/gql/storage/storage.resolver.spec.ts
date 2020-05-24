@@ -1,11 +1,11 @@
 import * as td from 'testdouble'
-import { StorageNode, StorageServiceDI } from '../../../../../src/example/services'
-import { StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib'
+import { StorageNode, StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { StorageResolver } from '../../../../../src/example/gql/storage'
+import { StorageServiceDI } from '../../../../../src/example/services'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)

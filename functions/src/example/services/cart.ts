@@ -1,7 +1,7 @@
 import { CartItem, Product, store } from './store'
 import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
 import { Injectable, Module } from '@nestjs/common'
-import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
+import { InputValidationError, WriteReadyObserver, validate } from '../../lib/base'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
 

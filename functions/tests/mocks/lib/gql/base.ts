@@ -1,6 +1,6 @@
 import { GqlModuleOptions } from '@nestjs/graphql'
 import { config } from '../../../../src/config'
-import { getBaseGQLModuleOptions } from '../../../../src/lib'
+import { getBaseGQLModuleOptions } from '../../../../src/lib/gql'
 
 export function getMockGQLModuleOptions(): GqlModuleOptions {
   const result: GqlModuleOptions = {

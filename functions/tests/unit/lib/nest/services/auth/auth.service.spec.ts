@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing'
 import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
-import { initLibTestApp } from '../../../../../helpers/lib/init'
+import { initLib } from '../../../../../../src/lib/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)
-initLibTestApp()
+initLib()
 
 //========================================================================
 //

@@ -2,7 +2,7 @@ import { Express } from 'express'
 import { ExpressAdapter } from '@nestjs/platform-express'
 import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { initFirebaseApp } from '../../lib'
+import { initLib } from '../../lib/base'
 
 //========================================================================
 //
@@ -11,7 +11,7 @@ import { initFirebaseApp } from '../../lib'
 //========================================================================
 
 function initApp() {
-  initFirebaseApp()
+  initLib()
 }
 
 /**

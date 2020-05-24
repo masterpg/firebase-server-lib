@@ -5,7 +5,6 @@ import * as shortid from 'shortid'
 import * as td from 'testdouble'
 import {
   GCSStorageNode,
-  InputValidationError,
   LibDevUtilsServiceDI,
   LibDevUtilsServiceModule,
   LibStorageService,
@@ -14,20 +13,20 @@ import {
   StorageNode,
   StorageNodeShareSettings,
   StorageNodeType,
-} from '../../../../../src/lib'
+  StorageUploadDataItem,
+} from '../../../../../src/lib/services'
+import { InputValidationError, initLib } from '../../../../../src/lib/base'
 import { Test, TestingModule } from '@nestjs/testing'
 import { arrayToDict, removeBothEndsSlash } from 'web-base-lib'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
-import { UploadDataItem } from '../../../../../src/lib/services/storage/base'
 import { config } from '../../../../../src/config'
-import { initLibTestApp } from '../../../../helpers/lib/init'
 import dayjs = require('dayjs')
 import request = require('supertest')
 
 jest.setTimeout(900000)
-initLibTestApp()
+initLib()
 
 //========================================================================
 //
@@ -160,7 +159,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -185,7 +184,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -207,7 +206,7 @@ describe('BaseStorageService', () => {
 
     it('対象ディレクトリの子ノードは存在するが、実際のディレクトリは存在しない場合', async () => {
       // ディレクトリを作成せずにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -247,7 +246,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -272,7 +271,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -309,7 +308,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合 - ファイル', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 20; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -333,7 +332,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -367,7 +366,7 @@ describe('BaseStorageService', () => {
 
     it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -387,7 +386,7 @@ describe('BaseStorageService', () => {
 
     it('basePathを指定した場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -414,7 +413,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -468,7 +467,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -501,7 +500,7 @@ describe('BaseStorageService', () => {
 
     it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -520,7 +519,7 @@ describe('BaseStorageService', () => {
 
     it('basePathを指定した場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -546,7 +545,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -599,7 +598,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -624,7 +623,7 @@ describe('BaseStorageService', () => {
 
     it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -652,7 +651,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -697,7 +696,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -722,7 +721,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 10; i++) {
         const num = i.toString().padStart(2, '0')
         uploadItems.push({
@@ -766,7 +765,7 @@ describe('BaseStorageService', () => {
         await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
         // ファイルをアップロード
-        const uploadItems: UploadDataItem[] = [
+        const uploadItems: StorageUploadDataItem[] = [
           {
             data: 'testA',
             contentType: 'text/plain; charset=utf-8',
@@ -791,7 +790,7 @@ describe('BaseStorageService', () => {
 
       it('ノードの格納ディレクトリが存在しない場合', async () => {
         // ディレクトリを作成せずファイルをアップロード
-        const uploadItems: UploadDataItem[] = [
+        const uploadItems: StorageUploadDataItem[] = [
           {
             data: 'testA',
             contentType: 'text/plain; charset=utf-8',
@@ -834,7 +833,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -861,7 +860,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -885,7 +884,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 10; i++) {
         const num = i.toString().padStart(2, '0')
         uploadItems.push({
@@ -929,7 +928,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -965,7 +964,7 @@ describe('BaseStorageService', () => {
 
     it('階層構造の形成に必要なディレクトリが欠けている場合', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1004,7 +1003,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1030,7 +1029,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1054,7 +1053,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11/d111`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1146,7 +1145,7 @@ describe('BaseStorageService', () => {
   describe('handleUploadedFile', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1169,7 +1168,7 @@ describe('BaseStorageService', () => {
 
     it('複数回実行した場合', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1192,7 +1191,7 @@ describe('BaseStorageService', () => {
 
     it('basePathを指定した場合', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1214,7 +1213,7 @@ describe('BaseStorageService', () => {
 
     it('ファイルパスへのバリデーション実行確認', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1250,7 +1249,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1278,7 +1277,7 @@ describe('BaseStorageService', () => {
 
     it('ファイルに対するディレクトリがないディレクトリを指定した場合', async () => {
       // ディレクトリを作成せずファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1344,7 +1343,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1374,7 +1373,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111/`, `${TEST_FILES_DIR}/d1/d12/`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -1422,7 +1421,7 @@ describe('BaseStorageService', () => {
 
   describe('removeFile', () => {
     it('ベーシックケース', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1439,7 +1438,7 @@ describe('BaseStorageService', () => {
     })
 
     it('basePathを指定した場合', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1479,7 +1478,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`, `${TEST_FILES_DIR}/d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1515,7 +1514,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`, `d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1552,7 +1551,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`, `d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1590,7 +1589,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/docs`, `${TEST_FILES_DIR}/d2/docs`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1632,7 +1631,7 @@ describe('BaseStorageService', () => {
 
       // 作成したディレクトリにファイルをアップロード
       // 'd1'と'd2'配下に'file.txt'を配置
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1692,7 +1691,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         // 'd11'といディレクトリは存在しないがアップロードはできる
         {
           data: 'testA',
@@ -1734,7 +1733,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1759,7 +1758,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1784,7 +1783,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/docs`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1819,7 +1818,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1843,7 +1842,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/dX/dA/dB`, `${TEST_FILES_DIR}/dY`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1895,7 +1894,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/dX/dA`, `${TEST_FILES_DIR}/dY/dA`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA-X',
           contentType: 'text/plain; charset=utf-8',
@@ -1955,7 +1954,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -1979,7 +1978,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`dA`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -2053,7 +2052,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2076,7 +2075,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`, `d2`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2100,7 +2099,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`, `d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2129,7 +2128,7 @@ describe('BaseStorageService', () => {
 
       // 作成したディレクトリにファイルをアップロード
       // 'd1'と'd2'配下に'file.txt'を配置
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2174,7 +2173,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2199,7 +2198,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`, `${TEST_FILES_DIR}/d2`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2225,7 +2224,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2258,7 +2257,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1/d11`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2292,7 +2291,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2346,7 +2345,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         // 'd1/d1'というディレクトリにファイルを配置
         {
           data: 'testA',
@@ -2403,7 +2402,7 @@ describe('BaseStorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = []
+      const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
           data: `test${i}`,
@@ -2478,7 +2477,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2500,7 +2499,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2522,7 +2521,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2545,7 +2544,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2569,7 +2568,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2601,7 +2600,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/fileA.txt`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         // 'd1/fileA.txt'というディレクトリに'fileA.txt'というファイルを配置
         {
           data: 'testA',
@@ -2626,7 +2625,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // 作成したディレクトリにファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2652,7 +2651,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2811,7 +2810,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3034,7 +3033,7 @@ describe('BaseStorageService', () => {
     })
 
     it('ファイルの取得', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3051,7 +3050,7 @@ describe('BaseStorageService', () => {
     })
 
     it('ファイルの取得 - basePathを指定', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3068,7 +3067,7 @@ describe('BaseStorageService', () => {
     })
 
     it(`ファイルの取得 - パスの先頭・末尾に'/'を付与`, async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3111,7 +3110,7 @@ describe('BaseStorageService', () => {
 
   describe('getRealFileNode', () => {
     it('ベーシックケース', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3128,7 +3127,7 @@ describe('BaseStorageService', () => {
     })
 
     it('basePathを指定した場合', async () => {
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3183,7 +3182,7 @@ describe('BaseStorageService', () => {
       })
 
       it('テキストファイルをダウンロード', async () => {
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -3200,7 +3199,7 @@ describe('BaseStorageService', () => {
       })
 
       it('If-Modified-Sinceの検証', async () => {
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -3215,7 +3214,7 @@ describe('BaseStorageService', () => {
       })
 
       it('存在しないファイルを指定', async () => {
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `${TEST_FILES_DIR}/d1/fileA.txt`,
@@ -3228,7 +3227,7 @@ describe('BaseStorageService', () => {
       })
 
       it('basePathを指定した場合', async () => {
-        const uploadItem: UploadDataItem = {
+        const uploadItem: StorageUploadDataItem = {
           data: 'test',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/fileA.txt`,
@@ -3252,7 +3251,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3271,7 +3270,7 @@ describe('BaseStorageService', () => {
 
     it('ディレクトリは存在しないが、配下ノードは存在する場合', async () => {
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3292,7 +3291,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3321,7 +3320,7 @@ describe('BaseStorageService', () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルをアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3901,7 +3900,7 @@ describe('BaseStorageService', () => {
 
     it('ファイルのみを指定した場合', async () => {
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3939,7 +3938,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3983,7 +3982,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -4040,7 +4039,7 @@ describe('BaseStorageService', () => {
 
     it('topPathを指定した場合 - topPathノードが存在しない - 配下にノードが存在する', async () => {
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -4070,7 +4069,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -4099,7 +4098,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -4128,7 +4127,7 @@ describe('BaseStorageService', () => {
       const dirs = await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -4161,7 +4160,7 @@ describe('BaseStorageService', () => {
       expect(d1.id).toBe('')
 
       // ファイルのアップロード
-      const uploadItems: UploadDataItem[] = [
+      const uploadItems: StorageUploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',

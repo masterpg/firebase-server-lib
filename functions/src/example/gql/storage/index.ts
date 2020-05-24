@@ -1,22 +1,16 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { AuthGuard, AuthGuardModule, AuthRoleType, GQLContext, IdToken, Roles, User } from '../../../lib/nest'
+import { Inject, UseGuards } from '@nestjs/common'
 import {
-  AuthGuard,
-  AuthGuardModule,
-  AuthRoleType,
-  GQLContext,
-  GQLCtx,
-  IdToken,
-  Roles,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettingsInput,
   StoragePaginationOptionsInput,
   StoragePaginationResult,
-  User,
-} from '../../../lib'
-import { Inject, UseGuards } from '@nestjs/common'
+} from '../../../lib/services'
 import { StorageServiceDI, StorageServiceModule } from '../../services'
 import { BaseGQLModule } from '../base'
+import { GQLCtx } from '../../../lib/gql'
 import { Module } from '@nestjs/common'
 
 //========================================================================

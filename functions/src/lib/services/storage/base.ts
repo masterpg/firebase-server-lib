@@ -105,7 +105,7 @@ interface StorageRawMetadata {
   updated?: string | null
 }
 
-interface UploadDataItem {
+interface StorageUploadDataItem {
   data: string | Buffer
   path: string
   contentType: string
@@ -1122,7 +1122,7 @@ class BaseStorageService {
    * @param basePath
    * @param uploadList
    */
-  async uploadAsFiles(basePath: string | null, uploadList: UploadDataItem[]): Promise<GCSStorageNode[]> {
+  async uploadAsFiles(basePath: string | null, uploadList: StorageUploadDataItem[]): Promise<GCSStorageNode[]> {
     basePath = removeBothEndsSlash(basePath)
     const bucket = admin.storage().bucket()
 
@@ -1891,7 +1891,7 @@ export {
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
   SignedUploadUrlInput,
-  UploadDataItem,
+  StorageUploadDataItem,
   StorageUser,
   GCSStorageNode,
   StorageMetadata,

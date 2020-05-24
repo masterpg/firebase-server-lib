@@ -1,5 +1,6 @@
-import { AuthServiceModule, LibStorageService, LibStorageServiceDI } from '../../lib'
 import { Injectable, Module } from '@nestjs/common'
+import { LibStorageService, LibStorageServiceDI } from '../../lib/services'
+import { AuthServiceModule } from '../../lib/nest'
 
 //========================================================================
 //
@@ -32,5 +33,4 @@ class StorageServiceModule {}
 //
 //========================================================================
 
-export { StorageNode, StorageNodeShareSettings } from '../../lib'
 export { StorageServiceDI, StorageServiceModule }

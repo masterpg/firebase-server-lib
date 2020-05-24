@@ -306,14 +306,15 @@ class LibStorageServiceModule {}
 //========================================================================
 
 export {
-  StorageNodeType,
-  StoragePaginationOptionsInput,
-  StoragePaginationResult,
+  GCSStorageNode,
+  SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
-  SignedUploadUrlInput,
+  StorageNodeType,
+  StoragePaginationOptionsInput,
+  StoragePaginationResult,
+  StorageUploadDataItem,
   StorageUser,
-  GCSStorageNode,
 } from './base'
 export { LibStorageService, LibStorageServiceDI, LibStorageServiceModule }
