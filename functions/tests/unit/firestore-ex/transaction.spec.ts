@@ -41,9 +41,23 @@ describe('transaction', () => {
 
     it('should be undefined after transaction', async () => {
       await txFirestoreEx.runTransaction(async _tx => {
-        expect(txFirestoreEx.context.tx).not.toBeUndefined()
+        expect(txFirestoreEx.context.tx).toBeDefined()
       })
 
+      expect(txFirestoreEx.context.tx).toBeUndefined()
+    })
+
+    it('should be undefined if an error occurs', async () => {
+      let actual!: Error
+      try {
+        await txFirestoreEx.runTransaction(async _tx => {
+          throw new Error()
+        })
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual).toBeInstanceOf(Error)
       expect(txFirestoreEx.context.tx).toBeUndefined()
     })
 

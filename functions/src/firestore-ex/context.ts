@@ -36,10 +36,15 @@ export class Context {
   async runTransaction(updateFunction: (tx: Transaction) => Promise<void>): Promise<void> {
     if (this._tx || this._batch) throw new Error('Disallow nesting transaction or batch')
 
-    await this.db.runTransaction(async tx => {
-      this._tx = tx
-      await updateFunction(tx)
-    })
+    try {
+      await this.db.runTransaction(async tx => {
+        this._tx = tx
+        await updateFunction(tx)
+      })
+    } catch (err) {
+      this._tx = undefined
+      throw err
+    }
     this._tx = undefined
   }
 
@@ -48,8 +53,15 @@ export class Context {
 
     this._batch = this.db.batch()
 
-    await updateFunction(this._batch)
-    const writeResults = await this._batch.commit()
+    let writeResults: WriteResult[] = []
+
+    try {
+      await updateFunction(this._batch)
+      writeResults = await this._batch.commit()
+    } catch (err) {
+      this._batch = undefined
+      throw err
+    }
 
     this._batch = undefined
     return writeResults

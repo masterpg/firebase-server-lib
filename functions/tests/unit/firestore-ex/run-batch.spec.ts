@@ -45,6 +45,20 @@ describe('runBatch', () => {
       expect(firestoreEx.context.batch).toBeUndefined()
     })
 
+    it('should be undefined if an error occurs', async () => {
+      let actual!: Error
+      try {
+        await firestoreEx.runBatch(async () => {
+          throw new Error()
+        })
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual).toBeInstanceOf(Error)
+      expect(firestoreEx.context.batch).toBeUndefined()
+    })
+
     it('should be error nesting runBatch', async () => {
       await firestoreEx.runBatch(async () => {
         expect(
