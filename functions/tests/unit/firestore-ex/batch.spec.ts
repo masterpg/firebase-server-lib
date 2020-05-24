@@ -40,11 +40,7 @@ describe('batch', () => {
     await dao.bulkSet(docs)
 
     const actualDocs = await dao.fetchAll()
-    expect(actualDocs).toMatchObject(docs)
-    for (const actualDoc of actualDocs) {
-      expect(actualDoc.createdAt.isValid()).toBeTruthy()
-      expect(actualDoc.updatedAt.isValid()).toBeTruthy()
-    }
+    expect(actualDocs).toEqual(docs)
   })
 
   it('bulkDelete', async () => {

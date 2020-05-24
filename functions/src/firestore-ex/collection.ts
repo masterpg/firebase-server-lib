@@ -11,6 +11,7 @@ import {
   OmitEntityId,
   QueryKey,
   QuerySnapshot,
+  TimestampSettings,
 } from './types'
 import { Context } from './context'
 import { Converter } from './converter'
@@ -23,10 +24,11 @@ export class Collection<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  constructor({ context, path, encode, decode }: { context: Context; path: string; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S> }) {
-    this.context = context
-    this.collectionRef = context.db.collection(path)
-    this._converter = new Converter<T, S>({ encode, decode })
+  constructor(params: { context: Context; path: string; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp: TimestampSettings }) {
+    this.context = params.context
+    this.collectionRef = params.context.db.collection(params.path)
+    this._converter = new Converter<T, S>({ encode: params.encode, decode: params.decode, timestamp: params.timestamp })
+    this._timestamp = params.timestamp
   }
 
   //----------------------------------------------------------------------
@@ -46,6 +48,8 @@ export class Collection<T, S = T> {
   //----------------------------------------------------------------------
 
   private _converter: Converter<T, S>
+
+  private _timestamp: TimestampSettings
 
   //----------------------------------------------------------------------
   //
@@ -84,7 +88,9 @@ export class Collection<T, S = T> {
     let docRef: DocumentReference
     const doc = this._converter.encode(obj)
 
-    ;(doc as any).createdAt = FieldValue.serverTimestamp()
+    if (this._timestamp.use) {
+      ;(doc as any).createdAt = FieldValue.serverTimestamp()
+    }
 
     if (this.context.tx) {
       docRef = this.docRef()
@@ -104,7 +110,9 @@ export class Collection<T, S = T> {
     const docRef = this.docRef(obj.id)
     const doc = this._converter.encode(obj)
 
-    ;(doc as any).createdAt = FieldValue.serverTimestamp()
+    if (this._timestamp.use) {
+      ;(doc as any).createdAt = FieldValue.serverTimestamp()
+    }
 
     if (this.context.tx) {
       this.context.tx.set(docRef, doc)

@@ -1,24 +1,21 @@
+import { AdminFirestoreTestUtil, TestTimestampEntity } from './util'
 import { EncodeFunc, Entity, FirestoreEx } from '../../../src/firestore-ex'
-import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
 import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
-const db = util.db
-const collectionPath = util.collectionPath
-const firestoreEx = new FirestoreEx(db)
-
-interface Book extends Entity {
-  bookTitle: string
-}
 
 interface BookDoc {
   book_title: string
 }
 
 describe('encode', () => {
-  const now = dayjs()
+  const firestoreEx = new FirestoreEx(util.db)
+
+  interface Book extends Entity {
+    bookTitle: string
+  }
 
   afterAll(async () => {
     await util.deleteApps()
@@ -27,11 +24,6 @@ describe('encode', () => {
   afterEach(async () => {
     await util.deleteCollection()
   })
-
-  function toDayjs(value: Timestamp): Dayjs {
-    expect(value).toBeInstanceOf(Timestamp)
-    return dayjs(value.toDate())
-  }
 
   describe('from object', () => {
     const encode: EncodeFunc<Book> = book => {
@@ -42,12 +34,155 @@ describe('encode', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, encode })
 
       // add
       const doc = {
         bookTitle: 'hogehoge',
-        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+      }
+      const docId = await dao.add(doc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
+      const fetchedDoc = fetchedSnap.data()!
+      expect(fetchedDoc).toEqual({ book_title: doc.bookTitle })
+    })
+
+    it('without encode', async () => {
+      // without encode
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+
+      // add
+      const docId = await dao.add({
+        bookTitle: 'hogehoge',
+      })
+      const doc = (await dao.fetch(docId))!
+
+      // update
+      const updatedDoc = {
+        id: docId,
+        bookTitle: 'update',
+      }
+      await dao.update(updatedDoc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
+      const fetchedDoc = fetchedSnap.data()!
+      expect(fetchedDoc).toEqual({ bookTitle: updatedDoc.bookTitle })
+    })
+  })
+
+  describe('from class', () => {
+    class BookClass {
+      constructor(params: { id?: string; bookTitle: string }) {
+        this.id = params.id
+        this.bookTitle = params.bookTitle
+      }
+      public readonly id?: string
+      public bookTitle: string
+    }
+
+    const encode: EncodeFunc<Book> = book => {
+      return {
+        bookTitle: book.bookTitle,
+      }
+    }
+
+    it('with encode', async () => {
+      // with encode
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath, encode })
+
+      // add
+      const doc = new BookClass({
+        bookTitle: 'hogehoge',
+      })
+      const docId = await dao.add(doc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
+      const fetchedDoc = fetchedSnap.data()!
+      expect(fetchedDoc).toEqual({ bookTitle: doc.bookTitle })
+    })
+
+    it('without encode', async () => {
+      // without encode
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+
+      // add
+      const docId = await dao.add({
+        bookTitle: 'hogehoge',
+      })
+      const doc = (await dao.fetch(docId))!
+
+      // update
+      const updatedDoc = new BookClass({
+        id: docId,
+        bookTitle: 'update',
+      }) as Book
+      await dao.update(updatedDoc)
+
+      const fetchedSnap = await dao.collectionRef.doc(docId).get()
+      const fetchedDoc = fetchedSnap.data()!
+      expect(fetchedDoc).toEqual({ bookTitle: updatedDoc.bookTitle })
+    })
+
+    describe('from class is in error', () => {
+      class BookClassWithFunc extends BookClass {
+        // This field type cannot contain be store in Firestore
+        anyFunc = () => {}
+      }
+
+      it('without encode is in error', async () => {
+        // without encode
+        const dao = firestoreEx.collection<Book>({
+          path: util.collectionPath,
+        })
+
+        // add
+        const title = 'set'
+        const doc = new BookClassWithFunc({
+          bookTitle: 'update',
+        })
+        // The 'anyFunc' filed cannot be stored in Firestore, so it's a error.
+        expect(dao.add(doc)).rejects.toThrow('Cannot encode value: () => { }')
+      })
+    })
+  })
+})
+
+describe('encode - use timestamp', () => {
+  const firestoreEx = new FirestoreEx(util.db, util.options)
+  const now = dayjs()
+
+  interface Book extends TestTimestampEntity {
+    bookTitle: string
+  }
+
+  function toDayjs(value: Timestamp): Dayjs {
+    expect(value).toBeInstanceOf(Timestamp)
+    return dayjs(value.toDate())
+  }
+
+  afterAll(async () => {
+    await util.deleteApps()
+  })
+
+  afterEach(async () => {
+    await util.deleteCollection()
+  })
+
+  describe('from object', () => {
+    const encode: EncodeFunc<Book> = book => {
+      return {
+        book_title: book.bookTitle,
+      }
+    }
+
+    it('with encode', async () => {
+      // with encode
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, encode })
+
+      // add
+      const doc = {
+        bookTitle: 'hogehoge',
+        // This is a possible implementation setting, to verify that this does not cause problems.
         createdAt: now,
         updatedAt: now,
       }
@@ -62,7 +197,7 @@ describe('encode', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
 
       // add
       const docId = await dao.add({
@@ -74,7 +209,7 @@ describe('encode', () => {
       const updatedDoc = {
         id: docId,
         bookTitle: 'update',
-        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        // This is a possible implementation setting, to verify that this does not cause problems.
         createdAt: now,
         updatedAt: now,
       }
@@ -110,12 +245,12 @@ describe('encode', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode })
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath, encode })
 
       // add
       const doc = new BookClass({
         bookTitle: 'hogehoge',
-        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        // This is a possible implementation setting, to verify that this does not cause problems.
         createdAt: now,
         updatedAt: now,
       })
@@ -130,7 +265,7 @@ describe('encode', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
 
       // add
       const docId = await dao.add({
@@ -142,7 +277,7 @@ describe('encode', () => {
       const updatedDoc = new BookClass({
         id: docId,
         bookTitle: 'update',
-        // It's a meaningless setting, but to verify that it doesn't cause any problems.
+        // This is a possible implementation setting, to verify that this does not cause problems.
         createdAt: now,
         updatedAt: now,
       }) as Book
@@ -161,17 +296,17 @@ describe('encode', () => {
         anyFunc = () => {}
       }
 
-      it('add without encode is in error', async () => {
+      it('without encode is in error', async () => {
         // without encode
         const dao = firestoreEx.collection<Book>({
-          path: collectionPath,
+          path: util.collectionPath,
         })
 
         // add
         const title = 'set'
         const doc = new BookClassWithFunc({
           bookTitle: 'update',
-          // It's a meaningless setting, but to verify that it doesn't cause any problems.
+          // This is a possible implementation setting, to verify that this does not cause problems.
           createdAt: now,
           updatedAt: now,
         })

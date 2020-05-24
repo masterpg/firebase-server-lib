@@ -99,9 +99,7 @@ describe('transaction', () => {
 
         // Set document can see after transaction
         const fetched = (await dao.fetch(doc.id))!
-        expect(fetched).toMatchObject(updatedDoc)
-        expect(fetched.createdAt.isAfter(doc.createdAt)).toBeTruthy()
-        expect(fetched.updatedAt.isAfter(doc.updatedAt)).toBeTruthy()
+        expect(fetched).toEqual(updatedDoc)
       })
 
       it('delete', async () => {
@@ -135,9 +133,7 @@ describe('transaction', () => {
 
         // Added document can see after transaction
         const fetched = (await dao.fetch(newId))!
-        expect(fetched).toMatchObject(doc)
-        expect(fetched.createdAt.isValid()).toBeTruthy()
-        expect(fetched.updatedAt.isValid()).toBeTruthy()
+        expect(fetched).toEqual({ id: newId, ...doc })
       })
 
       it('update', async () => {
@@ -245,14 +241,10 @@ describe('transaction', () => {
 
       // Updated document can see after transaction
       const fetched = (await dao.fetch(doc.id))!
-      expect(fetched).toMatchObject(updatedDoc)
-      expect(fetched.createdAt).toEqual(doc.createdAt)
-      expect(fetched.updatedAt.isAfter(doc.updatedAt)).toBeTruthy()
+      expect(fetched).toEqual(updatedDoc)
 
       const anotherFetched = (await anotherDao.fetch(anotherDoc.id))!
-      expect(anotherFetched).toMatchObject(updatedAnotherDoc)
-      expect(anotherFetched.createdAt).toEqual(anotherDoc.createdAt)
-      expect(anotherFetched.updatedAt.isAfter(anotherDoc.updatedAt)).toBeTruthy()
+      expect(anotherFetched).toEqual(updatedAnotherDoc)
     })
   })
 })

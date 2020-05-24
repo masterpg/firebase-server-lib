@@ -1,5 +1,4 @@
-import * as dayjs from 'dayjs'
-import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue } from './types'
+import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue, TimestampSettings } from './types'
 
 export class Converter<T, S = T> {
   //----------------------------------------------------------------------
@@ -8,9 +7,10 @@ export class Converter<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  constructor({ encode, decode }: { encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S> }) {
-    this._encode = encode
-    this._decode = decode
+  constructor(params: { encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp: TimestampSettings }) {
+    this._encode = params.encode
+    this._decode = params.decode
+    this._timestamp = params.timestamp
   }
 
   //----------------------------------------------------------------------
@@ -22,6 +22,8 @@ export class Converter<T, S = T> {
   private _encode?: EncodeFunc<T, S>
 
   private _decode?: DecodeFunc<T, S>
+
+  private _timestamp: TimestampSettings
 
   //----------------------------------------------------------------------
   //
@@ -38,8 +40,11 @@ export class Converter<T, S = T> {
     }
 
     if ('id' in doc) delete (doc as any).id
-    if ('createdAt' in doc) delete (doc as any).createdAt
-    Object.assign(doc, { updatedAt: FieldValue.serverTimestamp() })
+
+    if (this._timestamp.use) {
+      if ('createdAt' in doc) delete (doc as any).createdAt
+      Object.assign(doc, { updatedAt: FieldValue.serverTimestamp() })
+    }
 
     return doc
   }
@@ -58,11 +63,13 @@ export class Converter<T, S = T> {
     if (!obj.id) {
       obj.id = doc.id
     }
-    if (!obj.createdAt && doc.createdAt) {
-      obj.createdAt = dayjs(doc.createdAt.toDate())
-    }
-    if (!obj.updatedAt && doc.updatedAt) {
-      obj.updatedAt = dayjs(doc.updatedAt.toDate())
+    if (this._timestamp.use) {
+      if (!obj.createdAt && doc.createdAt) {
+        obj.createdAt = this._timestamp.toDate(doc.createdAt)
+      }
+      if (!obj.updatedAt && doc.updatedAt) {
+        obj.updatedAt = this._timestamp.toDate(doc.updatedAt)
+      }
     }
 
     return obj

@@ -1,7 +1,9 @@
 import * as admin from 'firebase-admin'
 import * as crypto from 'crypto'
-import { Firestore } from '../../../src/firestore-ex/types'
+import { Firestore, FirestoreExOptions, TimestampEntity } from '../../../src/firestore-ex/types'
+import { Dayjs } from 'dayjs'
 import { initFirebaseApp } from '../../../src/lib/base'
+import dayjs = require('dayjs')
 
 export const deleteCollection = async (db: Firestore, collectionPath: string) => {
   const batch = db.batch()
@@ -20,6 +22,7 @@ export const createRandomCollectionName = (prefix = 'firebase_simple_') => {
 export class AdminFirestoreTestUtil {
   db: Firestore
   collectionPath: string
+  options: FirestoreExOptions
 
   static init(real: boolean) {
     if (real) {
@@ -39,6 +42,10 @@ export class AdminFirestoreTestUtil {
     // Use random collectionPath to separate each test namespace for concurrent testing
     this.collectionPath = crypto.randomBytes(10).toString('hex')
     this.db = AdminFirestoreTestUtil.init(real)
+    this.options = {
+      useTimestampInAll: true,
+      timestampToDate: timestamp => dayjs(timestamp.toDate()),
+    }
   }
 
   // Clear collection all documents.
@@ -58,3 +65,5 @@ export class AdminFirestoreTestUtil {
     await Promise.all(admin.apps.map(app => app?.delete()))
   }
 }
+
+export interface TestTimestampEntity extends TimestampEntity<Dayjs> {}

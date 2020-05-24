@@ -96,9 +96,7 @@ describe('runBatch', () => {
 
       // document has updated outside runBatch
       const fetched = (await dao.fetch(doc.id))!
-      expect(fetched).toMatchObject(updatedDoc)
-      expect(fetched.createdAt.isAfter(doc.createdAt)).toBeTruthy()
-      expect(fetched.updatedAt.isAfter(doc.updatedAt)).toBeTruthy()
+      expect(fetched).toEqual(updatedDoc)
     })
 
     it('delete', async () => {
@@ -151,8 +149,6 @@ describe('runBatch', () => {
       // document has updated outside runBatch
       const fetched = (await dao.fetch(doc.id))!
       expect(fetched!.title).toEqual(updatedTitle)
-      expect(fetched.createdAt).toEqual(doc.createdAt)
-      expect(fetched.updatedAt.isAfter(doc.updatedAt)).toBeTruthy()
     })
   })
 
@@ -196,14 +192,10 @@ describe('runBatch', () => {
 
       // Both documents has updated outside runBatch
       const fetched = (await dao.fetch(doc.id))!
-      expect(fetched).toMatchObject(updatedDoc)
-      expect(fetched.createdAt).toEqual(doc.createdAt)
-      expect(fetched.updatedAt.isAfter(doc.updatedAt)).toBeTruthy()
+      expect(fetched).toEqual(updatedDoc)
 
       const anotherFetched = (await anotherDao.fetch(anotherDoc.id))!
-      expect(anotherFetched).toMatchObject(updatedAnotherDoc)
-      expect(anotherFetched.createdAt).toEqual(anotherDoc.createdAt)
-      expect(anotherFetched.updatedAt.isAfter(anotherDoc.updatedAt)).toBeTruthy()
+      expect(anotherFetched).toEqual(updatedAnotherDoc)
     })
 
     it('should be error bulkSet in runBatch', async () => {

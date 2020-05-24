@@ -28,7 +28,7 @@ describe('Factory and SubCollection', () => {
     await util.deleteCollection()
   })
 
-  const encodeFunc: EncodeFunc<Book, BookDoc> = obj => {
+  const encode: EncodeFunc<Book, BookDoc> = obj => {
     const result: EncodedObject<BookDoc> = {}
     if (typeof obj.title === 'string') {
       result.title = obj.title
@@ -40,7 +40,7 @@ describe('Factory and SubCollection', () => {
     return result
   }
 
-  const decodeFunc: DecodeFunc<Book, BookDoc> = doc => {
+  const decode: DecodeFunc<Book, BookDoc> = doc => {
     return {
       title: doc.title,
       publishedAt: dayjs(doc.published_at.toDate()),
@@ -49,28 +49,21 @@ describe('Factory and SubCollection', () => {
 
   describe('FirestoreEx.collectionFactory', () => {
     it('should has same encode function', async () => {
-      const factory = firestoreEx.collectionFactory<Book, BookDoc>({
-        encode: encodeFunc,
-      })
+      const factory = firestoreEx.collectionFactory<Book, BookDoc>({ encode })
 
-      expect(factory.encode).toBe(encodeFunc)
+      expect(factory.encode).toBe(encode)
     })
 
     it('should has same decode function', async () => {
-      const factory = firestoreEx.collectionFactory<Book, BookDoc>({
-        decode: decodeFunc,
-      })
+      const factory = firestoreEx.collectionFactory<Book, BookDoc>({ decode })
 
-      expect(factory.decode).toBe(decodeFunc)
+      expect(factory.decode).toBe(decode)
     })
   })
 
   describe('FirestoreSimpleCollectionFactory.create', () => {
     const subcollectionPath = `${collectionPath}/test1/sub`
-    const factory = firestoreEx.collectionFactory<Book, BookDoc>({
-      encode: encodeFunc,
-      decode: decodeFunc,
-    })
+    const factory = firestoreEx.collectionFactory<Book, BookDoc>({ encode, decode })
     let dao: Collection<Book, BookDoc>
 
     beforeEach(async () => {
@@ -102,9 +95,7 @@ describe('Factory and SubCollection', () => {
       await dao.set(setBook)
 
       const fetchedBook = (await dao.fetch(setBook.id))!
-      expect(fetchedBook).toMatchObject(setBook)
-      expect(fetchedBook.createdAt.isValid()).toBeTruthy()
-      expect(fetchedBook.updatedAt.isValid()).toBeTruthy()
+      expect(fetchedBook).toEqual(setBook)
     })
   })
 })

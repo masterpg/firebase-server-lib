@@ -73,14 +73,12 @@ describe('encode and decode', () => {
     const addedBookId = await dao.add(doc)
 
     const fetchedBook = (await dao.fetch(addedBookId))!
-    expect(fetchedBook).toMatchObject({
+    expect(fetchedBook).toEqual({
       id: addedBookId,
       bookTitle: doc.bookTitle,
       publishedAt: doc.publishedAt,
       stocks: doc.stocks,
     })
-    expect(fetchedBook.createdAt.isValid()).toBeTruthy()
-    expect(fetchedBook.updatedAt.isValid()).toBeTruthy()
   })
 
   it('set with encode/decode', async () => {
@@ -93,14 +91,12 @@ describe('encode and decode', () => {
     const setBookId = await dao.set(doc)
 
     const fetchedBook = (await dao.fetch(setBookId))!
-    expect(fetchedBook).toMatchObject({
+    expect(fetchedBook).toEqual({
       id: setBookId,
       bookTitle: doc.bookTitle,
       publishedAt: doc.publishedAt,
       stocks: doc.stocks,
     })
-    expect(fetchedBook.createdAt.isValid()).toBeTruthy()
-    expect(fetchedBook.updatedAt.isValid()).toBeTruthy()
   })
 
   it('update with encode/decode', async () => {
@@ -123,10 +119,8 @@ describe('encode and decode', () => {
     })
 
     const fetchedBook = (await dao.fetch(bookId))!
-    expect(fetchedBook.bookTitle).toEqual(updatedTitle)
-    expect(fetchedBook.stocks).toEqual(baseStocks + incrementalStocks)
-    expect(fetchedBook.description).toEqual(updatedDescription)
-    expect(fetchedBook.createdAt).toEqual(addedBook.createdAt)
-    expect(fetchedBook.updatedAt.isAfter(addedBook.updatedAt)).toBeTruthy()
+    expect(fetchedBook.bookTitle).toBe(updatedTitle)
+    expect(fetchedBook.stocks).toBe(baseStocks + incrementalStocks)
+    expect(fetchedBook.description).toBe(updatedDescription)
   })
 })

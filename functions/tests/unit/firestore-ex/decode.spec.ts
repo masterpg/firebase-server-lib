@@ -1,23 +1,22 @@
+import { AdminFirestoreTestUtil, TestTimestampEntity } from './util'
 import { DecodeFunc, Entity, FirestoreEx } from '../../../src/firestore-ex'
-import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
 import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
-const db = util.db
-const collectionPath = util.collectionPath
-const firestoreEx = new FirestoreEx(db)
-
-interface Book extends Entity {
-  bookTitle: string
-}
 
 interface BookDoc {
   book_title: string
 }
 
 describe('decode', () => {
+  const firestoreEx = new FirestoreEx(util.db)
+
+  interface Book extends Entity {
+    bookTitle: string
+  }
+
   afterAll(async () => {
     await util.deleteApps()
   })
@@ -35,7 +34,119 @@ describe('decode', () => {
 
     it('fetch with decode', async () => {
       // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+
+      // add
+      const title = 'add'
+      const docRef = await dao.collectionRef.add({
+        book_title: title,
+        dummy: 'hogehoge',
+      })
+
+      const fetchedDoc = (await dao.fetch(docRef.id))!
+      expect(fetchedDoc).toEqual({
+        id: docRef.id,
+        bookTitle: title,
+      })
+      expect(fetchedDoc).not.toHaveProperty('dummy')
+    })
+
+    it('fetch without decode', async () => {
+      // without decode
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+
+      // add
+      const title = 'add'
+      const dummy = 'hogehoge'
+      const docRef = await dao.collectionRef.add({
+        bookTitle: title,
+        dummy,
+      })
+
+      const fetchedDoc = (await dao.fetch(docRef.id))!
+      expect(fetchedDoc).toEqual({
+        id: docRef.id,
+        bookTitle: title,
+        // Because the decode function is not executed, fields of Firestore is decoded as it is.
+        dummy,
+      })
+    })
+
+    it('where with decode', async () => {
+      // with decode
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+
+      // add
+      const title = 'add'
+      const docRef = await dao.collectionRef.add({
+        book_title: title,
+        dummy: 'hogehoge',
+      })
+
+      const fetchedDoc = await dao.where('book_title', '==', title).fetch()
+      expect(fetchedDoc).toEqual([
+        {
+          id: docRef.id,
+          bookTitle: title,
+        },
+      ])
+      expect(fetchedDoc).not.toHaveProperty('dummy')
+    })
+  })
+
+  describe('to class', () => {
+    class BookClass {
+      constructor(params: { id?: string; bookTitle: string }) {
+        this.id = params.id
+        this.bookTitle = params.bookTitle
+      }
+      public readonly id?: string
+      public bookTitle: string
+    }
+
+    const decode: DecodeFunc<Book, BookDoc> = doc => {
+      return new BookClass({
+        bookTitle: doc.book_title,
+      })
+    }
+
+    it(`fetch with decode`, async () => {
+      // with decodeA
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+
+      // add
+      const bookTitle = 'add'
+      const docRef = await dao.collectionRef.add({ book_title: bookTitle, dummy: 'hogehoge' })
+
+      const fetchedDoc = await dao.fetch(docRef.id)
+      expect(fetchedDoc).toEqual(
+        new BookClass({
+          id: docRef.id,
+          bookTitle,
+        })
+      )
+      expect(fetchedDoc).not.toHaveProperty('dummy')
+    })
+  })
+})
+
+describe('decode - use timestamp', () => {
+  const firestoreEx = new FirestoreEx(util.db, util.options)
+
+  interface Book extends TestTimestampEntity {
+    bookTitle: string
+  }
+
+  describe('to object', () => {
+    const decode: DecodeFunc<Book, BookDoc> = doc => {
+      return {
+        bookTitle: doc.book_title,
+      }
+    }
+
+    it('fetch with decode', async () => {
+      // with decode
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
 
       // add
       const title = 'add'
@@ -56,7 +167,7 @@ describe('decode', () => {
 
     it('fetch without decode', async () => {
       // without decode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
 
       // add
       const title = 'add'
@@ -73,29 +184,6 @@ describe('decode', () => {
         createdAt: dayjs('2020-01-01'),
         updatedAt: dayjs('2020-01-02'),
       })
-    })
-
-    it('where with decode', async () => {
-      // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
-
-      // add
-      const title = 'add'
-      const docRef = await dao.collectionRef.add({
-        book_title: title,
-        createdAt: Timestamp.fromDate(new Date(2020, 0, 1)),
-        updatedAt: Timestamp.fromDate(new Date(2020, 0, 2)),
-      })
-
-      const fetchedDoc = await dao.where('book_title', '==', title).fetch()
-      expect(fetchedDoc).toEqual([
-        {
-          id: docRef.id,
-          bookTitle: title,
-          createdAt: dayjs('2020-01-01'),
-          updatedAt: dayjs('2020-01-02'),
-        },
-      ])
     })
   })
 
@@ -130,7 +218,7 @@ describe('decode', () => {
 
     it(`fetch with decode - don't process entity fields in decode function`, async () => {
       // with decodeA
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeA })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode: decodeA })
 
       // add
       const bookTitle = 'add'
@@ -151,7 +239,7 @@ describe('decode', () => {
 
     it('fetch with decode - process entity fields in decode function', async () => {
       // with decodeB
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeB })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode: decodeB })
 
       // add
       const bookTitle = 'add'

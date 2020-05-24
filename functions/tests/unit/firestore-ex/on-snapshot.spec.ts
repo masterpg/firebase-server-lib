@@ -71,12 +71,10 @@ describe('onSnapshot test', () => {
       querySnapshot.docChanges().forEach(change => {
         if (change.type === 'added' && change.doc.data().book_title === addedDoc.bookTitle) {
           const changedDoc = toObject(change.doc)
-          expect(changedDoc).toMatchObject({
+          expect(changedDoc).toEqual({
             id: expect.anything(),
             ...addedDoc,
           })
-          expect(changedDoc.createdAt.isValid()).toBeTruthy()
-          expect(changedDoc.updatedAt.isValid()).toBeTruthy()
           done()
         }
       })
@@ -97,9 +95,7 @@ describe('onSnapshot test', () => {
       querySnapshot.docChanges().forEach(change => {
         if (change.type === 'modified') {
           const changedDoc = toObject(change.doc)
-          expect(changedDoc).toMatchObject(updatedDoc)
-          expect(changedDoc.createdAt).toEqual(existsDoc.createdAt)
-          expect(changedDoc.updatedAt.isAfter(existsDoc.updatedAt)).toBeTruthy()
+          expect(changedDoc).toEqual(updatedDoc)
           done()
         }
       })
