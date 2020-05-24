@@ -1,6 +1,6 @@
-import { CartItem, Product, store } from './store'
+import { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product } from './store'
 import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
-import { Injectable, Module } from '@nestjs/common'
+import { Inject, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib/base'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
@@ -31,6 +31,8 @@ class CartItemUpdateInput implements _UpdateCartItemInput {
 
 @Injectable()
 class CartService {
+  constructor(@Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type) {}
+
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -42,7 +44,7 @@ class CartService {
       const dict: { [id: string]: CartItem } = {}
       await Promise.all(
         ids.map(async id => {
-          const cartItem = await store().cartDao.fetch(id)
+          const cartItem = await this.storeService.cartDao.fetch(id)
           if (cartItem && cartItem.uid === user.uid) dict[cartItem.id] = cartItem
         })
       )
@@ -52,7 +54,7 @@ class CartService {
         return result
       }, [] as CartItem[])
     } else {
-      return await store().cartDao.where('uid', '==', user.uid).fetch()
+      return await this.storeService.cartDao.where('uid', '==', user.uid).fetch()
     }
   }
 
@@ -62,7 +64,7 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await store().runTransaction(async () => {
+    await this.storeService.runTransaction(async () => {
       const writeReady = new WriteReadyObserver(inputs.length)
       const promises = inputs.map(input => this.m_addCartItem(user.uid, input, writeReady))
       result = await Promise.all(promises)
@@ -77,7 +79,7 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await store().runTransaction(async () => {
+    await this.storeService.runTransaction(async () => {
       const writeReady = new WriteReadyObserver(inputs.length)
       const promises = inputs.map(input => this.m_updateCartItem(user.uid, input, writeReady))
       result = await Promise.all(promises)
@@ -91,7 +93,7 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await store().runTransaction(async () => {
+    await this.storeService.runTransaction(async () => {
       const writeReady = new WriteReadyObserver(ids.length)
       const promises = ids.map(id => this.m_removeCartItem(user.uid, id, writeReady))
       result = await Promise.all(promises)
@@ -101,10 +103,10 @@ class CartService {
   }
 
   async checkoutCart(user: { uid: string }): Promise<boolean> {
-    const cartItems = await store().cartDao.where('uid', '==', user.uid).fetch()
-    await store().runBatch(async () => {
+    const cartItems = await this.storeService.cartDao.where('uid', '==', user.uid).fetch()
+    await this.storeService.runBatch(async () => {
       for (const cartItem of cartItems) {
-        await store().cartDao.delete(cartItem.id)
+        await this.storeService.cartDao.delete(cartItem.id)
       }
     })
 
@@ -128,7 +130,7 @@ class CartService {
     const product = await this.m_getProductById(itemInput.productId)
 
     // 追加しようとするカートアイテムが存在しないことをチェック
-    const cartItems = await store().cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch()
+    const cartItems = await this.storeService.cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch()
     if (cartItems.length > 0) {
       const cartItem = cartItems[0]
       throw new InputValidationError('The specified cart item already exists.', {
@@ -155,11 +157,11 @@ class CartService {
 
     // 新規カートアイテム追加を実行
     const cartItem = { id: '', uid, ...itemInput }
-    cartItem.id = await store().cartDao.add(cartItem)
+    cartItem.id = await this.storeService.cartDao.add(cartItem)
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await store().productDao.update(product)
+    await this.storeService.productDao.update(product)
 
     return { ...cartItem, product }
   }
@@ -196,14 +198,14 @@ class CartService {
 
     // カートアイテム更新を実行
     cartItem.quantity = input.quantity
-    await store().cartDao.update({
+    await this.storeService.cartDao.update({
       id: cartItem.id,
       quantity: cartItem.quantity,
     })
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await store().productDao.update({
+    await this.storeService.productDao.update({
       id: product.id,
       stock: product.stock,
     })
@@ -230,17 +232,17 @@ class CartService {
     await writeReady.wait()
 
     // カートアイテムの削除を実行
-    await store().cartDao.delete(cartItem.id)
+    await this.storeService.cartDao.delete(cartItem.id)
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await store().productDao.update(product)
+    await this.storeService.productDao.update(product)
 
     return { ...cartItem, quantity: 0, product }
   }
 
   private async m_getProductById(id: string): Promise<Product> {
-    const product = await store().productDao.fetch(id)
+    const product = await this.storeService.productDao.fetch(id)
     if (!product) {
       throw new InputValidationError('The specified product could not be found.', {
         productId: id,
@@ -250,7 +252,7 @@ class CartService {
   }
 
   private async m_getCartItemById(uid: string, id: string): Promise<CartItem> {
-    const cartItem = await store().cartDao.fetch(id)
+    const cartItem = await this.storeService.cartDao.fetch(id)
     if (!cartItem) {
       throw new InputValidationError('The specified cart item could not be found.', {
         cartItemId: id,
@@ -307,6 +309,7 @@ namespace CartServiceDI {
 @Module({
   providers: [CartServiceDI.provider],
   exports: [CartServiceDI.provider],
+  imports: [AppStoreServiceModule],
 })
 class CartServiceModule {}
 

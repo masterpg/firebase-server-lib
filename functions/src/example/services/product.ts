@@ -1,5 +1,5 @@
-import { Injectable, Module } from '@nestjs/common'
-import { Product, store } from './store'
+import { AppStoreServiceDI, AppStoreServiceModule, Product } from './store'
+import { Inject, Injectable, Module } from '@nestjs/common'
 
 //========================================================================
 //
@@ -9,6 +9,8 @@ import { Product, store } from './store'
 
 @Injectable()
 class ProductService {
+  constructor(@Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type) {}
+
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -20,7 +22,7 @@ class ProductService {
       const dict: { [id: string]: Product } = {}
       await Promise.all(
         ids.map(async id => {
-          const product = await store().productDao.fetch(id)
+          const product = await this.storeService.productDao.fetch(id)
           if (product) dict[product.id] = product
         })
       )
@@ -30,7 +32,7 @@ class ProductService {
         return result
       }, [] as Product[])
     } else {
-      return await store().productDao.fetchAll()
+      return await this.storeService.productDao.fetchAll()
     }
   }
 }
@@ -47,6 +49,7 @@ namespace ProductServiceDI {
 @Module({
   providers: [ProductServiceDI.provider],
   exports: [ProductServiceDI.provider],
+  imports: [AppStoreServiceModule],
 })
 class ProductServiceModule {}
 

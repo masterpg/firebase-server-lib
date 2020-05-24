@@ -1,7 +1,8 @@
-import * as admin from 'firebase-admin'
-import { Collection, CollectionFactory, DecodeFunc, EncodeFunc, FirestoreEx, OmitEntityFields, Query } from '../../firestore-ex'
-import { TimestampEntity, firestoreExOptions } from '../../lib/base'
+import { Collection, OmitEntityFields } from '../../firestore-ex'
+import { Injectable, Module } from '@nestjs/common'
 import { CartItem as _CartItem, Product as _Product } from '../gql.schema'
+import { StoreService } from '../../lib/services'
+import { TimestampEntity } from '../../lib/base'
 
 //========================================================================
 //
@@ -19,20 +20,13 @@ interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 //
 //========================================================================
 
-interface BaseStore {
-  collection: FirestoreEx['collection']
-  collectionFactory: FirestoreEx['collectionFactory']
-  collectionGroup: FirestoreEx['collectionGroup']
-  runTransaction: FirestoreEx['runTransaction']
-  runBatch: FirestoreEx['runBatch']
-}
-
-class Store implements BaseStore {
+@Injectable()
+class AppStoreService extends StoreService {
   constructor() {
-    this._firestoreEx = new FirestoreEx(admin.firestore(), firestoreExOptions)
+    super()
 
-    this.productDao = this._firestoreEx.collection({ path: 'products', useTimestamp: true })
-    this.cartDao = this._firestoreEx.collection({ path: 'cart', useTimestamp: true })
+    this.productDao = this.firestoreEx.collection({ path: 'products', useTimestamp: true })
+    this.cartDao = this.firestoreEx.collection({ path: 'cart', useTimestamp: true })
   }
 
   //----------------------------------------------------------------------
@@ -44,45 +38,22 @@ class Store implements BaseStore {
   readonly productDao: Collection<Product>
 
   readonly cartDao: Collection<CartItem>
-
-  //----------------------------------------------------------------------
-  //
-  //  Variables
-  //
-  //----------------------------------------------------------------------
-
-  private readonly _firestoreEx: FirestoreEx
-
-  //----------------------------------------------------------------------
-  //
-  //  Methods
-  //
-  //----------------------------------------------------------------------
-
-  collection<T, S = T>(params: { path: string; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; useTimestamp?: boolean }): Collection<T, S> {
-    return this._firestoreEx.collection(params)
-  }
-
-  collectionFactory<T, S = T>(params: { encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; useTimestamp?: boolean }): CollectionFactory<T, S> {
-    return this._firestoreEx.collectionFactory(params)
-  }
-
-  collectionGroup<T, S>(params: { collectionId: string; decode?: DecodeFunc<T, S>; useTimestamp?: boolean }): Query<T, S> {
-    return this._firestoreEx.collectionGroup(params)
-  }
-
-  runTransaction(updateFunction: (tx: FirebaseFirestore.Transaction) => Promise<void>): Promise<void> {
-    return this._firestoreEx.runTransaction(updateFunction)
-  }
-
-  runBatch(updateFunction: (batch: FirebaseFirestore.WriteBatch) => Promise<void>): Promise<FirebaseFirestore.WriteResult[]> {
-    return this._firestoreEx.runBatch(updateFunction)
-  }
 }
 
-function store(): Store {
-  return new Store()
+namespace AppStoreServiceDI {
+  export const symbol = Symbol(AppStoreService.name)
+  export const provider = {
+    provide: symbol,
+    useClass: AppStoreService,
+  }
+  export type type = AppStoreService
 }
+
+@Module({
+  providers: [AppStoreServiceDI.provider],
+  exports: [AppStoreServiceDI.provider],
+})
+class AppStoreServiceModule {}
 
 //========================================================================
 //
@@ -90,4 +61,4 @@ function store(): Store {
 //
 //========================================================================
 
-export { store, Product, CartItem }
+export { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product }
