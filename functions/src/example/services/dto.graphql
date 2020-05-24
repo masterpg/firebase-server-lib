@@ -10,8 +10,14 @@ scalar JSON
 
 scalar JSONObject
 
-interface DocumentData {
+interface Entity {
   id: ID!
+}
+
+interface TimestampEntity {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 #========================================================================
@@ -97,13 +103,15 @@ input TestSignedUploadUrlInput {
 #
 #========================================================================
 
-type CartItem implements DocumentData {
+type CartItem implements TimestampEntity {
   id: ID!
   uid: ID!
   productId: ID!
   title: String!
   price: Float!
   quantity: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input CartItemAddInput {
@@ -134,9 +142,11 @@ type CartItemEditResponse {
 #
 #========================================================================
 
-type Product implements DocumentData {
+type Product implements TimestampEntity {
   id: ID!
   title: String!
   price: Float!
   stock: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }

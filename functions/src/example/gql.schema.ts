@@ -49,21 +49,29 @@ export interface TestSignedUploadUrlInput {
     contentType?: string;
 }
 
-export interface DocumentData {
+export interface Entity {
     id: string;
+}
+
+export interface TimestampEntity {
+    id: string;
+    createdAt: DateTime;
+    updatedAt: DateTime;
 }
 
 export interface AppConfigResponse {
     usersDir: string;
 }
 
-export interface CartItem extends DocumentData {
+export interface CartItem extends TimestampEntity {
     id: string;
     uid: string;
     productId: string;
     title: string;
     price: number;
     quantity: number;
+    createdAt: DateTime;
+    updatedAt: DateTime;
 }
 
 export interface CartItemEditResponse {
@@ -106,11 +114,13 @@ export interface IMutation {
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
 }
 
-export interface Product extends DocumentData {
+export interface Product extends TimestampEntity {
     id: string;
     title: string;
     price: number;
     stock: number;
+    createdAt: DateTime;
+    updatedAt: DateTime;
 }
 
 export interface IQuery {

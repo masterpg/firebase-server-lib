@@ -6,6 +6,7 @@ import FoundationGQLModule from './foundation'
 import { GraphQLModule } from '@nestjs/graphql'
 import ProductGQLModule from './product'
 import StorageGQLModule from './storage'
+import { UserServiceModule } from '../services'
 import { config } from '../../config'
 import { getGQLModuleOptions } from './base'
 
@@ -17,7 +18,7 @@ import { getGQLModuleOptions } from './base'
 
 const gqlOptions = getGQLModuleOptions([config.gql.schema.moduleDir])
 
-const gqlModules = [FoundationGQLModule, StorageGQLModule, CartGQLModule, ProductGQLModule]
+const gqlModules = [FoundationGQLModule, StorageGQLModule, UserServiceModule, CartGQLModule, ProductGQLModule]
 if (process.env.NODE_ENV !== 'production') {
   gqlModules.push(DevUtilsGQLModule)
 }

@@ -1,5 +1,6 @@
-import * as admin from 'firebase-admin'
-import { DocumentReference, Transaction } from '@google-cloud/firestore'
+import { FirestoreExOptions, TimestampEntity as _TimestampEntity } from '../../firestore-ex'
+import { Dayjs } from 'dayjs'
+import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -7,25 +8,7 @@ import { DocumentReference, Transaction } from '@google-cloud/firestore'
 //
 //========================================================================
 
-/**
- * ドキュメントデータの共通項目を定義したインタフェースです。
- */
-interface DocumentData {
-  id: string
-}
-
-/**
- * @see admin.firestore.DocumentSnapshot
- */
-interface DocumentSnapshot<DOCUMENT extends DocumentData> extends admin.firestore.DocumentSnapshot<DOCUMENT> {}
-
-/**
- * ドキュメントがデータベースに実際に存在する場合、このインタフェースを使用してください。
- * これにより`data()`の戻り値が返却されることを前提にコーディングできます。
- */
-interface RequiredDocumentSnapshot<DOCUMENT extends DocumentData> extends DocumentSnapshot<DOCUMENT> {
-  data(): DOCUMENT
-}
+interface TimestampEntity extends _TimestampEntity<Dayjs> {}
 
 //========================================================================
 //
@@ -33,61 +16,8 @@ interface RequiredDocumentSnapshot<DOCUMENT extends DocumentData> extends Docume
 //
 //========================================================================
 
-/**
- * 指定されたIDのドキュメントを取得します。
- * @param collectionPath
- * @param ids
- * @param transaction
- */
-async function getDocumentsByIds<DOCUMENT extends DocumentData>(
-  collectionPath: string,
-  ids: string[],
-  transaction?: Transaction
-): Promise<DocumentSnapshot<DOCUMENT>[]> {
-  return await Promise.all(
-    ids.map(async id => {
-      return await getDocumentById<DOCUMENT>(collectionPath, id, transaction)
-    })
-  )
-}
-
-/**
- * 指定されたIDのドキュメントを取得します。
- * @param collectionPath
- * @param id
- * @param transaction
- */
-async function getDocumentById<DOCUMENT extends DocumentData>(
-  collectionPath: string,
-  id: string,
-  transaction?: Transaction
-): Promise<DocumentSnapshot<DOCUMENT>> {
-  const db = admin.firestore()
-  const ref = db.collection(collectionPath).doc(id) as DocumentReference<DOCUMENT>
-  let snap: DocumentSnapshot<DOCUMENT>
-  if (transaction) {
-    snap = await transaction.get(ref)
-  } else {
-    snap = await ref.get()
-  }
-  if (snap.exists) {
-    ;(snap as any).original_data = snap.data
-    snap.data = () => {
-      return { ...(snap as any).original_data()!, id: snap.id }
-    }
-  }
-  return snap
-}
-
-/**
- * 指定されたドキュメントのIDをキーにした連想配列に変換します。
- * @param snaps
- */
-function documentsToDict<DOCUMENT extends DocumentData>(snaps: DocumentSnapshot<DOCUMENT>[]): { [id: string]: RequiredDocumentSnapshot<DOCUMENT> } {
-  return snaps.reduce<{ [id: string]: RequiredDocumentSnapshot<DOCUMENT> }>((result, snap) => {
-    result[snap.id] = snap as RequiredDocumentSnapshot<DOCUMENT>
-    return result
-  }, {})
+const firestoreExOptions: FirestoreExOptions = {
+  timestampToDate: timestamp => dayjs(timestamp.toDate()),
 }
 
 /**
@@ -123,4 +53,4 @@ class WriteReadyObserver {
 //
 //========================================================================
 
-export { DocumentData, DocumentSnapshot, RequiredDocumentSnapshot, getDocumentsByIds, getDocumentById, documentsToDict, WriteReadyObserver }
+export { WriteReadyObserver, TimestampEntity, firestoreExOptions }

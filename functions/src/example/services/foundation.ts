@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import { BaseFoundationService, IdToken } from '../../lib'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { StorageServiceDI, StorageServiceModule } from './storage'
-import { AppConfigResponse } from './base'
+import { AppConfigResponse } from '../gql.schema'
 import { config } from '../../config'
 
 //========================================================================
@@ -52,4 +52,4 @@ class FoundationServiceModule {}
 //
 //========================================================================
 
-export { FoundationServiceDI, FoundationServiceModule }
+export { FoundationServiceDI, FoundationServiceModule, AppConfigResponse }

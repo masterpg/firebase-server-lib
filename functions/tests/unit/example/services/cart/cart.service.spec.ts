@@ -2,6 +2,7 @@ import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Produc
 import { InputValidationError, LibDevUtilsServiceDI, ValidationErrors } from '../../../../../src/lib'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
+import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/base'
@@ -17,13 +18,13 @@ initApp()
 
 const GENERAL_USER = { uid: 'general.user' }
 
-const PRODUCTS: Product[] = [
+const PRODUCTS: OmitEntityTimestamp<Product>[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
   { id: 'product2', title: 'Fire HD 8 Tablet', price: 80.99, stock: 5 },
   { id: 'product3', title: 'MediaPad T5 10', price: 150.8, stock: 10 },
 ]
 
-const CART_ITEMS: CartItem[] = [
+const CART_ITEMS: OmitEntityTimestamp<CartItem>[] = [
   {
     id: 'cartItem1',
     uid: GENERAL_USER.uid,
@@ -226,7 +227,7 @@ describe('CartService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The stock of the product was insufficient.')
+      expect(actual.detail.message).toBe('The product is out of stock.')
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
@@ -246,6 +247,19 @@ describe('CartService', () => {
 
       expect(actual.detail[0].property).toBe('quantity')
       expect(actual.detail[0].constraints).toHaveProperty('isPositive')
+    })
+
+    it('カートアイテムの商品を重複指定していた場合', async () => {
+      const addItems = [cloneDeep(ADD_CART_ITEMS[0]), cloneDeep(ADD_CART_ITEMS[0])]
+
+      let actual!: InputValidationError
+      try {
+        await cartService.addList(GENERAL_USER, addItems)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe('The specified product is a duplicate.')
     })
 
     it('トランザクションが効いているか検証', async () => {
@@ -344,7 +358,7 @@ describe('CartService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The stock of the product was insufficient.')
+      expect(actual.detail.message).toBe('The product is out of stock.')
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
@@ -364,6 +378,19 @@ describe('CartService', () => {
 
       expect(actual.detail[0].property).toBe('quantity')
       expect(actual.detail[0].constraints).toHaveProperty('isPositive')
+    })
+
+    it('更新対象のカートアイテムを重複指定していた場合', async () => {
+      const updateItems = [cloneDeep(CART_ITEMS[0]), cloneDeep(CART_ITEMS[0])]
+
+      let actual!: InputValidationError
+      try {
+        await cartService.updateList(GENERAL_USER, updateItems)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
     })
 
     it('トランザクションが効いているか検証', async () => {
@@ -451,6 +478,19 @@ describe('CartService', () => {
       }
 
       expect(actual.detail.message).toBe('You cannot access the specified cart item.')
+    })
+
+    it('削除対象のカートアイテムを重複指定していた場合', async () => {
+      const removeIds = [CART_ITEMS[0].id, CART_ITEMS[0].id]
+
+      let actual!: InputValidationError
+      try {
+        await cartService.removeList(GENERAL_USER, removeIds)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
     })
 
     it('トランザクションが効いているか検証', async () => {

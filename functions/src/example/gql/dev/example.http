@@ -13,19 +13,25 @@ Content-Type: application/json
             "id": "product1",
             "title": "iPad 4 Mini",
             "price": 500.01,
-            "stock": 3
+            "stock": 3,
+            "createdAt": "2020-01-01 10:00:00",
+            "updatedAt": "2020-01-02 12:00:00"
           },
           {
             "id": "product2",
             "title": "Fire HD 8 Tablet",
             "price": 80.99,
-            "stock": 5
+            "stock": 5,
+            "createdAt": "2020-01-01",
+            "updatedAt": "2020-01-02"
           },
           {
             "id": "product3",
             "title": "MediaPad T5 10",
             "price": 150.8,
-            "stock": 10
+            "stock": 10,
+            "createdAt": "2020-01-01",
+            "updatedAt": "2020-01-02"
           }
         ]
       },
@@ -38,7 +44,9 @@ Content-Type: application/json
             "productId": "product1",
             "title": "iPad 4 Mini",
             "price": 500.01,
-            "quantity": 1
+            "quantity": 1,
+            "createdAt": "2020-01-01",
+            "updatedAt": "2020-01-02"
           },
           {
             "id": "cartItem2",
@@ -46,7 +54,9 @@ Content-Type: application/json
             "productId": "product2",
             "title": "Fire HD 8 Tablet",
             "price": 80.99,
-            "quantity": 2
+            "quantity": 2,
+            "createdAt": "2020-01-01",
+            "updatedAt": "2020-01-02"
           }
         ]
       },

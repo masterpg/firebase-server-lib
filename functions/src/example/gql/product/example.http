@@ -5,7 +5,7 @@ Content-Type: application/json
 {
   "operationName": "GetProducts",
   "variables": {},
-  "query": "query GetProducts { products(ids: [\"product1\", \"product3\"]) { id title price stock } }"
+  "query": "query GetProducts { products(ids: [\"product1\", \"product3\"]) { id title price stock createdAt updatedAt } }"
 }
 
 ###

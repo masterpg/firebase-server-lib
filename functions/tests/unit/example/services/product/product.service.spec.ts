@@ -2,6 +2,7 @@ import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { LibDevUtilsServiceDI } from '../../../../../src/lib'
+import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
 
@@ -14,7 +15,7 @@ initApp()
 //
 //========================================================================
 
-const PRODUCTS: Product[] = [
+const PRODUCTS: OmitEntityTimestamp<Product>[] = [
   { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
   { id: 'product2', title: 'Fire HD 8 Tablet', price: 80.99, stock: 5 },
   { id: 'product3', title: 'MediaPad T5 10', price: 150.8, stock: 10 },

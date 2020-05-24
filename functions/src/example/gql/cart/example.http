@@ -5,7 +5,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 {
   "operationName": "GetCartItems",
-  "query": "query GetCartItems { cartItems { id uid productId title price quantity } }",
+  "query": "query GetCartItems { cartItems { id uid productId title price quantity createdAt updatedAt } }",
   "variables": {}
 }
 
@@ -17,7 +17,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 {
   "operationName": "RemoveCartItems",
-  "query": "mutation RemoveCartItems($ids: [ID!]!) { removeCartItems(ids: $ids) { id uid productId title price quantity } }",
+  "query": "mutation RemoveCartItems($ids: [ID!]!) { removeCartItems(ids: $ids) { id uid productId title price quantity product { id stock } } }",
   "variables": {
     "ids": [
       "cartItem1",

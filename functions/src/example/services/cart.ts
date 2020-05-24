@@ -1,10 +1,9 @@
-import * as admin from 'firebase-admin'
-import { CartItem, CartItemEditResponse, Product, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from './base'
-import { ForbiddenException, Injectable, Module } from '@nestjs/common'
+import { CartItem, Product, store } from './store'
+import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
+import { Injectable, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
-import { RequiredDocumentSnapshot, getDocumentById } from '../../lib/base'
+import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
-import { Transaction } from '@google-cloud/firestore'
 
 //========================================================================
 //
@@ -12,23 +11,16 @@ import { Transaction } from '@google-cloud/firestore'
 //
 //========================================================================
 
-class CartItemUpdateInput implements _UpdateCartItemInput {
-  id!: string
-
-  @IsPositive()
-  quantity!: number
-}
-
 class CartItemAddInput implements _AddCartItemInput {
   productId!: string
-
   title!: string
+  @IsPositive() price!: number
+  @IsPositive() quantity!: number
+}
 
-  @IsPositive()
-  price!: number
-
-  @IsPositive()
-  quantity!: number
+class CartItemUpdateInput implements _UpdateCartItemInput {
+  id!: string
+  @IsPositive() quantity!: number
 }
 
 //========================================================================
@@ -46,89 +38,74 @@ class CartService {
   //----------------------------------------------------------------------
 
   async findList(user: { uid: string }, ids?: string[]): Promise<CartItem[]> {
-    const db = admin.firestore()
-
     if (ids && ids.length) {
-      const itemDict: { [id: string]: CartItem } = {}
-      const promises: Promise<void>[] = []
-      for (const id of ids) {
-        promises.push(
-          (async () => {
-            const doc = await db.collection('cart').doc(id).get()
-            if (doc.exists) {
-              itemDict[doc.id] = { id: doc.id, ...doc.data() } as CartItem
-            }
-          })()
-        )
-      }
-      await Promise.all(promises)
-
-      return ids.reduce<CartItem[]>((result, id) => {
-        const item = itemDict[id]
-        item && result.push(item)
+      const dict: { [id: string]: CartItem } = {}
+      await Promise.all(
+        ids.map(async id => {
+          const cartItem = await store().cartDao.fetch(id)
+          if (cartItem && cartItem.uid === user.uid) dict[cartItem.id] = cartItem
+        })
+      )
+      return ids.reduce((result, id) => {
+        const cartItem = dict[id]
+        cartItem && result.push(cartItem)
         return result
-      }, [])
+      }, [] as CartItem[])
     } else {
-      const items: CartItem[] = []
-      const snapshot = await db.collection('cart').where('uid', '==', user.uid).get()
-      snapshot.forEach(doc => {
-        items.push({ id: doc.id, ...doc.data() } as CartItem)
-      })
-      return items
+      return await store().cartDao.where('uid', '==', user.uid).fetch()
     }
   }
 
   async addList(user: { uid: string }, inputs: CartItemAddInput[]): Promise<CartItemEditResponse[]> {
     await validate(CartItemAddInput, inputs)
+    this.m_validateAddInputDuplication(inputs)
 
-    const db = admin.firestore()
-    return await db.runTransaction(async transaction => {
+    let result!: CartItemEditResponse[]
+
+    await store().runTransaction(async () => {
       const writeReady = new WriteReadyObserver(inputs.length)
-      const promises: Promise<CartItemEditResponse>[] = []
-      for (const input of inputs) {
-        promises.push(this.m_addCartItem(transaction, input, user.uid, writeReady))
-      }
-      return await Promise.all<CartItemEditResponse>(promises)
+      const promises = inputs.map(input => this.m_addCartItem(user.uid, input, writeReady))
+      result = await Promise.all(promises)
     })
+
+    return result
   }
 
   async updateList(user: { uid: string }, inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
     await validate(CartItemUpdateInput, inputs)
+    this.m_validateUpdateInputDuplication(inputs)
 
-    const db = admin.firestore()
-    return await db.runTransaction(async transaction => {
+    let result!: CartItemEditResponse[]
+
+    await store().runTransaction(async () => {
       const writeReady = new WriteReadyObserver(inputs.length)
-      const promises: Promise<CartItemEditResponse>[] = []
-      for (const input of inputs) {
-        promises.push(this.m_updateCartItem(transaction, input, user.uid, writeReady))
-      }
-      return await Promise.all<CartItemEditResponse>(promises)
+      const promises = inputs.map(input => this.m_updateCartItem(user.uid, input, writeReady))
+      result = await Promise.all(promises)
     })
+
+    return result
   }
 
   async removeList(user: { uid: string }, ids: string[]): Promise<CartItemEditResponse[]> {
-    if (!user) throw new ForbiddenException()
+    this.m_validateRemoveInputDuplication(ids)
 
-    const db = admin.firestore()
-    return await db.runTransaction(async transaction => {
+    let result!: CartItemEditResponse[]
+
+    await store().runTransaction(async () => {
       const writeReady = new WriteReadyObserver(ids.length)
-      const promises: Promise<CartItemEditResponse>[] = []
-      for (const cartItemId of ids) {
-        promises.push(this.m_removeCartItem(transaction, cartItemId, user.uid, writeReady))
-      }
-      return await Promise.all<CartItemEditResponse>(promises)
+      const promises = ids.map(id => this.m_removeCartItem(user.uid, id, writeReady))
+      result = await Promise.all(promises)
     })
+
+    return result
   }
 
   async checkoutCart(user: { uid: string }): Promise<boolean> {
-    const db = admin.firestore()
-
-    const snapshot = await db.collection('cart').where('uid', '==', user.uid).get()
-
-    await db.runTransaction(async transaction => {
-      snapshot.forEach(doc => {
-        transaction.delete(doc.ref)
-      })
+    const cartItems = await store().cartDao.where('uid', '==', user.uid).fetch()
+    await store().runBatch(async () => {
+      for (const cartItem of cartItems) {
+        await store().cartDao.delete(cartItem.id)
+      }
     })
 
     return true
@@ -142,29 +119,18 @@ class CartService {
 
   /**
    * カートにアイテムを追加します。
-   * @param transaction
-   * @param itemInput
    * @param uid
+   * @param itemInput
    * @param writeReady
    */
-  private async m_addCartItem(
-    transaction: Transaction,
-    itemInput: CartItemAddInput,
-    uid: string,
-    writeReady: WriteReadyObserver
-  ): Promise<CartItemEditResponse> {
-    const db = admin.firestore()
-
+  private async m_addCartItem(uid: string, itemInput: CartItemAddInput, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
     // 商品を取得
-    const productSnap = await this.m_getProductSnapById(itemInput.productId, transaction)
-    const product = productSnap.data()
+    const product = await this.m_getProductById(itemInput.productId)
 
     // 追加しようとするカートアイテムが存在しないことをチェック
-    const query = db.collection('cart').where('uid', '==', uid).where('productId', '==', itemInput.productId)
-    const snapshot = await transaction.get(query)
-    if (snapshot.size > 0) {
-      const doc = snapshot.docs[0]
-      const cartItem = { id: doc.id, ...doc.data() } as CartItem
+    const cartItems = await store().cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch()
+    if (cartItems.length > 0) {
+      const cartItem = cartItems[0]
       throw new InputValidationError('The specified cart item already exists.', {
         cartItemId: cartItem.id,
         uid: cartItem.uid,
@@ -173,21 +139,10 @@ class CartService {
       })
     }
 
-    // 新規カートアイテムの内容を作成
-    const cartItemRef = db.collection('cart').doc()
-    const newCartItem: CartItem = {
-      id: cartItemRef.id,
-      uid,
-      productId: itemInput.productId,
-      title: itemInput.title,
-      price: itemInput.price,
-      quantity: itemInput.quantity,
-    }
-
     // 商品の在庫数を再計算
     const newStock = product.stock - itemInput.quantity
     if (newStock < 0) {
-      throw new InputValidationError('The stock of the product was insufficient.', {
+      throw new InputValidationError('The product is out of stock.', {
         productId: product.id,
         title: product.title,
         currentStock: product.stock,
@@ -199,42 +154,36 @@ class CartService {
     await writeReady.wait()
 
     // 新規カートアイテム追加を実行
-    transaction.create(cartItemRef, newCartItem)
+    const cartItem = { id: '', uid, ...itemInput }
+    cartItem.id = await store().cartDao.add(cartItem)
+
     // 商品の在庫数更新を実行
     product.stock = newStock
-    transaction.update(productSnap.ref, product)
+    await store().productDao.update(product)
 
-    return { ...newCartItem, product }
+    return { ...cartItem, product }
   }
 
   /**
    * カートのアイテムを更新します。
-   * @param transaction
-   * @param input
    * @param uid
+   * @param input
    * @param writeReady
    */
-  private async m_updateCartItem(
-    transaction: Transaction,
-    input: CartItemUpdateInput,
-    uid: string,
-    writeReady: WriteReadyObserver
-  ): Promise<CartItemEditResponse> {
+  private async m_updateCartItem(uid: string, input: CartItemUpdateInput, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
     // カートアイテムを取得
-    const cartItemSnap = await this.m_getCartItemSnapById(input.id, uid, transaction)
-    const cartItem = cartItemSnap.data()
+    const cartItem = await this.m_getCartItemById(uid, input.id)
 
     // 商品を取得
-    const productSnap = await this.m_getProductSnapById(cartItem.productId, transaction)
-    const product = productSnap.data()
+    const product = await this.m_getProductById(cartItem.productId)
 
     // 今回カートアイテムに追加された商品の個数を算出
-    const addedQuantity = input.quantity - cartItem.quantity
+    const addedQuantity = cartItem.quantity - input.quantity
 
     // 今回カートアイテムに追加された商品の個数をもとに商品の在庫数を算出
-    const newStock = product.stock - addedQuantity
+    const newStock = product.stock + addedQuantity
     if (newStock < 0) {
-      throw new InputValidationError('The stock of the product was insufficient.', {
+      throw new InputValidationError('The product is out of stock.', {
         productId: product.id,
         title: product.title,
         currentStock: product.stock,
@@ -247,34 +196,33 @@ class CartService {
 
     // カートアイテム更新を実行
     cartItem.quantity = input.quantity
-    transaction.update(cartItemSnap.ref, cartItem)
+    await store().cartDao.update({
+      id: cartItem.id,
+      quantity: cartItem.quantity,
+    })
+
     // 商品の在庫数更新を実行
     product.stock = newStock
-    transaction.update(productSnap.ref, product)
+    await store().productDao.update({
+      id: product.id,
+      stock: product.stock,
+    })
 
     return { ...cartItem, product }
   }
 
   /**
    * カートからアイテムを削除します。
-   * @param transaction
-   * @param cartItemId
    * @param uid
+   * @param cartItemId
    * @param writeReady
    */
-  private async m_removeCartItem(
-    transaction: Transaction,
-    cartItemId: string,
-    uid: string,
-    writeReady: WriteReadyObserver
-  ): Promise<CartItemEditResponse> {
+  private async m_removeCartItem(uid: string, cartItemId: string, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
     // カートアイテムを取得
-    const cartItemSnap = await this.m_getCartItemSnapById(cartItemId, uid, transaction)
-    const cartItem = cartItemSnap.data()
+    const cartItem = await this.m_getCartItemById(uid, cartItemId)
 
     // 商品を取得
-    const productSnap = await this.m_getProductSnapById(cartItem.productId, transaction)
-    const product = productSnap.data()
+    const product = await this.m_getProductById(cartItem.productId)
     // 取得した商品の在庫にカートアイテム削除分をプラスする
     const newStock = product.stock + cartItem.quantity
 
@@ -282,37 +230,33 @@ class CartService {
     await writeReady.wait()
 
     // カートアイテムの削除を実行
-    transaction.delete(cartItemSnap.ref)
+    await store().cartDao.delete(cartItem.id)
+
     // 商品の在庫数更新を実行
     product.stock = newStock
-    transaction.set(productSnap.ref, product)
+    await store().productDao.update(product)
 
-    return {
-      ...cartItem,
-      quantity: 0,
-      product,
-    }
+    return { ...cartItem, quantity: 0, product }
   }
 
-  private async m_getProductSnapById(id: string, transaction?: Transaction): Promise<RequiredDocumentSnapshot<Product>> {
-    const snap = await getDocumentById<Product>('products', id, transaction)
-    if (!snap.exists) {
+  private async m_getProductById(id: string): Promise<Product> {
+    const product = await store().productDao.fetch(id)
+    if (!product) {
       throw new InputValidationError('The specified product could not be found.', {
         productId: id,
       })
     }
-    return snap as RequiredDocumentSnapshot<Product>
+    return product
   }
 
-  private async m_getCartItemSnapById(id: string, uid: string, transaction?: Transaction): Promise<RequiredDocumentSnapshot<CartItem>> {
-    const snap = await getDocumentById<CartItem>('cart', id, transaction)
-    if (!snap.exists) {
+  private async m_getCartItemById(uid: string, id: string): Promise<CartItem> {
+    const cartItem = await store().cartDao.fetch(id)
+    if (!cartItem) {
       throw new InputValidationError('The specified cart item could not be found.', {
         cartItemId: id,
       })
     }
     // 取得したカートアイテムが自身のものかチェック
-    const cartItem = snap.data()!
     if (cartItem.uid !== uid) {
       throw new InputValidationError('You cannot access the specified cart item.', {
         cartItemId: cartItem.id,
@@ -320,15 +264,34 @@ class CartService {
         requestUID: uid,
       })
     }
-    return snap as RequiredDocumentSnapshot<CartItem>
+    return cartItem
   }
 
-  private async m_sleep(ms: number): Promise<string> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve(`I slept for ${ms}ms.`)
-      }, ms)
-    }) as Promise<string>
+  private m_validateAddInputDuplication(inputs: CartItemAddInput[]): void {
+    const duplicates = findDuplicateItems(inputs, 'productId')
+    if (duplicates.length > 0) {
+      throw new InputValidationError(`The specified product is a duplicate.`, {
+        cartItemId: duplicates[0],
+      })
+    }
+  }
+
+  private m_validateUpdateInputDuplication(inputs: CartItemUpdateInput[]): void {
+    const duplicates = findDuplicateItems(inputs, 'id')
+    if (duplicates.length > 0) {
+      throw new InputValidationError(`The specified cart item is a duplicate.`, {
+        cartItemId: duplicates[0],
+      })
+    }
+  }
+
+  private m_validateRemoveInputDuplication(cartItemIds: string[]): void {
+    const duplicates = findDuplicateValues(cartItemIds)
+    if (duplicates.length > 0) {
+      throw new InputValidationError(`The specified cart item is a duplicate.`, {
+        cartItemId: duplicates[0],
+      })
+    }
   }
 }
 
@@ -353,4 +316,4 @@ class CartServiceModule {}
 //
 //========================================================================
 
-export { CartItemUpdateInput, CartItemAddInput, CartServiceDI, CartServiceModule }
+export { CartServiceDI, CartServiceModule, CartItem, CartItemEditResponse, CartItemUpdateInput, CartItemAddInput }

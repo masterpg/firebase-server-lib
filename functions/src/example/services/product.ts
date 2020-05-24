@@ -1,6 +1,5 @@
-import * as admin from 'firebase-admin'
 import { Injectable, Module } from '@nestjs/common'
-import { Product } from './base'
+import { Product, store } from './store'
 
 //========================================================================
 //
@@ -10,36 +9,28 @@ import { Product } from './base'
 
 @Injectable()
 class ProductService {
-  async findList(ids?: string[]): Promise<Product[]> {
-    const db = admin.firestore()
-    if (ids && ids.length) {
-      const productDict: { [id: string]: Product } = {}
-      const promises: Promise<void>[] = []
-      for (const id of ids) {
-        promises.push(
-          (async () => {
-            const doc = await db.collection('products').doc(id).get()
-            if (doc.exists) {
-              productDict[doc.id] = { id: doc.id, ...doc.data() } as Product
-            }
-          })()
-        )
-      }
-      await Promise.all(promises)
+  //----------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------
 
-      return ids.reduce<Product[]>((result, id) => {
-        const product = productDict[id]
+  async findList(ids?: string[]): Promise<Product[]> {
+    if (ids && ids.length) {
+      const dict: { [id: string]: Product } = {}
+      await Promise.all(
+        ids.map(async id => {
+          const product = await store().productDao.fetch(id)
+          if (product) dict[product.id] = product
+        })
+      )
+      return ids.reduce((result, id) => {
+        const product = dict[id]
         product && result.push(product)
         return result
-      }, [])
+      }, [] as Product[])
     } else {
-      const products: Product[] = []
-      const snapshot = await db.collection('products').get()
-      snapshot.forEach(doc => {
-        const product = { id: doc.id, ...doc.data() } as Product
-        products.push(product)
-      })
-      return products
+      return await store().productDao.fetchAll()
     }
   }
 }
@@ -65,4 +56,4 @@ class ProductServiceModule {}
 //
 //========================================================================
 
-export { ProductServiceDI, ProductServiceModule }
+export { ProductServiceDI, ProductServiceModule, Product }

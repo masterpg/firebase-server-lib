@@ -1,14 +1,14 @@
-GET {{host}}/cartRESTService/cartItems
+GET {{host}}/rest/cartItems
 Authorization: Bearer {"uid": "general.user"}
 
 ###
 
-GET {{host}}/cartRESTService/cartItems/cartItem1
+GET {{host}}/rest/cartItems/cartItem1
 Authorization: Bearer {"uid": "general.user"}
 
 ###
 
-DELETE {{host}}/cartRESTService/cartItems
+DELETE {{host}}/rest/cartItems
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user"}
 
@@ -19,7 +19,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 ###
 
-POST {{host}}/cartRESTService/cartItems
+POST {{host}}/rest/cartItems
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user"}
 
@@ -40,7 +40,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 ###
 
-PUT {{host}}/cartRESTService/cartItems
+PUT {{host}}/rest/cartItems
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user"}
 
@@ -57,7 +57,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 ###
 
-PUT {{host}}/cartRESTService/cartItems/checkout
+PUT {{host}}/rest/cartItems/checkout
 Content-Type: application/json
 Authorization: Bearer {"uid": "general.user"}
 

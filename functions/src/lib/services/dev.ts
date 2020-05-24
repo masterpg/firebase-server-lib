@@ -1,11 +1,14 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import { DocumentReference, Timestamp } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule } from '../nest'
 import { Inject, Module } from '@nestjs/common'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
-import { DocumentReference } from '@google-cloud/firestore'
 import { File } from '@google-cloud/storage'
 import { JSONObject } from './base'
+import dayjs = require('dayjs')
+import { isISO8601 } from 'validator'
+import { isNumber } from 'lodash'
 const firebaseTools = require('firebase-tools')
 
 //========================================================================
@@ -173,7 +176,16 @@ class LibDevUtilsService {
           const docs = await this.m_createCollectionDocs(memberKey, memberItem, docRef)
           result.push(...docs)
         }
-        // 上記以外はメンバーアイテムをプリミティブな型とみなす
+        // メンバーアイテムが数値だった場合
+        else if (isNumber(memberItem)) {
+          docData[memberKey] = memberItem
+        }
+        // メンバーアイテムが日付文字列だった場合
+        else if (typeof memberItem === 'string' && isISO8601(memberItem)) {
+          docData[memberKey] = Timestamp.fromDate(dayjs(memberItem).toDate())
+        }
+        // 上記以外の場合
+        // ※数値、日付、以外のプリミティブ型の値とみなす
         else {
           docData[memberKey] = memberItem
         }
