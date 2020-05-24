@@ -75,8 +75,6 @@ class SignedUploadUrlInput {
 //  For inside of Storage
 //--------------------------------------------------
 
-type StorageUser = Pick<IdToken, 'uid' | 'myDirName'> | Pick<UserRecord, 'uid' | 'customClaims'>
-
 interface GCSStorageNode extends StorageNode {
   exists: boolean
   gcsNode: File
@@ -1892,7 +1890,6 @@ export {
   StorageNodeShareSettingsInput,
   SignedUploadUrlInput,
   StorageUploadDataItem,
-  StorageUser,
   GCSStorageNode,
   StorageMetadata,
   StorageMetadataInput,

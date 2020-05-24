@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin'
-import { LibStorageServiceDI, StorageUploadDataItem, StorageUser } from '../../../../../src/lib/services'
+import { StorageServiceDI, StorageUploadDataItem } from '../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
+import { UserIdClaims } from '../../../../../src/lib/nest'
 import { cloneDeep } from 'lodash'
 import { initLib } from '../../../../../src/lib/base'
 import request = require('supertest')
@@ -16,7 +17,7 @@ initLib()
 //
 //========================================================================
 
-const STORAGE_TEST_USER: StorageUser = { uid: 'storage.test.user', myDirName: 'storage.test.user' }
+const STORAGE_TEST_USER: UserIdClaims = { uid: 'storage.test.user', myDirName: 'storage.test.user' }
 
 const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
 
@@ -30,7 +31,7 @@ const TEST_FILES_DIR = 'test-files'
 
 let testingModule: TestingModule
 
-let storageService!: LibStorageServiceDI.type
+let storageService!: StorageServiceDI.type
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -50,7 +51,7 @@ describe('StorageService', () => {
       imports: [MockStorageRESTModule],
     }).compile()
 
-    storageService = testingModule.get<LibStorageServiceDI.type>(LibStorageServiceDI.symbol)
+    storageService = testingModule.get<StorageServiceDI.type>(StorageServiceDI.symbol)
 
     await storageService.removeDir(null, `${TEST_FILES_DIR}`)
     await storageService.removeDir(null, `${storageService.getUserDirPath(STORAGE_TEST_USER)}`)
@@ -61,7 +62,7 @@ describe('StorageService', () => {
 
   /**
    * TODO Jest did not exit one second after the test run has completed.
-   * admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生する
+   *  admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生しJestが終了しない
    */
   describe('assignUserDir', () => {
     beforeEach(async () => {
@@ -103,7 +104,10 @@ describe('StorageService', () => {
       // カスタムクレイムのユーザーディレクトリ名が設定されたか検証
       expect((afterUser.customClaims as any).myDirName).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
-      const userDirPath = storageService.getUserDirPath(afterUser)
+      const userDirPath = storageService.getUserDirPath({
+        uid: STORAGE_TEST_USER.uid,
+        ...afterUser.customClaims,
+      })
       const userDirNode = await storageService.getRealDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
@@ -118,7 +122,10 @@ describe('StorageService', () => {
       // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
       expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリが作成されたか検証
-      const userDirPath = storageService.getUserDirPath(afterUser)
+      const userDirPath = storageService.getUserDirPath({
+        uid: STORAGE_TEST_USER.uid,
+        ...afterUser.customClaims,
+      })
       const userDirNode = await storageService.getRealDirNode(null, userDirPath)
       expect(userDirNode.exists).toBeTruthy()
     })
@@ -136,7 +143,10 @@ describe('StorageService', () => {
       // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
       expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_TEST_USER.myDirName)
       // ユーザーディレクトリに変化がないことを検証
-      const afterUserDirPath = storageService.getUserDirPath(afterUser)
+      const afterUserDirPath = storageService.getUserDirPath({
+        uid: STORAGE_TEST_USER.uid,
+        ...afterUser.customClaims,
+      })
       expect(afterUserDirPath).toBe(beforeUserDirPath)
       const afterUserDirNode = await storageService.getRealDirNode(null, afterUserDirPath)
       expect(afterUserDirNode.created).toEqual(beforeUserDirNode.created)
@@ -144,44 +154,14 @@ describe('StorageService', () => {
   })
 
   describe('getUserDirPath', () => {
-    it('ベーシックケース - user.myDirName', async () => {
+    it('ベーシックケース', async () => {
       const actual = storageService.getUserDirPath(STORAGE_TEST_USER)
       expect(actual).toBe(`users/${STORAGE_TEST_USER.myDirName}`)
     })
 
-    it('ベーシックケース - user.customClaims.myDirName', async () => {
-      const user = {
-        uid: STORAGE_TEST_USER.uid,
-        customClaims: {
-          myDirName: STORAGE_TEST_USER.myDirName,
-        },
-      }
-
-      const actual = storageService.getUserDirPath(user)
-      expect(actual).toBe(`users/${user.customClaims.myDirName}`)
-    })
-
-    it('user.myDirNameが設定されていない場合', async () => {
+    it('myDirNameが設定されていない場合', async () => {
       const user = cloneDeep(STORAGE_TEST_USER)
       user.myDirName = undefined
-
-      let actual!: Error
-      try {
-        storageService.getUserDirPath(user)
-      } catch (err) {
-        actual = err
-      }
-
-      expect(actual).toBeDefined()
-    })
-
-    it('user.customClaims.myDirNameが設定されていない場合', async () => {
-      const user = {
-        uid: STORAGE_TEST_USER.uid,
-        customClaims: {
-          myDirName: undefined,
-        },
-      }
 
       let actual!: Error
       try {

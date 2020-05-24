@@ -39,7 +39,7 @@ describe('FoundationResolver', () => {
 
   /**
    * TODO Jest did not exit one second after the test run has completed.
-   * admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生する
+   *  admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生しJestが終了しない
    */
   describe('customToken', () => {
     const gql = {

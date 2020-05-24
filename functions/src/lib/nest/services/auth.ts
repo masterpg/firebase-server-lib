@@ -8,10 +8,16 @@ import { Request, Response } from 'express'
 //
 //========================================================================
 
-interface IdToken extends admin.auth.DecodedIdToken {
-  isAppAdmin?: string
+interface UserClaims {
+  isAppAdmin?: boolean
   myDirName?: string
 }
+
+interface UserIdClaims extends UserClaims {
+  uid: string
+}
+
+interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
 
 enum AuthRoleType {
   AppAdmin = 'AppAdmin',
@@ -175,4 +181,4 @@ class AuthServiceModule {}
 //
 //========================================================================
 
-export { IdToken, AuthRoleType, AuthValidateResult, AuthServiceDI, AuthServiceModule }
+export { AuthServiceDI, AuthServiceModule, UserClaims, UserIdClaims, AuthRoleType, AuthValidateResult, IdToken }

@@ -1,7 +1,7 @@
 import * as path from 'path'
+import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { StorageServiceDI, StorageServiceModule } from '../../services'
 import { AuthGuardModule } from '../../../lib/nest'
 import { BaseRESTModule } from '../base'
 import { config } from '../../../config'
@@ -14,7 +14,7 @@ import { config } from '../../../config'
 
 @Controller()
 class StorageController {
-  constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
+  constructor(@Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type) {}
 
   @Get(path.join(config.storage.usersDir, '*'))
   async serveUserFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
@@ -31,7 +31,7 @@ class StorageController {
 
 @Module({
   controllers: [StorageController],
-  imports: [BaseRESTModule, StorageServiceModule, AuthGuardModule],
+  imports: [BaseRESTModule, AppStorageServiceModule, AuthGuardModule],
 })
 class StorageRESTModule {}
 

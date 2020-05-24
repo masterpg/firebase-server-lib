@@ -1,5 +1,5 @@
 import { Controller, Get, Inject, Module, Param } from '@nestjs/common'
-import { Product, ProductServiceDI } from '../../services'
+import { Product, ProductServiceDI, ProductServiceModule } from '../../services'
 import { BaseRESTModule } from '../base'
 
 //========================================================================
@@ -26,8 +26,7 @@ class ProductController {
 
 @Module({
   controllers: [ProductController],
-  providers: [ProductServiceDI.provider],
-  imports: [BaseRESTModule],
+  imports: [BaseRESTModule, ProductServiceModule],
 })
 class ProductRESTModule {}
 

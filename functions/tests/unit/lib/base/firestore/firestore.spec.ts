@@ -2,8 +2,8 @@ import * as admin from 'firebase-admin'
 import { Test, TestingModule } from '@nestjs/testing'
 import { WriteReadyObserver, initLib } from '../../../../../src/lib/base'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
+import { DevUtilsServiceDI } from '../../../../../src/lib/services'
 import { FirestoreEx } from '../../../../../src/firestore-ex'
-import { LibDevUtilsServiceDI } from '../../../../../src/lib/services'
 import { findDuplicateItems } from 'web-base-lib'
 
 jest.setTimeout(25000)
@@ -27,14 +27,14 @@ describe('WriteReadyObserver', () => {
     orderNum: number
   }
 
-  let devUtilsService: LibDevUtilsServiceDI.type
+  let devUtilsService: DevUtilsServiceDI.type
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
       imports: [DevUtilsGQLModule],
     }).compile()
 
-    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
   })
 
   /**

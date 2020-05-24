@@ -3,9 +3,9 @@ import { StorageNode, StorageNodeShareSettings, StoragePaginationResult } from '
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
+import { AppStorageServiceDI } from '../../../../../src/example/services'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { StorageResolver } from '../../../../../src/example/gql/storage'
-import { StorageServiceDI } from '../../../../../src/example/services'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -66,7 +66,7 @@ function toResponseStorageNode(node: StorageNode): ResponseStorageNode {
 
 describe('StorageResolver', () => {
   let app: any
-  let storageService: StorageServiceDI.type
+  let storageService: AppStorageServiceDI.type
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -75,7 +75,7 @@ describe('StorageResolver', () => {
 
     app = module.createNestApplication()
     await app.init()
-    storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
+    storageService = module.get<AppStorageServiceDI.type>(AppStorageServiceDI.symbol)
   })
 
   //--------------------------------------------------

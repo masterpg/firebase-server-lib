@@ -1,6 +1,6 @@
 import { Injectable, Module } from '@nestjs/common'
-import { LibStorageService, LibStorageServiceDI } from '../../lib/services'
 import { AuthServiceModule } from '../../lib/nest'
+import { StorageService } from '../../lib/services'
 
 //========================================================================
 //
@@ -9,23 +9,23 @@ import { AuthServiceModule } from '../../lib/nest'
 //========================================================================
 
 @Injectable()
-class StorageService extends LibStorageService {}
+class AppStorageService extends StorageService {}
 
-namespace StorageServiceDI {
-  export const symbol = LibStorageServiceDI.symbol
+namespace AppStorageServiceDI {
+  export const symbol = Symbol(AppStorageService.name)
   export const provider = {
     provide: symbol,
-    useClass: StorageService,
+    useClass: AppStorageService,
   }
-  export type type = StorageService
+  export type type = AppStorageService
 }
 
 @Module({
-  providers: [StorageServiceDI.provider],
-  exports: [StorageServiceDI.provider],
+  providers: [AppStorageServiceDI.provider],
+  exports: [AppStorageServiceDI.provider],
   imports: [AuthServiceModule],
 })
-class StorageServiceModule {}
+class AppStorageServiceModule {}
 
 //========================================================================
 //
@@ -33,4 +33,4 @@ class StorageServiceModule {}
 //
 //========================================================================
 
-export { StorageServiceDI, StorageServiceModule }
+export { AppStorageServiceDI, AppStorageServiceModule }

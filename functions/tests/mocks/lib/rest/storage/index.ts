@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
-import { LibStorageServiceDI, LibStorageServiceModule } from '../../../../../src/lib/services'
 import { Request, Response } from 'express'
+import { StorageServiceDI, StorageServiceModule } from '../../../../../src/lib/services'
 import { config } from '../../../../../src/config'
 
 //========================================================================
@@ -12,7 +12,7 @@ import { config } from '../../../../../src/config'
 
 @Controller('storage')
 class MockStorageController {
-  constructor(@Inject(LibStorageServiceDI.symbol) protected readonly storageService: LibStorageServiceDI.type) {}
+  constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
   @Get(path.join(config.storage.usersDir, '*'))
   async serveUserFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
@@ -29,7 +29,7 @@ class MockStorageController {
 
 @Module({
   controllers: [MockStorageController],
-  imports: [LibStorageServiceModule],
+  imports: [StorageServiceModule],
 })
 class MockStorageRESTModule {}
 

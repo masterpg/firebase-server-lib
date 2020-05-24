@@ -1,8 +1,8 @@
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
 import { InputValidationError, ValidationErrors } from '../../../../../src/lib/base'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
+import { DevUtilsServiceDI } from '../../../../../src/lib/services'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
-import { LibDevUtilsServiceDI } from '../../../../../src/lib/services'
 import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
@@ -51,7 +51,7 @@ const CART_ITEMS: OmitEntityTimestamp<CartItem>[] = [
 //========================================================================
 
 describe('CartService', () => {
-  let devUtilsService: LibDevUtilsServiceDI.type
+  let devUtilsService: DevUtilsServiceDI.type
   let cartService: CartServiceDI.type
   let productService: ProductServiceDI.type
 
@@ -60,7 +60,7 @@ describe('CartService', () => {
       imports: [GQLContainerModule, DevUtilsGQLModule],
     }).compile()
 
-    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     cartService = testingModule.get<CartServiceDI.type>(CartServiceDI.symbol)
     productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
   })

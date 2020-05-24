@@ -1,7 +1,7 @@
 import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
+import { DevUtilsServiceDI } from '../../../../../src/lib/services'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
-import { LibDevUtilsServiceDI } from '../../../../../src/lib/services'
 import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
@@ -29,7 +29,7 @@ const PRODUCTS: OmitEntityTimestamp<Product>[] = [
 
 describe('ProductService', () => {
   let productService: ProductServiceDI.type
-  let devUtilsService: LibDevUtilsServiceDI.type
+  let devUtilsService: DevUtilsServiceDI.type
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
@@ -37,7 +37,7 @@ describe('ProductService', () => {
     }).compile()
 
     productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
-    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
   })
 
   describe('findList', () => {

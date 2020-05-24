@@ -1,3 +1,4 @@
+import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { AuthGuard, AuthGuardModule, AuthRoleType, GQLContext, IdToken, Roles, User } from '../../../lib/nest'
 import { Inject, UseGuards } from '@nestjs/common'
@@ -8,7 +9,6 @@ import {
   StoragePaginationOptionsInput,
   StoragePaginationResult,
 } from '../../../lib/services'
-import { StorageServiceDI, StorageServiceModule } from '../../services'
 import { BaseGQLModule } from '../base'
 import { GQLCtx } from '../../../lib/gql'
 import { Module } from '@nestjs/common'
@@ -21,7 +21,7 @@ import { Module } from '@nestjs/common'
 
 @Resolver('StorageNode')
 export class StorageResolver {
-  constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
+  constructor(@Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type) {}
 
   //--------------------------------------------------
   //  User
@@ -334,7 +334,7 @@ export class StorageResolver {
 
 @Module({
   providers: [StorageResolver],
-  imports: [BaseGQLModule, StorageServiceModule, AuthGuardModule],
+  imports: [BaseGQLModule, AppStorageServiceModule, AuthGuardModule],
 })
 class StorageGQLModule {}
 

@@ -1,5 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { LibDevUtilsServiceDI, LibDevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput } from '../../../lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput } from '../../../lib/services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -12,7 +12,7 @@ import { Module } from '@nestjs/common'
 
 @Resolver()
 export class DevUtilsResolver {
-  constructor(@Inject(LibDevUtilsServiceDI.symbol) protected readonly devUtilsService: LibDevUtilsServiceDI.type) {}
+  constructor(@Inject(DevUtilsServiceDI.symbol) protected readonly devUtilsService: DevUtilsServiceDI.type) {}
 
   @Mutation()
   async putTestData(@Args('inputs') inputs: PutTestDataInput[]): Promise<boolean> {
@@ -40,7 +40,7 @@ export class DevUtilsResolver {
 
 @Module({
   providers: [DevUtilsResolver],
-  imports: [BaseGQLModule, LibDevUtilsServiceModule],
+  imports: [BaseGQLModule, DevUtilsServiceModule],
 })
 class DevUtilsGQLModule {}
 

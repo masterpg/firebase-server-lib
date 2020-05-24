@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { DocumentReference, Timestamp } from '@google-cloud/firestore'
-import { FirestoreServiceDI, FirestoreServiceModule } from '../nest'
+import { FirestoreServiceDI, FirestoreServiceModule, UserClaims } from '../nest'
 import { Inject, Module } from '@nestjs/common'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
@@ -9,6 +9,7 @@ import { JSONObject } from './base'
 import dayjs = require('dayjs')
 import { isISO8601 } from 'validator'
 import { isNumber } from 'lodash'
+import UserRecord = admin.auth.UserRecord
 const firebaseTools = require('firebase-tools')
 
 //========================================================================
@@ -27,13 +28,18 @@ interface TestSignedUploadUrlInput {
   contentType?: string
 }
 
+interface TestUser extends admin.auth.CreateRequest {
+  uid: string
+  customClaims?: UserClaims
+}
+
 //========================================================================
 //
 //  Implementation
 //
 //========================================================================
 
-class LibDevUtilsService {
+class DevUtilsService {
   constructor(@Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -112,6 +118,34 @@ class LibDevUtilsService {
       promises.push(gcsNode.delete().then())
     }
     await Promise.all(promises)
+  }
+
+  async addFirebaseUser(userData: TestUser): Promise<UserRecord> {
+    let userRecord: UserRecord | undefined = undefined
+    try {
+      userRecord = await admin.auth().getUser(userData.uid)
+    } catch (e) {
+      // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
+    }
+
+    // 既にユーザーが存在する場合は削除
+    if (userRecord) {
+      await admin.auth().deleteUser(userRecord.uid)
+    }
+
+    // ユーザーの追加
+    await admin.auth().createUser(userData)
+
+    // カスタムクレームの設定
+    await admin.auth().setCustomUserClaims(userData.uid, userData.customClaims || {})
+
+    return await admin.auth().getUser(userData.uid)
+  }
+
+  async deleteFirebaseUser(uid: string): Promise<void> {
+    try {
+      await admin.auth().deleteUser(uid)
+    } catch (err) {}
   }
 
   //----------------------------------------------------------------------
@@ -205,21 +239,21 @@ class LibDevUtilsService {
   }
 }
 
-namespace LibDevUtilsServiceDI {
-  export const symbol = Symbol(LibDevUtilsService.name)
+namespace DevUtilsServiceDI {
+  export const symbol = Symbol(DevUtilsService.name)
   export const provider = {
     provide: symbol,
-    useClass: LibDevUtilsService,
+    useClass: DevUtilsService,
   }
-  export type type = LibDevUtilsService
+  export type type = DevUtilsService
 }
 
 @Module({
-  providers: [LibDevUtilsServiceDI.provider],
-  exports: [LibDevUtilsServiceDI.provider],
+  providers: [DevUtilsServiceDI.provider],
+  exports: [DevUtilsServiceDI.provider],
   imports: [FirestoreServiceModule],
 })
-class LibDevUtilsServiceModule {}
+class DevUtilsServiceModule {}
 
 //========================================================================
 //
@@ -227,4 +261,4 @@ class LibDevUtilsServiceModule {}
 //
 //========================================================================
 
-export { PutTestDataInput, TestSignedUploadUrlInput, LibDevUtilsService, LibDevUtilsServiceDI, LibDevUtilsServiceModule }
+export { DevUtilsService, DevUtilsServiceDI, DevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput, TestUser }

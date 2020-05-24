@@ -4,15 +4,15 @@ import * as path from 'path'
 import * as shortid from 'shortid'
 import * as td from 'testdouble'
 import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
   GCSStorageNode,
-  LibDevUtilsServiceDI,
-  LibDevUtilsServiceModule,
-  LibStorageService,
-  LibStorageServiceDI,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettings,
   StorageNodeType,
+  StorageService,
+  StorageServiceDI,
   StorageUploadDataItem,
 } from '../../../../../src/lib/services'
 import { InputValidationError, initLib } from '../../../../../src/lib/base'
@@ -46,19 +46,19 @@ let testingModule!: TestingModule
 
 let storageService!: TestStorageService
 
-let devUtilsService!: LibDevUtilsServiceDI.type
+let devUtilsService!: DevUtilsServiceDI.type
 
-type TestStorageService = LibStorageService & {
-  saveDirNode: LibStorageService['saveDirNode']
-  saveFileNode: LibStorageService['saveFileNode']
-  toStorageNode: LibStorageService['toStorageNode']
-  toStorageNodeAsync: LibStorageService['toStorageNodeAsync']
-  sortStorageNodes: LibStorageService['sortStorageNodes']
-  padDirNodes: LibStorageService['padDirNodes']
-  validatePath: LibStorageService['validatePath']
-  validateDirName: LibStorageService['validateDirName']
-  validateFileName: LibStorageService['validateFileName']
-  saveMetadata: LibStorageService['saveMetadata']
+type TestStorageService = StorageService & {
+  saveDirNode: StorageService['saveDirNode']
+  saveFileNode: StorageService['saveFileNode']
+  toStorageNode: StorageService['toStorageNode']
+  toStorageNodeAsync: StorageService['toStorageNodeAsync']
+  sortStorageNodes: StorageService['sortStorageNodes']
+  padDirNodes: StorageService['padDirNodes']
+  validatePath: StorageService['validatePath']
+  validateDirName: StorageService['validateDirName']
+  validateFileName: StorageService['validateFileName']
+  saveMetadata: StorageService['saveMetadata']
 }
 
 /**
@@ -141,11 +141,11 @@ async function sleep(ms: number): Promise<void> {
 describe('BaseStorageService', () => {
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [MockStorageRESTModule, LibDevUtilsServiceModule],
+      imports: [MockStorageRESTModule, DevUtilsServiceModule],
     }).compile()
 
-    storageService = testingModule.get<TestStorageService>(LibStorageServiceDI.symbol)
-    devUtilsService = testingModule.get<LibDevUtilsServiceDI.type>(LibDevUtilsServiceDI.symbol)
+    storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
 
     await storageService.removeDir(null, `${TEST_FILES_DIR}`)
 

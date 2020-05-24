@@ -1,18 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { AuthServiceModule, IdToken } from '../../nest'
-import {
-  BaseStorageService,
-  GCSStorageNode,
-  StorageNodeShareSettingsInput,
-  StoragePaginationOptionsInput,
-  StoragePaginationResult,
-  StorageUser,
-} from './base'
+import { AuthServiceModule, UserIdClaims } from '../../nest'
+import { BaseStorageService, GCSStorageNode, StorageNodeShareSettingsInput, StoragePaginationOptionsInput, StoragePaginationResult } from './base'
 import { Injectable, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import { config } from '../../../config'
 import { removeBothEndsSlash } from 'web-base-lib'
 
@@ -23,7 +15,7 @@ import { removeBothEndsSlash } from 'web-base-lib'
 //========================================================================
 
 @Injectable()
-class LibStorageService extends BaseStorageService {
+class StorageService extends BaseStorageService {
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -34,8 +26,8 @@ class LibStorageService extends BaseStorageService {
    * Cloud Storageのユーザーディレクトリの名前を割り当てます。
    * @param user
    */
-  async assignUserDir(user: StorageUser): Promise<void> {
-    let myDirName = this.m_getMyDirNameFromStorageUser(user)
+  async assignUserDir(user: UserIdClaims): Promise<string> {
+    let myDirName = user.myDirName
     const uid = user.uid
 
     // まだユーザーディレクトリ名が割り当てられていない場合
@@ -44,6 +36,7 @@ class LibStorageService extends BaseStorageService {
       // このプロパティの値がユーザーディレクトリ名となる。
       myDirName = shortid.generate()
       await admin.auth().setCustomUserClaims(uid, {
+        isAppAdmin: user.isAppAdmin,
         myDirName,
       })
     }
@@ -54,14 +47,16 @@ class LibStorageService extends BaseStorageService {
     if (!userDirNode.exists) {
       await this.createDirs(null, [userDirNode.path])
     }
+
+    return myDirName
   }
 
   /**
    * Cloud Storageのユーザーディレクトリのパスを取得します。
    * @param user
    */
-  getUserDirPath(user: StorageUser): string {
-    const myDirName = this.m_getMyDirNameFromStorageUser(user)
+  getUserDirPath(user: UserIdClaims): string {
+    const myDirName = user.myDirName
     if (myDirName) {
       const usersDir = config.storage.usersDir
       return path.join(usersDir, myDirName)
@@ -164,63 +159,63 @@ class LibStorageService extends BaseStorageService {
     return res.sendStatus(403)
   }
 
-  async getUserNode(user: StorageUser, nodePath: string): Promise<GCSStorageNode | undefined> {
+  async getUserNode(user: UserIdClaims, nodePath: string): Promise<GCSStorageNode | undefined> {
     const userDirPath = this.getUserDirPath(user)
     return this.getNode(userDirPath, nodePath)
   }
 
-  async getUserDirDescendants(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
+  async getUserDirDescendants(user: UserIdClaims, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDirDescendants(userDirPath, dirPath, options)
   }
 
-  async getUserDescendants(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
+  async getUserDescendants(user: UserIdClaims, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDescendants(userDirPath, dirPath, options)
   }
 
-  async getUserDirChildren(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
+  async getUserDirChildren(user: UserIdClaims, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getDirChildren(userDirPath, dirPath, options)
   }
 
-  async getUserChildren(user: StorageUser, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
+  async getUserChildren(user: UserIdClaims, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return this.getChildren(userDirPath, dirPath, options)
   }
 
-  async getUserHierarchicalNode(user: StorageUser, nodePath: string): Promise<GCSStorageNode[]> {
+  async getUserHierarchicalNode(user: UserIdClaims, nodePath: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.getHierarchicalNodes(userDirPath, nodePath)
   }
 
-  async getUserAncestorDirs(user: StorageUser, nodePath: string): Promise<GCSStorageNode[]> {
+  async getUserAncestorDirs(user: UserIdClaims, nodePath: string): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.getAncestorDirs(userDirPath, nodePath)
   }
 
-  async createUserDirs(user: StorageUser, dirPaths: string[]): Promise<GCSStorageNode[]> {
+  async createUserDirs(user: UserIdClaims, dirPaths: string[]): Promise<GCSStorageNode[]> {
     const userDirPath = this.getUserDirPath(user)
     return this.createDirs(userDirPath, dirPaths)
   }
 
-  async handleUploadedUserFile(user: StorageUser, filePath: string): Promise<GCSStorageNode> {
+  async handleUploadedUserFile(user: UserIdClaims, filePath: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return await this.handleUploadedFile(userDirPath, filePath)
   }
 
-  async removeUserDir(user: StorageUser, dirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
+  async removeUserDir(user: UserIdClaims, dirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
     const userDirPath = this.getUserDirPath(user)
     return await this.removeDir(userDirPath, dirPath, options)
   }
 
-  async removeUserFile(user: StorageUser, filePath: string): Promise<GCSStorageNode | undefined> {
+  async removeUserFile(user: UserIdClaims, filePath: string): Promise<GCSStorageNode | undefined> {
     const userDirPath = this.getUserDirPath(user)
     return await this.removeFile(userDirPath, filePath)
   }
 
   async moveUserDir(
-    user: StorageUser,
+    user: UserIdClaims,
     fromDirPath: string,
     toDirPath: string,
     options?: StoragePaginationOptionsInput
@@ -229,13 +224,13 @@ class LibStorageService extends BaseStorageService {
     return await this.moveDir(userDirPath, fromDirPath, toDirPath, options)
   }
 
-  async moveUserFile(user: StorageUser, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
+  async moveUserFile(user: UserIdClaims, fromFilePath: string, toDirPath: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return await this.moveFile(userDirPath, fromFilePath, toDirPath)
   }
 
   async renameUserDir(
-    user: StorageUser,
+    user: UserIdClaims,
     dirPath: string,
     newName: string,
     options?: StoragePaginationOptionsInput
@@ -244,60 +239,37 @@ class LibStorageService extends BaseStorageService {
     return await this.renameDir(userDirPath, dirPath, newName, options)
   }
 
-  async renameUserFile(user: StorageUser, filePath: string, newName: string): Promise<GCSStorageNode> {
+  async renameUserFile(user: UserIdClaims, filePath: string, newName: string): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return await this.renameFile(userDirPath, filePath, newName)
   }
 
-  async setUserDirShareSettings(user: StorageUser, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {
+  async setUserDirShareSettings(user: UserIdClaims, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.setDirShareSettings(userDirPath, dirPath, settings)
   }
 
-  async setUserFileShareSettings(user: StorageUser, filePath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {
+  async setUserFileShareSettings(user: UserIdClaims, filePath: string, settings: StorageNodeShareSettingsInput): Promise<GCSStorageNode> {
     const userDirPath = this.getUserDirPath(user)
     return this.setFileShareSettings(userDirPath, filePath, settings)
   }
-
-  //----------------------------------------------------------------------
-  //
-  //  Internal methods
-  //
-  //----------------------------------------------------------------------
-
-  /**
-   * ユーザーディレクトリの名前である`myDirName`の値を取得します。
-   * @param user
-   */
-  private m_getMyDirNameFromStorageUser(user: StorageUser): string | undefined {
-    // IdTokeから取得
-    if ((user as IdToken).myDirName) {
-      return (user as IdToken).myDirName!
-    }
-    // UserRecordから取得
-    else if ((user as UserRecord).customClaims) {
-      const customClaims = (user as UserRecord).customClaims!
-      return (customClaims as any).myDirName
-    }
-    return undefined
-  }
 }
 
-namespace LibStorageServiceDI {
-  export const symbol = Symbol(LibStorageService.name)
+namespace StorageServiceDI {
+  export const symbol = Symbol(StorageService.name)
   export const provider = {
     provide: symbol,
-    useClass: LibStorageService,
+    useClass: StorageService,
   }
-  export type type = LibStorageService
+  export type type = StorageService
 }
 
 @Module({
-  providers: [LibStorageServiceDI.provider],
-  exports: [LibStorageServiceDI.provider],
+  providers: [StorageServiceDI.provider],
+  exports: [StorageServiceDI.provider],
   imports: [AuthServiceModule],
 })
-class LibStorageServiceModule {}
+class StorageServiceModule {}
 
 //========================================================================
 //
@@ -315,6 +287,5 @@ export {
   StoragePaginationOptionsInput,
   StoragePaginationResult,
   StorageUploadDataItem,
-  StorageUser,
 } from './base'
-export { LibStorageService, LibStorageServiceDI, LibStorageServiceModule }
+export { StorageService, StorageServiceDI, StorageServiceModule }
