@@ -1,13 +1,13 @@
-import { DocumentData, FieldPath, FieldValue, Timestamp } from '@google-cloud/firestore'
-import { Dayjs } from 'dayjs'
-
-type AreOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+import * as firestore from '@google-cloud/firestore'
+import FieldValue = firestore.FieldValue
+import Timestamp = firestore.Timestamp
+import DocumentData = firestore.DocumentData
+import FieldPath = firestore.FieldPath
 
 export type EntityId = { id: string }
 export type OmitEntityId<T> = Omit<T, 'id'>
 export type OmitEntityTimestamp<T> = Omit<T, 'createdAt' | 'updatedAt'>
 export type OmitEntityFields<T> = Omit<T, 'id' | 'createdAt' | 'updatedAt'>
-export type OptionalId<T extends EntityId> = AreOptional<T, 'id'>
 type Storable<T> = { [P in keyof T]: P extends 'id' ? T[P] : T[P] | FieldValue } & EntityId
 export type StoreDoc<T> = T & EntityId & { createdAt: Timestamp; updatedAt: Timestamp }
 export type EntityInput<T> = OmitEntityTimestamp<Storable<T>>
@@ -40,19 +40,18 @@ export interface TimestampEntity<D = Date> {
   updatedAt: D
 }
 
-export {
-  CollectionReference,
-  DocumentData,
-  DocumentReference,
-  DocumentSnapshot,
-  FieldPath,
-  FieldValue,
-  Firestore,
-  OrderByDirection,
-  Query,
-  QuerySnapshot,
-  Transaction,
-  WhereFilterOp,
-  WriteBatch,
-  WriteResult,
-} from '@google-cloud/firestore'
+export import CollectionReference = firestore.CollectionReference
+export import DocumentData = firestore.DocumentData
+export import DocumentReference = firestore.DocumentReference
+export import DocumentSnapshot = firestore.DocumentSnapshot
+export import FieldPath = firestore.FieldPath
+export import FieldValue = firestore.FieldValue
+export import Firestore = firestore.Firestore
+export import OrderByDirection = firestore.OrderByDirection
+export import Query = firestore.Query
+export import QuerySnapshot = firestore.QuerySnapshot
+export import Timestamp = firestore.Timestamp
+export import Transaction = firestore.Transaction
+export import WhereFilterOp = firestore.WhereFilterOp
+export import WriteBatch = firestore.WriteBatch
+export import WriteResult = firestore.WriteResult

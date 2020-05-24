@@ -4,22 +4,22 @@ import { Collection, Entity, FirestoreEx } from '../../../src/firestore-ex'
 const util = new AdminFirestoreTestUtil()
 const db = util.db
 const collectionPath = util.collectionPath
+let firestoreEx: FirestoreEx
 
 interface TestDoc extends Entity {
   title: string
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('runBatch', () => {
-  let firestoreEx: FirestoreEx
   let dao: Collection<TestDoc>
 
   beforeEach(async () => {
     firestoreEx = new FirestoreEx(db)
     dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

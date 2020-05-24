@@ -1,18 +1,23 @@
 import { AdminFirestoreTestUtil, TestTimestampEntity } from './util'
-import { Entity, FirestoreEx } from '../../../src/firestore-ex'
-import { FieldValue } from '@google-cloud/firestore'
+import { Entity, FieldValue, FirestoreEx } from '../../../src/firestore-ex'
 
 const util = new AdminFirestoreTestUtil()
+const db = util.db
+const collectionPath = util.collectionPath
+
+afterAll(async () => {
+  await util.deleteApps()
+})
 
 describe('Basic', () => {
-  const firestoreEx = new FirestoreEx(util.db)
+  const firestoreEx = new FirestoreEx(db)
 
   interface TestDoc extends Entity {
     title: string
     num: number
   }
 
-  const dao = firestoreEx.collection<TestDoc>({ path: util.collectionPath })
+  const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
   const existsDocId = 'test'
   const existsDoc = {
     title: 'title',
@@ -26,10 +31,6 @@ describe('Basic', () => {
       title: 'before',
       num: 10,
     })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {
@@ -161,35 +162,33 @@ describe('Basic', () => {
 })
 
 describe('Basic - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(util.db, util.options)
+  const firestoreEx = new FirestoreEx(db, util.options)
 
   interface TestDoc extends TestTimestampEntity {
     title: string
     num: number
   }
 
-  const dao = firestoreEx.collection<TestDoc>({ path: util.collectionPath })
+  const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
   const existsDocId = 'test'
   const existsDoc = {
     title: 'title',
     num: 10,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
   }
 
   // Add fix id document and random id document
   beforeEach(async () => {
-    await dao.collectionRef.doc(existsDocId).set(existsDoc)
+    await dao.collectionRef.doc(existsDocId).set({
+      ...existsDoc,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
     await dao.collectionRef.add({
       title: 'before',
       num: 10,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

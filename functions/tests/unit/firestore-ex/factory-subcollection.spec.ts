@@ -19,11 +19,11 @@ interface BookDoc {
   published_at: Timestamp
 }
 
-describe('Factory and SubCollection', () => {
-  afterAll(async () => {
-    await util.deleteApps()
-  })
+afterAll(async () => {
+  await util.deleteApps()
+})
 
+describe('Factory and SubCollection', () => {
   afterEach(async () => {
     await util.deleteCollection()
   })

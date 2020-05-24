@@ -20,6 +20,10 @@ interface BookDoc {
   publishedAt: Timestamp
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('onSnapshot test', () => {
   const dao = firestoreEx.collection<Book, BookDoc>({
     path: collectionPath,
@@ -51,10 +55,6 @@ describe('onSnapshot test', () => {
     }
     const addedId = await dao.add(addedDoc)
     existsDoc = (await dao.fetch(addedId))!
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

@@ -12,6 +12,10 @@ export interface TestDoc extends Entity {
   order: number
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('query', () => {
   const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
 
@@ -20,10 +24,6 @@ describe('query', () => {
     await dao.collectionRef.add({ title: 'aaa', order: 1 })
     await dao.collectionRef.add({ title: 'bbb', order: 3 })
     await dao.collectionRef.add({ title: 'ccc', order: 4 })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

@@ -12,6 +12,10 @@ export interface TestDoc extends Entity {
   order: number
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('pagination', () => {
   const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
 
@@ -26,10 +30,6 @@ describe('pagination', () => {
       { id: '7', title: 'e', order: 7 },
     ]
     await dao.bulkSet(docs)
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

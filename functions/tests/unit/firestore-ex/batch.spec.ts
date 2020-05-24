@@ -10,12 +10,12 @@ interface TestDoc extends Entity {
   title: string
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('batch', () => {
   const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
-
-  afterAll(async () => {
-    await util.deleteApps()
-  })
 
   afterEach(async () => {
     await util.deleteCollection()

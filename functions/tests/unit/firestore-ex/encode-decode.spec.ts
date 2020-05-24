@@ -23,6 +23,10 @@ interface BookDoc {
   description?: string
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('encode and decode', () => {
   const dao = firestoreEx.collection<Book, BookDoc>({
     path: collectionPath,
@@ -55,10 +59,6 @@ describe('encode and decode', () => {
   })
 
   const now = dayjs()
-
-  afterAll(async () => {
-    await util.deleteApps()
-  })
 
   afterEach(async () => {
     await util.deleteCollection()

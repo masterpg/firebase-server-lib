@@ -5,21 +5,23 @@ import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
+const db = util.db
+const collectionPath = util.collectionPath
 
 interface BookDoc {
   book_title: string
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('encode', () => {
-  const firestoreEx = new FirestoreEx(util.db)
+  const firestoreEx = new FirestoreEx(db)
 
   interface Book extends Entity {
     bookTitle: string
   }
-
-  afterAll(async () => {
-    await util.deleteApps()
-  })
 
   afterEach(async () => {
     await util.deleteCollection()
@@ -34,7 +36,7 @@ describe('encode', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, encode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode })
 
       // add
       const doc = {
@@ -49,7 +51,7 @@ describe('encode', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const docId = await dao.add({
@@ -88,7 +90,7 @@ describe('encode', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath, encode })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode })
 
       // add
       const doc = new BookClass({
@@ -103,7 +105,7 @@ describe('encode', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const docId = await dao.add({
@@ -132,7 +134,7 @@ describe('encode', () => {
       it('without encode is in error', async () => {
         // without encode
         const dao = firestoreEx.collection<Book>({
-          path: util.collectionPath,
+          path: collectionPath,
         })
 
         // add
@@ -148,7 +150,7 @@ describe('encode', () => {
 })
 
 describe('encode - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(util.db, util.options)
+  const firestoreEx = new FirestoreEx(db, util.options)
   const now = dayjs()
 
   interface Book extends TestTimestampEntity {
@@ -159,10 +161,6 @@ describe('encode - use timestamp', () => {
     expect(value).toBeInstanceOf(Timestamp)
     return dayjs(value.toDate())
   }
-
-  afterAll(async () => {
-    await util.deleteApps()
-  })
 
   afterEach(async () => {
     await util.deleteCollection()
@@ -177,7 +175,7 @@ describe('encode - use timestamp', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, encode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode })
 
       // add
       const doc = {
@@ -197,7 +195,7 @@ describe('encode - use timestamp', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const docId = await dao.add({
@@ -245,7 +243,7 @@ describe('encode - use timestamp', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath, encode })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode })
 
       // add
       const doc = new BookClass({
@@ -265,7 +263,7 @@ describe('encode - use timestamp', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const docId = await dao.add({
@@ -299,7 +297,7 @@ describe('encode - use timestamp', () => {
       it('without encode is in error', async () => {
         // without encode
         const dao = firestoreEx.collection<Book>({
-          path: util.collectionPath,
+          path: collectionPath,
         })
 
         // add

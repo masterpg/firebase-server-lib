@@ -1,7 +1,7 @@
 /**
  * FirestoreEx is built on the basis of Firestore-simple.
  * https://github.com/Kesin11/Firestore-simple.git
- * rev: e2a0f26861e5ee57e23fb0482e0a2ffecff1af42
+ * rev: 9e85b7fbda339e549b01df772327c8a12cdfbda2
  */
 
 export { FirestoreEx, CollectionFactory } from './firestore-ex'
@@ -14,9 +14,11 @@ export {
   EncodedObject,
   Entity,
   EntityId,
+  FieldValue,
   FirestoreExOptions,
-  OmitEntityTimestamp,
   OmitEntityFields,
   OmitEntityId,
+  OmitEntityTimestamp,
+  Timestamp,
   TimestampEntity,
 } from './types'

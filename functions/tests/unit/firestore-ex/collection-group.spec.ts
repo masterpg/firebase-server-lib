@@ -15,16 +15,16 @@ interface TestDoc extends Entity {
 const expectTitles = ['aaa', 'bbb', 'ccc', 'ddd']
 const collectionId = 'collection_group'
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('collectionGroup', () => {
   beforeEach(async () => {
     await db.collection(`${collectionPath}/1/${collectionId}`).add({ title: expectTitles[0] })
     await db.collection(`${collectionPath}/1/${collectionId}`).add({ title: expectTitles[1] })
     await db.collection(`${collectionPath}/2/${collectionId}`).add({ title: expectTitles[2] })
     await db.collection(`${collectionPath}/3/${collectionId}`).add({ title: expectTitles[3] })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {
@@ -74,10 +74,6 @@ describe('collectionGroup - use timestamp', () => {
     await db.collection(`${collectionPath}/1/${collectionId}`).add({ title: expectTitles[1], ...timestamp })
     await db.collection(`${collectionPath}/2/${collectionId}`).add({ title: expectTitles[2], ...timestamp })
     await db.collection(`${collectionPath}/3/${collectionId}`).add({ title: expectTitles[3], ...timestamp })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

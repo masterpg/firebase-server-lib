@@ -5,21 +5,23 @@ import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
+const db = util.db
+const collectionPath = util.collectionPath
+
+afterAll(async () => {
+  await util.deleteApps()
+})
 
 interface BookDoc {
   book_title: string
 }
 
 describe('decode', () => {
-  const firestoreEx = new FirestoreEx(util.db)
+  const firestoreEx = new FirestoreEx(db)
 
   interface Book extends Entity {
     bookTitle: string
   }
-
-  afterAll(async () => {
-    await util.deleteApps()
-  })
 
   afterEach(async () => {
     await util.deleteCollection()
@@ -34,7 +36,7 @@ describe('decode', () => {
 
     it('fetch with decode', async () => {
       // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
 
       // add
       const title = 'add'
@@ -53,7 +55,7 @@ describe('decode', () => {
 
     it('fetch without decode', async () => {
       // without decode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const title = 'add'
@@ -74,7 +76,7 @@ describe('decode', () => {
 
     it('where with decode', async () => {
       // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
 
       // add
       const title = 'add'
@@ -112,7 +114,7 @@ describe('decode', () => {
 
     it(`fetch with decode`, async () => {
       // with decodeA
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
 
       // add
       const bookTitle = 'add'
@@ -131,11 +133,15 @@ describe('decode', () => {
 })
 
 describe('decode - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(util.db, util.options)
+  const firestoreEx = new FirestoreEx(db, util.options)
 
   interface Book extends TestTimestampEntity {
     bookTitle: string
   }
+
+  afterEach(async () => {
+    await util.deleteCollection()
+  })
 
   describe('to object', () => {
     const decode: DecodeFunc<Book, BookDoc> = doc => {
@@ -146,7 +152,7 @@ describe('decode - use timestamp', () => {
 
     it('fetch with decode', async () => {
       // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
 
       // add
       const title = 'add'
@@ -167,7 +173,7 @@ describe('decode - use timestamp', () => {
 
     it('fetch without decode', async () => {
       // without decode
-      const dao = firestoreEx.collection<Book>({ path: util.collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath })
 
       // add
       const title = 'add'
@@ -218,7 +224,7 @@ describe('decode - use timestamp', () => {
 
     it(`fetch with decode - don't process entity fields in decode function`, async () => {
       // with decodeA
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode: decodeA })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeA })
 
       // add
       const bookTitle = 'add'
@@ -239,7 +245,7 @@ describe('decode - use timestamp', () => {
 
     it('fetch with decode - process entity fields in decode function', async () => {
       // with decodeB
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: util.collectionPath, decode: decodeB })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeB })
 
       // add
       const bookTitle = 'add'

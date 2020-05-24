@@ -1,4 +1,4 @@
-import { DecodeFunc, EncodeFunc, Firestore, FirestoreExOptions, TimestampSettings } from './types'
+import { DecodeFunc, EncodeFunc, Firestore, FirestoreExOptions, TimestampSettings, Transaction, WriteBatch, WriteResult } from './types'
 import { Collection } from './collection'
 import { Context } from './context'
 import { Converter } from './converter'
@@ -16,8 +16,8 @@ export class FirestoreEx {
 
     this._options = { useTimestampInAll: false, timestampToDate: options => options.toDate() }
     if (options) {
-      this._options.useTimestampInAll = options.useTimestampInAll ?? this._options.useTimestampInAll
-      this._options.timestampToDate = options.timestampToDate ?? this._options.timestampToDate
+      this._options.useTimestampInAll = options.useTimestampInAll || this._options.useTimestampInAll
+      this._options.timestampToDate = options.timestampToDate || this._options.timestampToDate
     }
   }
 
@@ -80,11 +80,11 @@ export class FirestoreEx {
     return new Query<T, S>(converter, this.context, query)
   }
 
-  async runTransaction(updateFunction: (tx: FirebaseFirestore.Transaction) => Promise<void>): Promise<void> {
+  async runTransaction(updateFunction: (tx: Transaction) => Promise<void>): Promise<void> {
     return this.context.runTransaction(updateFunction)
   }
 
-  async runBatch(updateFunction: (batch: FirebaseFirestore.WriteBatch) => Promise<void>): Promise<FirebaseFirestore.WriteResult[]> {
+  async runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<WriteResult[]> {
     return this.context.runBatch(updateFunction)
   }
 }

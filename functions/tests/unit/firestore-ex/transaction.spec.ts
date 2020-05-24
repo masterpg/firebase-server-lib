@@ -10,6 +10,10 @@ interface TestDoc extends Entity {
   title: string
 }
 
+afterAll(async () => {
+  await util.deleteApps()
+})
+
 describe('transaction', () => {
   let txFirestoreEx: FirestoreEx
   let txDao: Collection<TestDoc>
@@ -18,10 +22,6 @@ describe('transaction', () => {
   beforeEach(async () => {
     txFirestoreEx = new FirestoreEx(db)
     txDao = txFirestoreEx.collection<TestDoc>({ path: collectionPath })
-  })
-
-  afterAll(async () => {
-    await util.deleteApps()
   })
 
   afterEach(async () => {

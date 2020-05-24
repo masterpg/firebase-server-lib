@@ -7,11 +7,15 @@ import {
   EntityId,
   EntityInput,
   EntityOptionalInput,
+  FieldPath,
   FieldValue,
   OmitEntityId,
+  OrderByDirection,
   QueryKey,
   QuerySnapshot,
   TimestampSettings,
+  WhereFilterOp,
+  WriteResult,
 } from './types'
 import { Context } from './context'
 import { Converter } from './converter'
@@ -152,7 +156,7 @@ export class Collection<T, S = T> {
     return id
   }
 
-  async bulkAdd(objects: OmitEntityId<EntityInput<T>>[]): Promise<FirebaseFirestore.WriteResult[]> {
+  async bulkAdd(objects: OmitEntityId<EntityInput<T>>[]): Promise<WriteResult[]> {
     return this.context.runBatch(async () => {
       for (const obj of objects) {
         this.add(obj)
@@ -160,7 +164,7 @@ export class Collection<T, S = T> {
     })
   }
 
-  async bulkSet(objects: EntityInput<T>[]): Promise<FirebaseFirestore.WriteResult[]> {
+  async bulkSet(objects: EntityInput<T>[]): Promise<WriteResult[]> {
     return this.context.runBatch(async () => {
       for (const obj of objects) {
         this.set(obj)
@@ -168,7 +172,7 @@ export class Collection<T, S = T> {
     })
   }
 
-  async bulkDelete(docIds: string[]): Promise<FirebaseFirestore.WriteResult[]> {
+  async bulkDelete(docIds: string[]): Promise<WriteResult[]> {
     return this.context.runBatch(async () => {
       for (const docId of docIds) {
         this.delete(docId)
@@ -176,13 +180,13 @@ export class Collection<T, S = T> {
     })
   }
 
-  where(fieldPath: QueryKey<S>, opStr: FirebaseFirestore.WhereFilterOp, value: any): Query<T, S> {
-    const query = this.collectionRef.where(fieldPath as string | FirebaseFirestore.FieldPath, opStr, value)
+  where(fieldPath: QueryKey<S>, opStr: WhereFilterOp, value: any): Query<T, S> {
+    const query = this.collectionRef.where(fieldPath as string | FieldPath, opStr, value)
     return new Query<T, S>(this._converter, this.context, query)
   }
 
-  orderBy(fieldPath: QueryKey<S>, directionStr?: FirebaseFirestore.OrderByDirection): Query<T, S> {
-    const query = this.collectionRef.orderBy(fieldPath as string | FirebaseFirestore.FieldPath, directionStr)
+  orderBy(fieldPath: QueryKey<S>, directionStr?: OrderByDirection): Query<T, S> {
+    const query = this.collectionRef.orderBy(fieldPath as string | FieldPath, directionStr)
     return new Query<T, S>(this._converter, this.context, query)
   }
 
