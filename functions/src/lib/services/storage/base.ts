@@ -180,20 +180,21 @@ class BaseStorageService {
    *
    * 引数が次のように指定された場合、
    *   + basePath: 'home'
-   *   + dirPath: 'photos'
+   *   + dirPath: 'archives/photos'
    *
    * 次のようなノードが取得されます。
-   *   + 'home'
-   *   + 'home/photos'
-   *   + 'home/photos/family.png'
-   *   + 'home/photos/children.png'
-   *   + 'home/photos/travel/tokyo.png'
+   *   + 'home/archives/photos'
+   *   + 'home/archives/photos/travel'
+   *   + 'home/archives/photos/travel/tokyo.png'
+   *   + 'home/archives/photos/children.png'
+   *   + 'home/archives/photos/family.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + 'photos'
-   *   + 'photos/family.png'
-   *   + 'photos/children.png'
-   *   + 'photos/travel/tokyo.png'
+   *   + 'archives/photos'
+   *   + 'archives/photos/travel'
+   *   + 'archives/photos/travel/tokyo.png'
+   *   + 'archives/photos/children.png'
+   *   + 'archives/photos/family.png'
    *
    * @param basePath
    * @param dirPath
@@ -224,17 +225,19 @@ class BaseStorageService {
    *
    * 引数が次のように指定された場合、
    *   + basePath: 'home'
-   *   + dirPath: 'photos'
+   *   + dirPath: 'archives/photos'
    *
    * 次のようなノードが検索されます。
-   *   + 'home/photos/family.png'
-   *   + 'home/photos/children.png'
-   *   + 'home/photos/travel/tokyo.png'
+   *   + 'home/archives/photos/travel'
+   *   + 'home/archives/photos/travel/tokyo.png'
+   *   + 'home/archives/photos/children.png'
+   *   + 'home/archives/photos/family.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + 'photos/family.png'
-   *   + 'photos/children.png'
-   *   + 'photos/travel/tokyo.png'
+   *   + 'archives/photos/travel'
+   *   + 'archives/photos/travel/tokyo.png'
+   *   + 'archives/photos/children.png'
+   *   + 'archives/photos/family.png'
    *
    * @param basePath
    * @param dirPath
@@ -265,17 +268,17 @@ class BaseStorageService {
    *
    * 引数が次のように指定された場合、
    *   + basePath: 'home'
-   *   + dirPath: 'photos'
+   *   + dirPath: 'archives/photos'
    *
    * 次のようなノードが検索されます。
-   *   + 'home/photos'
-   *   + 'home/photos/family.png'
-   *   + 'home/photos/children.png'
+   *   + 'home/archives/photos'
+   *   + 'home/archives/photos/family.png'
+   *   + 'home/archives/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + 'photos'
-   *   + 'photos/family.png'
-   *   + 'photos/children.png'
+   *   + 'archives/photos'
+   *   + 'archives/photos/family.png'
+   *   + 'archives/photos/children.png'
    *
    * @param basePath
    * @param dirPath
@@ -379,12 +382,12 @@ class BaseStorageService {
    *   + dirPath: 'photos'
    *
    * 次のようなノードが取得されます。
-   *   + 'home/photos/family.png'
-   *   + 'home/photos/children.png'
+   *   + 'home/archives/photos/family.png'
+   *   + 'home/archives/photos/children.png'
    *
    * 戻り値は基準パスのノードが除去され、次のようなノードが返されます。
-   *   + 'photos/family.png'
-   *   + 'photos/children.png'
+   *   + 'archives/photos/family.png'
+   *   + 'archives/photos/children.png'
    *
    * @param basePath
    * @param dirPath

@@ -330,24 +330,31 @@ describe('BaseStorageService', () => {
   describe('getDirDescendants', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getDirDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getDirDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
       expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`${TEST_FILES_DIR}/d1`)
-      expect(actual.list[1].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual.list.length).toBe(4)
+      expect(actual.list[0].path).toBe(`${TEST_FILES_DIR}/d1/d11`)
+      expect(actual.list[1].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
+      expect(actual.list[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`)
+      expect(actual.list[3].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual.list)
     })
 
@@ -384,17 +391,24 @@ describe('BaseStorageService', () => {
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getDirDescendants(`${TEST_FILES_DIR}`, `d1`)
+      const actual = await storageService.getDirDescendants(`/${TEST_FILES_DIR}/`, `/d1/d11/`)
 
       expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/fileA.txt`)
+      expect(actual.list.length).toBe(4)
+      expect(actual.list[0].path).toBe(`d1/d11`)
+      expect(actual.list[1].path).toBe(`d1/d11/d111`)
+      expect(actual.list[2].path).toBe(`d1/d11/d111/fileB.txt`)
+      expect(actual.list[3].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual.list)
     })
 
@@ -451,23 +465,30 @@ describe('BaseStorageService', () => {
   describe('getDescendants', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
-      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1`])
+      await storageService.createDirs(null, [`${TEST_FILES_DIR}/d1/d11/d111`])
 
       // ファイルをアップロード
       const uploadItems: UploadDataItem[] = [
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `${TEST_FILES_DIR}/d1/fileA.txt`,
+          path: `${TEST_FILES_DIR}/d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(null, uploadItems)
 
-      const actual = await storageService.getDescendants(null, `${TEST_FILES_DIR}/d1`)
+      const actual = await storageService.getDescendants(null, `${TEST_FILES_DIR}/d1/d11`)
 
       expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(1)
-      expect(actual.list[0].path).toBe(`${TEST_FILES_DIR}/d1/fileA.txt`)
+      expect(actual.list.length).toBe(3)
+      expect(actual.list[0].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111`)
+      expect(actual.list[1].path).toBe(`${TEST_FILES_DIR}/d1/d11/d111/fileB.txt`)
+      expect(actual.list[2].path).toBe(`${TEST_FILES_DIR}/d1/d11/fileA.txt`)
       await existsNodes(null, actual.list)
     })
 
@@ -503,16 +524,23 @@ describe('BaseStorageService', () => {
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
+          path: `d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/d111/fileB.txt`,
         },
       ]
       await storageService.uploadAsFiles(`${TEST_FILES_DIR}`, uploadItems)
 
-      const actual = await storageService.getDescendants(`/${TEST_FILES_DIR}/`, `/d1/`)
+      const actual = await storageService.getDescendants(`/${TEST_FILES_DIR}/`, `/d1/d11/`)
 
       expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(1)
-      expect(actual.list[0].path).toBe(`d1/fileA.txt`)
+      expect(actual.list.length).toBe(3)
+      expect(actual.list[0].path).toBe(`d1/d11/d111`)
+      expect(actual.list[1].path).toBe(`d1/d11/d111/fileB.txt`)
+      expect(actual.list[2].path).toBe(`d1/d11/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, actual.list)
     })
 
