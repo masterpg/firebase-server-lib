@@ -2,8 +2,8 @@ POST {{host}}/gql
 Content-Type: application/json
 
 {
-  "operationName": "PutTestData",
-  "query": "mutation PutTestData($inputs: [PutTestDataInput!]!) { putTestData(inputs: $inputs) }",
+  "operationName": "PutTestStoreData",
+  "query": "mutation PutTestStoreData($inputs: [PutTestStoreDataInput!]!) { putTestStoreData(inputs: $inputs) }",
   "variables": {
     "inputs": [
       {
@@ -121,6 +121,29 @@ Content-Type: application/json
   "operationName": "RemoveTestStorageDir",
   "query": "mutation RemoveTestStorageDir { removeTestStorageDir(dirPath: \"dir1/dir1_1\") }",
   "variables": {}
+}
+
+###
+
+POST {{host}}/gql
+Content-Type: application/json
+
+{
+  "operationName": "SetTestFirebaseUsers",
+  "query": "mutation SetTestFirebaseUsers($users: [TestFirebaseUserInput!]!) { setTestFirebaseUsers(users: $users) }",
+  "variables": {
+    "users": [
+      {
+        "uid": "test.general",
+        "email": "test.general@example.com",
+        "emailVerified": true,
+        "password": "passpass",
+        "displayName": "一般テストユーザー",
+        "disabled": false,
+        "customClaims": { "myDirName": "test.general" }
+      }
+    ]
+  }
 }
 
 ###

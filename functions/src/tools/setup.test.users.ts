@@ -1,71 +1,65 @@
 #!/usr/bin/env node
 
-import * as admin from 'firebase-admin'
-import UserRecord = admin.auth.UserRecord
+import { DevUtilsServiceDI, DevUtilsServiceModule, TestFirebaseUserInput } from '../lib/services'
+import { createNestApplication } from '../example/base'
 import { initFirebaseApp } from '../lib/base'
 const exitHook = require('async-exit-hook')
 exitHook.forceExitTimeout(60000)
 
-const users = [
+const users: TestFirebaseUserInput[] = [
   {
-    uid: 'general.user',
-    email: 'general.user@example.com',
+    uid: 'general',
+    email: 'general@example.com',
     emailVerified: true,
     password: 'passpass',
     displayName: '一般ユーザー',
     disabled: false,
-    customUserClaims: { myDirName: 'general.user' },
+    customClaims: { myDirName: 'general' },
   },
   {
-    uid: 'app.admin.user',
-    email: 'app.admin.user@example.com',
+    uid: 'app.admin',
+    email: 'app.admin@example.com',
     emailVerified: true,
     password: 'passpass',
     displayName: 'アプリケーション管理ユーザー',
     disabled: false,
-    customUserClaims: { myDirName: 'app.admin.user', isAppAdmin: true },
+    customClaims: { myDirName: 'app.admin', isAppAdmin: true },
   },
   {
-    uid: 'storage.test.user',
-    email: 'storage.test.user@example.com',
+    uid: 'test.general',
+    email: 'test.general@example.com',
+    emailVerified: true,
+    password: 'passpass',
+    displayName: '一般テストユーザー',
+    disabled: false,
+    customClaims: { myDirName: 'test.general' },
+  },
+  {
+    uid: 'test.app.admin',
+    email: 'test.app.admin@example.com',
+    emailVerified: true,
+    password: 'passpass',
+    displayName: 'アプリケーション管理テストユーザー',
+    disabled: false,
+    customClaims: { myDirName: 'test.app.admin', isAppAdmin: true },
+  },
+  {
+    uid: 'test.storage',
+    email: 'test.storage@example.com',
     emailVerified: true,
     password: 'passpass',
     displayName: 'ストレージテストユーザー',
     disabled: false,
-    customUserClaims: {},
+    customClaims: { myDirName: 'test.storage' },
   },
 ]
 
 exitHook((callback: () => void) => {
   initFirebaseApp()
 
-  const promises: Promise<void>[] = []
-  for (const userData of users) {
-    promises.push(
-      (async () => {
-        // 既存ユーザーを取得
-        let existingUser: UserRecord | undefined = undefined
-        try {
-          existingUser = await admin.auth().getUser(userData.uid)
-        } catch (e) {
-          // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
-        }
-
-        // 既にユーザーが存在する場合は削除
-        if (existingUser) {
-          await admin.auth().deleteUser(existingUser.uid)
-        }
-
-        // ユーザーの追加
-        await admin.auth().createUser(userData)
-
-        // カスタムクレームの設定
-        await admin.auth().setCustomUserClaims(userData.uid, userData.customUserClaims)
-      })()
-    )
-  }
-
-  Promise.all(promises).then(() => {
+  createNestApplication(DevUtilsServiceModule).then(async nestApp => {
+    const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
+    await devUtilsService.setTestFirebaseUsers(...users)
     callback()
   })
 })

@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as shortid from 'shortid'
 import * as td from 'testdouble'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER } from '../../../../helpers/common/data'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -45,8 +46,6 @@ const TEST_FILES_DIR = 'test-files'
 let testingModule!: TestingModule
 
 let storageService!: TestStorageService
-
-let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = StorageService & {
   saveDirNode: StorageService['saveDirNode']
@@ -138,17 +137,23 @@ async function sleep(ms: number): Promise<void> {
 //
 //========================================================================
 
+beforeAll(async () => {
+  const testingModule = await Test.createTestingModule({
+    imports: [DevUtilsServiceModule],
+  }).compile()
+
+  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER)
+})
+
 describe('BaseStorageService', () => {
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [MockStorageRESTModule, DevUtilsServiceModule],
+      imports: [MockStorageRESTModule],
     }).compile()
 
     storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
-    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-
     await storageService.removeDir(null, `${TEST_FILES_DIR}`)
-
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(2500)
   })
@@ -3150,10 +3155,6 @@ describe('BaseStorageService', () => {
     //  Test helpers
     //--------------------------------------------------
 
-    const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-
-    const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
-
     let app: any
 
     beforeEach(async () => {
@@ -4282,8 +4283,6 @@ describe('BaseStorageService', () => {
   })
 
   // it('大量のディレクトリを作成', async () => {
-  //   const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-  //
   //   const dirPaths: string[] = []
   //   for (let i = 1; i <= 1000; i++) {
   //     dirPaths.push(`dirs/dir${i.toString(10).padStart(4, '0')}`)

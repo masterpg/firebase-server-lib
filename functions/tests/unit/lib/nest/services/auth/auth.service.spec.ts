@@ -1,3 +1,5 @@
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/common/data'
+import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
@@ -10,21 +12,18 @@ initLib()
 
 //========================================================================
 //
-//  Test data
-//
-//========================================================================
-
-const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
-const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
-
-const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
-
-//========================================================================
-//
 //  Tests
 //
 //========================================================================
+
+beforeAll(async () => {
+  const testingModule = await Test.createTestingModule({
+    imports: [DevUtilsServiceModule],
+  }).compile()
+
+  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER, GENERAL_USER)
+})
 
 describe('AuthService', () => {
   let app: any

@@ -83,12 +83,11 @@ input SignedUploadUrlInput {
   contentType: String
 }
 
-#========================================================================
-#
+#--------------------------------------------------
 #  dev
 #--------------------------------------------------
 
-input PutTestDataInput {
+input PutTestStoreDataInput {
   collectionName: String!
   collectionRecords: [JSONObject!]!
 }
@@ -96,6 +95,16 @@ input PutTestDataInput {
 input TestSignedUploadUrlInput {
   filePath: String!
   contentType: String
+}
+
+input TestFirebaseUserInput {
+  uid: ID!
+  email: String
+  emailVerified: Boolean
+  password: String
+  displayName: String
+  disabled: Boolean
+  customClaims: JSONObject
 }
 
 #--------------------------------------------------

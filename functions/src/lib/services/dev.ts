@@ -18,7 +18,7 @@ const firebaseTools = require('firebase-tools')
 //
 //========================================================================
 
-interface PutTestDataInput {
+interface PutTestStoreDataInput {
   collectionName: string
   collectionRecords: JSONObject[]
 }
@@ -28,8 +28,13 @@ interface TestSignedUploadUrlInput {
   contentType?: string
 }
 
-interface TestUser extends admin.auth.CreateRequest {
+interface TestFirebaseUserInput {
   uid: string
+  email?: string
+  emailVerified?: boolean
+  password?: string
+  displayName?: string
+  disabled?: boolean
   customClaims?: UserClaims
 }
 
@@ -48,7 +53,7 @@ class DevUtilsService {
   //
   //----------------------------------------------------------------------
 
-  async putTestData(inputs: PutTestDataInput[]): Promise<void> {
+  async putTestStoreData(inputs: PutTestStoreDataInput[]): Promise<void> {
     {
       const processes: Promise<void>[] = []
       for (const item of inputs) {
@@ -120,29 +125,11 @@ class DevUtilsService {
     await Promise.all(promises)
   }
 
-  async addFirebaseUser(userData: TestUser): Promise<UserRecord> {
-    let userRecord: UserRecord | undefined = undefined
-    try {
-      userRecord = await admin.auth().getUser(userData.uid)
-    } catch (e) {
-      // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
-    }
-
-    // 既にユーザーが存在する場合は削除
-    if (userRecord) {
-      await admin.auth().deleteUser(userRecord.uid)
-    }
-
-    // ユーザーの追加
-    await admin.auth().createUser(userData)
-
-    // カスタムクレームの設定
-    await admin.auth().setCustomUserClaims(userData.uid, userData.customClaims || {})
-
-    return await admin.auth().getUser(userData.uid)
+  async setTestFirebaseUsers(...inputs: TestFirebaseUserInput[]): Promise<UserRecord[]> {
+    return await Promise.all(inputs.map(input => this.m_setTestFirebaseUser(input)))
   }
 
-  async deleteFirebaseUser(uid: string): Promise<void> {
+  async deleteTestFirebaseUser(uid: string): Promise<void> {
     try {
       await admin.auth().deleteUser(uid)
     } catch (err) {}
@@ -230,6 +217,30 @@ class DevUtilsService {
     return result
   }
 
+  private async m_setTestFirebaseUser(input: TestFirebaseUserInput): Promise<UserRecord> {
+    let userRecord: UserRecord | undefined = undefined
+    try {
+      userRecord = await admin.auth().getUser(input.uid)
+    } catch (e) {
+      // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
+    }
+
+    // 既にユーザーが存在しない場合は追加
+    if (!userRecord) {
+      userRecord = await admin.auth().createUser(input)
+    } else {
+      userRecord = await admin.auth().updateUser(input.uid, input)
+    }
+
+    // カスタムクレームの設定
+    if (input.customClaims) {
+      const customClaims = { ...userRecord.customClaims, ...input.customClaims }
+      await admin.auth().setCustomUserClaims(input.uid, customClaims)
+    }
+
+    return await admin.auth().getUser(input.uid)
+  }
+
   private m_isArray(value: any) {
     return Array.isArray(value)
   }
@@ -261,4 +272,4 @@ class DevUtilsServiceModule {}
 //
 //========================================================================
 
-export { DevUtilsService, DevUtilsServiceDI, DevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput, TestUser }
+export { DevUtilsService, DevUtilsServiceDI, DevUtilsServiceModule, PutTestStoreDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput }

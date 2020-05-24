@@ -6,14 +6,13 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { AuthServiceDI, IdToken } from '../../nest'
 import { File, GetFilesOptions, SaveOptions } from '@google-cloud/storage'
 import { InputValidationError, validateUID } from '../../base'
 import { Request, Response } from 'express'
 import { arrayToDict, removeBothEndsSlash, removeEndSlash, removeStartSlash, splitHierarchicalPaths } from 'web-base-lib'
+import { AuthServiceDI } from '../../nest'
 import { Dayjs } from 'dayjs'
 import { Inject } from '@nestjs/common'
-import { UserRecord } from 'firebase-functions/lib/providers/auth'
 import dayjs = require('dayjs')
 
 //========================================================================
@@ -1851,7 +1850,7 @@ class BaseStorageService {
   }
 
   /**
-   * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
+   * 指定されたノードをもとに、上位ディレクトリを加味た共有設定を取得します。
    * @param hierarchicalNodes
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
    */

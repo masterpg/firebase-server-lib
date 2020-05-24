@@ -1,5 +1,12 @@
 import * as td from 'testdouble'
-import { StorageNode, StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib/services'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../helpers/common/data'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  StorageNode,
+  StorageNodeShareSettings,
+  StoragePaginationResult,
+} from '../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
@@ -16,12 +23,6 @@ initApp()
 //  Test data
 //
 //========================================================================
-
-const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
-const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
-
-const APP_ADMIN_USER = { uid: 'app.admin.user', myDirName: 'app.admin.user', isAppAdmin: true }
-const APP_ADMIN_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(APP_ADMIN_USER)}` }
 
 const SHARE_SETTINGS: StorageNodeShareSettings = {
   isPublic: false,
@@ -63,6 +64,15 @@ function toResponseStorageNode(node: StorageNode): ResponseStorageNode {
 //  Tests
 //
 //========================================================================
+
+beforeAll(async () => {
+  const testingModule = await Test.createTestingModule({
+    imports: [DevUtilsServiceModule],
+  }).compile()
+
+  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER, GENERAL_USER)
+})
 
 describe('StorageResolver', () => {
   let app: any

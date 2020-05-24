@@ -23,7 +23,7 @@ export interface CartItemUpdateInput {
     quantity: number;
 }
 
-export interface PutTestDataInput {
+export interface PutTestStoreDataInput {
     collectionName: string;
     collectionRecords: JSONObject[];
 }
@@ -42,6 +42,16 @@ export interface StorageNodeShareSettingsInput {
 export interface StoragePaginationOptionsInput {
     maxChunk?: number;
     pageToken?: string;
+}
+
+export interface TestFirebaseUserInput {
+    uid: string;
+    email?: string;
+    emailVerified?: boolean;
+    password?: string;
+    displayName?: string;
+    disabled?: boolean;
+    customClaims?: JSONObject;
 }
 
 export interface TestSignedUploadUrlInput {
@@ -89,9 +99,10 @@ export interface IMutation {
     updateCartItems(inputs: CartItemUpdateInput[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
     removeCartItems(ids: string[]): CartItemEditResponse[] | Promise<CartItemEditResponse[]>;
     checkoutCart(): boolean | Promise<boolean>;
-    putTestData(inputs: PutTestDataInput[]): boolean | Promise<boolean>;
+    putTestStoreData(inputs: PutTestStoreDataInput[]): boolean | Promise<boolean>;
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
+    setTestFirebaseUsers(users: TestFirebaseUserInput[]): boolean | Promise<boolean>;
     handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;

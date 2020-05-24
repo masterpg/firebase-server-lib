@@ -1,3 +1,5 @@
+import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/lib/services'
+import { GENERAL_USER, GENERAL_USER_HEADER } from '../../../../helpers/common/data'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
@@ -6,8 +8,14 @@ import { initApp } from '../../../../../src/example/base'
 jest.setTimeout(25000)
 initApp()
 
-const GENERAL_USER = { uid: 'general.user', myDirName: 'general.user' }
-const GENERAL_USER_HEADER = { Authorization: `Bearer ${JSON.stringify(GENERAL_USER)}` }
+beforeAll(async () => {
+  const testingModule = await Test.createTestingModule({
+    imports: [DevUtilsServiceModule],
+  }).compile()
+
+  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
+})
 
 describe('FoundationResolver', () => {
   let app: any

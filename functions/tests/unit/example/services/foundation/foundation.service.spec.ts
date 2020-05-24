@@ -1,4 +1,6 @@
+import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/lib/services'
 import { FoundationServiceDI } from '../../../../../src/example/services'
+import { GENERAL_USER } from '../../../../helpers/common/data'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/example/base'
@@ -8,17 +10,18 @@ initApp()
 
 //========================================================================
 //
-//  Test data
-//
-//========================================================================
-
-const GENERAL_USER = { uid: 'general.user', customClaims: { myDirName: 'general.user' } }
-
-//========================================================================
-//
 //  Tests
 //
 //========================================================================
+
+beforeAll(async () => {
+  const testingModule = await Test.createTestingModule({
+    imports: [DevUtilsServiceModule],
+  }).compile()
+
+  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
+})
 
 describe('FoundationService', () => {
   let foundationService: FoundationServiceDI.type

@@ -1,5 +1,11 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { DevUtilsServiceDI, DevUtilsServiceModule, PutTestDataInput, TestSignedUploadUrlInput } from '../../../lib/services'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  PutTestStoreDataInput,
+  TestFirebaseUserInput,
+  TestSignedUploadUrlInput,
+} from '../../../lib/services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -15,8 +21,8 @@ export class DevUtilsResolver {
   constructor(@Inject(DevUtilsServiceDI.symbol) protected readonly devUtilsService: DevUtilsServiceDI.type) {}
 
   @Mutation()
-  async putTestData(@Args('inputs') inputs: PutTestDataInput[]): Promise<boolean> {
-    await this.devUtilsService.putTestData(inputs)
+  async putTestStoreData(@Args('inputs') inputs: PutTestStoreDataInput[]): Promise<boolean> {
+    await this.devUtilsService.putTestStoreData(inputs)
     return true
   }
 
@@ -34,6 +40,12 @@ export class DevUtilsResolver {
   @Mutation()
   async removeTestStorageDir(@Args('dirPath') dirPath: string): Promise<boolean> {
     await this.devUtilsService.removeTestStorageDir(dirPath)
+    return true
+  }
+
+  @Mutation()
+  async setTestFirebaseUsers(@Args('users') users: TestFirebaseUserInput[]): Promise<boolean> {
+    await this.devUtilsService.setTestFirebaseUsers(...users)
     return true
   }
 }

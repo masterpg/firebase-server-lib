@@ -1,7 +1,8 @@
 type Mutation {
-  putTestData(inputs: [PutTestDataInput!]!): Boolean!
+  putTestStoreData(inputs: [PutTestStoreDataInput!]!): Boolean!
   removeTestStorageDir(dirPath: String!): Boolean!
   removeTestStorageFiles(filePaths: [String!]!): Boolean!
+  setTestFirebaseUsers(users: [TestFirebaseUserInput!]!): Boolean!
 }
 
 type Query {

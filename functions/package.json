@@ -16,7 +16,7 @@
     "test:lib": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && jest --runInBand /lib/",
     "test:firestore-ex": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && export FIRESTORE_EMULATOR_HOST=localhost:5020 && jest --runInBand /firestore-ex/",
     "test:pre": "node ./tools/gql.generate.schema.js ./tests/mocks/lib ./tests/mocks/lib",
-    "test:setup-users": "node ./dist/tools/setup.test.users.js",
+    "test:setup-users": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/setup.test.users.js",
     "test:coverage": "npm run test -- --coverage",
     "lint": "./node_modules/web-base-lib/tools/lint.sh",
     "deploy": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && firebase deploy --only functions",

@@ -88,7 +88,7 @@ describe('WriteReadyObserver', () => {
 
   it('ベーシックケース', async () => {
     // テストデータ投入
-    await devUtilsService.putTestData([
+    await devUtilsService.putTestStoreData([
       {
         collectionName: 'test-products',
         collectionRecords: [
@@ -120,7 +120,7 @@ describe('WriteReadyObserver', () => {
 
   it('トランザクションが効いているか検証', async () => {
     // テストデータ投入
-    await devUtilsService.putTestData([
+    await devUtilsService.putTestStoreData([
       {
         collectionName: 'test-products',
         collectionRecords: [
