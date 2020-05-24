@@ -27,22 +27,29 @@ const firestoreExOptions: FirestoreExOptions = {
 class WriteReadyObserver {
   constructor(private m_num: number) {}
 
-  private m_resolves: Array<() => void> = []
+  private m_promise?: Promise<void>
+
+  private m_resolve?: () => void
 
   wait(): Promise<void> {
-    const result = new Promise<void>(resolve => {
-      this.m_resolves.push(resolve)
-    })
+    if (!this.m_promise) {
+      this.m_promise = new Promise<void>(resolve => {
+        this.m_resolve = resolve
+      })
+    }
     this.m_decrement()
-    return result
+    return this.m_promise
+  }
+
+  clear(): void {
+    this.m_resolve && this.m_resolve()
+    this.m_resolve = undefined
   }
 
   private m_decrement(): void {
     this.m_num--
     if (this.m_num === 0) {
-      for (const resolve of this.m_resolves) {
-        resolve()
-      }
+      this.clear()
     }
   }
 }
