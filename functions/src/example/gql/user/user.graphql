@@ -1,0 +1,8 @@
+type Mutation {
+  setOwnUserInfo(input: UserInfoInput!): User!
+  deleteOwnUser: Boolean!
+}
+
+type Query {
+  authData: AuthDataResult!
+}

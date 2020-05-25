@@ -5,6 +5,8 @@ import {
   PutTestStoreDataInput,
   TestFirebaseUserInput,
   TestSignedUploadUrlInput,
+  TestUserInput,
+  User,
 } from '../../../lib/services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
@@ -46,6 +48,23 @@ export class DevUtilsResolver {
   @Mutation()
   async setTestFirebaseUsers(@Args('users') users: TestFirebaseUserInput[]): Promise<boolean> {
     await this.devUtilsService.setTestFirebaseUsers(...users)
+    return true
+  }
+
+  @Mutation()
+  async deleteTestFirebaseUsers(@Args('uids') uids: string[]): Promise<boolean> {
+    await this.devUtilsService.deleteTestFirebaseUsers(...uids)
+    return true
+  }
+
+  @Mutation()
+  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<User[]> {
+    return await this.devUtilsService.setTestUsers(...users)
+  }
+
+  @Mutation()
+  async deleteTestUsers(@Args('uids') uids: string[]): Promise<boolean> {
+    await this.devUtilsService.deleteTestUsers(...uids)
     return true
   }
 }

@@ -25,33 +25,6 @@ const users: TestFirebaseUserInput[] = [
     disabled: false,
     customClaims: { myDirName: 'app.admin', isAppAdmin: true },
   },
-  {
-    uid: 'test.general',
-    email: 'test.general@example.com',
-    emailVerified: true,
-    password: 'passpass',
-    displayName: '一般テストユーザー',
-    disabled: false,
-    customClaims: { myDirName: 'test.general' },
-  },
-  {
-    uid: 'test.app.admin',
-    email: 'test.app.admin@example.com',
-    emailVerified: true,
-    password: 'passpass',
-    displayName: 'アプリケーション管理テストユーザー',
-    disabled: false,
-    customClaims: { myDirName: 'test.app.admin', isAppAdmin: true },
-  },
-  {
-    uid: 'test.storage',
-    email: 'test.storage@example.com',
-    emailVerified: true,
-    password: 'passpass',
-    displayName: 'ストレージテストユーザー',
-    disabled: false,
-    customClaims: { myDirName: 'test.storage' },
-  },
 ]
 
 exitHook((callback: () => void) => {

@@ -1,10 +1,9 @@
 import * as admin from 'firebase-admin'
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, STORAGE_USER, STORAGE_USER_HEADER } from '../../../../helpers/common/data'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, STORAGE_USER, STORAGE_USER_HEADER, STORAGE_USER_TOKEN } from '../../../../helpers/common/data'
 import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageUploadDataItem } from '../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
-import { UserClaims } from '../../../../../src/lib/nest'
 import { cloneDeep } from 'lodash'
 import { initLib } from '../../../../../src/lib/base'
 import request = require('supertest')
@@ -27,8 +26,8 @@ const TEST_FILES_DIR = 'test-files'
 //========================================================================
 
 let testingModule: TestingModule
-
 let storageService!: StorageServiceDI.type
+let devUtilsService!: DevUtilsServiceDI.type
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -47,7 +46,7 @@ beforeAll(async () => {
     imports: [DevUtilsServiceModule],
   }).compile()
 
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
   await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER, STORAGE_USER)
 })
 
@@ -60,7 +59,7 @@ describe('StorageService', () => {
     storageService = testingModule.get<StorageServiceDI.type>(StorageServiceDI.symbol)
 
     await storageService.removeDir(null, `${TEST_FILES_DIR}`)
-    await storageService.removeDir(null, `${storageService.getUserDirPath(STORAGE_USER)}`)
+    await storageService.removeDir(null, `${storageService.getUserDirPath(STORAGE_USER_TOKEN)}`)
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(2000)
@@ -72,48 +71,24 @@ describe('StorageService', () => {
    */
   describe('assignUserDir', () => {
     beforeEach(async () => {
-      await removeUserRootDir()
+      await devUtilsService.setTestFirebaseUsers(STORAGE_USER)
     })
-
-    afterEach(async () => {
-      await removeUserRootDir()
-    })
-
-    async function removeUserRootDir(): Promise<void> {
-      // ユーザーディレクトリのパスを取得
-      const userRecord = await admin.auth().getUser(STORAGE_USER.uid)
-      let userDirPath
-      try {
-        const userClaims: UserClaims = userRecord.customClaims || {}
-        userDirPath = storageService.getUserDirPath({ uid: userRecord.uid, ...userClaims })
-      } catch (err) {
-        // ユーザーディレクトリが割り当てられていない状態でgetUserDirPath()すると
-        // エラーが発生するのでtry-catchしている
-      }
-
-      if (userDirPath) {
-        // ユーザーディレクトリを削除
-        await storageService.removeDir(null, userDirPath)
-        // カスタムクレイムのユーザーディレクトリ名をクリア
-        await admin.auth().setCustomUserClaims(STORAGE_USER.uid, { myDirName: STORAGE_USER.myDirName })
-      }
-    }
 
     it('ベーシックケース', async () => {
       // ユーザーディレクトリ未設定として実行
       await storageService.assignUserDir({
-        uid: STORAGE_USER.uid,
+        uid: STORAGE_USER_TOKEN.uid,
         myDirName: undefined,
       })
 
       expect(true).toBeTruthy()
 
-      const afterUser = await admin.auth().getUser(STORAGE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_USER_TOKEN.uid)
       // カスタムクレイムのユーザーディレクトリ名が設定されたか検証
       expect((afterUser.customClaims as any).myDirName).toBeDefined()
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath({
-        uid: STORAGE_USER.uid,
+        uid: STORAGE_USER_TOKEN.uid,
         ...afterUser.customClaims,
       })
       const userDirNode = await storageService.getRealDirNode(null, userDirPath)
@@ -121,17 +96,14 @@ describe('StorageService', () => {
     })
 
     it('カスタムクレイムにユーザーディレクトリ名が割り当てられてられているが、ユーザーディレクトリは存在しない場合', async () => {
-      // カスタムクレイムのユーザーディレクトリ名を設定
-      await admin.auth().setCustomUserClaims(STORAGE_USER.uid, { myDirName: STORAGE_USER.myDirName })
+      await storageService.assignUserDir(STORAGE_USER_TOKEN)
 
-      await storageService.assignUserDir(STORAGE_USER)
-
-      const afterUser = await admin.auth().getUser(STORAGE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_USER_TOKEN.uid)
       // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
-      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_USER.myDirName)
+      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_USER_TOKEN.myDirName)
       // ユーザーディレクトリが作成されたか検証
       const userDirPath = storageService.getUserDirPath({
-        uid: STORAGE_USER.uid,
+        uid: STORAGE_USER_TOKEN.uid,
         ...afterUser.customClaims,
       })
       const userDirNode = await storageService.getRealDirNode(null, userDirPath)
@@ -139,20 +111,18 @@ describe('StorageService', () => {
     })
 
     it('カスタムクレイムにユーザーディレクトリ名が割り当てられていて、かつユーザーディレクトリも存在する場合', async () => {
-      // カスタムクレイムのユーザーディレクトリ名を設定
-      await admin.auth().setCustomUserClaims(STORAGE_USER.uid, { myDirName: STORAGE_USER.myDirName })
       // ユーザーディレクトリを作成
-      const beforeUserDirPath = storageService.getUserDirPath(STORAGE_USER)
+      const beforeUserDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
       const beforeUserDirNode = (await storageService.createDirs(null, [beforeUserDirPath]))[0]
 
-      await storageService.assignUserDir(STORAGE_USER)
+      await storageService.assignUserDir(STORAGE_USER_TOKEN)
 
-      const afterUser = await admin.auth().getUser(STORAGE_USER.uid)
+      const afterUser = await admin.auth().getUser(STORAGE_USER_TOKEN.uid)
       // カスタムクレイムのユーザーディレクトリ名に変化がないことを検証
-      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_USER.myDirName)
+      expect((afterUser.customClaims as any).myDirName).toBe(STORAGE_USER_TOKEN.myDirName)
       // ユーザーディレクトリに変化がないことを検証
       const afterUserDirPath = storageService.getUserDirPath({
-        uid: STORAGE_USER.uid,
+        uid: STORAGE_USER_TOKEN.uid,
         ...afterUser.customClaims,
       })
       expect(afterUserDirPath).toBe(beforeUserDirPath)
@@ -163,12 +133,12 @@ describe('StorageService', () => {
 
   describe('getUserDirPath', () => {
     it('ベーシックケース', async () => {
-      const actual = storageService.getUserDirPath(STORAGE_USER)
-      expect(actual).toBe(`users/${STORAGE_USER.myDirName}`)
+      const actual = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      expect(actual).toBe(`users/${STORAGE_USER_TOKEN.myDirName}`)
     })
 
     it('myDirNameが設定されていない場合', async () => {
-      const user = cloneDeep(STORAGE_USER)
+      const user = cloneDeep(STORAGE_USER_TOKEN)
       user.myDirName = undefined
 
       let actual!: Error
@@ -323,7 +293,7 @@ describe('StorageService', () => {
         }
         await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(null, uploadItem.path, { readUIds: [STORAGE_USER.uid] })
+        await storageService.setFileShareSettings(null, uploadItem.path, { readUIds: [STORAGE_USER_TOKEN.uid] })
 
         // ファイルの読み込み権限設定が適用される
         return (
@@ -349,7 +319,7 @@ describe('StorageService', () => {
         }
         await storageService.uploadAsFiles(null, [uploadItem])
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(null, uploadItem.path, { readUIds: [STORAGE_USER.uid] })
+        await storageService.setFileShareSettings(null, uploadItem.path, { readUIds: [STORAGE_USER_TOKEN.uid] })
         // 上位ディレクトリに読み込み権限設定(ファイルの読み込み権限とは別ユーザーを指定)
         await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { readUIds: ['ichiro'] })
 
@@ -377,7 +347,7 @@ describe('StorageService', () => {
         }
         await storageService.uploadAsFiles(null, [uploadItem])
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { readUIds: [STORAGE_USER.uid] })
+        await storageService.setDirShareSettings(null, `${TEST_FILES_DIR}/d1`, { readUIds: [STORAGE_USER_TOKEN.uid] })
 
         // 上位ディレクトリの読み込み権限設定が適用される
         return (
@@ -447,7 +417,7 @@ describe('StorageService', () => {
 
     describe('serveUserFile', () => {
       it('自ユーザーの場合 - ファイルは公開未設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',
@@ -466,7 +436,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルは公開未設定 - 上位ディレクトリも公開未設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',
@@ -482,7 +452,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルは公開未設定 - 上位ディレクトリに公開設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ディレクトリを作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
@@ -506,7 +476,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルに公開設定 - 上位ディレクトリは公開未設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',
@@ -528,7 +498,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルに公開設定 - 上位ディレクトリに非公開設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ディレクトリを作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
@@ -554,7 +524,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルに読み込み権限設定 - 上位ディレクトリは読み込み権限未設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',
@@ -579,7 +549,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルに読み込み権限設定 - 上位ディレクトリに読み込み権限設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ディレクトリの作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
@@ -608,7 +578,7 @@ describe('StorageService', () => {
       })
 
       it('他ユーザーの場合 - ファイルは読み込み権限未設定 - 上位ディレクトリに読み込み権限設定', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ディレクトリの作成
         await storageService.createDirs(null, [`${userDirPath}/d1`])
         // ファイルのアップロード
@@ -635,7 +605,7 @@ describe('StorageService', () => {
       })
 
       it('ログインしていない場合 - ファイルが公開されている', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',
@@ -656,7 +626,7 @@ describe('StorageService', () => {
       })
 
       it('ログインしていない場合 - ファイルが公開されていない', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER)
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
         // ファイルのアップロード
         const uploadItem: StorageUploadDataItem = {
           data: 'test',

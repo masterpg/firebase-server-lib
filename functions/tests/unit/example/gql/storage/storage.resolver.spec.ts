@@ -1,5 +1,5 @@
 import * as td from 'testdouble'
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../helpers/common/data'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER, GENERAL_USER_TOKEN } from '../../../../helpers/common/data'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -110,7 +110,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserNode = td.replace(storageService, 'getUserNode')
-      td.when(getUserNode(td.matchers.contains(GENERAL_USER), d1.path)).thenResolve(d1)
+      td.when(getUserNode(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(d1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -121,7 +121,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認 - 結果が空だった場合', async () => {
       const getUserNode = td.replace(storageService, 'getUserNode')
-      td.when(getUserNode(td.matchers.contains(GENERAL_USER), d1.path)).thenResolve(undefined)
+      td.when(getUserNode(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(undefined)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -159,7 +159,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserDirDescendants = td.replace(storageService, 'getUserDirDescendants')
-      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -174,7 +174,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認 - 結果が空だった場合', async () => {
       const getUserDirDescendants = td.replace(storageService, 'getUserDirDescendants')
-      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getUserDirDescendants(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [],
         nextPageToken: undefined,
       } as StoragePaginationResult)
@@ -216,7 +216,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserDescendants = td.replace(storageService, 'getUserDescendants')
-      td.when(getUserDescendants(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getUserDescendants(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -258,7 +258,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserDirChildren = td.replace(storageService, 'getUserDirChildren')
-      td.when(getUserDirChildren(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getUserDirChildren(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -300,7 +300,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserChildren = td.replace(storageService, 'getUserChildren')
-      td.when(getUserChildren(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getUserChildren(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -339,7 +339,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserHierarchicalNode = td.replace(storageService, 'getUserHierarchicalNode')
-      td.when(getUserHierarchicalNode(td.matchers.contains(GENERAL_USER), fileA.path)).thenResolve([d1, d11])
+      td.when(getUserHierarchicalNode(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve([d1, d11])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -374,7 +374,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getUserAncestorDirs = td.replace(storageService, 'getUserAncestorDirs')
-      td.when(getUserAncestorDirs(td.matchers.contains(GENERAL_USER), fileA.path)).thenResolve([d1, d11])
+      td.when(getUserAncestorDirs(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve([d1, d11])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -407,7 +407,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const handleUploadedUserFile = td.replace(storageService, 'handleUploadedUserFile')
-      td.when(handleUploadedUserFile(td.matchers.contains(GENERAL_USER), fileA.path)).thenResolve(fileA)
+      td.when(handleUploadedUserFile(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -441,7 +441,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const createUserDirs = td.replace(storageService, 'createUserDirs')
-      td.when(createUserDirs(td.matchers.contains(GENERAL_USER), [d11.path, d12.path])).thenResolve([d11, d12])
+      td.when(createUserDirs(td.matchers.contains(GENERAL_USER_TOKEN), [d11.path, d12.path])).thenResolve([d11, d12])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -479,7 +479,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeUserDir = td.replace(storageService, 'removeUserDir')
-      td.when(removeUserDir(td.matchers.contains(GENERAL_USER), d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(removeUserDir(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -516,7 +516,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeUserFile = td.replace(storageService, 'removeUserFile')
-      td.when(removeUserFile(td.matchers.contains(GENERAL_USER), fileA.path)).thenResolve(fileA)
+      td.when(removeUserFile(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -555,7 +555,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveUserDir = td.replace(storageService, 'moveUserDir')
-      td.when(moveUserDir(td.matchers.contains(GENERAL_USER), 'docs', 'archive/docs', { maxChunk: 3 })).thenResolve({
+      td.when(moveUserDir(td.matchers.contains(GENERAL_USER_TOKEN), 'docs', 'archive/docs', { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -593,7 +593,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveUserFile = td.replace(storageService, 'moveUserFile')
-      td.when(moveUserFile(td.matchers.contains(GENERAL_USER), 'fileA.txt', 'docs/fileA.txt')).thenResolve(fileA)
+      td.when(moveUserFile(td.matchers.contains(GENERAL_USER_TOKEN), 'fileA.txt', 'docs/fileA.txt')).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -632,7 +632,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameUserDir = td.replace(storageService, 'renameUserDir')
-      td.when(renameUserDir(td.matchers.contains(GENERAL_USER), 'documents', 'docs', { maxChunk: 3 })).thenResolve({
+      td.when(renameUserDir(td.matchers.contains(GENERAL_USER_TOKEN), 'documents', 'docs', { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -670,7 +670,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameUserFile = td.replace(storageService, 'renameUserFile')
-      td.when(renameUserFile(td.matchers.contains(GENERAL_USER), 'fileA.txt', 'fileB.txt')).thenResolve(fileB)
+      td.when(renameUserFile(td.matchers.contains(GENERAL_USER_TOKEN), 'fileA.txt', 'fileB.txt')).thenResolve(fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -704,7 +704,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setUserDirShareSettings = td.replace(storageService, 'setUserDirShareSettings')
-      td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER), d1.path, SHARE_SETTINGS)).thenResolve(d1)
+      td.when(setUserDirShareSettings(td.matchers.contains(GENERAL_USER_TOKEN), d1.path, SHARE_SETTINGS)).thenResolve(d1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -738,7 +738,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setUserFileShareSettings = td.replace(storageService, 'setUserFileShareSettings')
-      td.when(setUserFileShareSettings(td.matchers.contains(GENERAL_USER), fileA.path, SHARE_SETTINGS)).thenResolve(fileA)
+      td.when(setUserFileShareSettings(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path, SHARE_SETTINGS)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),

@@ -3,6 +3,7 @@ import * as path from 'path'
 import { DocumentReference, Timestamp } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule, UserClaims } from '../nest'
 import { Inject, Module } from '@nestjs/common'
+import { User, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import { JSONObject } from './base'
@@ -35,8 +36,11 @@ interface TestFirebaseUserInput {
   password?: string
   displayName?: string
   disabled?: boolean
+  photoURL?: string
   customClaims?: UserClaims
 }
+
+type TestUserInput = TestFirebaseUserInput & UserInfoInput
 
 //========================================================================
 //
@@ -45,7 +49,10 @@ interface TestFirebaseUserInput {
 //========================================================================
 
 class DevUtilsService {
-  constructor(@Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type) {}
+  constructor(
+    @Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type,
+    @Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type
+  ) {}
 
   //----------------------------------------------------------------------
   //
@@ -129,10 +136,37 @@ class DevUtilsService {
     return await Promise.all(inputs.map(input => this.m_setTestFirebaseUser(input)))
   }
 
-  async deleteTestFirebaseUser(uid: string): Promise<void> {
-    try {
-      await admin.auth().deleteUser(uid)
-    } catch (err) {}
+  async deleteTestFirebaseUsers(...uids: string[]): Promise<void> {
+    await Promise.all(
+      uids.map(async uid => {
+        try {
+          await admin.auth().deleteUser(uid)
+        } catch (err) {}
+      })
+    )
+  }
+
+  async setTestUsers(...inputs: TestUserInput[]): Promise<User[]> {
+    const dict: { [uid: string]: User } = {}
+    await Promise.all(
+      inputs.map(async input => {
+        await this.setTestFirebaseUsers(input)
+        const user = await this.userService.setUserInfo(input.uid, input)
+        dict[user.id] = user
+      })
+    )
+    return inputs.reduce((result, input) => {
+      result.push(dict[input.uid])
+      return result
+    }, [] as User[])
+  }
+
+  async deleteTestUsers(...uids: string[]): Promise<void> {
+    await Promise.all(
+      uids.map(async uid => {
+        await this.userService.deleteUser(uid)
+      })
+    )
   }
 
   //----------------------------------------------------------------------
@@ -262,7 +296,7 @@ namespace DevUtilsServiceDI {
 @Module({
   providers: [DevUtilsServiceDI.provider],
   exports: [DevUtilsServiceDI.provider],
-  imports: [FirestoreServiceModule],
+  imports: [FirestoreServiceModule, UserServiceModule],
 })
 class DevUtilsServiceModule {}
 
@@ -272,4 +306,12 @@ class DevUtilsServiceModule {}
 //
 //========================================================================
 
-export { DevUtilsService, DevUtilsServiceDI, DevUtilsServiceModule, PutTestStoreDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput }
+export {
+  DevUtilsService,
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  PutTestStoreDataInput,
+  TestFirebaseUserInput,
+  TestSignedUploadUrlInput,
+  TestUserInput,
+}

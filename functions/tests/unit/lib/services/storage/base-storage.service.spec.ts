@@ -44,8 +44,8 @@ const TEST_FILES_DIR = 'test-files'
 //========================================================================
 
 let testingModule!: TestingModule
-
 let storageService!: TestStorageService
+let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = StorageService & {
   saveDirNode: StorageService['saveDirNode']
@@ -142,7 +142,7 @@ beforeAll(async () => {
     imports: [DevUtilsServiceModule],
   }).compile()
 
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
   await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER)
 })
 

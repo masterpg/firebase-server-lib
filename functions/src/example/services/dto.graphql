@@ -20,6 +20,47 @@ interface TimestampEntity {
   updatedAt: DateTime!
 }
 
+#--------------------------------------------------
+#  user
+#--------------------------------------------------
+
+enum AuthStatus {
+  WaitForEmailVerified
+  WaitForEntry
+  Available
+}
+
+type AuthDataResult {
+  status: AuthStatus!
+  token: String!
+  user: User
+}
+
+type User implements TimestampEntity {
+  id: ID!
+  fullName: String!
+  email: String!
+  emailVerified: Boolean!
+  isAppAdmin: Boolean!
+  myDirName: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publicProfile: PublicProfile!
+}
+
+type PublicProfile implements TimestampEntity {
+  id: ID!
+  displayName: String!
+  photoURL: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input UserInfoInput {
+  fullName: String!
+  displayName: String!
+}
+
 #========================================================================
 #
 #  Value objects
@@ -104,7 +145,20 @@ input TestFirebaseUserInput {
   password: String
   displayName: String
   disabled: Boolean
+  photoURL: String
   customClaims: JSONObject
+}
+
+input TestUserInput {
+  uid: ID!
+  email: String
+  emailVerified: Boolean
+  password: String
+  displayName: String!
+  disabled: Boolean
+  photoURL: String
+  customClaims: JSONObject
+  fullName: String!
 }
 
 #--------------------------------------------------

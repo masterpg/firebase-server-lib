@@ -3,6 +3,9 @@ type Mutation {
   removeTestStorageDir(dirPath: String!): Boolean!
   removeTestStorageFiles(filePaths: [String!]!): Boolean!
   setTestFirebaseUsers(users: [TestFirebaseUserInput!]!): Boolean!
+  deleteTestFirebaseUsers(uids: [String!]!): Boolean!
+  setTestUsers(users: [TestUserInput!]!): [User!]!
+  deleteTestUsers(uids: [String!]!): Boolean!
 }
 
 type Query {

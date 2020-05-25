@@ -1,6 +1,6 @@
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 #Origin: https://vue-base-project-7295.web.app
 
 {
@@ -13,7 +13,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 {
   "operationName": "RemoveCartItems",
@@ -29,7 +29,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 {
   "operationName": "AddCartItems",
@@ -56,7 +56,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 {
   "operationName": "UpdateCartItems",
@@ -79,7 +79,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 {
   "operationName": "CheckoutCart",

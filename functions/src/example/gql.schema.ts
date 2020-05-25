@@ -6,6 +6,12 @@
 
 /* tslint:disable */
 /* eslint-disable */
+export enum AuthStatus {
+    WaitForEmailVerified = "WaitForEmailVerified",
+    WaitForEntry = "WaitForEntry",
+    Available = "Available"
+}
+
 export enum StorageNodeType {
     File = "File",
     Dir = "Dir"
@@ -51,12 +57,30 @@ export interface TestFirebaseUserInput {
     password?: string;
     displayName?: string;
     disabled?: boolean;
+    photoURL?: string;
     customClaims?: JSONObject;
 }
 
 export interface TestSignedUploadUrlInput {
     filePath: string;
     contentType?: string;
+}
+
+export interface TestUserInput {
+    uid: string;
+    email?: string;
+    emailVerified?: boolean;
+    password?: string;
+    displayName: string;
+    disabled?: boolean;
+    photoURL?: string;
+    customClaims?: JSONObject;
+    fullName: string;
+}
+
+export interface UserInfoInput {
+    fullName: string;
+    displayName: string;
 }
 
 export interface Entity {
@@ -71,6 +95,12 @@ export interface TimestampEntity {
 
 export interface AppConfigResponse {
     usersDir: string;
+}
+
+export interface AuthDataResult {
+    status: AuthStatus;
+    token: string;
+    user?: User;
 }
 
 export interface CartItem extends TimestampEntity {
@@ -103,6 +133,9 @@ export interface IMutation {
     removeTestStorageDir(dirPath: string): boolean | Promise<boolean>;
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
     setTestFirebaseUsers(users: TestFirebaseUserInput[]): boolean | Promise<boolean>;
+    deleteTestFirebaseUsers(uids: string[]): boolean | Promise<boolean>;
+    setTestUsers(users: TestUserInput[]): User[] | Promise<User[]>;
+    deleteTestUsers(uids: string[]): boolean | Promise<boolean>;
     handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeUserStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
@@ -123,6 +156,8 @@ export interface IMutation {
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    setOwnUserInfo(input: UserInfoInput): User | Promise<User>;
+    deleteOwnUser(): boolean | Promise<boolean>;
 }
 
 export interface Product extends TimestampEntity {
@@ -130,6 +165,14 @@ export interface Product extends TimestampEntity {
     title: string;
     price: number;
     stock: number;
+    createdAt: DateTime;
+    updatedAt: DateTime;
+}
+
+export interface PublicProfile extends TimestampEntity {
+    id: string;
+    displayName: string;
+    photoURL?: string;
     createdAt: DateTime;
     updatedAt: DateTime;
 }
@@ -155,6 +198,7 @@ export interface IQuery {
     storageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
+    authData(): AuthDataResult | Promise<AuthDataResult>;
 }
 
 export interface StorageNode {
@@ -179,6 +223,18 @@ export interface StorageNodeShareSettings {
 export interface StoragePaginationResult {
     list: StorageNode[];
     nextPageToken?: string;
+}
+
+export interface User extends TimestampEntity {
+    id: string;
+    fullName: string;
+    email: string;
+    emailVerified: boolean;
+    isAppAdmin: boolean;
+    myDirName: string;
+    createdAt: DateTime;
+    updatedAt: DateTime;
+    publicProfile: PublicProfile;
 }
 
 export type DateTime = any;

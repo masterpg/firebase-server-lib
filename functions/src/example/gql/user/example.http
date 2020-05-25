@@ -1,0 +1,19 @@
+POST {{host}}/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "general"}
+
+{
+  "operationName": "GetAuthData",
+  "query": "query GetAuthData { authData { status token user { id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } } }"
+}
+
+###
+
+POST {{host}}/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "test.storage"}
+
+{
+  "operationName": "DeleteOwnUser",
+  "query": "mutation DeleteOwnUser { deleteOwnUser }"
+}

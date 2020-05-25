@@ -147,3 +147,53 @@ Content-Type: application/json
 }
 
 ###
+
+POST {{host}}/gql
+Content-Type: application/json
+
+{
+  "operationName": "DeleteTestFirebaseUsers",
+  "query": "mutation DeleteTestFirebaseUsers($uids: [String!]!) { deleteTestFirebaseUsers(uids: $uids) }",
+  "variables": {
+    "uids": ["general"]
+  }
+}
+
+###
+
+POST {{host}}/gql
+Content-Type: application/json
+
+{
+  "operationName": "SetTestUsers",
+  "query": "mutation SetTestUsers($users: [TestUserInput!]!) { setTestUsers(users: $users) { id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } }",
+  "variables": {
+    "users": [
+      {
+        "uid": "general",
+        "email": "general@example.com",
+        "emailVerified": true,
+        "password": "passpass",
+        "displayName": "一般ユーザー",
+        "disabled": false,
+        "customClaims": { "myDirName": "general" },
+        "fullName": "一般 太郎"
+      }
+    ]
+  }
+}
+
+###
+
+POST {{host}}/gql
+Content-Type: application/json
+
+{
+  "operationName": "DeleteTestUsers",
+  "query": "mutation DeleteTestUsers($uids: [String!]!) { deleteTestUsers(uids: $uids) }",
+  "variables": {
+    "uids": ["general"]
+  }
+}
+
+###

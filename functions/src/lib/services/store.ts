@@ -10,8 +10,7 @@ import { TimestampEntity, firestoreExOptions } from '../base'
 //========================================================================
 
 interface StoreUser extends TimestampEntity {
-  firstName: string
-  lastName: string
+  fullName: string
 }
 
 interface PublicProfile extends TimestampEntity {
@@ -43,8 +42,7 @@ class StoreService implements BaseStore {
       useTimestamp: true,
       encode: obj => {
         const result: EncodedObject<StoreUser> = {}
-        if (obj.firstName) result.firstName = obj.firstName
-        if (obj.lastName) result.lastName = obj.lastName
+        if (obj.fullName) result.fullName = obj.fullName
         return result
       },
     })
