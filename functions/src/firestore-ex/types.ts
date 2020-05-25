@@ -17,6 +17,7 @@ export type DecodedObject<T> = OmitEntityFields<T>
 export type EncodeFunc<T, S = DocumentData> = (obj: EntityOptionalInput<T>) => EncodedObject<S>
 export type DecodeFunc<T, S = T> = (doc: StoreDoc<S>) => DecodedObject<T>
 export type QueryKey<T> = keyof T | FieldPath
+export type AtomicOperation = Transaction | WriteBatch
 
 export type TimeStampToDate = (timestamp: Timestamp) => any
 

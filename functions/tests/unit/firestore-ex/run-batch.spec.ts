@@ -1,10 +1,11 @@
 import { AdminFirestoreTestUtil, createRandomCollectionName } from './util'
-import { Collection, Entity, FirestoreEx } from '../../../src/firestore-ex'
+import { Entity, FirestoreEx } from '../../../src/firestore-ex'
 
 const util = new AdminFirestoreTestUtil()
 const db = util.db
 const collectionPath = util.collectionPath
-let firestoreEx: FirestoreEx
+const anotherCollectionPath = createRandomCollectionName()
+const firestoreEx = new FirestoreEx(db)
 
 interface TestDoc extends Entity {
   title: string
@@ -15,69 +16,10 @@ afterAll(async () => {
 })
 
 describe('runBatch', () => {
-  let dao: Collection<TestDoc>
-
-  beforeEach(async () => {
-    firestoreEx = new FirestoreEx(db)
-    dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
-  })
+  const dao = firestoreEx.collection<TestDoc>({ path: collectionPath })
 
   afterEach(async () => {
     await util.deleteCollection()
-  })
-
-  describe('context.batch', () => {
-    it('should be undefined before runBatch', async () => {
-      expect(firestoreEx.context.batch).toBeUndefined()
-    })
-
-    it('should be assigned in runBatch', async () => {
-      await firestoreEx.runBatch(async batch => {
-        expect(firestoreEx.context.batch).toBe(batch)
-      })
-    })
-
-    it('should be undefined after runBatch', async () => {
-      await firestoreEx.runBatch(async () => {
-        expect(firestoreEx.context.batch).not.toBeUndefined()
-      })
-
-      expect(firestoreEx.context.batch).toBeUndefined()
-    })
-
-    it('should be undefined if an error occurs', async () => {
-      let actual!: Error
-      try {
-        await firestoreEx.runBatch(async () => {
-          throw new Error()
-        })
-      } catch (err) {
-        actual = err
-      }
-
-      expect(actual).toBeInstanceOf(Error)
-      expect(firestoreEx.context.batch).toBeUndefined()
-    })
-
-    it('should be error nesting runBatch', async () => {
-      await firestoreEx.runBatch(async () => {
-        expect(
-          firestoreEx.runBatch(async () => {
-            dao.add({ title: 'test' })
-          })
-        ).rejects.toThrow()
-      })
-    })
-
-    it('should be error transaction in runBatch', async () => {
-      await firestoreEx.runBatch(async () => {
-        expect(
-          firestoreEx.runTransaction(async () => {
-            dao.add({ title: 'test' })
-          })
-        ).rejects.toThrow()
-      })
-    })
   })
 
   describe('write method', () => {
@@ -86,8 +28,8 @@ describe('runBatch', () => {
       const doc = (await dao.fetch(docId))!
       const updatedDoc = { id: 'test1', title: 'bbb' }
 
-      await firestoreEx.runBatch(async () => {
-        await dao.set(updatedDoc)
+      await firestoreEx.runBatch(async batch => {
+        await dao.set(updatedDoc, batch)
 
         // document has not updated yet
         const fetchedOutsideBatch = (await dao.fetch(doc.id))!
@@ -103,8 +45,8 @@ describe('runBatch', () => {
       const docId = await dao.set({ id: 'test1', title: 'aaa' })
       const doc = (await dao.fetch(docId))!
 
-      await firestoreEx.runBatch(async () => {
-        await dao.delete(doc.id)
+      await firestoreEx.runBatch(async batch => {
+        await dao.delete(doc.id, batch)
 
         // document has not deleted yet
         const fetchedOutsideBatch = (await dao.fetch(doc.id))!
@@ -120,8 +62,8 @@ describe('runBatch', () => {
       const doc = { title: 'aaa' }
       let newId!: string
 
-      await firestoreEx.runBatch(async () => {
-        newId = await dao.add(doc)
+      await firestoreEx.runBatch(async batch => {
+        newId = await dao.add(doc, batch)
 
         // document has not added yet
         const fetchedOutsideBatch = await dao.fetch(newId)
@@ -138,8 +80,8 @@ describe('runBatch', () => {
       const doc = (await dao.fetch(docId))!
       const updatedTitle = 'update'
 
-      await firestoreEx.runBatch(async () => {
-        await dao.update({ id: doc.id, title: updatedTitle })
+      await firestoreEx.runBatch(async batch => {
+        await dao.update({ id: doc.id, title: updatedTitle }, batch)
 
         // document has not updated yet
         const fetchedOutsideBatch = (await dao.fetch(doc.id))!
@@ -150,25 +92,8 @@ describe('runBatch', () => {
       const fetched = (await dao.fetch(doc.id))!
       expect(fetched!.title).toEqual(updatedTitle)
     })
-  })
-
-  describe('Collection.context.batch', () => {
-    const anotherCollectionPath = createRandomCollectionName()
-    let batchAnotherDao: Collection<TestDoc>
-
-    beforeEach(async () => {
-      batchAnotherDao = firestoreEx.collection<TestDoc>({ path: anotherCollectionPath })
-    })
-
-    it('each collections share same batch context', async () => {
-      await firestoreEx.runBatch(async batch => {
-        expect(dao.context.batch).toBe(batch)
-        expect(batchAnotherDao.context.batch).toBe(batch)
-      })
-    })
 
     it('runBatch enables across each collections', async () => {
-      // it share same context.batch
       const anotherDao = firestoreEx.collection<TestDoc>({ path: anotherCollectionPath })
 
       const docId = await dao.set({ id: 'test1', title: 'aaa' })
@@ -179,9 +104,9 @@ describe('runBatch', () => {
       const updatedDoc = { id: 'test1', title: 'bbb' }
       const updatedAnotherDoc = { id: 'test1', title: 'another_bbb' }
 
-      await firestoreEx.runBatch(async () => {
-        await dao.update(updatedDoc)
-        await batchAnotherDao.update(updatedAnotherDoc)
+      await firestoreEx.runBatch(async batch => {
+        await dao.update(updatedDoc, batch)
+        await anotherDao.update(updatedAnotherDoc, batch)
 
         // Both documents has not updated yet
         const fetchedOutsideBatch = await dao.fetch(doc.id)
@@ -196,22 +121,6 @@ describe('runBatch', () => {
 
       const anotherFetched = (await anotherDao.fetch(anotherDoc.id))!
       expect(anotherFetched).toEqual(updatedAnotherDoc)
-    })
-
-    it('should be error bulkSet in runBatch', async () => {
-      await firestoreEx.runBatch(async () => {
-        const doc = [{ id: 'test1', title: 'aaa' }]
-        expect(dao.bulkSet(doc)).rejects.toThrow()
-      })
-    })
-
-    it('should be error bulkDelete in runBatch', async () => {
-      const doc = { id: 'test1', title: 'aaa' }
-      await dao.set(doc)
-
-      await firestoreEx.runBatch(async () => {
-        expect(dao.bulkDelete([doc.id])).rejects.toThrow()
-      })
     })
   })
 })

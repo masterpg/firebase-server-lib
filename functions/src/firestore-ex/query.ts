@@ -1,5 +1,4 @@
-import { DocumentSnapshot, FieldPath, Query as FirestoreQuery, OrderByDirection, QueryKey, QuerySnapshot, WhereFilterOp } from './types'
-import { Context } from './context'
+import { DocumentSnapshot, FieldPath, Query as FirestoreQuery, OrderByDirection, QueryKey, QuerySnapshot, Transaction, WhereFilterOp } from './types'
 import { Converter } from './converter'
 
 export class Query<T, S> {
@@ -9,7 +8,7 @@ export class Query<T, S> {
   //
   //----------------------------------------------------------------------
 
-  constructor(private readonly _converter: Converter<T, S>, public readonly context: Context, public query: FirestoreQuery) {}
+  constructor(private readonly _converter: Converter<T, S>, public query: FirestoreQuery) {}
 
   //----------------------------------------------------------------------
   //
@@ -84,10 +83,10 @@ export class Query<T, S> {
     return this
   }
 
-  async fetch(): Promise<T[]> {
+  async fetch(tx?: Transaction): Promise<T[]> {
     if (!this.query) throw new Error('no query statement before fetch()')
 
-    const snap = this.context.tx ? await this.context.tx.get(this.query) : await this.query.get()
+    const snap = tx ? await tx.get(this.query) : await this.query.get()
     const arr: T[] = []
 
     snap.forEach(docSnap => {

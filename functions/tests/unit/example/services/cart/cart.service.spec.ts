@@ -271,7 +271,7 @@ describe('CartService', () => {
       expect(actual.detail.message).toBe('The specified product is a duplicate.')
     })
 
-    it('トランザクションが効いているか検証', async () => {
+    it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
@@ -402,7 +402,7 @@ describe('CartService', () => {
       expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
     })
 
-    it('トランザクションが効いているか検証', async () => {
+    it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },
@@ -502,7 +502,7 @@ describe('CartService', () => {
       expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
     })
 
-    it('トランザクションが効いているか検証', async () => {
+    it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: PRODUCTS },
         { collectionName: 'cart', collectionRecords: CART_ITEMS },

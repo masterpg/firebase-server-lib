@@ -77,7 +77,7 @@ export class FirestoreEx {
         toDate: this._options.timestampToDate,
       },
     })
-    return new Query<T, S>(converter, this.context, query)
+    return new Query<T, S>(converter, query)
   }
 
   async runTransaction(updateFunction: (tx: Transaction) => Promise<void>): Promise<void> {

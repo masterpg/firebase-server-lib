@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { Collection, CollectionFactory, DecodeFunc, EncodeFunc, EncodedObject, FirestoreEx, Query } from '../../firestore-ex'
+import { Collection, CollectionFactory, DecodeFunc, EncodeFunc, EncodedObject, FirestoreEx, Query, Transaction, WriteBatch } from '../../firestore-ex'
 import { Injectable, Module } from '@nestjs/common'
 import { TimestampEntity, firestoreExOptions } from '../base'
 
@@ -97,11 +97,11 @@ class StoreService implements BaseStore {
     return this.firestoreEx.collectionGroup(params)
   }
 
-  runTransaction(updateFunction: (tx: FirebaseFirestore.Transaction) => Promise<void>): Promise<void> {
+  runTransaction(updateFunction: (tx: Transaction) => Promise<void>): Promise<void> {
     return this.firestoreEx.runTransaction(updateFunction)
   }
 
-  runBatch(updateFunction: (batch: FirebaseFirestore.WriteBatch) => Promise<void>): Promise<FirebaseFirestore.WriteResult[]> {
+  runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<FirebaseFirestore.WriteResult[]> {
     return this.firestoreEx.runBatch(updateFunction)
   }
 }

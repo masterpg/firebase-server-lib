@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin'
+import { FirestoreEx, Transaction } from '../../../../../src/firestore-ex'
 import { Test, TestingModule } from '@nestjs/testing'
 import { WriteReadyObserver, initLib } from '../../../../../src/lib/base'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import { DevUtilsServiceDI } from '../../../../../src/lib/services'
-import { FirestoreEx } from '../../../../../src/firestore-ex'
 import { findDuplicateItems } from 'web-base-lib'
 
 jest.setTimeout(25000)
@@ -28,6 +28,7 @@ describe('WriteReadyObserver', () => {
   }
 
   let devUtilsService: DevUtilsServiceDI.type
+  const firestoreEx = new FirestoreEx(admin.firestore())
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
@@ -48,20 +49,19 @@ describe('WriteReadyObserver', () => {
       throw new Error(`It is not possible to order more than one product at a time.`)
     }
 
-    const firestoreEx = new FirestoreEx(admin.firestore())
-    await firestoreEx.runTransaction(async () => {
+    await firestoreEx.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(inputs.length)
-      await Promise.all(inputs.map(input => order(firestoreEx, input, writeReady)))
+      await Promise.all(inputs.map(input => order(input, tx, writeReady)))
     })
   }
 
   /**
    * 商品の注文を行います。
-   * @param firestoreEx
    * @param input
+   * @param tx
    * @param writeReady
    */
-  async function order(firestoreEx: FirestoreEx, input: Order, writeReady: WriteReadyObserver): Promise<void> {
+  async function order(input: Order, tx: Transaction, writeReady: WriteReadyObserver): Promise<void> {
     const productDao = firestoreEx.collection<TestProduct>({ path: 'test-products' })
 
     // 商品を取得
@@ -70,20 +70,25 @@ describe('WriteReadyObserver', () => {
       throw new Error(`The specified product '${input.productId}' could not be found.`)
     }
 
+    // 他の注文の書き込み準備ができるまで待機
+    await writeReady.wait()
+
     // 在庫数のチェック
+    // ※本来なら`writeReady.wait()`の上に記述すべきコードだが、
+    //   トランザクションが効いているかを検証するテストのためここに記述している。
     const newStock = product.stock - input.orderNum
     if (newStock < 0) {
       throw new Error(`The product '${product.id}' is out of stock.`)
     }
 
-    // 他の注文の書き込み準備ができるまで待機
-    await writeReady.wait()
-
     // 商品の在庫数を更新
-    await productDao.update({
-      id: product.id,
-      stock: newStock,
-    })
+    await productDao.update(
+      {
+        id: product.id,
+        stock: newStock,
+      },
+      tx
+    )
   }
 
   it('ベーシックケース', async () => {
@@ -136,7 +141,7 @@ describe('WriteReadyObserver', () => {
     try {
       const inputs: Order[] = [
         { productId: 'product1', orderNum: 1 },
-        { productId: 'product2', orderNum: 6 }, // 在庫数以上に注文
+        { productId: 'product2', orderNum: 6 }, // 在庫数より多い注文
         { productId: 'product3', orderNum: 1 },
       ]
       await orders(inputs)

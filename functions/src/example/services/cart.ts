@@ -4,6 +4,7 @@ import { Inject, Injectable, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib/base'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
+import { Transaction } from '../../firestore-ex'
 
 //========================================================================
 //
@@ -64,9 +65,9 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await this.storeService.runTransaction(async () => {
+    await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(inputs.length)
-      const promises = inputs.map(input => this.m_addCartItem(user.uid, input, writeReady))
+      const promises = inputs.map(input => this.m_addCartItem(user.uid, input, tx, writeReady))
       result = await Promise.all(promises)
     })
 
@@ -79,9 +80,9 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await this.storeService.runTransaction(async () => {
+    await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(inputs.length)
-      const promises = inputs.map(input => this.m_updateCartItem(user.uid, input, writeReady))
+      const promises = inputs.map(input => this.m_updateCartItem(user.uid, input, tx, writeReady))
       result = await Promise.all(promises)
     })
 
@@ -93,9 +94,9 @@ class CartService {
 
     let result!: CartItemEditResponse[]
 
-    await this.storeService.runTransaction(async () => {
+    await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(ids.length)
-      const promises = ids.map(id => this.m_removeCartItem(user.uid, id, writeReady))
+      const promises = ids.map(id => this.m_removeCartItem(user.uid, id, tx, writeReady))
       result = await Promise.all(promises)
     })
 
@@ -104,9 +105,9 @@ class CartService {
 
   async checkoutCart(user: { uid: string }): Promise<boolean> {
     const cartItems = await this.storeService.cartDao.where('uid', '==', user.uid).fetch()
-    await this.storeService.runBatch(async () => {
+    await this.storeService.runBatch(async batch => {
       for (const cartItem of cartItems) {
-        await this.storeService.cartDao.delete(cartItem.id)
+        await this.storeService.cartDao.delete(cartItem.id, batch)
       }
     })
 
@@ -123,14 +124,20 @@ class CartService {
    * カートにアイテムを追加します。
    * @param uid
    * @param itemInput
+   * @param tx
    * @param writeReady
    */
-  private async m_addCartItem(uid: string, itemInput: CartItemAddInput, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
+  private async m_addCartItem(
+    uid: string,
+    itemInput: CartItemAddInput,
+    tx: Transaction,
+    writeReady: WriteReadyObserver
+  ): Promise<CartItemEditResponse> {
     // 商品を取得
-    const product = await this.m_getProductById(itemInput.productId)
+    const product = await this.m_getProductById(itemInput.productId, tx)
 
     // 追加しようとするカートアイテムが存在しないことをチェック
-    const cartItems = await this.storeService.cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch()
+    const cartItems = await this.storeService.cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch(tx)
     if (cartItems.length > 0) {
       const cartItem = cartItems[0]
       throw new InputValidationError('The specified cart item already exists.', {
@@ -157,11 +164,11 @@ class CartService {
 
     // 新規カートアイテム追加を実行
     const cartItem = { id: '', uid, ...itemInput }
-    cartItem.id = await this.storeService.cartDao.add(cartItem)
+    cartItem.id = await this.storeService.cartDao.add(cartItem, tx)
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await this.storeService.productDao.update(product)
+    await this.storeService.productDao.update(product, tx)
 
     return { ...cartItem, product }
   }
@@ -170,14 +177,20 @@ class CartService {
    * カートのアイテムを更新します。
    * @param uid
    * @param input
+   * @param tx
    * @param writeReady
    */
-  private async m_updateCartItem(uid: string, input: CartItemUpdateInput, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
+  private async m_updateCartItem(
+    uid: string,
+    input: CartItemUpdateInput,
+    tx: Transaction,
+    writeReady: WriteReadyObserver
+  ): Promise<CartItemEditResponse> {
     // カートアイテムを取得
-    const cartItem = await this.m_getCartItemById(uid, input.id)
+    const cartItem = await this.m_getCartItemById(uid, input.id, tx)
 
     // 商品を取得
-    const product = await this.m_getProductById(cartItem.productId)
+    const product = await this.m_getProductById(cartItem.productId, tx)
 
     // 今回カートアイテムに追加された商品の個数を算出
     const addedQuantity = cartItem.quantity - input.quantity
@@ -198,17 +211,23 @@ class CartService {
 
     // カートアイテム更新を実行
     cartItem.quantity = input.quantity
-    await this.storeService.cartDao.update({
-      id: cartItem.id,
-      quantity: cartItem.quantity,
-    })
+    await this.storeService.cartDao.update(
+      {
+        id: cartItem.id,
+        quantity: cartItem.quantity,
+      },
+      tx
+    )
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await this.storeService.productDao.update({
-      id: product.id,
-      stock: product.stock,
-    })
+    await this.storeService.productDao.update(
+      {
+        id: product.id,
+        stock: product.stock,
+      },
+      tx
+    )
 
     return { ...cartItem, product }
   }
@@ -217,14 +236,15 @@ class CartService {
    * カートからアイテムを削除します。
    * @param uid
    * @param cartItemId
+   * @param tx
    * @param writeReady
    */
-  private async m_removeCartItem(uid: string, cartItemId: string, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
+  private async m_removeCartItem(uid: string, cartItemId: string, tx: Transaction, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
     // カートアイテムを取得
-    const cartItem = await this.m_getCartItemById(uid, cartItemId)
+    const cartItem = await this.m_getCartItemById(uid, cartItemId, tx)
 
     // 商品を取得
-    const product = await this.m_getProductById(cartItem.productId)
+    const product = await this.m_getProductById(cartItem.productId, tx)
     // 取得した商品の在庫にカートアイテム削除分をプラスする
     const newStock = product.stock + cartItem.quantity
 
@@ -232,17 +252,17 @@ class CartService {
     await writeReady.wait()
 
     // カートアイテムの削除を実行
-    await this.storeService.cartDao.delete(cartItem.id)
+    await this.storeService.cartDao.delete(cartItem.id, tx)
 
     // 商品の在庫数更新を実行
     product.stock = newStock
-    await this.storeService.productDao.update(product)
+    await this.storeService.productDao.update(product, tx)
 
     return { ...cartItem, quantity: 0, product }
   }
 
-  private async m_getProductById(id: string): Promise<Product> {
-    const product = await this.storeService.productDao.fetch(id)
+  private async m_getProductById(id: string, tx: Transaction): Promise<Product> {
+    const product = await this.storeService.productDao.fetch(id, tx)
     if (!product) {
       throw new InputValidationError('The specified product could not be found.', {
         productId: id,
@@ -251,8 +271,8 @@ class CartService {
     return product
   }
 
-  private async m_getCartItemById(uid: string, id: string): Promise<CartItem> {
-    const cartItem = await this.storeService.cartDao.fetch(id)
+  private async m_getCartItemById(uid: string, id: string, tx: Transaction): Promise<CartItem> {
+    const cartItem = await this.storeService.cartDao.fetch(id, tx)
     if (!cartItem) {
       throw new InputValidationError('The specified cart item could not be found.', {
         cartItemId: id,

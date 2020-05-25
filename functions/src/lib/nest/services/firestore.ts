@@ -21,10 +21,10 @@ class FirestoreService {
     const collectionRef = db.collection(collectionPath)
     const query = collectionRef.orderBy('__name__').limit(batchSize)
 
-    await db.runTransaction(async transaction => {
-      const docRefs = await this.m_getDeepDocRefs(transaction, query, batchSize)
+    await db.runTransaction(async tx => {
+      const docRefs = await this.m_getDeepDocRefs(tx, query, batchSize)
       for (const docRef of docRefs) {
-        transaction.delete(docRef)
+        tx.delete(docRef)
       }
     })
   }
@@ -32,12 +32,12 @@ class FirestoreService {
   /**
    * 指定されたクエリを実行し、その結果からさらにクエリの作成・実行を繰り返して、
    * 再帰的にドキュメントリファレンスを取得します。
-   * @param transaction
+   * @param tx
    * @param query
    * @param batchSize
    */
-  private async m_getDeepDocRefs(transaction: Transaction, query: Query, batchSize: number): Promise<DocumentReference[]> {
-    const snapshot = await transaction.get(query)
+  private async m_getDeepDocRefs(tx: Transaction, query: Query, batchSize: number): Promise<DocumentReference[]> {
+    const snapshot = await tx.get(query)
     if (snapshot.size === 0) return []
 
     const result: DocumentReference[] = []
@@ -48,7 +48,7 @@ class FirestoreService {
         const promises: Promise<DocumentReference[]>[] = []
         for (const subCollection of subCollections || []) {
           const subQuery = subCollection.orderBy('__name__').limit(batchSize)
-          const subPromise = this.m_getDeepDocRefs(transaction, subQuery, batchSize)
+          const subPromise = this.m_getDeepDocRefs(tx, subQuery, batchSize)
           promises.push(subPromise)
         }
         return (await Promise.all(promises)).reduce<DocumentReference[]>((result, docRefs) => {

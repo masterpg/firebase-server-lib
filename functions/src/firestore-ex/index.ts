@@ -21,4 +21,6 @@ export {
   OmitEntityTimestamp,
   Timestamp,
   TimestampEntity,
+  Transaction,
+  WriteBatch,
 } from './types'
