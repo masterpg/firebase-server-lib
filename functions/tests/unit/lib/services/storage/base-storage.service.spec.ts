@@ -18,7 +18,7 @@ import {
 } from '../../../../../src/lib/services'
 import { InputValidationError, initLib } from '../../../../../src/lib/base'
 import { Test, TestingModule } from '@nestjs/testing'
-import { arrayToDict, removeBothEndsSlash } from 'web-base-lib'
+import { arrayToDict, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
@@ -73,9 +73,9 @@ async function existsNodes(basePath: string | null, nodes: StorageNode[]): Promi
     // ディレクトリの末尾が'/'でないことを検証
     expect(node.dir.endsWith('/')).toBeFalsy()
     // node.path が ｢node.dir + node.name｣ と一致することを検証
-    expect(node.path).toBe(path.join(node.dir, node.name))
+    expect(node.path).toBe(removeStartDirChars(path.join(node.dir, node.name)))
     // Cloud Storageに対象のノードが存在することを検証
-    let nodePath = basePath ? `${removeBothEndsSlash(basePath)}/${node.path}` : node.path
+    let nodePath = basePath ? removeStartDirChars(path.join(basePath, node.path)) : node.path
     nodePath += node.nodeType === StorageNodeType.Dir ? '/' : ''
     const gcsNode = bucket.file(nodePath)
     const [exists] = await gcsNode.exists()
@@ -294,6 +294,16 @@ describe('BaseStorageService', () => {
 
       expect(actual.path).toBe(`d1`)
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
+    })
+
+    it('空文字を指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.getNode(null, ``)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual.message).toBe(`'nodePath' is not specified.`)
     })
 
     it('大量データの場合 - ディレクトリ', async () => {
@@ -1026,6 +1036,13 @@ describe('BaseStorageService', () => {
       expect(actual[3].path).toBe(`d1/d11/d111/fileA.txt`)
       await existsNodes(`${TEST_FILES_DIR}`, Object.values(actual))
     })
+
+    it('空文字を指定した場合', async () => {
+      // 空文字を指定
+      const actual = await storageService.getHierarchicalNodes(null, ``)
+
+      expect(actual.length).toBe(0)
+    })
   })
 
   describe('getAncestorDirs', () => {
@@ -1074,6 +1091,13 @@ describe('BaseStorageService', () => {
       expect(actual[1].path).toBe(`d1/d11`)
       expect(actual[2].path).toBe(`d1/d11/d111`)
       await existsNodes(`${TEST_FILES_DIR}`, actual)
+    })
+
+    it('空文字を指定した場合', async () => {
+      // 空文字を指定
+      const actual = await storageService.getAncestorDirs(null, ``)
+
+      expect(actual.length).toBe(0)
     })
   })
 
@@ -3088,6 +3112,26 @@ describe('BaseStorageService', () => {
       expect(actual.exists).toBeTruthy()
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
     })
+
+    it('空文字を指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.getRealNode(null, ``)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual.message).toBe(`'nodePath' is not specified.`)
+    })
+
+    it(`'/'のみを指定した場合`, async () => {
+      let actual!: Error
+      try {
+        await storageService.getRealNode(null, `/`)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual.message).toBe(`'nodePath' dose not allow only '/'.`)
+    })
   })
 
   describe('getRealDirNode', () => {
@@ -3101,7 +3145,7 @@ describe('BaseStorageService', () => {
       await existsNodes(null, [actual])
     })
 
-    it(`basePathを指定した場合 + パスの先頭・末尾に'/'を付与`, async () => {
+    it(`basePathを指定した場合`, async () => {
       await storageService.createDirs(`${TEST_FILES_DIR}`, [`d1`])
 
       // パスの先頭・末尾に'/'を付与
@@ -3110,6 +3154,17 @@ describe('BaseStorageService', () => {
       expect(actual.path).toBe(`d1`)
       expect(actual.exists).toBeTruthy()
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
+    })
+
+    it('空文字を指定した場合', async () => {
+      let actual!: Error
+      try {
+        // 空文字を指定
+        await storageService.getRealDirNode(null, ``)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual!.message).toBe(`'dirPath' is not specified.`)
     })
   })
 
@@ -3147,6 +3202,17 @@ describe('BaseStorageService', () => {
       expect(actual.path).toBe(`d1/fileA.txt`)
       expect(actual.exists).toBeTruthy()
       await existsNodes(`${TEST_FILES_DIR}`, [actual])
+    })
+
+    it('空文字を指定した場合', async () => {
+      let actual!: Error
+      try {
+        // 空文字を指定
+        await storageService.getRealFileNode(null, ``)
+      } catch (err) {
+        actual = err
+      }
+      expect(actual!.message).toBe(`'filePath' is not specified.`)
     })
   })
 

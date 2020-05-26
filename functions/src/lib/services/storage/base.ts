@@ -144,8 +144,9 @@ class BaseStorageService {
     nodePath = removeBothEndsSlash(nodePath)
     const { maxChunk } = options || { maxChunk: MAX_CHUNK }
 
-    const fileNode = await this.getRealFileNode(basePath, nodePath)
-    if (fileNode.exists) return fileNode
+    if (!nodePath) {
+      throw new Error(`'nodePath' is not specified.`)
+    }
 
     const dirNode = await this.getRealDirNode(basePath, nodePath)
     if (dirNode.exists) return dirNode
@@ -409,6 +410,8 @@ class BaseStorageService {
    * @param nodePath
    */
   async getHierarchicalNodes(basePath: string | null, nodePath: string): Promise<GCSStorageNode[]> {
+    if (!nodePath) return []
+
     basePath = removeBothEndsSlash(basePath)
     nodePath = removeBothEndsSlash(nodePath)
 
@@ -446,6 +449,8 @@ class BaseStorageService {
    * @param nodePath
    */
   async getAncestorDirs(basePath: string | null, nodePath: string): Promise<GCSStorageNode[]> {
+    if (!nodePath) return []
+
     basePath = removeBothEndsSlash(basePath)
     nodePath = removeBothEndsSlash(nodePath)
 
@@ -956,6 +961,13 @@ class BaseStorageService {
    *   ディレクトリパスを指定する場合は末尾に'/'を付与するよう注意してください。
    */
   async getRealNode(basePath: string | null, nodePath: string): Promise<GCSStorageNode> {
+    if (!nodePath) {
+      throw new Error(`'nodePath' is not specified.`)
+    }
+    if (nodePath === '/') {
+      throw new Error(`'nodePath' dose not allow only '/'.`)
+    }
+
     basePath = removeBothEndsSlash(basePath)
     nodePath = removeStartSlash(nodePath)
 
@@ -995,6 +1007,9 @@ class BaseStorageService {
    * @param dirPath
    */
   async getRealDirNode(basePath: string | null, dirPath: string): Promise<GCSStorageNode> {
+    if (!dirPath) {
+      throw new Error(`'dirPath' is not specified.`)
+    }
     return this.getRealNode(basePath, path.join(dirPath, '/'))
   }
 
@@ -1026,6 +1041,9 @@ class BaseStorageService {
    * @param filePath
    */
   async getRealFileNode(basePath: string | null, filePath: string): Promise<GCSStorageNode> {
+    if (!filePath) {
+      throw new Error(`'filePath' is not specified.`)
+    }
     return this.getRealNode(basePath, removeEndSlash(filePath))
   }
 
@@ -1201,102 +1219,6 @@ class BaseStorageService {
     }
 
     return { list, nextPageToken: apiResponse.nextPageToken }
-  }
-
-  /**
-   * Cloud Storageから指定されたディレクトリ直下の実際に存在するノードを取得します。
-   * @param basePath
-   * @param dirPath
-   * @param options
-   */
-  protected async getRealDirChildren(
-    basePath: string | null,
-    dirPath?: string,
-    options?: StoragePaginationOptionsInput
-  ): Promise<{ nextPageToken?: string; list: GCSStorageNode[] }> {
-    basePath = removeBothEndsSlash(basePath)
-    dirPath = removeBothEndsSlash(dirPath)
-    options = options || {}
-
-    // 引数ディレクトリパスをCloud Storageのパスへ変換
-    let gcsDirPath = ''
-    if (basePath || dirPath) {
-      gcsDirPath = path.join(basePath, dirPath, '/')
-    }
-
-    // ノード検索オプションの生成
-    const getFilesOptions: GetFilesOptions = {
-      prefix: gcsDirPath,
-      autoPaginate: false,
-      delimiter: '/',
-      maxResults: MAX_CHUNK,
-    }
-    if (options.pageToken) getFilesOptions.pageToken = options.pageToken
-    if (options.maxChunk) getFilesOptions.maxResults = options.maxChunk
-
-    // Cloud Storageから指定されたディレクトリのノードを取得
-    const bucket = admin.storage().bucket()
-    const [gcsNodes, _, apiResponse] = await bucket.getFiles(getFilesOptions)
-
-    // 指定されたディレクトリと直下のファイルを処理
-    // ※ここでは直下の｢ディレクトリ｣は処理されない
-    const promises1: Promise<GCSStorageNode | undefined>[] = gcsNodes.map(async gcsNode => {
-      // basePathが指定されかつ、basePathと取得ノードが一致した場合、無視する
-      if (basePath && `${basePath}/` === gcsNode.name) {
-        return undefined
-      }
-      // GCSノードをアプリケーションで扱える形式へ変換
-      const node = await this.toStorageNode(basePath, gcsNode)
-      node.exists = true
-      // ファイルにIDが振られていない場合は設定
-      // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
-      if (!node.id) {
-        Object.assign(node, await this.assignIdToNode(basePath, node.gcsNode))
-      }
-      return node
-    })
-    const nodes1 = (await Promise.all(promises1)).filter(node => Boolean(node)) as GCSStorageNode[]
-
-    // 直下のディレクトリを処理
-    const prefixes: string[] = apiResponse.prefixes || []
-    const promises2: Promise<GCSStorageNode | undefined>[] = prefixes.map(async dirPath => {
-      // basePathが指定された場合、basePathを取り除く
-      if (basePath) {
-        dirPath = dirPath.replace(path.join(basePath, '/'), '')
-      }
-      const childDirNode = await this.getRealDirNode(basePath, dirPath)
-      // ディレクトリが存在しない場合、ディレクトリを作成
-      // ※Cloud Storageに手動でアップロードされた場合がこの状況にあたる
-      if (!childDirNode.exists) {
-        Object.assign(childDirNode, await this.saveDirNode(basePath, childDirNode.path))
-      }
-      // ディレクトリにIDが振られていない場合は設定
-      // ※Cloud Storageに手動でディレクトリが作成された場合がこの状況にあたる
-      if (!childDirNode.id) {
-        Object.assign(childDirNode, await this.assignIdToNode(basePath, childDirNode.gcsNode))
-      }
-      return childDirNode
-    })
-    const nodes2 = (await Promise.all(promises2)).filter(node => Boolean(node)) as GCSStorageNode[]
-
-    const nodeDict = arrayToDict([...nodes1, ...nodes2], 'path')
-
-    // 引数ディレクトリが指定されている場合
-    if (dirPath) {
-      let dirNode = nodeDict[dirPath]
-      // 引数ディレクトリが存在しないのに、直下ノードが存在する場合
-      if (!dirNode && Object.keys(nodeDict).length > 0) {
-        // 引数ディレクトリを作成
-        dirNode = await this.getRealDirNode(basePath, dirPath)
-        Object.assign(dirNode, await this.saveDirNode(basePath, dirNode.path))
-        nodeDict[dirNode.path] = dirNode
-      }
-    }
-
-    return {
-      nextPageToken: apiResponse.nextPageToken,
-      list: this.sortStorageNodes(Object.values(nodeDict)),
-    }
   }
 
   /**
