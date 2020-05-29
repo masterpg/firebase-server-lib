@@ -259,7 +259,6 @@ class DevUtilsService {
       // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
     }
 
-    // 既にユーザーが存在しない場合は追加
     if (!userRecord) {
       userRecord = await admin.auth().createUser(input)
     } else {

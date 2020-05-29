@@ -40,6 +40,7 @@ const ICHIRO: User = {
 
 const ICHIRO_TOKEN: UserIdClaims = {
   uid: ICHIRO.id,
+  authStatus: AuthStatus.WaitForEmailVerified,
   myDirName: ICHIRO.myDirName,
   isAppAdmin: ICHIRO.isAppAdmin,
 }

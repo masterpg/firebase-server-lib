@@ -1,8 +1,10 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { AuthDataResult, User as UserEntity, UserInfoInput, UserServiceDI, UserServiceModule } from '../../../lib/services'
-import { AuthGuard, AuthGuardModule, IdToken, User } from '../../../lib/nest'
-import { Inject, Module, UseGuards } from '@nestjs/common'
+import { AuthGuardModule, AuthServiceDI, AuthServiceModule, GQLContext, IdToken } from '../../../lib/nest'
+import { Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { BaseGQLModule } from '../base'
+import { GQLCtx } from '../../../lib/gql'
+import { Request } from 'express'
 
 //========================================================================
 //
@@ -12,31 +14,54 @@ import { BaseGQLModule } from '../base'
 
 @Resolver()
 export class UserResolver {
-  constructor(@Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type) {}
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type
+  ) {}
+
+  //----------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------
 
   @Query()
-  @UseGuards(AuthGuard)
-  async authData(@User() user: IdToken): Promise<AuthDataResult> {
+  async authData(@GQLCtx() context: GQLContext): Promise<AuthDataResult> {
+    const user = await this.m_getIdToken(context.req)
     return this.userService.getAuthData(user.uid)
   }
 
   @Mutation()
-  @UseGuards(AuthGuard)
-  async setOwnUserInfo(@User() user: IdToken, @Args('input') input: UserInfoInput): Promise<UserEntity> {
+  async setOwnUserInfo(@GQLCtx() context: GQLContext, @Args('input') input: UserInfoInput): Promise<UserEntity> {
+    const user = await this.m_getIdToken(context.req)
     return this.userService.setUserInfo(user.uid, input)
   }
 
   @Mutation()
-  @UseGuards(AuthGuard)
-  async deleteOwnUser(@User() user: IdToken): Promise<boolean> {
+  async deleteOwnUser(@GQLCtx() context: GQLContext): Promise<boolean> {
+    const user = await this.m_getIdToken(context.req)
     await this.userService.deleteUser(user.uid)
     return true
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  private async m_getIdToken(req: Request): Promise<IdToken> {
+    const user = await this.authService.getIdToken(req)
+    if (!user) {
+      throw new UnauthorizedException('Authorization failed because the ID token could not be obtained from the HTTP request header.')
+    }
+    return user
   }
 }
 
 @Module({
   providers: [UserResolver],
-  imports: [BaseGQLModule, AuthGuardModule, UserServiceModule],
+  imports: [BaseGQLModule, AuthGuardModule, AuthServiceModule, UserServiceModule],
 })
 class UserGQLModule {}
 

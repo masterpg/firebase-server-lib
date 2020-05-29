@@ -1,23 +1,17 @@
 import * as admin from 'firebase-admin'
+import { AuthStatus, UserIdClaims } from '../nest'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from './store'
 import { StorageServiceDI, StorageServiceModule } from './storage'
 import { EntityId } from '../../firestore-ex'
 import { IsNotEmpty } from 'class-validator'
 import UserRecord = admin.auth.UserRecord
-import { UserIdClaims } from '../nest'
 
 //========================================================================
 //
 //  Interfaces
 //
 //========================================================================
-
-enum AuthStatus {
-  WaitForEmailVerified = 'WaitForEmailVerified',
-  WaitForEntry = 'WaitForEntry',
-  Available = 'Available',
-}
 
 interface AuthDataResult {
   status: AuthStatus
@@ -96,16 +90,11 @@ class UserService {
       status = user ? AuthStatus.Available : AuthStatus.WaitForEntry
     }
 
-    // // アカウントが持つ認証プロバイダがパスワード認証のみで、かつメールアドレス確認が行われていない場合
-    // if (passwordProviderExists && userRecord.providerData.length === 1 && !userRecord.emailVerified) {
-    //   // ユーザーに送信した確認メールの回答待ち
-    //   status = AuthStatus.WaitForEmailVerified
-    // }
-    // // 上記以外の場合
-    // else {
-    //   // ユーザー情報があれば有効なユーザー、なければユーザー情報登録待ち
-    //   status = user ? AuthStatus.Available : AuthStatus.WaitForEntry
-    // }
+    // 認証ステータスをトークンに設定
+    await admin.auth().setCustomUserClaims(uid, {
+      ...userRecord.customClaims,
+      authStatus: status,
+    })
 
     // カスタムトークンの取得
     const token = await admin.auth().createCustomToken(uid, {})

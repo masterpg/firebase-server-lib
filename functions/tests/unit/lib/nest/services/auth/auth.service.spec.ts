@@ -1,9 +1,10 @@
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/common/data'
-import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/lib/services'
+import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/lib/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
+import { UserIdClaims } from '../../../../../../src/lib/nest'
 import { initLib } from '../../../../../../src/lib/base'
 import request = require('supertest')
 
@@ -75,6 +76,25 @@ describe('AuthService', () => {
       )
     })
 
+    it('認証ユーザーがまだ利用可能でない場合', async () => {
+      const token: UserIdClaims = {
+        uid: APP_ADMIN_USER.uid,
+        ...APP_ADMIN_USER.customClaims,
+        authStatus: AuthStatus.WaitForEntry,
+      }
+      return (
+        request(app.getHttpServer())
+          .get('/dummyRESTService/admin/settings')
+          // 認証ユーザーがまだ利用可能でないトークンを設定
+          .set({ Authorization: `Bearer ${JSON.stringify(token)}` })
+          .expect(403)
+          .then((res: Response) => {
+            expect(res.header['www-authenticate']).toEqual(`Bearer error="insufficient_scope"`)
+            expect(res.body.data).toBeUndefined()
+          })
+      )
+    })
+
     it('認証ユーザーのロール権限が足りない場合', async () => {
       return (
         request(app.getHttpServer())
@@ -137,6 +157,27 @@ describe('AuthService', () => {
           .expect(200)
           .then((res: Response) => {
             expect(res.header['www-authenticate']).toEqual(`Bearer error="invalid_token"`)
+            expect(res.body.data).toBeNull()
+          })
+      )
+    })
+
+    it('認証ユーザーがまだ利用可能でない場合', async () => {
+      const token: UserIdClaims = {
+        uid: APP_ADMIN_USER.uid,
+        ...APP_ADMIN_USER.customClaims,
+        authStatus: AuthStatus.WaitForEntry,
+      }
+      return (
+        request(app.getHttpServer())
+          .post('/dummyService')
+          .send(adminSettingsRequestData)
+          .set('Content-Type', 'application/json')
+          // 認証ユーザーがまだ利用可能でないトークンを設定
+          .set(GENERAL_USER_HEADER)
+          .expect(200)
+          .then((res: Response) => {
+            expect(res.header['www-authenticate']).toEqual(`Bearer error="insufficient_scope"`)
             expect(res.body.data).toBeNull()
           })
       )

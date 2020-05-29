@@ -12,6 +12,7 @@ import {
 } from '../../../../../src/lib/services'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
+import { UserClaims } from '../../../../../src/lib/nest'
 import { initLib } from '../../../../../src/lib/base'
 
 jest.setTimeout(25000)
@@ -96,12 +97,8 @@ afterAll(async () => {
 describe('UserService', () => {
   describe('getAuthData', () => {
     beforeAll(async () => {
-      for (const user of USERS) {
-        await userService.deleteUser(user.uid)
-      }
-      for (const user of USERS) {
-        await devUtilsService.setTestFirebaseUsers(user)
-      }
+      await devUtilsService.deleteTestUsers(...USERS.map(user => user.uid))
+      await devUtilsService.setTestFirebaseUsers(...USERS)
       await userService.setUserInfo(AVAILABLE_USER.uid, AVAILABLE_USER_INPUT)
     })
 
@@ -111,6 +108,10 @@ describe('UserService', () => {
       expect(actual.status).toBe(AuthStatus.WaitForEmailVerified)
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
+
+      const userRecord = await admin.auth().getUser(NOT_VERIFIED_USER.uid)
+      const userClaims = userRecord.customClaims as UserClaims
+      expect(userClaims.authStatus).toBe(AuthStatus.WaitForEmailVerified)
     })
 
     it('メールアドレス確認済みユーザーの場合', async () => {
@@ -119,6 +120,10 @@ describe('UserService', () => {
       expect(actual.status).toBe(AuthStatus.WaitForEntry)
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
+
+      const userRecord = await admin.auth().getUser(VERIFIED_USER.uid)
+      const userClaims = userRecord.customClaims as UserClaims
+      expect(userClaims.authStatus).toBe(AuthStatus.WaitForEntry)
     })
 
     it('登録済みユーザーの場合', async () => {
@@ -138,6 +143,10 @@ describe('UserService', () => {
           photoURL: AVAILABLE_USER.photoURL,
         },
       } as User)
+
+      const userRecord = await admin.auth().getUser(AVAILABLE_USER.uid)
+      const userClaims = userRecord.customClaims as UserClaims
+      expect(userClaims.authStatus).toBe(AuthStatus.Available)
     })
 
     it('存在しないユーザーを指定した場合', async () => {
@@ -147,11 +156,13 @@ describe('UserService', () => {
 
   describe('setUserInfo', () => {
     beforeEach(async () => {
-      await userService.deleteUser(VERIFIED_USER.uid)
+      await storeService.userDao.delete(VERIFIED_USER.uid)
+      await storeService.publicProfileDao.delete(VERIFIED_USER.uid)
       await devUtilsService.setTestFirebaseUsers(VERIFIED_USER)
     })
 
     it('ユーザー情報の追加', async () => {
+      // ユーザー情報の追加
       const actual = await userService.setUserInfo(VERIFIED_USER.uid, {
         fullName: '鈴木 二郎',
         displayName: 'ジロー',
@@ -184,13 +195,13 @@ describe('UserService', () => {
     })
 
     it('ユーザー情報の更新', async () => {
-      // ユーザー追加
+      // ユーザー情報の追加
       const added = await userService.setUserInfo(VERIFIED_USER.uid, {
         fullName: '鈴木 二郎',
         displayName: 'ジロー',
       })
 
-      // ユーザー更新
+      // ユーザー情報の更新
       const actual = await userService.setUserInfo(VERIFIED_USER.uid, {
         fullName: 'Jiro Suzuki',
         displayName: 'Jiro',

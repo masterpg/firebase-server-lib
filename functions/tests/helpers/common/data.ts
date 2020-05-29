@@ -1,4 +1,4 @@
-import { TestUserInput } from '../../../src/lib/services'
+import { AuthStatus, TestUserInput } from '../../../src/lib/services'
 import { UserIdClaims } from '../../../src/lib/nest'
 
 export const GENERAL_USER: Required<TestUserInput> = {
@@ -8,7 +8,7 @@ export const GENERAL_USER: Required<TestUserInput> = {
   password: 'passpass',
   displayName: '一般テストユーザー',
   disabled: false,
-  customClaims: { myDirName: 'test.general' },
+  customClaims: { authStatus: AuthStatus.Available, myDirName: 'test.general' },
   fullName: '一般 太郎',
   photoURL: 'https://example.com/test.general/user.png',
 }
@@ -29,7 +29,7 @@ export const APP_ADMIN_USER: Required<TestUserInput> = {
   password: 'passpass',
   displayName: 'アプリケーション管理テストユーザー',
   disabled: false,
-  customClaims: { myDirName: 'test.app.admin', isAppAdmin: true },
+  customClaims: { authStatus: AuthStatus.Available, myDirName: 'test.app.admin', isAppAdmin: true },
   fullName: '管理 太郎',
   photoURL: 'https://example.com/test.app.admin/user.png',
 }
@@ -50,7 +50,7 @@ export const STORAGE_USER: Required<TestUserInput> = {
   password: 'passpass',
   displayName: 'ストレージテストユーザー',
   disabled: false,
-  customClaims: { myDirName: 'test.storage' },
+  customClaims: { authStatus: AuthStatus.Available, myDirName: 'test.storage' },
   fullName: '貯蔵 太郎',
   photoURL: 'https://example.com/test.storage/user.png',
 }

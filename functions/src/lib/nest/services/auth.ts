@@ -11,6 +11,7 @@ import { Request, Response } from 'express'
 interface UserClaims {
   isAppAdmin?: boolean
   myDirName?: string
+  authStatus?: AuthStatus
 }
 
 interface UserIdClaims extends UserClaims {
@@ -18,6 +19,12 @@ interface UserIdClaims extends UserClaims {
 }
 
 interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
+
+enum AuthStatus {
+  WaitForEmailVerified = 'WaitForEmailVerified',
+  WaitForEntry = 'WaitForEntry',
+  Available = 'Available',
+}
 
 enum AuthRoleType {
   AppAdmin = 'AppAdmin',
@@ -54,7 +61,7 @@ abstract class AuthService {
       res.setHeader('WWW-Authenticate', 'Bearer realm="token_required"')
       return {
         result: false,
-        error: new UnauthorizedException('Authorization failed because ID token could not be obtained from the HTTP request header.'),
+        error: new UnauthorizedException('Authorization failed because the ID token could not be obtained from the HTTP request header.'),
       }
     }
 
@@ -65,7 +72,15 @@ abstract class AuthService {
       res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token"')
       return {
         result: false,
-        error: new UnauthorizedException('Authorization failed because ID token decoding failed.'),
+        error: new UnauthorizedException('Authorization failed because the ID token decoding failed.'),
+      }
+    }
+
+    if (idToken.authStatus !== AuthStatus.Available) {
+      res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
+      return {
+        result: false,
+        error: new ForbiddenException(`Authorization failed because the user '${idToken.uid}' is not available.`),
       }
     }
 
@@ -75,7 +90,7 @@ abstract class AuthService {
           res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
           return {
             result: false,
-            error: new ForbiddenException('Authorization failed because the role is invalid.'),
+            error: new ForbiddenException(`Authorization failed because the user '${idToken.uid}' role is invalid.`),
           }
         }
       }
@@ -181,4 +196,4 @@ class AuthServiceModule {}
 //
 //========================================================================
 
-export { AuthServiceDI, AuthServiceModule, UserClaims, UserIdClaims, AuthRoleType, AuthValidateResult, IdToken }
+export { AuthServiceDI, AuthServiceModule, UserClaims, UserIdClaims, AuthStatus, AuthRoleType, AuthValidateResult, IdToken }
