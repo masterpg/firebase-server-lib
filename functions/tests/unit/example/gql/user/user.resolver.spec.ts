@@ -1,5 +1,5 @@
 import * as td from 'testdouble'
-import { AuthDataResult, AuthStatus, PublicProfile, User, UserInfoInput, UserServiceDI } from '../../../../../src/lib/services'
+import { AuthDataResult, AuthStatus, PublicProfile, UserInfo, UserInfoInput, UserServiceDI } from '../../../../../src/lib/services'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
@@ -20,7 +20,7 @@ initApp()
 
 const now = dayjs()
 
-const ICHIRO: User = {
+const ICHIRO: UserInfo = {
   id: 'ichiro',
   fullName: '鈴木 一郎',
   email: 'ichiro@example.com',
@@ -58,13 +58,13 @@ interface ResponsePublicProfile extends OmitEntityTimestamp<PublicProfile> {
   updatedAt: string
 }
 
-interface ResponseUser extends Omit<OmitEntityTimestamp<User>, 'publicProfile'> {
+interface ResponseUser extends Omit<OmitEntityTimestamp<UserInfo>, 'publicProfile'> {
   createdAt: string
   updatedAt: string
   publicProfile: ResponsePublicProfile
 }
 
-function toResponseUser(user: User): ResponseUser {
+function toResponseUser(user: UserInfo): ResponseUser {
   return merge({}, user, {
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),

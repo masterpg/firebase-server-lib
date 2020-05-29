@@ -6,7 +6,7 @@ import {
   TestFirebaseUserInput,
   TestSignedUploadUrlInput,
   TestUserInput,
-  User,
+  UserInfo,
 } from '../../../lib/services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
@@ -58,7 +58,7 @@ export class DevUtilsResolver {
   }
 
   @Mutation()
-  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<User[]> {
+  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<UserInfo[]> {
     return await this.devUtilsService.setTestUsers(...users)
   }
 

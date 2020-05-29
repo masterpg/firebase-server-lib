@@ -1,9 +1,9 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthDataResult, User as UserEntity, UserInfoInput, UserServiceDI, UserServiceModule } from '../../../lib/services'
+import { AuthDataResult, UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from '../../../lib/services'
 import { AuthGuardModule, AuthServiceDI, AuthServiceModule, GQLContext, IdToken } from '../../../lib/nest'
 import { Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { BaseGQLModule } from '../base'
-import { GQLCtx } from '../../../lib/gql'
+import { GQLContextArg } from '../../../lib/gql'
 import { Request } from 'express'
 
 //========================================================================
@@ -26,19 +26,19 @@ export class UserResolver {
   //----------------------------------------------------------------------
 
   @Query()
-  async authData(@GQLCtx() context: GQLContext): Promise<AuthDataResult> {
+  async authData(@GQLContextArg() context: GQLContext): Promise<AuthDataResult> {
     const user = await this.m_getIdToken(context.req)
     return this.userService.getAuthData(user.uid)
   }
 
   @Mutation()
-  async setOwnUserInfo(@GQLCtx() context: GQLContext, @Args('input') input: UserInfoInput): Promise<UserEntity> {
+  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input') input: UserInfoInput): Promise<UserInfo> {
     const user = await this.m_getIdToken(context.req)
     return this.userService.setUserInfo(user.uid, input)
   }
 
   @Mutation()
-  async deleteOwnUser(@GQLCtx() context: GQLContext): Promise<boolean> {
+  async deleteOwnUser(@GQLContextArg() context: GQLContext): Promise<boolean> {
     const user = await this.m_getIdToken(context.req)
     await this.userService.deleteUser(user.uid)
     return true

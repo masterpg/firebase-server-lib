@@ -3,7 +3,7 @@ import * as path from 'path'
 import { DocumentReference, Timestamp } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule, UserClaims } from '../nest'
 import { Inject, Module } from '@nestjs/common'
-import { User, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
+import { UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import { JSONObject } from './base'
@@ -146,8 +146,8 @@ class DevUtilsService {
     )
   }
 
-  async setTestUsers(...inputs: TestUserInput[]): Promise<User[]> {
-    const dict: { [uid: string]: User } = {}
+  async setTestUsers(...inputs: TestUserInput[]): Promise<UserInfo[]> {
+    const dict: { [uid: string]: UserInfo } = {}
     await Promise.all(
       inputs.map(async input => {
         await this.setTestFirebaseUsers(input)
@@ -158,7 +158,7 @@ class DevUtilsService {
     return inputs.reduce((result, input) => {
       result.push(dict[input.uid])
       return result
-    }, [] as User[])
+    }, [] as UserInfo[])
   }
 
   async deleteTestUsers(...uids: string[]): Promise<void> {

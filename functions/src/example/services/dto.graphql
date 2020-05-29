@@ -33,10 +33,10 @@ enum AuthStatus {
 type AuthDataResult {
   status: AuthStatus!
   token: String!
-  user: User
+  user: UserInfo
 }
 
-type User implements TimestampEntity {
+type UserInfo implements TimestampEntity {
   id: ID!
   fullName: String!
   email: String!

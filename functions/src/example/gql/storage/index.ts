@@ -1,6 +1,6 @@
 import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthGuard, AuthGuardModule, AuthRoleType, GQLContext, IdToken, Roles, User } from '../../../lib/nest'
+import { AuthGuard, AuthGuardModule, AuthRoleType, GQLContext, IdToken, Roles, UserArg } from '../../../lib/nest'
 import { Inject, UseGuards } from '@nestjs/common'
 import {
   SignedUploadUrlInput,
@@ -10,7 +10,7 @@ import {
   StoragePaginationResult,
 } from '../../../lib/services'
 import { BaseGQLModule } from '../base'
-import { GQLCtx } from '../../../lib/gql'
+import { GQLContextArg } from '../../../lib/gql'
 import { Module } from '@nestjs/common'
 
 //========================================================================
@@ -29,14 +29,14 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageNode(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
+  async userStorageNode(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
     return this.storageService.getUserNode(user, nodePath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   async userStorageDirDescendants(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
@@ -46,7 +46,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   async userStorageDescendants(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
@@ -56,7 +56,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   async userStorageDirChildren(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
@@ -66,7 +66,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   async userStorageChildren(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
@@ -75,32 +75,32 @@ export class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageHierarchicalNodes(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+  async userStorageHierarchicalNodes(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
     return this.storageService.getUserHierarchicalNode(user, nodePath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
-  async userStorageAncestorDirs(@User() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+  async userStorageAncestorDirs(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
     return this.storageService.getUserAncestorDirs(user, nodePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async handleUploadedUserFile(@User() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode> {
+  async handleUploadedUserFile(@UserArg() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode> {
     return await this.storageService.handleUploadedUserFile(user, filePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async createUserStorageDirs(@User() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+  async createUserStorageDirs(@UserArg() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
     return this.storageService.createUserDirs(user, dirPaths)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   async removeUserStorageDir(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('options') options: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
@@ -109,14 +109,14 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
+  async removeUserStorageFile(@UserArg() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
     return await this.storageService.removeUserFile(user, filePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   async moveUserStorageDir(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('fromDirPath') fromDirPath: string,
     @Args('toDirPath') toDirPath: string,
     @Args('options') options: StoragePaginationOptionsInput
@@ -127,7 +127,7 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   async moveUserStorageFile(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('fromFilePath') fromFilePath: string,
     @Args('toFilePath') toFilePath: string
   ): Promise<StorageNode> {
@@ -137,7 +137,7 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   async renameUserStorageDir(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('newName') newName: string,
     @Args('options') options: StoragePaginationOptionsInput
@@ -147,14 +147,14 @@ export class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameUserStorageFile(@User() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
+  async renameUserStorageFile(@UserArg() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
     return await this.storageService.renameUserFile(user, filePath, newName)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   async setUserStorageDirShareSettings(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
@@ -164,7 +164,7 @@ export class StorageResolver {
   @Mutation()
   @UseGuards(AuthGuard)
   async setUserStorageFileShareSettings(
-    @User() user: IdToken,
+    @UserArg() user: IdToken,
     @Args('filePath') filePath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
@@ -326,7 +326,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async signedUploadUrls(@GQLCtx() context: GQLContext, @Args('inputs') inputs: SignedUploadUrlInput[]): Promise<string[]> {
+  async signedUploadUrls(@GQLContextArg() context: GQLContext, @Args('inputs') inputs: SignedUploadUrlInput[]): Promise<string[]> {
     const requestOrigin = (context.req.headers.origin as string) || ''
     return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
   }

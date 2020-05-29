@@ -9,7 +9,7 @@ import {
   IdToken,
   Roles,
   TransformInterceptor,
-  User,
+  UserArg,
 } from '../../../../../src/lib/nest'
 import { Controller, Get, MiddlewareConsumer, Module, RequestMethod, UseGuards, UseInterceptors } from '@nestjs/common'
 
@@ -35,7 +35,7 @@ class DummyController {
   @Get('admin/settings')
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async getAdminSettings(@User() user: IdToken): Promise<{ adminKey: string }> {
+  async getAdminSettings(@UserArg() user: IdToken): Promise<{ adminKey: string }> {
     // console.log(`User '${user.uid}' has accessed the REST's 'admin/settings'.`)
     return { adminKey: 'Admin Key' }
   }

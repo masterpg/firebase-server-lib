@@ -100,7 +100,7 @@ export interface AppConfigResponse {
 export interface AuthDataResult {
     status: AuthStatus;
     token: string;
-    user?: User;
+    user?: UserInfo;
 }
 
 export interface CartItem extends TimestampEntity {
@@ -134,7 +134,7 @@ export interface IMutation {
     removeTestStorageFiles(filePaths: string[]): boolean | Promise<boolean>;
     setTestFirebaseUsers(users: TestFirebaseUserInput[]): boolean | Promise<boolean>;
     deleteTestFirebaseUsers(uids: string[]): boolean | Promise<boolean>;
-    setTestUsers(users: TestUserInput[]): User[] | Promise<User[]>;
+    setTestUsers(users: TestUserInput[]): UserInfo[] | Promise<UserInfo[]>;
     deleteTestUsers(uids: string[]): boolean | Promise<boolean>;
     handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
     createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
@@ -156,7 +156,7 @@ export interface IMutation {
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
-    setOwnUserInfo(input: UserInfoInput): User | Promise<User>;
+    setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;
 }
 
@@ -225,7 +225,7 @@ export interface StoragePaginationResult {
     nextPageToken?: string;
 }
 
-export interface User extends TimestampEntity {
+export interface UserInfo extends TimestampEntity {
     id: string;
     fullName: string;
     email: string;

@@ -6,7 +6,7 @@ import {
   StorageServiceDI,
   StoreServiceDI,
   TestFirebaseUserInput,
-  User,
+  UserInfo,
   UserInfoInput,
   UserServiceDI,
 } from '../../../../../src/lib/services'
@@ -142,7 +142,7 @@ describe('UserService', () => {
           displayName: AVAILABLE_USER_INPUT.displayName,
           photoURL: AVAILABLE_USER.photoURL,
         },
-      } as User)
+      } as UserInfo)
 
       const userRecord = await admin.auth().getUser(AVAILABLE_USER.uid)
       const userClaims = userRecord.customClaims as UserClaims
@@ -181,7 +181,7 @@ describe('UserService', () => {
           displayName: 'ジロー',
           photoURL: VERIFIED_USER.photoURL,
         },
-      } as User)
+      } as UserInfo)
       // ユーザーディレクトリが作成されたことを検証
       expect(actual.myDirName.length > 0).toBeTruthy()
       const userDirPath = storageService.getUserDirPath({ uid: fetched.id, ...fetched })
@@ -218,7 +218,7 @@ describe('UserService', () => {
         // 追加時と変わっていないことを検証
         myDirName: added.myDirName,
         isAppAdmin: added.isAppAdmin,
-      } as User)
+      } as UserInfo)
       // タイムスタンプの検証
       expect(actual.createdAt).toEqual(added.createdAt)
       expect(actual.updatedAt.isAfter(added.updatedAt)).toBeTruthy()

@@ -16,7 +16,7 @@ import UserRecord = admin.auth.UserRecord
 interface AuthDataResult {
   status: AuthStatus
   token: string
-  user?: User
+  user?: UserInfo
 }
 
 enum AuthProviderType {
@@ -26,7 +26,7 @@ enum AuthProviderType {
   Anonymous = 'anonymous',
 }
 
-interface User extends StoreUser {
+interface UserInfo extends StoreUser {
   email: string
   emailVerified: boolean
   isAppAdmin: boolean
@@ -102,7 +102,7 @@ class UserService {
     return { status, token, user }
   }
 
-  async setUserInfo(uid: string, input: UserInfoInput): Promise<User> {
+  async setUserInfo(uid: string, input: UserInfoInput): Promise<UserInfo> {
     const userInput: EntityId & UserInfoInput = { id: uid, ...input }
     let userRecord!: UserRecord
     try {
@@ -146,7 +146,7 @@ class UserService {
     return (await this.getUser(userInput.id))!
   }
 
-  async getUser(uid: string): Promise<User | undefined> {
+  async getUser(uid: string): Promise<UserInfo | undefined> {
     const storeUser = await this.storeService.userDao.fetch(uid)
     if (!storeUser) return
 
@@ -228,4 +228,4 @@ class UserServiceModule {}
 //
 //========================================================================
 
-export { UserService, UserServiceDI, UserServiceModule, AuthDataResult, PublicProfile, User, UserInfoInput, AuthStatus }
+export { UserService, UserServiceDI, UserServiceModule, AuthDataResult, PublicProfile, UserInfo, UserInfoInput, AuthStatus }

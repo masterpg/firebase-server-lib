@@ -9,7 +9,7 @@ import {
   CORSMiddlewareModule,
   IdToken,
   Roles,
-  User,
+  UserArg,
 } from '../../../../../src/lib/nest'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { MiddlewareConsumer, Module, RequestMethod, UseGuards } from '@nestjs/common'
@@ -36,7 +36,7 @@ class DummyResolver {
   @Query('adminSettings')
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async getAdminSettings(@User() user: IdToken): Promise<AdminSettings> {
+  async getAdminSettings(@UserArg() user: IdToken): Promise<AdminSettings> {
     // console.log(`User '${user.uid}' has accessed the GraphQL's 'adminSettings'.`)
     return { adminKey: 'Admin Key' }
   }

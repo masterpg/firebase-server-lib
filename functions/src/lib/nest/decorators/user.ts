@@ -3,7 +3,7 @@ import { GQLContext } from '../base'
 import { GraphQLResolveInfo } from 'graphql'
 import { Request } from 'express'
 
-export const User = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
+export const UserArg = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
   const type = ctx.getType() as 'http' | 'graphql'
   let req!: Request
 

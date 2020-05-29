@@ -1,5 +1,5 @@
 type Mutation {
-  setOwnUserInfo(input: UserInfoInput!): User!
+  setOwnUserInfo(input: UserInfoInput!): UserInfo!
   deleteOwnUser: Boolean!
 }
 
