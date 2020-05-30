@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { StorageServiceDI, StorageServiceModule } from '../../../../../src/lib/services'
+import { StorageServiceDI, StorageServiceModule } from '../../../../../src/lib'
 import { config } from '../../../../../src/config'
 
 //========================================================================

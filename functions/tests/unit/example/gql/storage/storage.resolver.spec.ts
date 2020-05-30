@@ -1,12 +1,6 @@
 import * as td from 'testdouble'
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER, GENERAL_USER_TOKEN } from '../../../../helpers/common/data'
-import {
-  DevUtilsServiceDI,
-  DevUtilsServiceModule,
-  StorageNode,
-  StorageNodeShareSettings,
-  StoragePaginationResult,
-} from '../../../../../src/lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageNode, StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'

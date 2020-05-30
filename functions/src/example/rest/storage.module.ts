@@ -1,4 +1,4 @@
-import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib/nest'
+import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import StorageRESTModule from './storage'
 

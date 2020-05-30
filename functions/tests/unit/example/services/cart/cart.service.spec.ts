@@ -1,6 +1,5 @@
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
-import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/lib/services'
-import { InputValidationError, ValidationErrors } from '../../../../../src/lib/base'
+import { DevUtilsServiceDI, DevUtilsServiceModule, InputValidationError, ValidationErrors } from '../../../../../src/lib'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import { GENERAL_USER } from '../../../../helpers/common/data'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'

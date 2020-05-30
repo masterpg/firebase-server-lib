@@ -1,11 +1,9 @@
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/common/data'
-import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/lib/services'
+import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims, initLib } from '../../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
-import { UserIdClaims } from '../../../../../../src/lib/nest'
-import { initLib } from '../../../../../../src/lib/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)

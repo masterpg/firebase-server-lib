@@ -1,11 +1,10 @@
 import * as admin from 'firebase-admin'
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, STORAGE_USER, STORAGE_USER_HEADER, STORAGE_USER_TOKEN } from '../../../../helpers/common/data'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageUploadDataItem } from '../../../../../src/lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageUploadDataItem, initLib } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { MockStorageRESTModule } from '../../../../mocks/lib/rest/storage'
 import { Response } from 'supertest'
 import { cloneDeep } from 'lodash'
-import { initLib } from '../../../../../src/lib/base'
 import request = require('supertest')
 
 jest.setTimeout(25000)

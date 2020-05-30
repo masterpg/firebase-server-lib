@@ -2,7 +2,7 @@ import { Express } from 'express'
 import { ExpressAdapter } from '@nestjs/platform-express'
 import { INestApplication } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { initLib } from '../../lib/base'
+import { initLib } from '../../lib'
 
 //========================================================================
 //

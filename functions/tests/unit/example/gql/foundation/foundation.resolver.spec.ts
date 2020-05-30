@@ -1,4 +1,4 @@
-import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/lib'
 import { GENERAL_USER, GENERAL_USER_HEADER } from '../../../../helpers/common/data'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'

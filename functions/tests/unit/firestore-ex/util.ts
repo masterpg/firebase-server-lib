@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import * as crypto from 'crypto'
 import { Firestore, FirestoreExOptions, TimestampEntity } from '../../../src/firestore-ex/types'
 import { Dayjs } from 'dayjs'
-import { initFirebaseApp } from '../../../src/lib/base'
+import { initFirebaseApp } from '../../../src/lib'
 import dayjs = require('dayjs')
 
 export const deleteCollection = async (db: Firestore, collectionPath: string) => {

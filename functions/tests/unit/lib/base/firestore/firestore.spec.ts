@@ -1,9 +1,8 @@
 import * as admin from 'firebase-admin'
+import { DevUtilsServiceDI, WriteReadyObserver, initLib } from '../../../../../src/lib'
 import { FirestoreEx, Transaction } from '../../../../../src/firestore-ex'
 import { Test, TestingModule } from '@nestjs/testing'
-import { WriteReadyObserver, initLib } from '../../../../../src/lib/base'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
-import { DevUtilsServiceDI } from '../../../../../src/lib/services'
 import { findDuplicateItems } from 'web-base-lib'
 
 jest.setTimeout(25000)

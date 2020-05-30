@@ -1,6 +1,5 @@
+import { AuthServiceModule, StorageService } from '../../lib'
 import { Injectable, Module } from '@nestjs/common'
-import { AuthServiceModule } from '../../lib/nest'
-import { StorageService } from '../../lib/services'
 
 //========================================================================
 //

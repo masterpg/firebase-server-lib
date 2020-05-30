@@ -3,7 +3,7 @@ import { DummyCORSGuardGQLModule } from '../../../../../mocks/lib/gql/dummy'
 import { DummyCORSGuardRESTModule } from '../../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
-import { initLib } from '../../../../../../src/lib/base'
+import { initLib } from '../../../../../../src/lib'
 import request = require('supertest')
 
 jest.setTimeout(25000)

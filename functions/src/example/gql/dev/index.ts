@@ -7,7 +7,7 @@ import {
   TestSignedUploadUrlInput,
   TestUserInput,
   UserInfo,
-} from '../../../lib/services'
+} from '../../../lib'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'

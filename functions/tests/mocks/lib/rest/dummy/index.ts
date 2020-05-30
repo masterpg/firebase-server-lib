@@ -10,7 +10,7 @@ import {
   Roles,
   TransformInterceptor,
   UserArg,
-} from '../../../../../src/lib/nest'
+} from '../../../../../src/lib'
 import { Controller, Get, MiddlewareConsumer, Module, RequestMethod, UseGuards, UseInterceptors } from '@nestjs/common'
 
 //========================================================================

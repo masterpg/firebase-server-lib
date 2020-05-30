@@ -1,9 +1,8 @@
 import * as admin from 'firebase-admin'
 import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
+import { BaseFoundationService, IdToken } from '../../lib'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { AppConfigResponse } from '../gql.schema'
-import { BaseFoundationService } from '../../lib/services'
-import { IdToken } from '../../lib/nest'
 import { config } from '../../config'
 
 //========================================================================

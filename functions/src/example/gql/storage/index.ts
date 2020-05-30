@@ -1,16 +1,22 @@
 import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthGuard, AuthGuardModule, AuthRoleType, GQLContext, IdToken, Roles, UserArg } from '../../../lib/nest'
-import { Inject, UseGuards } from '@nestjs/common'
 import {
+  AuthGuard,
+  AuthGuardModule,
+  AuthRoleType,
+  GQLContext,
+  GQLContextArg,
+  IdToken,
+  Roles,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettingsInput,
   StoragePaginationOptionsInput,
   StoragePaginationResult,
-} from '../../../lib/services'
+  UserArg,
+} from '../../../lib'
+import { Inject, UseGuards } from '@nestjs/common'
 import { BaseGQLModule } from '../base'
-import { GQLContextArg } from '../../../lib/gql'
 import { Module } from '@nestjs/common'
 
 //========================================================================

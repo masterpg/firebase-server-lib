@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as shortid from 'shortid'
-import { StorageNode, StorageNodeType } from '../../../src/lib/services/storage'
+import { StorageNode, StorageNodeType } from '../../../src/lib/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { cloneDeep } from 'lodash'
 import dayjs = require('dayjs')

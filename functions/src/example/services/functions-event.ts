@@ -1,6 +1,5 @@
-import { FunctionsEventLoggingServiceDI, FunctionsEventLoggingServiceModule } from '../../lib/nest'
+import { FunctionsEventLoggingServiceDI, FunctionsEventLoggingServiceModule, UserServiceDI, UserServiceModule } from '../../lib'
 import { Inject, Injectable, Module } from '@nestjs/common'
-import { UserServiceDI, UserServiceModule } from '../../lib/services'
 import { EventContext } from 'firebase-functions'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 

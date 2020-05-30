@@ -2,7 +2,7 @@ import * as path from 'path'
 import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { AuthGuardModule } from '../../../lib/nest'
+import { AuthGuardModule } from '../../../lib'
 import { BaseRESTModule } from '../base'
 import { config } from '../../../config'
 

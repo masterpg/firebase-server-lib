@@ -8,6 +8,7 @@ import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   GCSStorageNode,
+  InputValidationError,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareSettings,
@@ -15,8 +16,8 @@ import {
   StorageService,
   StorageServiceDI,
   StorageUploadDataItem,
-} from '../../../../../src/lib/services'
-import { InputValidationError, initLib } from '../../../../../src/lib/base'
+  initLib,
+} from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { newTestStorageDirNode, newTestStorageFileNode } from '../../../../helpers/common/storage'

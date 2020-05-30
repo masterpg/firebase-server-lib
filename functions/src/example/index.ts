@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
-import { createNestHTTPApplication, initApp, isDevelopment } from './base'
+import { createNestHTTPApplication, initApp } from './base'
 import { config } from '../config'
 import { forEach } from 'lodash'
 

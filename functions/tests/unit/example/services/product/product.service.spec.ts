@@ -1,6 +1,6 @@
 import { Product, ProductServiceDI } from '../../../../../src/example/services'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
-import { DevUtilsServiceDI } from '../../../../../src/lib/services'
+import { DevUtilsServiceDI } from '../../../../../src/lib'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'

@@ -1,5 +1,4 @@
-import { AuthStatus, TestUserInput } from '../../../src/lib/services'
-import { UserIdClaims } from '../../../src/lib/nest'
+import { AuthStatus, TestUserInput, UserIdClaims } from '../../../src/lib'
 
 export const GENERAL_USER: Required<TestUserInput> = {
   uid: 'test.general',

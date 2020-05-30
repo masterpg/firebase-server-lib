@@ -1,8 +1,7 @@
 import { Collection, OmitEntityFields } from '../../firestore-ex'
 import { Injectable, Module } from '@nestjs/common'
+import { StoreService, TimestampEntity } from '../../lib'
 import { CartItem as _CartItem, Product as _Product } from '../gql.schema'
-import { StoreService } from '../../lib/services'
-import { TimestampEntity } from '../../lib/base'
 
 //========================================================================
 //

@@ -1,5 +1,5 @@
 import { IsInt, IsNotEmpty, IsPositive } from 'class-validator'
-import { ValidationErrors, validate, validateUID } from '../../../../../src/lib/base'
+import { ValidationErrors, validate, validateUID } from '../../../../../src/lib'
 import { has } from 'lodash'
 
 export class CreateProductInput {

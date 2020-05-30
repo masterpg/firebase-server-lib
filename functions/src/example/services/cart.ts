@@ -1,7 +1,7 @@
 import { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product } from './store'
 import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
 import { Inject, Injectable, Module } from '@nestjs/common'
-import { InputValidationError, WriteReadyObserver, validate } from '../../lib/base'
+import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
 import { Transaction } from '../../firestore-ex'

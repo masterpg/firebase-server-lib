@@ -6,14 +6,14 @@ import {
   StorageServiceDI,
   StoreServiceDI,
   TestFirebaseUserInput,
+  UserClaims,
   UserInfo,
   UserInfoInput,
   UserServiceDI,
-} from '../../../../../src/lib/services'
+  initLib,
+} from '../../../../../src/lib'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
-import { UserClaims } from '../../../../../src/lib/nest'
-import { initLib } from '../../../../../src/lib/base'
 
 jest.setTimeout(25000)
 initLib()

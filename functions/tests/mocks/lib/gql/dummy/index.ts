@@ -10,7 +10,7 @@ import {
   IdToken,
   Roles,
   UserArg,
-} from '../../../../../src/lib/nest'
+} from '../../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { MiddlewareConsumer, Module, RequestMethod, UseGuards } from '@nestjs/common'
 import { getMockGQLModuleOptions } from '../base'
