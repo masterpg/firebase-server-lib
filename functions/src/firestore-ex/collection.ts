@@ -31,7 +31,7 @@ export class Collection<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  constructor(params: { context: Context; path: string; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp: TimestampSettings }) {
+  constructor(params: { context: Context; path: string; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp?: TimestampSettings }) {
     this.context = params.context
     this.collectionRef = params.context.db.collection(params.path)
     this._converter = new Converter<T, S>({ encode: params.encode, decode: params.decode, timestamp: params.timestamp })
@@ -56,7 +56,7 @@ export class Collection<T, S = T> {
 
   private _converter: Converter<T, S>
 
-  private _timestamp: TimestampSettings
+  private _timestamp?: TimestampSettings
 
   //----------------------------------------------------------------------
   //
@@ -95,7 +95,7 @@ export class Collection<T, S = T> {
     let docRef: DocumentReference
     const doc = this._converter.encode(obj)
 
-    if (this._timestamp.use) {
+    if (this._timestamp) {
       ;(doc as any).createdAt = FieldValue.serverTimestamp()
     }
 
@@ -111,14 +111,19 @@ export class Collection<T, S = T> {
     return docRef.id
   }
 
-  async set(obj: EntityInput<T>, atomic?: AtomicOperation): Promise<string> {
+  async set(obj: EntityInput<T> & { createdAt?: any }, atomic?: AtomicOperation): Promise<string> {
     if (!obj.id) throw new Error('Argument object must have "id" property')
 
     const docRef = this.docRef(obj.id)
     const doc = this._converter.encode(obj)
 
-    if (this._timestamp.use) {
-      ;(doc as any).createdAt = FieldValue.serverTimestamp()
+    if (this._timestamp) {
+      const createdAt = (obj as any).createdAt
+      if (createdAt) {
+        ;(doc as any).createdAt = this._timestamp.toStoreDate(createdAt)
+      } else {
+        ;(doc as any).createdAt = FieldValue.serverTimestamp()
+      }
     }
 
     if (atomic instanceof Transaction) {
@@ -131,7 +136,7 @@ export class Collection<T, S = T> {
     return obj.id
   }
 
-  async update(obj: EntityOptionalInput<T> & EntityId, atomic?: AtomicOperation): Promise<string> {
+  async update(obj: EntityOptionalInput<T>, atomic?: AtomicOperation): Promise<string> {
     if (!obj.id) throw new Error('Argument object must have "id" property')
 
     const docRef = this.docRef(obj.id)

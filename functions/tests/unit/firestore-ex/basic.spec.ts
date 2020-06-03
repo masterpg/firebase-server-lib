@@ -221,26 +221,44 @@ describe('Basic - use timestamp', () => {
     expect(fetchedDoc.updatedAt.isValid()).toBeTruthy()
   })
 
-  it('set', async () => {
-    // add
-    const docId = await dao.add({
-      title: 'hogehoge',
-      num: 10,
+  describe('set', () => {
+    it('set as add', async () => {
+      // set as add
+      const setDoc = {
+        id: dao.docRef().id,
+        title: 'set',
+        num: 10,
+      }
+      const setId = await dao.set(setDoc)
+
+      const fetchedDoc = (await dao.fetch(setId))!
+      expect(fetchedDoc).toMatchObject(setDoc)
+      expect(fetchedDoc.createdAt.isValid()).toBeTruthy()
+      expect(fetchedDoc.updatedAt.isValid()).toBeTruthy()
     })
-    const addedDoc = (await dao.fetch(docId))!
 
-    // set
-    const setDoc = {
-      id: addedDoc.id,
-      title: 'set',
-      num: 20,
-    }
-    const setId = await dao.set(setDoc)
+    it('set as update', async () => {
+      // add
+      const docId = await dao.add({
+        title: 'hogehoge',
+        num: 10,
+      })
+      const addedDoc = (await dao.fetch(docId))!
 
-    const fetchedDoc = (await dao.fetch(setId))!
-    expect(fetchedDoc).toMatchObject(setDoc)
-    expect(fetchedDoc.createdAt.isAfter(addedDoc.createdAt)).toBeTruthy()
-    expect(fetchedDoc.updatedAt.isAfter(addedDoc.updatedAt)).toBeTruthy()
+      // set as update
+      const setDoc = {
+        title: 'set',
+        num: 20,
+        id: addedDoc.id,
+        createdAt: addedDoc.createdAt,
+      }
+      const setId = await dao.set(setDoc)
+
+      const fetchedDoc = (await dao.fetch(setId))!
+      expect(fetchedDoc).toMatchObject(setDoc)
+      expect(fetchedDoc.createdAt).toEqual(addedDoc.createdAt)
+      expect(fetchedDoc.updatedAt.isAfter(addedDoc.updatedAt)).toBeTruthy()
+    })
   })
 
   it('update', async () => {

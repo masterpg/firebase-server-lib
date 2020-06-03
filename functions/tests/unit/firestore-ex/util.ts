@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as crypto from 'crypto'
-import { Firestore, FirestoreExOptions, TimestampEntity } from '../../../src/firestore-ex/types'
+import { Firestore, FirestoreExOptions, Timestamp, TimestampEntity } from '../../../src/firestore-ex/types'
 import { Dayjs } from 'dayjs'
 import { initFirebaseApp } from '../../../src/lib'
 import dayjs = require('dayjs')
@@ -43,8 +43,11 @@ export class AdminFirestoreTestUtil {
     this.collectionPath = crypto.randomBytes(10).toString('hex')
     this.db = AdminFirestoreTestUtil.init(real)
     this.options = {
-      useTimestampInAll: true,
-      timestampToDate: timestamp => dayjs(timestamp.toDate()),
+      timestamp: {
+        useInAll: true,
+        toAppDate: timestamp => dayjs(timestamp.toDate()),
+        toStoreDate: (date: Dayjs) => Timestamp.fromDate(date.toDate()),
+      },
     }
   }
 

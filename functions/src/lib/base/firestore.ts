@@ -1,4 +1,4 @@
-import { FirestoreExOptions, TimestampEntity as _TimestampEntity } from '../../firestore-ex'
+import { FirestoreExOptions, Timestamp, TimestampEntity as _TimestampEntity } from '../../firestore-ex'
 import { Dayjs } from 'dayjs'
 import dayjs = require('dayjs')
 
@@ -17,7 +17,10 @@ interface TimestampEntity extends _TimestampEntity<Dayjs> {}
 //========================================================================
 
 const firestoreExOptions: FirestoreExOptions = {
-  timestampToDate: timestamp => dayjs(timestamp.toDate()),
+  timestamp: {
+    toAppDate: timestamp => dayjs(timestamp.toDate()),
+    toStoreDate: (date: Dayjs) => Timestamp.fromDate(date.toDate()),
+  },
 }
 
 /**

@@ -135,7 +135,7 @@ describe('transaction', () => {
           await dao.set(updatedDoc, tx)
 
           // Firestore throw error READ after WRITE in same transaction.
-          // To show txDao.fetch() is inside transaction, assert transaction error.
+          // To show dao.fetch() is inside transaction, assert transaction error.
           await expect(dao.fetch(doc.id, tx)).rejects.toThrow('Firestore transactions require all reads to be executed before all writes.')
         })
       })
@@ -149,7 +149,7 @@ describe('transaction', () => {
           await dao.set(updatedDoc, tx)
 
           // Firestore throw error READ after WRITE in same transaction.
-          // To show txDao.fetchAll() is inside transaction, assert transaction error.
+          // To show dao.fetchAll(tx) is inside transaction, assert transaction error.
           await expect(dao.fetchAll(tx)).rejects.toThrow('Firestore transactions require all reads to be executed before all writes.')
         })
       })
@@ -163,7 +163,7 @@ describe('transaction', () => {
           await dao.set(updatedDoc, tx)
 
           // Firestore throw error READ after WRITE in same transaction.
-          // To show txDao.where().fetch() is inside transaction, assert transaction error.
+          // To show dao.where(...).fetch(tx) is inside transaction, assert transaction error.
           await expect(dao.where('title', '==', 'bbb').fetch(tx)).rejects.toThrow(
             'Firestore transactions require all reads to be executed before all writes.'
           )

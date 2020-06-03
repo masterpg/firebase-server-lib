@@ -13,12 +13,7 @@ export class FirestoreEx {
 
   constructor(db: Firestore, options?: FirestoreExOptions) {
     this.context = new Context(db)
-
-    this._options = { useTimestampInAll: false, timestampToDate: options => options.toDate() }
-    if (options) {
-      this._options.useTimestampInAll = options.useTimestampInAll || this._options.useTimestampInAll
-      this._options.timestampToDate = options.timestampToDate || this._options.timestampToDate
-    }
+    this._options = options || {}
   }
 
   //----------------------------------------------------------------------
@@ -35,7 +30,7 @@ export class FirestoreEx {
   //
   //----------------------------------------------------------------------
 
-  readonly _options: Required<FirestoreExOptions>
+  readonly _options: FirestoreExOptions
 
   //----------------------------------------------------------------------
   //
@@ -48,10 +43,7 @@ export class FirestoreEx {
       context: this.context,
       encode: params.encode,
       decode: params.decode,
-      timestamp: {
-        use: this._options.useTimestampInAll || Boolean(params.useTimestamp),
-        toDate: this._options.timestampToDate,
-      },
+      timestamp: this._getTimestampSettings(params.useTimestamp),
     })
     return factory.create(params.path)
   }
@@ -61,10 +53,7 @@ export class FirestoreEx {
       context: this.context,
       encode: params.encode,
       decode: params.decode,
-      timestamp: {
-        use: this._options.useTimestampInAll || Boolean(params.useTimestamp),
-        toDate: this._options.timestampToDate,
-      },
+      timestamp: this._getTimestampSettings(params.useTimestamp),
     })
   }
 
@@ -72,10 +61,7 @@ export class FirestoreEx {
     const query = this.context.db.collectionGroup(params.collectionId)
     const converter = new Converter({
       decode: params.decode,
-      timestamp: {
-        use: this._options.useTimestampInAll || Boolean(params.useTimestamp),
-        toDate: this._options.timestampToDate,
-      },
+      timestamp: this._getTimestampSettings(params.useTimestamp),
     })
     return new Query<T, S>(converter, query)
   }
@@ -87,6 +73,28 @@ export class FirestoreEx {
   async runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<WriteResult[]> {
     return this.context.runBatch(updateFunction)
   }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  private _getTimestampSettings(useTimestamp?: boolean): TimestampSettings | undefined {
+    if (useTimestamp && !this._options.timestamp) {
+      throw new Error('If you want to use a timestamp, you need to set a timestamp in the constructor.')
+    }
+
+    const useTimestampInAll = this._options.timestamp && this._options.timestamp.useInAll
+    if (useTimestamp || useTimestampInAll) {
+      return {
+        toAppDate: this._options.timestamp!.toAppDate,
+        toStoreDate: this._options.timestamp!.toStoreDate,
+      }
+    }
+
+    return
+  }
 }
 
 export class CollectionFactory<T, S = T> {
@@ -96,7 +104,7 @@ export class CollectionFactory<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  constructor(params: { context: Context; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp: TimestampSettings }) {
+  constructor(params: { context: Context; encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp?: TimestampSettings }) {
     this.context = params.context
     this.encode = params.encode
     this.decode = params.decode
@@ -115,7 +123,7 @@ export class CollectionFactory<T, S = T> {
 
   readonly decode?: DecodeFunc<T, S>
 
-  readonly timestamp: TimestampSettings
+  readonly timestamp?: TimestampSettings
 
   //----------------------------------------------------------------------
   //

@@ -57,9 +57,7 @@ describe('collectionGroup', () => {
 })
 
 describe('collectionGroup - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(db, {
-    timestampToDate: util.options.timestampToDate,
-  })
+  const firestoreEx = new FirestoreEx(db, util.options)
 
   interface TestDoc extends TestTimestampEntity {
     title: string
