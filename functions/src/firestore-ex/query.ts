@@ -31,6 +31,11 @@ export class Query<T, S> {
     return this
   }
 
+  offset(offset: number): this {
+    this.query = this.query.offset(offset)
+    return this
+  }
+
   startAt(snap: DocumentSnapshot): Query<T, S>
   startAt(...fieldValues: any[]): Query<T, S>
   startAt(snapOrValue: DocumentSnapshot | unknown, ...fieldValues: unknown[]): this {

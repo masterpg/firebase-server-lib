@@ -52,6 +52,13 @@ describe('query', () => {
     expect(docs).toHaveLength(limit)
   })
 
+  it('offset', async () => {
+    const offset = 1
+    const docs = await dao.orderBy('order').offset(offset).fetch()
+
+    expect(docs.map(doc => doc.order)).toEqual([2, 3, 4])
+  })
+
   describe('composition', () => {
     it('where + where', async () => {
       const docs = await dao.where('order', '>', 1).where('order', '<', 4).fetch()
