@@ -1,7 +1,6 @@
-import { AdminFirestoreTestUtil, TestTimestampEntity } from './util'
-import { DecodeFunc, Entity, FirestoreEx } from '../../../src/firestore-ex'
+import { DecodeFunc, Entity, FirestoreEx, Timestamp, TimestampEntity } from '../../../src/firestore-ex'
+import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
-import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
@@ -45,11 +44,13 @@ describe('decode', () => {
         dummy: 'hogehoge',
       })
 
+      // fetch
       const fetchedDoc = (await dao.fetch(docRef.id))!
       expect(fetchedDoc).toEqual({
         id: docRef.id,
         bookTitle: title,
       })
+      // The `dummy` field is not present because it is not processed by the decode function.
       expect(fetchedDoc).not.toHaveProperty('dummy')
     })
 
@@ -65,11 +66,13 @@ describe('decode', () => {
         dummy,
       })
 
+      // fetch
       const fetchedDoc = (await dao.fetch(docRef.id))!
       expect(fetchedDoc).toEqual({
         id: docRef.id,
         bookTitle: title,
-        // Because the decode function is not executed, fields of Firestore is decoded as it is.
+        // Since the decoding function is not executed,
+        // the `dummy` field in the Firestore is set to It is output as it is.
         dummy,
       })
     })
@@ -85,6 +88,7 @@ describe('decode', () => {
         dummy: 'hogehoge',
       })
 
+      // fetch
       const fetchedDoc = await dao.where('book_title', '==', title).fetch()
       expect(fetchedDoc).toEqual([
         {
@@ -92,6 +96,7 @@ describe('decode', () => {
           bookTitle: title,
         },
       ])
+      // The `dummy` field is not present because it is not processed by the decode function.
       expect(fetchedDoc).not.toHaveProperty('dummy')
     })
   })
@@ -120,6 +125,7 @@ describe('decode', () => {
       const bookTitle = 'add'
       const docRef = await dao.collectionRef.add({ book_title: bookTitle, dummy: 'hogehoge' })
 
+      // fetch
       const fetchedDoc = await dao.fetch(docRef.id)
       expect(fetchedDoc).toEqual(
         new BookClass({
@@ -127,15 +133,16 @@ describe('decode', () => {
           bookTitle,
         })
       )
+      // The `dummy` field is not present because it is not processed by the decode function.
       expect(fetchedDoc).not.toHaveProperty('dummy')
     })
   })
 })
 
 describe('decode - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(db, util.options)
+  const firestoreEx = new FirestoreEx(db)
 
-  interface Book extends TestTimestampEntity {
+  interface Book extends TimestampEntity {
     bookTitle: string
   }
 
@@ -152,7 +159,7 @@ describe('decode - use timestamp', () => {
 
     it('fetch with decode', async () => {
       // with decode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode, useTimestamp: true })
 
       // add
       const title = 'add'
@@ -162,6 +169,7 @@ describe('decode - use timestamp', () => {
         updatedAt: Timestamp.fromDate(new Date(2020, 0, 2)),
       })
 
+      // fetch
       const fetchedDoc = (await dao.fetch(docRef.id))!
       expect(fetchedDoc).toEqual({
         id: docRef.id,
@@ -173,7 +181,7 @@ describe('decode - use timestamp', () => {
 
     it('fetch without decode', async () => {
       // without decode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, useTimestamp: true })
 
       // add
       const title = 'add'
@@ -183,6 +191,7 @@ describe('decode - use timestamp', () => {
         updatedAt: Timestamp.fromDate(new Date(2020, 0, 2)),
       })
 
+      // fetch
       const fetchedDoc = (await dao.fetch(docRef.id))!
       expect(fetchedDoc).toEqual({
         id: docRef.id,
@@ -207,24 +216,18 @@ describe('decode - use timestamp', () => {
       public readonly updatedAt?: Dayjs
     }
 
-    const decodeA: DecodeFunc<Book, BookDoc> = doc => {
-      return new BookClass({
-        bookTitle: doc.book_title,
-      })
-    }
-
-    const decodeB: DecodeFunc<Book, BookDoc> = doc => {
-      return new BookClass({
-        id: doc.id,
-        bookTitle: doc.book_title,
-        createdAt: dayjs(doc.createdAt.toDate()),
-        updatedAt: dayjs(doc.updatedAt.toDate()),
-      })
-    }
-
     it(`fetch with decode - don't process entity fields in decode function`, async () => {
-      // with decodeA
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeA })
+      // auto decode timestamp
+      const dao = firestoreEx.collection<Book, BookDoc>({
+        path: collectionPath,
+        useTimestamp: true,
+        // don't process entity fields in decode function
+        decode: doc => {
+          return new BookClass({
+            bookTitle: doc.book_title,
+          })
+        },
+      })
 
       // add
       const bookTitle = 'add'
@@ -232,6 +235,7 @@ describe('decode - use timestamp', () => {
       const updatedAt = Timestamp.fromDate(new Date(2020, 0, 2))
       const docRef = await dao.collectionRef.add({ book_title: bookTitle, createdAt, updatedAt })
 
+      // fetch
       const fetchedDoc = await dao.fetch(docRef.id)
       expect(fetchedDoc).toEqual(
         new BookClass({
@@ -244,8 +248,20 @@ describe('decode - use timestamp', () => {
     })
 
     it('fetch with decode - process entity fields in decode function', async () => {
-      // with decodeB
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, decode: decodeB })
+      // manual decode timestamp
+      const dao = firestoreEx.collection<Book, BookDoc>({
+        path: collectionPath,
+        useTimestamp: true,
+        // process entity fields in decode function
+        decode: doc => {
+          return new BookClass({
+            id: doc.id,
+            bookTitle: doc.book_title,
+            createdAt: dayjs('2020-12-30'),
+            updatedAt: dayjs('2020-12-31'),
+          })
+        },
+      })
 
       // add
       const bookTitle = 'add'
@@ -253,13 +269,14 @@ describe('decode - use timestamp', () => {
       const updatedAt = Timestamp.fromDate(new Date(2020, 0, 2))
       const docRef = await dao.collectionRef.add({ book_title: bookTitle, createdAt, updatedAt })
 
+      // fetch
       const fetchedDoc = await dao.fetch(docRef.id)
       expect(fetchedDoc).toEqual(
         new BookClass({
           id: docRef.id,
           bookTitle,
-          createdAt: dayjs(createdAt.toDate()),
-          updatedAt: dayjs(updatedAt.toDate()),
+          createdAt: dayjs('2020-12-30'),
+          updatedAt: dayjs('2020-12-31'),
         })
       )
     })

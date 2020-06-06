@@ -1,4 +1,5 @@
 import * as firestore from '@google-cloud/firestore'
+import { Dayjs } from 'dayjs'
 import FieldValue = firestore.FieldValue
 import Timestamp = firestore.Timestamp
 import DocumentData = firestore.DocumentData
@@ -9,6 +10,8 @@ type DeepPartial<T> = {
     ? null
     : T[K] extends undefined
     ? undefined
+    : T[K] extends Dayjs
+    ? Dayjs | FieldValue
     : T[K] extends FieldValue
     ? FieldValue
     : T[K] extends Array<infer R>
@@ -21,6 +24,8 @@ type Storable<T> = {
     ? null
     : T[K] extends undefined
     ? undefined
+    : T[K] extends Dayjs
+    ? Dayjs | FieldValue
     : T[K] extends FieldValue
     ? FieldValue
     : T[K] extends Array<infer R>
@@ -35,6 +40,8 @@ type PartialStorable<T> = {
     ? null
     : T[K] extends undefined
     ? undefined
+    : T[K] extends Dayjs
+    ? Dayjs | FieldValue
     : T[K] extends FieldValue
     ? FieldValue
     : T[K] extends Array<infer R>
@@ -45,44 +52,28 @@ type PartialStorable<T> = {
 }
 
 export type EntityId = { id: string }
+type AppTimestamp = { createdAt: Dayjs; updatedAt: Dayjs }
+type StoreTimestamp = { createdAt: Timestamp; updatedAt: Timestamp }
 export type OmitEntityId<T> = Omit<T, 'id'>
 export type OmitEntityTimestamp<T> = Omit<T, 'createdAt' | 'updatedAt'>
 export type OmitEntityFields<T> = Omit<T, 'id' | 'createdAt' | 'updatedAt'>
-export type StoreDoc<T> = T & EntityId & { createdAt: Timestamp; updatedAt: Timestamp }
-export type EntityInput<T> = OmitEntityTimestamp<Storable<T>> & EntityId
-export type EntityOptionalInput<T> = EntityInput<DeepPartial<T>>
-export type EncodedObject<T> = PartialStorable<OmitEntityFields<T>>
-export type DecodedObject<T> = OmitEntityFields<T>
-export type EncodeFunc<T, S = DocumentData> = (obj: EntityOptionalInput<T>) => EncodedObject<S>
+type StoreDoc<T> = T & EntityId & Partial<StoreTimestamp>
+export type EntityAddInput<T> = Storable<OmitEntityFields<T> & Partial<AppTimestamp>>
+export type EntitySetInput<T> = Storable<OmitEntityFields<T> & Partial<AppTimestamp>> & EntityId
+export type EntityUpdateInput<T> = PartialStorable<OmitEntityFields<T> & AppTimestamp> & EntityId
+export type EncodedObject<T> = PartialStorable<OmitEntityFields<T> & StoreTimestamp>
+export type DecodedObject<T> = OmitEntityFields<T> & Partial<EntityId & AppTimestamp>
+export type EncodeFunc<T, S = DocumentData> = (obj: EntityUpdateInput<T>) => EncodedObject<S>
 export type DecodeFunc<T, S = T> = (doc: StoreDoc<S>) => DecodedObject<T>
 export type QueryKey<T> = keyof T | FieldPath
 export type AtomicOperation = Transaction | WriteBatch
 
 export interface FirestoreExOptions {
-  timestamp?: {
-    useInAll?: boolean
-    toAppDate: ToAppDate
-    toStoreDate: ToStoreDate
-  }
+  useTimestampInAll?: boolean
 }
 
-export interface TimestampSettings {
-  toAppDate: ToAppDate
-  toStoreDate: ToStoreDate
-}
-
-export type ToAppDate = (timestamp: Timestamp) => any
-export type ToStoreDate = (date: any) => Timestamp
-
-export interface Entity {
-  id: string
-}
-
-export interface TimestampEntity<D = Date> {
-  id: string
-  createdAt: D
-  updatedAt: D
-}
+export type Entity = EntityId
+export type TimestampEntity = EntityId & AppTimestamp
 
 export import CollectionReference = firestore.CollectionReference
 export import DocumentData = firestore.DocumentData

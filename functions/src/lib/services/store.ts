@@ -1,7 +1,18 @@
 import * as admin from 'firebase-admin'
-import { Collection, CollectionFactory, DecodeFunc, EncodeFunc, EncodedObject, FirestoreEx, Query, Transaction, WriteBatch } from '../../firestore-ex'
+import {
+  Collection,
+  CollectionFactory,
+  DecodeFunc,
+  EncodeFunc,
+  EncodedObject,
+  FirestoreEx,
+  Query,
+  TimestampEntity,
+  Transaction,
+  WriteBatch,
+} from '../../firestore-ex'
 import { Injectable, Module } from '@nestjs/common'
-import { TimestampEntity, firestoreExOptions } from '../base'
+import { firestoreExOptions } from '../base'
 
 //========================================================================
 //

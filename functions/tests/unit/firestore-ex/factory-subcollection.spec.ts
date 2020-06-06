@@ -1,7 +1,6 @@
-import { Collection, DecodeFunc, EncodeFunc, EncodedObject, Entity, FirestoreEx } from '../../../src/firestore-ex'
+import { Collection, DecodeFunc, EncodeFunc, EncodedObject, Entity, FirestoreEx, Timestamp } from '../../../src/firestore-ex'
 import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
-import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()

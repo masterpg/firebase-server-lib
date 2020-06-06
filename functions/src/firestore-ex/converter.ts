@@ -1,4 +1,5 @@
-import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue, TimestampSettings } from './types'
+import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue } from './types'
+import dayjs = require('dayjs')
 
 export class Converter<T, S = T> {
   //----------------------------------------------------------------------
@@ -7,10 +8,10 @@ export class Converter<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  constructor(params: { encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; timestamp?: TimestampSettings }) {
+  constructor(params: { encode?: EncodeFunc<T, S>; decode?: DecodeFunc<T, S>; useTimestamp?: boolean }) {
     this._encode = params.encode
     this._decode = params.decode
-    this._timestamp = params.timestamp
+    this._useTimestamp = Boolean(params.useTimestamp)
   }
 
   //----------------------------------------------------------------------
@@ -23,7 +24,7 @@ export class Converter<T, S = T> {
 
   private _decode?: DecodeFunc<T, S>
 
-  private _timestamp?: TimestampSettings
+  private _useTimestamp: boolean
 
   //----------------------------------------------------------------------
   //
@@ -41,7 +42,7 @@ export class Converter<T, S = T> {
 
     if ('id' in doc) delete (doc as any).id
 
-    if (this._timestamp) {
+    if (this._useTimestamp) {
       if ('createdAt' in doc) delete (doc as any).createdAt
       Object.assign(doc, { updatedAt: FieldValue.serverTimestamp() })
     }
@@ -63,12 +64,12 @@ export class Converter<T, S = T> {
     if (!obj.id) {
       obj.id = doc.id
     }
-    if (this._timestamp) {
+    if (this._useTimestamp) {
       if (!obj.createdAt && doc.createdAt) {
-        obj.createdAt = this._timestamp.toAppDate(doc.createdAt)
+        obj.createdAt = dayjs(doc.createdAt.toDate())
       }
       if (!obj.updatedAt && doc.updatedAt) {
-        obj.updatedAt = this._timestamp.toAppDate(doc.updatedAt)
+        obj.updatedAt = dayjs(doc.updatedAt.toDate())
       }
     }
 

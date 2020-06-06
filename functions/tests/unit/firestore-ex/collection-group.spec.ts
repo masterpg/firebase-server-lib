@@ -1,6 +1,5 @@
-import { AdminFirestoreTestUtil, TestTimestampEntity, deleteCollection } from './util'
-import { Entity, FirestoreEx } from '../../../src/firestore-ex'
-import { Timestamp } from '@google-cloud/firestore'
+import { AdminFirestoreTestUtil, deleteCollection } from './util'
+import { Entity, FirestoreEx, Timestamp, TimestampEntity } from '../../../src/firestore-ex'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
@@ -57,9 +56,9 @@ describe('collectionGroup', () => {
 })
 
 describe('collectionGroup - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(db, util.options)
+  const firestoreEx = new FirestoreEx(db)
 
-  interface TestDoc extends TestTimestampEntity {
+  interface TestDoc extends TimestampEntity {
     title: string
   }
 

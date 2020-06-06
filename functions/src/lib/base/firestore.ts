@@ -1,14 +1,4 @@
-import { FirestoreExOptions, Timestamp, TimestampEntity as _TimestampEntity } from '../../firestore-ex'
-import { Dayjs } from 'dayjs'
-import dayjs = require('dayjs')
-
-//========================================================================
-//
-//  Interfaces
-//
-//========================================================================
-
-interface TimestampEntity extends _TimestampEntity<Dayjs> {}
+import { FirestoreExOptions } from '../../firestore-ex'
 
 //========================================================================
 //
@@ -16,12 +6,7 @@ interface TimestampEntity extends _TimestampEntity<Dayjs> {}
 //
 //========================================================================
 
-const firestoreExOptions: FirestoreExOptions = {
-  timestamp: {
-    toAppDate: timestamp => dayjs(timestamp.toDate()),
-    toStoreDate: (date: Dayjs) => Timestamp.fromDate(date.toDate()),
-  },
-}
+const firestoreExOptions: FirestoreExOptions = {}
 
 /**
  * Firestoreのトランザクションで複数の処理を並列実行する際、
@@ -63,4 +48,4 @@ class WriteReadyObserver {
 //
 //========================================================================
 
-export { WriteReadyObserver, TimestampEntity, firestoreExOptions }
+export { WriteReadyObserver, firestoreExOptions }

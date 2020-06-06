@@ -1,7 +1,6 @@
-import { AdminFirestoreTestUtil, TestTimestampEntity } from './util'
-import { EncodeFunc, Entity, FirestoreEx } from '../../../src/firestore-ex'
+import { EncodeFunc, Entity, FirestoreEx, Timestamp, TimestampEntity } from '../../../src/firestore-ex'
+import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
-import { Timestamp } from '@google-cloud/firestore'
 import dayjs = require('dayjs')
 
 const util = new AdminFirestoreTestUtil()
@@ -44,6 +43,7 @@ describe('encode', () => {
       }
       const docId = await dao.add(doc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toEqual({ book_title: doc.bookTitle })
@@ -66,6 +66,7 @@ describe('encode', () => {
       }
       await dao.update(updatedDoc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toEqual({ bookTitle: updatedDoc.bookTitle })
@@ -98,6 +99,7 @@ describe('encode', () => {
       })
       const docId = await dao.add(doc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toEqual({ bookTitle: doc.bookTitle })
@@ -120,6 +122,7 @@ describe('encode', () => {
       }) as Book
       await dao.update(updatedDoc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toEqual({ bookTitle: updatedDoc.bookTitle })
@@ -138,9 +141,8 @@ describe('encode', () => {
         })
 
         // add
-        const title = 'set'
         const doc = new BookClassWithFunc({
-          bookTitle: 'update',
+          bookTitle: 'add',
         })
         // The 'anyFunc' filed cannot be stored in Firestore, so it's a error.
         expect(dao.add(doc)).rejects.toThrow('Cannot encode value: () => { }')
@@ -150,10 +152,10 @@ describe('encode', () => {
 })
 
 describe('encode - use timestamp', () => {
-  const firestoreEx = new FirestoreEx(db, util.options)
+  const firestoreEx = new FirestoreEx(db)
   const now = dayjs()
 
-  interface Book extends TestTimestampEntity {
+  interface Book extends TimestampEntity {
     bookTitle: string
   }
 
@@ -175,17 +177,18 @@ describe('encode - use timestamp', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode })
+      const dao = firestoreEx.collection<Book, BookDoc>({ path: collectionPath, encode, useTimestamp: true })
 
       // add
       const doc = {
         bookTitle: 'hogehoge',
-        // This is a possible implementation setting, to verify that this does not cause problems.
+        // Since the timestamp is set automatically, we verify that this setting is ignored.
         createdAt: now,
         updatedAt: now,
       }
       const docId = await dao.add(doc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toMatchObject({ book_title: doc.bookTitle })
@@ -195,7 +198,7 @@ describe('encode - use timestamp', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, useTimestamp: true })
 
       // add
       const docId = await dao.add({
@@ -207,12 +210,13 @@ describe('encode - use timestamp', () => {
       const updatedDoc = {
         id: docId,
         bookTitle: 'update',
-        // This is a possible implementation setting, to verify that this does not cause problems.
+        // Since the timestamp is set automatically, we verify that this setting is ignored.
         createdAt: now,
         updatedAt: now,
       }
       await dao.update(updatedDoc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toMatchObject({ bookTitle: updatedDoc.bookTitle })
@@ -243,17 +247,18 @@ describe('encode - use timestamp', () => {
 
     it('with encode', async () => {
       // with encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, encode, useTimestamp: true })
 
       // add
       const doc = new BookClass({
         bookTitle: 'hogehoge',
-        // This is a possible implementation setting, to verify that this does not cause problems.
+        // Since the timestamp is set automatically, we verify that this setting is ignored.
         createdAt: now,
         updatedAt: now,
       })
       const docId = await dao.add(doc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toMatchObject({ bookTitle: doc.bookTitle })
@@ -263,7 +268,7 @@ describe('encode - use timestamp', () => {
 
     it('without encode', async () => {
       // without encode
-      const dao = firestoreEx.collection<Book>({ path: collectionPath })
+      const dao = firestoreEx.collection<Book>({ path: collectionPath, useTimestamp: true })
 
       // add
       const docId = await dao.add({
@@ -275,12 +280,13 @@ describe('encode - use timestamp', () => {
       const updatedDoc = new BookClass({
         id: docId,
         bookTitle: 'update',
-        // This is a possible implementation setting, to verify that this does not cause problems.
+        // Since the timestamp is set automatically, we verify that this setting is ignored.
         createdAt: now,
         updatedAt: now,
       }) as Book
       await dao.update(updatedDoc)
 
+      // fetch
       const fetchedSnap = await dao.collectionRef.doc(docId).get()
       const fetchedDoc = fetchedSnap.data()!
       expect(fetchedDoc).toMatchObject({ bookTitle: updatedDoc.bookTitle })
@@ -296,15 +302,13 @@ describe('encode - use timestamp', () => {
 
       it('without encode is in error', async () => {
         // without encode
-        const dao = firestoreEx.collection<Book>({
-          path: collectionPath,
-        })
+        const dao = firestoreEx.collection<Book>({ path: collectionPath, useTimestamp: true })
 
         // add
         const title = 'set'
         const doc = new BookClassWithFunc({
           bookTitle: 'update',
-          // This is a possible implementation setting, to verify that this does not cause problems.
+          // Since the timestamp is set automatically, we verify that this setting is ignored.
           createdAt: now,
           updatedAt: now,
         })

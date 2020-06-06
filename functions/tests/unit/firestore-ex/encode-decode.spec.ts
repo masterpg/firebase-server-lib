@@ -1,5 +1,4 @@
-import { EncodedObject, Entity, FirestoreEx } from '../../../src/firestore-ex'
-import { FieldValue, Timestamp } from '@google-cloud/firestore'
+import { EncodedObject, Entity, FieldValue, FirestoreEx, Timestamp } from '../../../src/firestore-ex'
 import { AdminFirestoreTestUtil } from './util'
 import { Dayjs } from 'dayjs'
 import dayjs = require('dayjs')
