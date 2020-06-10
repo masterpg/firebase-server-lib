@@ -12,7 +12,7 @@ class ProdAppConfig implements AppConfig {
   }
 
   readonly cors: CORSConfig = {
-    whitelist: ['https://vue-base-project-7295.web.app', 'https://vue-base-project-7295.firebaseapp.com'],
+    whitelist: ['https://lived-web-app-b9f08.web.app', 'https://lived-web-app-b9f08.firebaseapp.com'],
 
     excludes: [
       {
@@ -23,7 +23,7 @@ class ProdAppConfig implements AppConfig {
   }
 
   readonly storage: StorageConfig = {
-    bucket: 'gs://vue-base-project-7295.appspot.com/',
+    bucket: 'gs://lived-web-app-b9f08.appspot.com/',
     usersDir: 'users',
   }
 

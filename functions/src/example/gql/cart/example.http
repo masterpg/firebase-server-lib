@@ -1,7 +1,6 @@
 POST {{host}}/gql
 Content-Type: application/json
 Authorization: Bearer {"uid": "general"}
-#Origin: https://vue-base-project-7295.web.app
 
 {
   "operationName": "GetCartItems",

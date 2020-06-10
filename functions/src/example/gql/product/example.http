@@ -1,6 +1,5 @@
 POST {{host}}/gql
 Content-Type: application/json
-#Origin: https://vue-base-project-7295.web.app
 
 {
   "operationName": "GetProducts",

@@ -271,7 +271,7 @@ class DevHTTPLoggingService extends HTTPLoggingService {
 
   protected getBaseFunctionName(req: Request): string {
     // 例:
-    //   req.baseUrl: '/vue-base-project-7295/asia-northeast1/cartRESTService'
+    //   req.baseUrl: '/lived-web-app-b9f08/asia-northeast1/cartRESTService'
     //   → 'cartRESTService'
     const segments = removeBothEndsSlash(req.baseUrl).split('/')
     return segments[segments.length - 1]

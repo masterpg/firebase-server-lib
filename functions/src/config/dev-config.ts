@@ -23,7 +23,7 @@ class DevAppConfig implements AppConfig {
   }
 
   readonly storage: StorageConfig = {
-    bucket: 'gs://vue-base-project-7295.appspot.com/',
+    bucket: 'gs://lived-web-app-b9f08.appspot.com/',
     usersDir: 'users',
   }
 

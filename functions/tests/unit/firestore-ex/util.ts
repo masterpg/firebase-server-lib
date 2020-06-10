@@ -27,7 +27,7 @@ export class AdminFirestoreTestUtil {
     } else {
       // Firestore still need to resolve firebase project name even using local emulator,
       // so set real firebase project id. This project uses package.json for this configuration.
-      // + process.env.GCLOUD_PROJECT = 'vue-base-project-7295'
+      // + process.env.GCLOUD_PROJECT = 'lived-web-app-b9f08'
       // + process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5020'
       admin.initializeApp({})
     }
