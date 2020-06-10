@@ -1,4 +1,4 @@
-import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue } from './types'
+import { DecodeFunc, DocumentSnapshot, EncodeFunc, EncodedObject, FieldValue, Timestamp, WriteOperationType } from './types'
 import dayjs = require('dayjs')
 
 export class Converter<T, S = T> {
@@ -32,10 +32,10 @@ export class Converter<T, S = T> {
   //
   //----------------------------------------------------------------------
 
-  encode(obj: any): EncodedObject<S> {
+  encode(obj: any, operation: WriteOperationType): EncodedObject<S> {
     const doc: EncodedObject<S> = {}
     if (this._encode) {
-      Object.assign(doc, this._encode(obj))
+      Object.assign(doc, this._encode(obj, operation))
     } else {
       Object.assign(doc, obj)
     }
@@ -44,6 +44,23 @@ export class Converter<T, S = T> {
 
     if (this._useTimestamp) {
       if ('createdAt' in doc) delete (doc as any).createdAt
+
+      switch (operation) {
+        case 'add': {
+          Object.assign(doc, { createdAt: FieldValue.serverTimestamp() })
+          break
+        }
+        case 'set': {
+          const createdAt = (obj as any).createdAt
+          if (dayjs.isDayjs(createdAt)) {
+            Object.assign(doc, { createdAt: Timestamp.fromDate(createdAt.toDate()) })
+          } else {
+            Object.assign(doc, { createdAt: FieldValue.serverTimestamp() })
+          }
+          break
+        }
+      }
+
       Object.assign(doc, { updatedAt: FieldValue.serverTimestamp() })
     }
 

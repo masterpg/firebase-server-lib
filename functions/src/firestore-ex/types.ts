@@ -57,16 +57,17 @@ type StoreTimestamp = { createdAt: Timestamp; updatedAt: Timestamp }
 export type OmitEntityId<T> = Omit<T, 'id'>
 export type OmitEntityTimestamp<T> = Omit<T, 'createdAt' | 'updatedAt'>
 export type OmitEntityFields<T> = Omit<T, 'id' | 'createdAt' | 'updatedAt'>
-type StoreDoc<T> = T & EntityId & Partial<StoreTimestamp>
+type StoreDoc<T> = OmitEntityFields<T> & EntityId & Partial<StoreTimestamp>
 export type EntityAddInput<T> = Storable<OmitEntityFields<T> & Partial<AppTimestamp>>
 export type EntitySetInput<T> = Storable<OmitEntityFields<T> & Partial<AppTimestamp>> & EntityId
 export type EntityUpdateInput<T> = PartialStorable<OmitEntityFields<T> & AppTimestamp> & EntityId
 export type EncodedObject<T> = PartialStorable<OmitEntityFields<T> & StoreTimestamp>
 export type DecodedObject<T> = OmitEntityFields<T> & Partial<EntityId & AppTimestamp>
-export type EncodeFunc<T, S = DocumentData> = (obj: EntityUpdateInput<T>) => EncodedObject<S>
+export type EncodeFunc<T, S = DocumentData> = (obj: EntityUpdateInput<T>, operation: WriteOperationType) => EncodedObject<S>
 export type DecodeFunc<T, S = T> = (doc: StoreDoc<S>) => DecodedObject<T>
 export type QueryKey<T> = keyof T | FieldPath
 export type AtomicOperation = Transaction | WriteBatch
+export type WriteOperationType = 'add' | 'set' | 'update'
 
 export interface FirestoreExOptions {
   useTimestampInAll?: boolean

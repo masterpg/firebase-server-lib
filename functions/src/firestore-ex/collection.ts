@@ -9,11 +9,9 @@ import {
   EntitySetInput,
   EntityUpdateInput,
   FieldPath,
-  FieldValue,
   OrderByDirection,
   QueryKey,
   QuerySnapshot,
-  Timestamp,
   Transaction,
   WhereFilterOp,
   WriteBatch,
@@ -22,7 +20,6 @@ import {
 import { Context } from './context'
 import { Converter } from './converter'
 import { Query } from './query'
-import dayjs = require('dayjs')
 
 export class Collection<T, S = T> {
   //----------------------------------------------------------------------
@@ -93,11 +90,7 @@ export class Collection<T, S = T> {
 
   async add(obj: EntityAddInput<T>, atomic?: AtomicOperation): Promise<string> {
     let docRef: DocumentReference
-    const doc = this._converter.encode(obj)
-
-    if (this._useTimestamp) {
-      ;(doc as any).createdAt = FieldValue.serverTimestamp()
-    }
+    const doc = this._converter.encode(obj, 'add')
 
     if (atomic instanceof Transaction) {
       docRef = this.docRef()
@@ -115,16 +108,7 @@ export class Collection<T, S = T> {
     if (!obj.id) throw new Error('Argument object must have "id" property')
 
     const docRef = this.docRef(obj.id)
-    const doc = this._converter.encode(obj)
-
-    if (this._useTimestamp) {
-      const createdAt = (obj as any).createdAt
-      if (dayjs.isDayjs(createdAt)) {
-        ;(doc as any).createdAt = Timestamp.fromDate(createdAt.toDate())
-      } else {
-        ;(doc as any).createdAt = FieldValue.serverTimestamp()
-      }
-    }
+    const doc = this._converter.encode(obj, 'set')
 
     if (atomic instanceof Transaction) {
       atomic.set(docRef, doc)
@@ -140,7 +124,7 @@ export class Collection<T, S = T> {
     if (!obj.id) throw new Error('Argument object must have "id" property')
 
     const docRef = this.docRef(obj.id)
-    const doc = this._converter.encode(obj)
+    const doc = this._converter.encode(obj, 'update')
 
     if (atomic instanceof Transaction) {
       atomic.update(docRef, doc)

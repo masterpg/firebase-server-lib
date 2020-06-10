@@ -324,8 +324,8 @@ describe('Basic - use timestamp', () => {
       decode: doc => {
         return {
           ...doc,
-          createdAt: dayjs(doc.createdAt.toDate()),
-          updatedAt: dayjs(doc.updatedAt.toDate()),
+          createdAt: dayjs(doc.createdAt!.toDate()),
+          updatedAt: dayjs(doc.updatedAt!.toDate()),
         }
       },
     })
