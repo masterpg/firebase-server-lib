@@ -1,4 +1,4 @@
-import { AuthServiceModule, StorageService } from '../../lib'
+import { AuthServiceModule, StorageService, StoreServiceModule } from '../../lib'
 import { Injectable, Module } from '@nestjs/common'
 
 //========================================================================
@@ -22,7 +22,7 @@ namespace AppStorageServiceDI {
 @Module({
   providers: [AppStorageServiceDI.provider],
   exports: [AppStorageServiceDI.provider],
-  imports: [AuthServiceModule],
+  imports: [AuthServiceModule, StoreServiceModule],
 })
 class AppStorageServiceModule {}
 

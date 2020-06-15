@@ -1,3 +1,4 @@
+import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
 import { FunctionsEventLoggingServiceDI, FunctionsEventLoggingServiceModule, UserServiceDI, UserServiceModule } from '../../lib'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { EventContext } from 'firebase-functions'
@@ -13,6 +14,7 @@ import { UserRecord } from 'firebase-functions/lib/providers/auth'
 class FunctionsEventService {
   constructor(
     @Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type,
+    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type,
     @Inject(FunctionsEventLoggingServiceDI.symbol) protected readonly loggingService: FunctionsEventLoggingServiceDI.type
   ) {}
 
@@ -23,7 +25,7 @@ class FunctionsEventService {
   async authOnDeleteUser(user: UserRecord, context: EventContext): Promise<void> {
     let error: Error | undefined
     try {
-      await this.userService.deleteUser(user.uid)
+      await this.storageService.deleteUserDir(user.uid)
     } catch (err) {
       error = err
     }
@@ -43,7 +45,7 @@ namespace FunctionsEventDI {
 @Module({
   providers: [FunctionsEventDI.provider],
   exports: [FunctionsEventDI.provider],
-  imports: [UserServiceModule, FunctionsEventLoggingServiceModule],
+  imports: [UserServiceModule, AppStorageServiceModule, FunctionsEventLoggingServiceModule],
 })
 class FunctionsEventServiceModule {}
 

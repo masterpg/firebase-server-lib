@@ -36,7 +36,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   async userStorageNode(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
-    return this.storageService.getUserNode(user, nodePath)
+    return this.storageService.getUserNodeByPath(user, nodePath)
   }
 
   @Query()
@@ -82,7 +82,7 @@ export class StorageResolver {
   @Query()
   @UseGuards(AuthGuard)
   async userStorageHierarchicalNodes(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    return this.storageService.getUserHierarchicalNode(user, nodePath)
+    return this.storageService.getUserHierarchicalNodes(user, nodePath)
   }
 
   @Query()
@@ -185,7 +185,7 @@ export class StorageResolver {
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async storageNode(@Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
-    return this.storageService.getNode(null, nodePath)
+    return this.storageService.getNodeByPath(nodePath)
   }
 
   @Query()
@@ -195,7 +195,7 @@ export class StorageResolver {
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return this.storageService.getDirDescendants(null, dirPath, options)
+    return this.storageService.getDirDescendants(dirPath, options)
   }
 
   @Query()
@@ -205,7 +205,7 @@ export class StorageResolver {
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return this.storageService.getDescendants(null, dirPath, options)
+    return this.storageService.getDescendants(dirPath, options)
   }
 
   @Query()
@@ -215,7 +215,7 @@ export class StorageResolver {
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return this.storageService.getDirChildren(null, dirPath, options)
+    return this.storageService.getDirChildren(dirPath, options)
   }
 
   @Query()
@@ -225,35 +225,35 @@ export class StorageResolver {
     @Args('dirPath') dirPath?: string,
     @Args('options') options?: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return this.storageService.getChildren(null, dirPath, options)
+    return this.storageService.getChildren(dirPath, options)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async storageHierarchicalNodes(@Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    return this.storageService.getHierarchicalNodes(null, nodePath)
+    return this.storageService.getHierarchicalNodes(nodePath)
   }
 
   @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async storageAncestorDirs(@Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    return this.storageService.getAncestorDirs(null, nodePath)
+    return this.storageService.getAncestorDirs(nodePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async handleUploadedFile(@Args('filePath') filePath: string): Promise<StorageNode> {
-    return await this.storageService.handleUploadedFile(null, filePath)
+    return await this.storageService.handleUploadedFile(filePath)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async createStorageDirs(@Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createDirs(null, dirPaths)
+    return this.storageService.createDirs(dirPaths)
   }
 
   @Mutation()
@@ -263,14 +263,14 @@ export class StorageResolver {
     @Args('dirPath') dirPath: string,
     @Args('options') options: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return await this.storageService.removeDir(null, dirPath, options)
+    return await this.storageService.removeDir(dirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async removeStorageFile(@Args('filePath') filePath: string): Promise<StorageNode | undefined> {
-    return await this.storageService.removeFile(null, filePath)
+    return await this.storageService.removeFile(filePath)
   }
 
   @Mutation()
@@ -281,14 +281,14 @@ export class StorageResolver {
     @Args('toDirPath') toDirPath: string,
     @Args('options') options: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return await this.storageService.moveDir(null, fromDirPath, toDirPath, options)
+    return await this.storageService.moveDir(fromDirPath, toDirPath, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async moveStorageFile(@Args('fromFilePath') fromFilePath: string, @Args('toFilePath') toFilePath: string): Promise<StorageNode> {
-    return await this.storageService.moveFile(null, fromFilePath, toFilePath)
+    return await this.storageService.moveFile(fromFilePath, toFilePath)
   }
 
   @Mutation()
@@ -299,14 +299,14 @@ export class StorageResolver {
     @Args('newName') newName: string,
     @Args('options') options: StoragePaginationOptionsInput
   ): Promise<StoragePaginationResult> {
-    return await this.storageService.renameDir(null, dirPath, newName, options)
+    return await this.storageService.renameDir(dirPath, newName, options)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async renameStorageFile(@Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return await this.storageService.renameFile(null, filePath, newName)
+    return await this.storageService.renameFile(filePath, newName)
   }
 
   @Mutation()
@@ -316,7 +316,7 @@ export class StorageResolver {
     @Args('dirPath') dirPath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
-    return this.storageService.setDirShareSettings(null, dirPath, settings)
+    return this.storageService.setDirShareSettings(dirPath, settings)
   }
 
   @Mutation()
@@ -326,7 +326,7 @@ export class StorageResolver {
     @Args('filePath') filePath: string,
     @Args('settings') settings: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
-    return this.storageService.setFileShareSettings(null, filePath, settings)
+    return this.storageService.setFileShareSettings(filePath, settings)
   }
 
   @Query()

@@ -23,7 +23,6 @@ class FoundationService extends BaseFoundationService {
   }
 
   async customToken(user: IdToken): Promise<string> {
-    await this.storageService.assignUserDir(user)
     // user.customClaimsには開発や単体テストで必要なカスタムクレームが設定されてくる
     const token = await admin.auth().createCustomToken(user.uid, user.customClaims || {})
     return token

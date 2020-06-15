@@ -4,7 +4,7 @@ Authorization: Bearer {"uid": "general"}
 
 {
   "operationName": "GetAuthData",
-  "query": "query GetAuthData { authData { status token user { id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } } }"
+  "query": "query GetAuthData { authData { status token user { id fullName email emailVerified isAppAdmin createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } } }"
 }
 
 ###

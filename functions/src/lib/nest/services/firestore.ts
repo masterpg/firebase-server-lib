@@ -13,42 +13,47 @@ class FirestoreService {
   /**
    * 指定されたコレクションを再帰的に削除します。
    * @param collectionPath
-   * @param batchSize
+   * @param tx
    */
-  async deepDeleteCollection(collectionPath: string, batchSize = 500): Promise<void> {
+  async deepDeleteCollection(collectionPath: string, tx?: Transaction): Promise<void> {
     const db = admin.firestore()
 
     const collectionRef = db.collection(collectionPath)
-    const query = collectionRef.orderBy('__name__').limit(batchSize)
+    const query = collectionRef.orderBy('__name__')
 
-    await db.runTransaction(async tx => {
-      const docRefs = await this.m_getDeepDocRefs(tx, query, batchSize)
+    const docRefs = await this.m_getDeepDocRefs(query, tx)
+    if (tx) {
       for (const docRef of docRefs) {
         tx.delete(docRef)
       }
-    })
+    } else {
+      await Promise.all(
+        docRefs.map(async docRef => {
+          await docRef.delete()
+        })
+      )
+    }
   }
 
   /**
    * 指定されたクエリを実行し、その結果からさらにクエリの作成・実行を繰り返して、
    * 再帰的にドキュメントリファレンスを取得します。
-   * @param tx
    * @param query
-   * @param batchSize
+   * @param tx
    */
-  private async m_getDeepDocRefs(tx: Transaction, query: Query, batchSize: number): Promise<DocumentReference[]> {
-    const snapshot = await tx.get(query)
-    if (snapshot.size === 0) return []
+  private async m_getDeepDocRefs(query: Query, tx?: Transaction): Promise<DocumentReference[]> {
+    const snap = tx ? await tx.get(query) : await query.get()
+    if (snap.size === 0) return []
 
     const result: DocumentReference[] = []
 
     const subCollectionPromises: Promise<DocumentReference[]>[] = []
-    for (const doc of snapshot.docs) {
+    for (const doc of snap.docs) {
       const subCollectionPromise = doc.ref.listCollections().then(async subCollections => {
         const promises: Promise<DocumentReference[]>[] = []
         for (const subCollection of subCollections || []) {
-          const subQuery = subCollection.orderBy('__name__').limit(batchSize)
-          const subPromise = this.m_getDeepDocRefs(tx, subQuery, batchSize)
+          const subQuery = subCollection.orderBy('__name__')
+          const subPromise = this.m_getDeepDocRefs(subQuery, tx)
           promises.push(subPromise)
         }
         return (await Promise.all(promises)).reduce<DocumentReference[]>((result, docRefs) => {

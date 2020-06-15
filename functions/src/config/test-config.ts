@@ -7,6 +7,10 @@ import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from
 //========================================================================
 
 class TestAppConfig implements AppConfig {
+  constructor() {
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5020'
+  }
+
   readonly functions: FunctionsConfig = {
     region: 'asia-northeast1',
   }
@@ -23,7 +27,7 @@ class TestAppConfig implements AppConfig {
   }
 
   readonly storage: StorageConfig = {
-    bucket: 'gs://lived-web-app-b9f08.appspot.com/',
+    bucket: 'gs://staging.lived-web-app-b9f08.appspot.com/',
     usersDir: 'users',
   }
 

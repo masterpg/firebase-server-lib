@@ -201,7 +201,7 @@ export interface IQuery {
     authData(): AuthDataResult | Promise<AuthDataResult>;
 }
 
-export interface StorageNode {
+export interface StorageNode extends TimestampEntity {
     id: string;
     nodeType: StorageNodeType;
     name: string;
@@ -210,8 +210,9 @@ export interface StorageNode {
     contentType: string;
     size: number;
     share: StorageNodeShareSettings;
-    created: DateTime;
-    updated: DateTime;
+    version: number;
+    createdAt: DateTime;
+    updatedAt: DateTime;
 }
 
 export interface StorageNodeShareSettings {
@@ -231,7 +232,6 @@ export interface UserInfo extends TimestampEntity {
     email: string;
     emailVerified: boolean;
     isAppAdmin: boolean;
-    myDirName: string;
     createdAt: DateTime;
     updatedAt: DateTime;
     publicProfile: PublicProfile;

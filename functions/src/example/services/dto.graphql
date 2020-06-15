@@ -42,7 +42,6 @@ type UserInfo implements TimestampEntity {
   email: String!
   emailVerified: Boolean!
   isAppAdmin: Boolean!
-  myDirName: String!
   createdAt: DateTime!
   updatedAt: DateTime!
   publicProfile: PublicProfile!
@@ -94,8 +93,8 @@ type StoragePaginationResult {
   nextPageToken: String
 }
 
-type StorageNode {
-  id: String!
+type StorageNode implements TimestampEntity {
+  id: ID!
   nodeType: StorageNodeType!
   name: String!
   dir: String!
@@ -103,8 +102,9 @@ type StorageNode {
   contentType: String!
   size: Int!
   share: StorageNodeShareSettings!
-  created: DateTime!
-  updated: DateTime!
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type StorageNodeShareSettings {

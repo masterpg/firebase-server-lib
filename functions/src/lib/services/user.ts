@@ -30,7 +30,6 @@ interface UserInfo extends StoreUser {
   email: string
   emailVerified: boolean
   isAppAdmin: boolean
-  myDirName: string
   publicProfile: PublicProfile
 }
 
@@ -113,12 +112,6 @@ class UserService {
     }
     const storeUser = await this.storeService.userDao.fetch(userInput.id)
 
-    // Cloud Storageのユーザーディレクトリの割り当て
-    await this.storageService.assignUserDir({
-      uid: userRecord.uid,
-      ...userRecord.customClaims,
-    })
-
     if (!storeUser) {
       await this.storeService.runBatch(async batch => {
         await this.storeService.userDao.set(userInput, batch)
@@ -164,7 +157,6 @@ class UserService {
       email: userRecord.email!,
       emailVerified: userRecord.emailVerified,
       isAppAdmin: Boolean(userRecord.customClaims?.isAppAdmin),
-      myDirName: userRecord.customClaims?.myDirName!,
       publicProfile,
     }
   }
@@ -179,20 +171,11 @@ class UserService {
     }
 
     if (userRecord) {
-      // Cloud Storageのユーザーディレクトリを削除
-      let userDirPath: string | undefined
-      try {
-        const userIdClaims: UserIdClaims = { uid: userRecord.uid, ...userRecord.customClaims }
-        userDirPath = this.storageService.getUserDirPath(userIdClaims)
-      } catch (err) {}
-      if (userDirPath) {
-        await this.storageService.removeDir(null, userDirPath)
-      }
       // Firebaseユーザーを削除
       await admin.auth().deleteUser(userRecord.uid)
     }
 
-    // Firestoreのユーザー情報を削除
+    // ストアのユーザー情報を削除
     await this.storeService.runBatch(async batch => {
       await this.storeService.userDao.delete(uid, batch)
       await this.storeService.publicProfileDao.delete(uid, batch)

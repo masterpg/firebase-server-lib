@@ -1,9 +1,9 @@
 import * as path from 'path'
-import * as shortid from 'shortid'
 import { StorageNode, StorageNodeType } from '../../../src/lib/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { cloneDeep } from 'lodash'
 import dayjs = require('dayjs')
+import { generateFirestoreId } from './firestore'
 
 //========================================================================
 //
@@ -17,7 +17,7 @@ function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode,
   const name = path.basename(dirPath)
   const dir = removeStartDirChars(path.dirname(dirPath))
   const result: StorageNode = {
-    id: data.id || shortid.generate(),
+    id: data.id || generateFirestoreId(),
     nodeType: StorageNodeType.Dir,
     name,
     dir,
@@ -25,8 +25,9 @@ function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode,
     contentType: data.contentType || '',
     size: data.size || 0,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-    created: data.created || dayjs(),
-    updated: data.updated || dayjs(),
+    version: 1,
+    createdAt: data.createdAt || dayjs(),
+    updatedAt: data.updatedAt || dayjs(),
   }
   return result
 }
@@ -37,7 +38,7 @@ function newTestStorageFileNode(filePath: string, data?: Partial<Omit<StorageNod
   const name = path.basename(filePath)
   const dir = removeStartDirChars(path.dirname(filePath))
   const result: StorageNode = {
-    id: data.id || shortid.generate(),
+    id: data.id || generateFirestoreId(),
     nodeType: StorageNodeType.File,
     name,
     dir,
@@ -45,8 +46,9 @@ function newTestStorageFileNode(filePath: string, data?: Partial<Omit<StorageNod
     contentType: data.contentType || 'text/plain; charset=utf-8',
     size: data.size || 5,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-    created: data.created || dayjs(),
-    updated: data.updated || dayjs(),
+    version: 1,
+    createdAt: data.createdAt || dayjs(),
+    updatedAt: data.updatedAt || dayjs(),
   }
   return result
 }

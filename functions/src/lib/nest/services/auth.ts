@@ -10,7 +10,6 @@ import { Request, Response } from 'express'
 
 interface UserClaims {
   isAppAdmin?: boolean
-  myDirName?: string
   authStatus?: AuthStatus
 }
 

@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 
-import { DevUtilsServiceDI, DevUtilsServiceModule, TestFirebaseUserInput } from '../lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../lib'
 import { createNestApplication } from '../example/base'
 import { initFirebaseApp } from '../lib/base'
 const exitHook = require('async-exit-hook')
 exitHook.forceExitTimeout(60000)
 
-const users: TestFirebaseUserInput[] = [
+const users: TestUserInput[] = [
   {
     uid: 'general',
     email: 'general@example.com',
     emailVerified: true,
     password: 'passpass',
     displayName: '一般ユーザー',
+    fullName: '一般 太郎',
     disabled: false,
-    customClaims: { myDirName: 'general' },
+    customClaims: {},
   },
   {
     uid: 'app.admin',
@@ -22,8 +23,9 @@ const users: TestFirebaseUserInput[] = [
     emailVerified: true,
     password: 'passpass',
     displayName: 'アプリケーション管理ユーザー',
+    fullName: '管理 太郎',
     disabled: false,
-    customClaims: { myDirName: 'app.admin', isAppAdmin: true },
+    customClaims: { isAppAdmin: true },
   },
 ]
 
@@ -32,7 +34,7 @@ exitHook((callback: () => void) => {
 
   createNestApplication(DevUtilsServiceModule).then(async nestApp => {
     const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
-    await devUtilsService.setTestFirebaseUsers(...users)
+    await devUtilsService.setTestUsers(...users)
     callback()
   })
 })

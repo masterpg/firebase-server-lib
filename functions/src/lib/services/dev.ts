@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { DocumentReference, Timestamp } from '@google-cloud/firestore'
+import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule, UserClaims } from '../nest'
 import { Inject, Module } from '@nestjs/common'
 import { UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
@@ -60,22 +60,18 @@ class DevUtilsService {
   //
   //----------------------------------------------------------------------
 
-  async putTestStoreData(inputs: PutTestStoreDataInput[]): Promise<void> {
-    {
-      const processes: Promise<void>[] = []
-      for (const item of inputs) {
-        processes.push(this.m_deleteCollection(item.collectionName))
-      }
-      await Promise.all(processes)
-    }
+  async putTestStoreData(inputs: PutTestStoreDataInput[], tx?: Transaction): Promise<void> {
+    await Promise.all(
+      inputs.map(async input => {
+        await this.m_deleteCollection(input.collectionName, tx)
+      })
+    )
 
-    {
-      const processes: Promise<void>[] = []
-      for (const item of inputs) {
-        processes.push(this.m_buildCollection(item.collectionName, item.collectionRecords))
-      }
-      await Promise.all(processes)
-    }
+    await Promise.all(
+      inputs.map(async input => {
+        await this.m_buildCollection(input.collectionName, input.collectionRecords, tx)
+      })
+    )
   }
 
   async getTestSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): Promise<string[]> {
@@ -146,6 +142,11 @@ class DevUtilsService {
     )
   }
 
+  async deleteAllTestFirebaseUsers(...uids: string[]): Promise<void> {
+    const { users } = await admin.auth().listUsers()
+    await this.deleteTestFirebaseUsers(...users.map(user => user.uid))
+  }
+
   async setTestUsers(...inputs: TestUserInput[]): Promise<UserInfo[]> {
     const dict: { [uid: string]: UserInfo } = {}
     await Promise.all(
@@ -169,14 +170,19 @@ class DevUtilsService {
     )
   }
 
+  async deleteAllTestUsers(): Promise<void> {
+    const { users } = await admin.auth().listUsers()
+    await this.deleteTestUsers(...users.map(user => user.uid))
+  }
+
   //----------------------------------------------------------------------
   //
   //  Internal methods
   //
   //----------------------------------------------------------------------
 
-  private async m_deleteCollection(collectionName: string): Promise<void> {
-    await this.firestoreService.deepDeleteCollection(collectionName)
+  private async m_deleteCollection(collectionName: string, tx?: Transaction): Promise<void> {
+    await this.firestoreService.deepDeleteCollection(collectionName, tx)
   }
 
   /**
@@ -191,14 +197,19 @@ class DevUtilsService {
     })
   }
 
-  private async m_buildCollection(collectionName: string, collectionRows: any[]): Promise<void> {
+  private async m_buildCollection(collectionName: string, collectionRows: any[], tx?: Transaction): Promise<void> {
     const docs = await this.m_createCollectionDocs(collectionName, collectionRows)
-    const db = admin.firestore()
-    await db.runTransaction(async transaction => {
+    if (tx) {
       for (const doc of docs) {
-        transaction.create(doc.ref, doc.data)
+        tx.create(doc.ref, doc.data)
       }
-    })
+    } else {
+      await Promise.all(
+        docs.map(async doc => {
+          await doc.ref.create(doc.data)
+        })
+      )
+    }
   }
 
   private async m_createCollectionDocs(

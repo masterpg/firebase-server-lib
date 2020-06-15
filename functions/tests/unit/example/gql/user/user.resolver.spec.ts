@@ -25,7 +25,6 @@ const ICHIRO: UserInfo = {
   email: 'ichiro@example.com',
   emailVerified: true,
   isAppAdmin: false,
-  myDirName: 'abcdefg',
   createdAt: now,
   updatedAt: now,
   publicProfile: {
@@ -40,7 +39,6 @@ const ICHIRO: UserInfo = {
 const ICHIRO_TOKEN: UserIdClaims = {
   uid: ICHIRO.id,
   authStatus: AuthStatus.WaitForEmailVerified,
-  myDirName: ICHIRO.myDirName,
   isAppAdmin: ICHIRO.isAppAdmin,
 }
 
@@ -102,7 +100,7 @@ describe('UserResolver', () => {
             status
             token
             user { 
-              id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt
+              id fullName email emailVerified isAppAdmin createdAt updatedAt
               publicProfile { id displayName photoURL createdAt updatedAt }
             }
           }
@@ -146,7 +144,7 @@ describe('UserResolver', () => {
       query: `
         mutation SetOwnUserInfo($input: UserInfoInput!) {
           setOwnUserInfo(input: $input) {
-            id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt
+            id fullName email emailVerified isAppAdmin createdAt updatedAt
             publicProfile { id displayName photoURL createdAt updatedAt }
           }
         }

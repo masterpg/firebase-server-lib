@@ -139,8 +139,7 @@ Content-Type: application/json
         "emailVerified": true,
         "password": "passpass",
         "displayName": "一般テストユーザー",
-        "disabled": false,
-        "customClaims": { "myDirName": "test.general" }
+        "disabled": false
       }
     ]
   }
@@ -166,7 +165,7 @@ Content-Type: application/json
 
 {
   "operationName": "SetTestUsers",
-  "query": "mutation SetTestUsers($users: [TestUserInput!]!) { setTestUsers(users: $users) { id fullName email emailVerified isAppAdmin myDirName createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } }",
+  "query": "mutation SetTestUsers($users: [TestUserInput!]!) { setTestUsers(users: $users) { id fullName email emailVerified isAppAdmin createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } }",
   "variables": {
     "users": [
       {
@@ -176,7 +175,6 @@ Content-Type: application/json
         "password": "passpass",
         "displayName": "一般ユーザー",
         "disabled": false,
-        "customClaims": { "myDirName": "general" },
         "fullName": "一般 太郎"
       }
     ]

@@ -30,9 +30,9 @@ const SHARE_SETTINGS: StorageNodeShareSettings = {
 //
 //========================================================================
 
-interface ResponseStorageNode extends Omit<StorageNode, 'created' | 'updated'> {
-  created: string
-  updated: string
+interface ResponseStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'> {
+  createdAt: string
+  updatedAt: string
 }
 
 function toResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] {
@@ -43,8 +43,8 @@ function toResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] {
         readUIds: node.share.readUIds || null,
         writeUIds: node.share.writeUIds || null,
       },
-      created: node.created!.toISOString(),
-      updated: node.updated!.toISOString(),
+      createdAt: node.createdAt.toISOString(),
+      updatedAt: node.updatedAt.toISOString(),
     })
   })
 }
@@ -93,7 +93,7 @@ describe('StorageResolver', () => {
       query: `
         query GetUserStorageNode($nodePath: String!) {
           userStorageNode(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -103,8 +103,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getUserNode = td.replace(storageService, 'getUserNode')
-      td.when(getUserNode(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(d1)
+      const getUserNodeByPath = td.replace(storageService, 'getUserNodeByPath')
+      td.when(getUserNodeByPath(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(d1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -114,8 +114,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - 結果が空だった場合', async () => {
-      const getUserNode = td.replace(storageService, 'getUserNode')
-      td.when(getUserNode(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(undefined)
+      const getUserNodeByPath = td.replace(storageService, 'getUserNodeByPath')
+      td.when(getUserNodeByPath(td.matchers.contains(GENERAL_USER_TOKEN), d1.path)).thenResolve(undefined)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -139,7 +139,7 @@ describe('StorageResolver', () => {
         query GetUserStorageDirDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           userStorageDirDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -196,7 +196,7 @@ describe('StorageResolver', () => {
         query GetUserStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           userStorageDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -238,7 +238,7 @@ describe('StorageResolver', () => {
         query GetUserStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           userStorageDirChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -280,7 +280,7 @@ describe('StorageResolver', () => {
         query GetUserStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           userStorageChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -322,7 +322,7 @@ describe('StorageResolver', () => {
       query: `
         query GetUserStorageHierarchicalNodes($nodePath: String!) {
           userStorageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -332,8 +332,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getUserHierarchicalNode = td.replace(storageService, 'getUserHierarchicalNode')
-      td.when(getUserHierarchicalNode(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve([d1, d11])
+      const getUserHierarchicalNodes = td.replace(storageService, 'getUserHierarchicalNodes')
+      td.when(getUserHierarchicalNodes(td.matchers.contains(GENERAL_USER_TOKEN), fileA.path)).thenResolve([d1, d11])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, GENERAL_USER_HEADER),
@@ -357,7 +357,7 @@ describe('StorageResolver', () => {
       query: `
         query GetUserStorageAncestorDirs($nodePath: String!) {
           userStorageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -390,7 +390,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedUserFile($filePath: String!) {
           handleUploadedUserFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -424,7 +424,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateUserStorageDirs($dirPaths: [String!]!) {
           createUserStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -459,7 +459,7 @@ describe('StorageResolver', () => {
         mutation RemoveUserStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) {
           removeUserStorageDir(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -499,7 +499,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveUserStorageFile($filePath: String!) {
           removeUserStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -534,7 +534,7 @@ describe('StorageResolver', () => {
         mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) {
           moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -575,7 +575,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -611,7 +611,7 @@ describe('StorageResolver', () => {
         mutation RenameUserStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) {
           renameUserStorageDir(dirPath: $dirPath, newName: $newName, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -652,7 +652,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameUserStorageFile($filePath: String!, $newName: String!) {
           renameUserStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -686,7 +686,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetUserStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
           setUserStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -720,7 +720,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetUserStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
           setUserStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -801,7 +801,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageNode($nodePath: String!) {
           storageNode(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -811,8 +811,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const getNode = td.replace(storageService, 'getNode')
-      td.when(getNode(null, d1.path)).thenResolve(d1)
+      const getNodeByPath = td.replace(storageService, 'getNodeByPath')
+      td.when(getNodeByPath(d1.path)).thenResolve(d1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -822,8 +822,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - 結果が空だった場合', async () => {
-      const getNode = td.replace(storageService, 'getNode')
-      td.when(getNode(null, d1.path)).thenResolve(undefined)
+      const getNodeByPath = td.replace(storageService, 'getNodeByPath')
+      td.when(getNodeByPath(d1.path)).thenResolve(undefined)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -854,7 +854,7 @@ describe('StorageResolver', () => {
         query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDirDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -868,7 +868,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getDirDescendants = td.replace(storageService, 'getDirDescendants')
-      td.when(getDirDescendants(null, d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getDirDescendants(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -903,7 +903,7 @@ describe('StorageResolver', () => {
         query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -917,7 +917,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getDescendants = td.replace(storageService, 'getDescendants')
-      td.when(getDescendants(null, d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getDescendants(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -952,7 +952,7 @@ describe('StorageResolver', () => {
         query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDirChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -966,7 +966,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getDirChildren = td.replace(storageService, 'getDirChildren')
-      td.when(getDirChildren(null, d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getDirChildren(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1001,7 +1001,7 @@ describe('StorageResolver', () => {
         query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1015,7 +1015,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getChildren = td.replace(storageService, 'getChildren')
-      td.when(getChildren(null, d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(getChildren(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d11],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1050,7 +1050,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageHierarchicalNodes($nodePath: String!) {
           storageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1061,7 +1061,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getHierarchicalNodes = td.replace(storageService, 'getHierarchicalNodes')
-      td.when(getHierarchicalNodes(null, fileA.path)).thenResolve([d1, d11])
+      td.when(getHierarchicalNodes(fileA.path)).thenResolve([d1, d11])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1092,7 +1092,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageAncestorDirs($nodePath: String!) {
           storageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1103,7 +1103,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const getAncestorDirs = td.replace(storageService, 'getAncestorDirs')
-      td.when(getAncestorDirs(null, fileA.path)).thenResolve([d1, d11])
+      td.when(getAncestorDirs(fileA.path)).thenResolve([d1, d11])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1132,7 +1132,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFile($filePath: String!) {
           handleUploadedFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1143,7 +1143,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(null, fileA.path)).thenResolve(fileA)
+      td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1173,7 +1173,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDirs($dirPaths: [String!]!) {
           createStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1184,7 +1184,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const createDirs = td.replace(storageService, 'createDirs')
-      td.when(createDirs(null, [d11.path, d12.path])).thenResolve([d11, d12])
+      td.when(createDirs([d11.path, d12.path])).thenResolve([d11, d12])
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1215,7 +1215,7 @@ describe('StorageResolver', () => {
         mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) {
           removeStorageDir(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1229,7 +1229,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeDir = td.replace(storageService, 'removeDir')
-      td.when(removeDir(null, d1.path, { maxChunk: 3 })).thenResolve({
+      td.when(removeDir(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1262,7 +1262,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFile($filePath: String!) {
           removeStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1273,7 +1273,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const removeFile = td.replace(storageService, 'removeFile')
-      td.when(removeFile(null, fileA.path)).thenResolve(fileA)
+      td.when(removeFile(fileA.path)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1304,7 +1304,7 @@ describe('StorageResolver', () => {
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1319,7 +1319,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(null, 'docs', 'archive/docs', { maxChunk: 3 })).thenResolve({
+      td.when(moveDir('docs', 'archive/docs', { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1352,7 +1352,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1364,7 +1364,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const moveFile = td.replace(storageService, 'moveFile')
-      td.when(moveFile(null, 'fileA.txt', 'docs/fileA.txt')).thenResolve(fileA)
+      td.when(moveFile('fileA.txt', 'docs/fileA.txt')).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1395,7 +1395,7 @@ describe('StorageResolver', () => {
         mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) {
           renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1410,7 +1410,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(null, 'documents', 'docs', { maxChunk: 3 })).thenResolve({
+      td.when(renameDir('documents', 'docs', { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1443,7 +1443,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1455,7 +1455,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const renameFile = td.replace(storageService, 'renameFile')
-      td.when(renameFile(null, 'fileA.txt', 'fileB.txt')).thenResolve(fileB)
+      td.when(renameFile('fileA.txt', 'fileB.txt')).thenResolve(fileB)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1484,7 +1484,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1496,7 +1496,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
-      td.when(setDirShareSettings(null, d1.path, SHARE_SETTINGS)).thenResolve(d1)
+      td.when(setDirShareSettings(d1.path, SHARE_SETTINGS)).thenResolve(d1)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),
@@ -1525,7 +1525,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } created updated
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
           }
         }
       `,
@@ -1537,7 +1537,7 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const setFileShareSettings = td.replace(storageService, 'setFileShareSettings')
-      td.when(setFileShareSettings(null, fileA.path, SHARE_SETTINGS)).thenResolve(fileA)
+      td.when(setFileShareSettings(fileA.path, SHARE_SETTINGS)).thenResolve(fileA)
 
       const response = await requestGQL(app, gql, {
         headers: Object.assign({}, APP_ADMIN_USER_HEADER),

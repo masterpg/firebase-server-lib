@@ -10,9 +10,9 @@ import {
   UserInfo,
   UserInfoInput,
   UserServiceDI,
+  UserServiceModule,
   initLib,
 } from '../../../../../src/lib'
-import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Test } from '@nestjs/testing'
 
 jest.setTimeout(25000)
@@ -59,7 +59,18 @@ const AVAILABLE_USER: TestFirebaseUserInput = {
   photoURL: 'https://example.com/saburo/user.png',
   customClaims: {
     isAppAdmin: true,
-    myDirName: 'saburo',
+  },
+}
+
+const DELETE_USER_1: TestFirebaseUserInput = {
+  uid: 'delete-user-1',
+  email: 'delete-user-1@example.com',
+  emailVerified: true,
+  password: 'passpass',
+  disabled: false,
+  photoURL: 'https://example.com/jiro/user.png',
+  customClaims: {
+    isAppAdmin: true,
   },
 }
 
@@ -68,7 +79,7 @@ const AVAILABLE_USER_INPUT: UserInfoInput = {
   displayName: 'サブロー',
 }
 
-const USERS = [NOT_VERIFIED_USER, VERIFIED_USER, AVAILABLE_USER]
+const USERS = [NOT_VERIFIED_USER, VERIFIED_USER, AVAILABLE_USER, DELETE_USER_1]
 
 //========================================================================
 //
@@ -78,7 +89,7 @@ const USERS = [NOT_VERIFIED_USER, VERIFIED_USER, AVAILABLE_USER]
 
 beforeAll(async () => {
   const testingModule = await Test.createTestingModule({
-    imports: [GQLContainerModule, DevUtilsServiceModule],
+    imports: [UserServiceModule, DevUtilsServiceModule],
   }).compile()
   userService = testingModule.get<UserServiceDI.type>(UserServiceDI.symbol)
   storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
@@ -97,7 +108,6 @@ afterAll(async () => {
 describe('UserService', () => {
   describe('getAuthData', () => {
     beforeAll(async () => {
-      await devUtilsService.deleteTestUsers(...USERS.map(user => user.uid))
       await devUtilsService.setTestFirebaseUsers(...USERS)
       await userService.setUserInfo(AVAILABLE_USER.uid, AVAILABLE_USER_INPUT)
     })
@@ -137,7 +147,6 @@ describe('UserService', () => {
         email: AVAILABLE_USER.email,
         emailVerified: AVAILABLE_USER.emailVerified,
         isAppAdmin: AVAILABLE_USER.customClaims?.isAppAdmin,
-        myDirName: AVAILABLE_USER.customClaims?.myDirName,
         publicProfile: {
           displayName: AVAILABLE_USER_INPUT.displayName,
           photoURL: AVAILABLE_USER.photoURL,
@@ -182,11 +191,6 @@ describe('UserService', () => {
           photoURL: VERIFIED_USER.photoURL,
         },
       } as UserInfo)
-      // ユーザーディレクトリが作成されたことを検証
-      expect(actual.myDirName.length > 0).toBeTruthy()
-      const userDirPath = storageService.getUserDirPath({ uid: fetched.id, ...fetched })
-      const userDir = await storageService.getRealDirNode(null, userDirPath)
-      expect(userDir.exists).toBeTruthy()
       // タイムスタンプの検証
       expect(actual.createdAt.isValid()).toBeTruthy()
       expect(actual.updatedAt.isValid()).toBeTruthy()
@@ -216,7 +220,6 @@ describe('UserService', () => {
           displayName: 'Jiro',
         },
         // 追加時と変わっていないことを検証
-        myDirName: added.myDirName,
         isAppAdmin: added.isAppAdmin,
       } as UserInfo)
       // タイムスタンプの検証
@@ -242,36 +245,28 @@ describe('UserService', () => {
   })
 
   describe('deleteUser', () => {
-    beforeEach(async () => {
-      await userService.deleteUser(VERIFIED_USER.uid)
-      await devUtilsService.setTestFirebaseUsers(VERIFIED_USER)
-    })
-
     it('ユーザーの削除', async () => {
       // ユーザー追加
-      const added = await userService.setUserInfo(VERIFIED_USER.uid, {
-        fullName: '鈴木 二郎',
-        displayName: 'ジロー',
+      await devUtilsService.setTestFirebaseUsers(DELETE_USER_1)
+      const added = await userService.setUserInfo(DELETE_USER_1.uid, {
+        fullName: '削除 一郎',
+        displayName: 'イチコロ',
       })
 
-      // ユーザーディレクトリパスを取得
+      // テスト用にユーザーディレクトリを作成
       const userDirPath = storageService.getUserDirPath({ uid: added.id, ...added })
-      let userDir = await storageService.getRealDirNode(null, userDirPath)
-      expect(userDir.exists).toBeTruthy()
+      await storageService.createDirs([userDirPath])
 
       // ユーザー削除
-      await userService.deleteUser(VERIFIED_USER.uid)
+      await userService.deleteUser(DELETE_USER_1.uid)
 
       // Firestoreのユーザーが削除されたことを検証
-      await expect(admin.auth().getUser(VERIFIED_USER.uid)).rejects.toThrow('There is no user record corresponding to the provided identifier.')
+      await expect(admin.auth().getUser(DELETE_USER_1.uid)).rejects.toThrow('There is no user record corresponding to the provided identifier.')
       // Firestoreのユーザー情報が削除されたことを検証
-      const storeUser = await storeService.userDao.fetch(VERIFIED_USER.uid)
+      const storeUser = await storeService.userDao.fetch(DELETE_USER_1.uid)
       expect(storeUser).toBeUndefined()
-      const publicProfile = await storeService.publicProfileDao.fetch(VERIFIED_USER.uid)
+      const publicProfile = await storeService.publicProfileDao.fetch(DELETE_USER_1.uid)
       expect(publicProfile).toBeUndefined()
-      // ユーザーディレクトリが削除されたことを検証
-      userDir = await storageService.getRealDirNode(null, userDirPath)
-      expect(userDir.exists).toBeFalsy()
     })
 
     it('存在しないユーザーを指定した場合', async () => {

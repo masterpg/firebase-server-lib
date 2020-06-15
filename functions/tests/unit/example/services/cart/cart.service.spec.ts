@@ -11,6 +11,12 @@ import { initApp } from '../../../../../src/example/base'
 jest.setTimeout(25000)
 initApp()
 
+// TODO
+//  Firestoreのエミュレータでトランザクション失敗を検証するテストを行うと、
+//  後続の単体テストが失敗してしまう。この対応としてやむなくエミュレータ
+//  ではなくサーバーのFirestoreに接続するようにしている。
+process.env.FIRESTORE_EMULATOR_HOST = ''
+
 //========================================================================
 //
 //  Test data
