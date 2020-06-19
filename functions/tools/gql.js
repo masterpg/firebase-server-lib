@@ -3,12 +3,14 @@ const chokidar = require('chokidar')
 const fs = require('fs')
 const glob = require('glob')
 const _path = require('path')
+const { program } = require('commander')
 const { removeBothEndsSlash } = require('web-base-lib')
 
-function removeExtraPart(path) {
-  path = path.replace(/^\./, '')
-  return removeBothEndsSlash(path)
-}
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 /**
  * 指定されたパス配下にある`.graphql`ファイルをもとに、
@@ -31,10 +33,9 @@ function generateSchema(scanDir, outDir, watch) {
     watch: !!watch,
   })
 }
-module.exports.generateSchema = generateSchema
 
 /**
- * GraphQLの定義ファイルの処理を行います。
+ * GraphQL定義ファイルの構築を行います。
  * このメソッドでは次の処理が行われます。
  * + `scanDir`配下にある`.graphql`ファイルを`copyDir`へコピー。
  * + `scanDir`配下にある`.graphql`ファイルをもとに、TypeScript用GraphQL定義ファイル`gql.schema.ts`を`outDir`に生成。
@@ -44,7 +45,7 @@ module.exports.generateSchema = generateSchema
  * @param copyDir .graphqlファイルのコピー先ディレクトリを指定。
  * @param watch
  */
-function setupSchema(scanDir, outDir, copyDir, watch) {
+function buildSchema(scanDir, outDir, copyDir, watch) {
   scanDir = removeExtraPart(scanDir)
   copyDir = removeExtraPart(copyDir)
 
@@ -72,4 +73,32 @@ function setupSchema(scanDir, outDir, copyDir, watch) {
   // GraphQLの定義からTypeScriptの型定義を作成
   generateSchema(scanDir, outDir, watch)
 }
-module.exports.setupSchema = setupSchema
+
+function removeExtraPart(path) {
+  path = path.replace(/^\./, '')
+  return removeBothEndsSlash(path)
+}
+
+//========================================================================
+//
+//  Commands
+//
+//========================================================================
+
+program
+  .command('generate <srcPath> <outPath>')
+  .description(`generate TypeScript definition file based on '.graphql' files`)
+  .option('-w, --watch', `watch '.graphql' files changes`)
+  .action((srcPath, outPath, cmdObj) => {
+    generateSchema(srcPath, outPath, cmdObj.watch)
+  })
+
+program
+  .command('build <srcPath> <outPath> <copyDir>')
+  .description(`build a GraphQL definition file`)
+  .option('-w, --watch', `watch '.graphql' files changes`)
+  .action((srcPath, outPath, copyDir, cmdObj) => {
+    buildSchema(srcPath, outPath, copyDir, cmdObj.watch)
+  })
+
+program.parse(process.argv)

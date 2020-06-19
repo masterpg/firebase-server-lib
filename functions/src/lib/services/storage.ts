@@ -670,26 +670,28 @@ class StorageService {
 
     // ディレクトリを作成
     const result: StorageNode[] = []
-    await Promise.all(
-      hierarchicalDirNodes.map(async dirNode => {
-        // ディレクトリが存在する場合はディレクトリを作成せず終了
-        if (dirNode.exists) return
+    for (const chunk of splitArrayChunk(hierarchicalDirNodes, MAX_CHUNK)) {
+      await Promise.all(
+        chunk.map(async dirNode => {
+          // ディレクトリが存在する場合はディレクトリを作成せず終了
+          if (dirNode.exists) return
 
-        // ディレクトリを作成
-        const nodeId = await this.storeService.storageDao.add({
-          ...dirNode,
-          dir: removeStartDirChars(path.dirname(dirNode.path)),
-          path: dirNode.path,
-          level: this.getNodeLevel(dirNode.path),
-          version: FieldValue.increment(1),
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
+          // ディレクトリを作成
+          const nodeId = await this.storeService.storageDao.add({
+            ...dirNode,
+            dir: removeStartDirChars(path.dirname(dirNode.path)),
+            path: dirNode.path,
+            level: this.getNodeLevel(dirNode.path),
+            version: FieldValue.increment(1),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+          // ストアに追加された最新ディレクトリを取得
+          const addedDirNode = (await this.getNodeById(nodeId))!
+          result.push(addedDirNode)
         })
-        // ストアに追加された最新ディレクトリを取得
-        const addedDirNode = (await this.getNodeById(nodeId))!
-        result.push(addedDirNode)
-      })
-    )
+      )
+    }
 
     return this.sortNodes(result)
   }

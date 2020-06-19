@@ -1,10 +1,8 @@
-#!/usr/bin/env node
-
-import { DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../lib'
+import * as chalk from 'chalk'
+import * as program from 'commander'
+import { DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../lib/services'
 import { createNestApplication } from '../example/base'
 import { initFirebaseApp } from '../lib/base'
-const exitHook = require('async-exit-hook')
-exitHook.forceExitTimeout(60000)
 
 const users: TestUserInput[] = [
   {
@@ -29,12 +27,15 @@ const users: TestUserInput[] = [
   },
 ]
 
-exitHook((callback: () => void) => {
-  initFirebaseApp()
-
-  createNestApplication(DevUtilsServiceModule).then(async nestApp => {
+program
+  .command('test-users')
+  .description('setting up test users')
+  .action(async () => {
+    initFirebaseApp()
+    const nestApp = await createNestApplication(DevUtilsServiceModule)
     const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
     await devUtilsService.setTestUsers(...users)
-    callback()
+    console.log(chalk.green(`\nThe test users have been successfully set up. Press 'Ctrl+C' to exit.`))
   })
-})
+
+program.parseAsync(process.argv)
