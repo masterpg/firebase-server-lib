@@ -14,16 +14,9 @@ import { config } from '../../../../../src/config'
 class MockStorageController {
   constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
-  @Get(path.join(config.storage.usersDir, '*'))
-  async serveUserFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
-    const filePath = path.join(config.storage.usersDir, params[0])
-    return this.storageService.serveUserFile(req, res, filePath)
-  }
-
-  @Get('*')
-  async serveAppFile(@Req() req: Request, @Res() res: Response, @Param() params: string[]): Promise<Response> {
-    const filePath = params[0]
-    return this.storageService.serveAppFile(req, res, filePath)
+  @Get(':nodeId')
+  async serveFile(@Req() req: Request, @Res() res: Response, @Param('nodeId') nodeId: string): Promise<Response> {
+    return this.storageService.serveFile(req, res, nodeId)
   }
 }
 

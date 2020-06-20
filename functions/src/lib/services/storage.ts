@@ -217,34 +217,57 @@ class StorageService {
    * クライアントから指定されたファイルをサーブします。
    * @param req
    * @param res
-   * @param file
+   * @param nodeId
    */
-  async serveFile(req: Request, res: Response, file: string | StorageFileNode): Promise<Response> {
-    let fileNode: StorageFileNode | undefined
-    if (typeof file === 'string') {
-      const filePath = file
-      fileNode = await this.getFileNodeByPath(filePath)
-    } else {
-      fileNode = file
-    }
-
+  async serveFile(req: Request, res: Response, nodeId: string): Promise<Response> {
+    // 引数のファイルノードを取得
+    const fileNode = await this.getFileNodeById(nodeId)
     if (!fileNode) {
       return res.sendStatus(404)
     }
 
-    const lastModified = fileNode.updatedAt.toString()
-    const ifModifiedSinceStr = req.header('If-Modified-Since')
-    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
-    if (lastModified === ifModifiedSince) {
-      return res.sendStatus(304)
+    // ファイルの共有設定を取得
+    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
+    const share = this.getInheritedShareSettings(hierarchicalNodes)
+
+    // ファイルの公開フラグがオンの場合
+    if (share.isPublic) {
+      return this.streamFile(req, res, fileNode)
     }
 
-    res.setHeader('Last-Modified', lastModified)
-    res.setHeader('Content-Type', fileNode.contentType)
-    const fileStream = fileNode.file.createReadStream()
+    // ユーザー認証されているか検証
+    const validated = await this.authService.validate(req, res)
+    if (!validated.result) {
+      return res.sendStatus(validated.error!.getStatus())
+    }
+    const user = validated.idToken!
 
-    fileStream.pipe(res)
-    return res
+    //
+    // 指定されたファイルがユーザーファイルの場合
+    //
+    if (this.isUserNode(fileNode.path)) {
+      // 指定ファイルが自ユーザーの所有物である場合
+      const userDirPath = this.getUserDirPath(user)
+      if (fileNode.path.startsWith(path.join(userDirPath, '/'))) {
+        return this.streamFile(req, res, fileNode)
+      }
+    }
+    //
+    // 指定されたファイルがアプリケーションファイルの場合
+    //
+    else {
+      // 自ユーザーがアプリケーション管理者の場合
+      if (user.isAppAdmin) {
+        return this.streamFile(req, res, fileNode)
+      }
+    }
+
+    // ファイルの読み込み権限に自ユーザーが含まれている場合
+    if (share.readUIds && share.readUIds.includes(user.uid)) {
+      return this.streamFile(req, res, fileNode)
+    }
+
+    return res.sendStatus(403)
   }
 
   //--------------------------------------------------
@@ -284,16 +307,27 @@ class StorageService {
    * @param nodePaths
    */
   async getNodesByPaths(nodePaths: string[]): Promise<StorageNode[]> {
+    nodePaths.map(nodePath => {
+      if (!nodePath) throw new Error(`'nodePath' is not specified.`)
+    })
     nodePaths = nodePaths.map(nodePath => removeBothEndsSlash(nodePath))
+
     const nodeDict: { [path: string]: StorageNode } = {}
 
-    await Promise.all(
-      nodePaths.map(async nodePath => {
-        const node = await this.getNodeByPath(nodePath)
-        if (!node) return
+    if (nodePaths.length <= 10) {
+      const nodes = await this.storeService.storageDao.where('path', 'in', nodePaths).fetch()
+      for (const node of nodes) {
         nodeDict[node.path] = node
-      })
-    )
+      }
+    } else {
+      await Promise.all(
+        nodePaths.map(async nodePath => {
+          const node = await this.getNodeByPath(nodePath)
+          if (!node) return
+          nodeDict[node.path] = node
+        })
+      )
+    }
 
     return nodePaths.reduce((result, nodePath) => {
       const node = nodeDict[nodePath]
@@ -1171,50 +1205,6 @@ class StorageService {
     return { ...fileNode, file }
   }
 
-  /**
-   * クライアントから指定されたアプリケーションファイルをレスポンスします。
-   * @param req
-   * @param res
-   * @param filePath
-   */
-  async serveAppFile(req: Request, res: Response, filePath: string): Promise<Response> {
-    filePath = removeBothEndsSlash(filePath)
-
-    // 引数のファイルノードを取得
-    const fileNode = await this.getFileNodeByPath(filePath)
-    if (!fileNode) {
-      return res.sendStatus(404)
-    }
-
-    // ファイルの共有設定を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
-
-    // ファイルの公開フラグがオンの場合
-    if (share.isPublic) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
-    }
-    const user = validated.idToken!
-
-    // 自ユーザーがアプリケーション管理者の場合
-    if (user.isAppAdmin) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ファイルの読み込み権限に自ユーザーが含まれている場合
-    if (share.readUIds && share.readUIds.includes(user.uid)) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    return res.sendStatus(403)
-  }
-
   //--------------------------------------------------
   //  User storage
   //--------------------------------------------------
@@ -1385,51 +1375,6 @@ class StorageService {
   }
 
   /**
-   * クライアントから指定されたユーザーファイルをレスポンスします。
-   * @param req
-   * @param res
-   * @param filePath
-   */
-  async serveUserFile(req: Request, res: Response, filePath: string): Promise<Response> {
-    filePath = removeBothEndsSlash(filePath)
-
-    // 引数のファイルノードを取得
-    const fileNode = await this.getFileNodeByPath(filePath)
-    if (!fileNode) {
-      return res.sendStatus(404)
-    }
-
-    // ファイルの共有設定を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
-
-    // ファイルの公開フラグがオンの場合
-    if (share.isPublic) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
-    }
-    const user = validated.idToken!
-
-    // 指定ファイルが自ユーザーの所有物である場合
-    const userDirPath = this.getUserDirPath(user)
-    if (filePath.startsWith(path.join(userDirPath, '/'))) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    // ファイルの読み込み権限に自ユーザーが含まれている場合
-    if (share.readUIds && share.readUIds.includes(user.uid)) {
-      return this.serveFile(req, res, fileNode)
-    }
-
-    return res.sendStatus(403)
-  }
-
-  /**
    * 指定されたユーザーのディレクトリを削除します。
    * このメソッドはユーザーの削除時に使用されることを想定しています。
    * @param uid
@@ -1490,6 +1435,40 @@ class StorageService {
   //  Internal methods
   //
   //----------------------------------------------------------------------
+
+  /**
+   * ファイルをクライアントへストリーミング(レスポンス)します。
+   * @param req
+   * @param res
+   * @param file
+   */
+  async streamFile(req: Request, res: Response, file: string | StorageFileNode): Promise<Response> {
+    let fileNode: StorageFileNode | undefined
+    if (typeof file === 'string') {
+      const filePath = file
+      fileNode = await this.getFileNodeByPath(filePath)
+    } else {
+      fileNode = file
+    }
+
+    if (!fileNode) {
+      return res.sendStatus(404)
+    }
+
+    const lastModified = fileNode.updatedAt.toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return res.sendStatus(304)
+    }
+
+    res.setHeader('Last-Modified', lastModified)
+    res.setHeader('Content-Type', fileNode.contentType)
+    const fileStream = fileNode.file.createReadStream()
+
+    fileStream.pipe(res)
+    return res
+  }
 
   /**
    * 指定されたディレクトリの階層構造を形成するのに必要なノードを取得します。
@@ -1937,6 +1916,14 @@ class StorageService {
       result.push(this.toUserBaseNode(user, node))
       return result
     }, [] as NODE[])
+  }
+
+  /**
+   * 指定されたノードパスがユーザーノードのものか判定します。
+   * @param nodePath
+   */
+  isUserNode(nodePath: string): boolean {
+    return nodePath.startsWith(`${config.storage.usersDir}/`)
   }
 }
 
