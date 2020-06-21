@@ -46,12 +46,6 @@ interface GQLConfig {
   }
 }
 
-//========================================================================
-//
-//  Implementation
-//
-//========================================================================
-
 interface LibConfig {
   readonly functions: FunctionsConfig
   readonly cors: CORSConfig
@@ -64,8 +58,21 @@ interface AppConfig extends LibConfig {
 
 //========================================================================
 //
+//  Implementation
+//
+//========================================================================
+
+abstract class BaseAppConfig implements AppConfig {
+  abstract readonly functions: FunctionsConfig
+  abstract readonly cors: CORSConfig
+  abstract readonly storage: StorageConfig
+  abstract readonly gql: GQLConfig
+}
+
+//========================================================================
+//
 //  Exports
 //
 //========================================================================
 
-export { FunctionsConfig, CORSExcludeConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig }
+export { FunctionsConfig, CORSExcludeConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig, BaseAppConfig }

@@ -1,4 +1,4 @@
-import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
+import { BaseAppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
 
 //========================================================================
 //
@@ -6,8 +6,9 @@ import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from
 //
 //========================================================================
 
-class TestAppConfig implements AppConfig {
+class TestAppConfig extends BaseAppConfig {
   constructor() {
+    super()
     process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5020'
   }
 

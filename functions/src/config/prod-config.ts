@@ -1,4 +1,4 @@
-import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
+import { BaseAppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
 
 //========================================================================
 //
@@ -6,7 +6,7 @@ import { AppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from
 //
 //========================================================================
 
-class ProdAppConfig implements AppConfig {
+class ProdAppConfig extends BaseAppConfig {
   readonly functions: FunctionsConfig = {
     region: 'asia-northeast1',
   }
