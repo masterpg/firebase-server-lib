@@ -1,7 +1,5 @@
 type Query {
+  keepAlive: Boolean!
   appConfig: AppConfigResponse!
-}
-
-type Query {
   customToken: String!
 }

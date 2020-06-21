@@ -1,8 +1,8 @@
 import * as admin from 'firebase-admin'
-import { AuthStatus, UserIdClaims } from '../nest'
 import { Inject, Injectable, Module } from '@nestjs/common'
 import { PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from './store'
 import { StorageServiceDI, StorageServiceModule } from './storage'
+import { AuthStatus } from '../nest'
 import { EntityId } from '../../firestore-ex'
 import { IsNotEmpty } from 'class-validator'
 import UserRecord = admin.auth.UserRecord

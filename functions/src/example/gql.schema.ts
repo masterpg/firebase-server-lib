@@ -180,6 +180,7 @@ export interface PublicProfile extends TimestampEntity {
 export interface IQuery {
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
+    keepAlive(): boolean | Promise<boolean>;
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;

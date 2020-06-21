@@ -22,7 +22,8 @@
     "gql:build": "npm run gql build ./src ./src/example ./dist",
     "gql:watch": "npm run gql build ./src ./src/example ./dist -- -w",
     "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/user.js",
-    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/storage.js"
+    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/storage.js",
+    "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/keepalive.js"
   },
   "dependencies": {
     "@google-cloud/logging": "^7.3.0",
