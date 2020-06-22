@@ -2,12 +2,22 @@ import * as admin from 'firebase-admin'
 import * as chalk from 'chalk'
 import * as program from 'commander'
 import axios, { AxiosRequestConfig } from 'axios'
+import firebaseConfig from './firebase.config'
 import { initFirebaseApp } from '../lib/base'
 
-const API_KEY = 'AIzaSyDspqN5hys8WldYolk_wBeTLNpxaJT9mCk'
-const API_BASE_URL = 'https://asia-northeast1-lived-web-app-b9f08.cloudfunctions.net'
-// const API_BASE_URL = 'http://localhost:5010/lived-web-app-b9f08/asia-northeast1'
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
 const UID = 'app.admin'
+
+//========================================================================
+//
+//  Implementation
+//
+//========================================================================
 
 async function getIdToken(): Promise<string> {
   const customToken = await admin.auth().createCustomToken(UID, {})
@@ -15,7 +25,7 @@ async function getIdToken(): Promise<string> {
 
   try {
     const response = await axios.request<{ idToken: string }>({
-      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${API_KEY}`,
+      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseConfig.apiKey}`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +45,7 @@ async function getIdToken(): Promise<string> {
 
 async function keepAliveOfGQL(idToken?: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: API_BASE_URL,
+    baseURL: firebaseConfig.apiBaseURL,
     url: 'gql',
     method: 'post',
     data: {
@@ -61,7 +71,7 @@ async function keepAliveOfGQL(idToken?: string): Promise<void> {
 
 async function keepAliveOfREST(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: API_BASE_URL,
+    baseURL: firebaseConfig.apiBaseURL,
     url: 'rest/keepalive',
     method: 'get',
   }
@@ -82,9 +92,19 @@ async function keepAliveOfREST(idToken: string): Promise<void> {
   }
 }
 
+async function keepAliveAll(idToken: string): Promise<void> {
+  await Promise.all([keepAliveOfGQL(idToken), keepAliveOfREST(idToken), keepAliveOfStorage(idToken)])
+}
+
+//========================================================================
+//
+//  Commands
+//
+//========================================================================
+
 async function keepAliveOfStorage(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: API_BASE_URL,
+    baseURL: firebaseConfig.apiBaseURL,
     url: 'storage/keepalive',
     method: 'get',
   }
@@ -111,9 +131,10 @@ program.action(async () => {
 
   console.log() // 改行
 
+  await keepAliveAll(idToken)
   return new Promise<void>(resolve => {
     setInterval(async () => {
-      await Promise.all([keepAliveOfGQL(idToken), keepAliveOfREST(idToken), keepAliveOfStorage(idToken)])
+      await keepAliveAll(idToken)
     }, 300000)
   })
 })
