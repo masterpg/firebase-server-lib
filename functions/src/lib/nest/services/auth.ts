@@ -49,30 +49,33 @@ abstract class AuthService {
   //----------------------------------------------------------------------
 
   /**
-   * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、そのトークンの検証も行います。
+   * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、また必要な検証も行います。
    * @param req
    * @param res
    * @param roles
    */
-  async validate(req: Request, res: Response, roles?: string[]): Promise<AuthValidateResult> {
-    const encodedIdToken = this.m_getIdToken(req)
-    if (!encodedIdToken) {
-      res.setHeader('WWW-Authenticate', 'Bearer realm="token_required"')
-      return {
-        result: false,
-        error: new UnauthorizedException('Authorization failed because the ID token could not be obtained from the HTTP request header.'),
-      }
-    }
+  async validate(req: Request, res: Response, roles?: string[]): Promise<AuthValidateResult>
 
+  /**
+   * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、また必要な検証も行います。
+   * @param idToken
+   * @param res
+   * @param roles
+   */
+  async validate(idToken: IdToken, res: Response, roles?: string[]): Promise<AuthValidateResult>
+
+  async validate(arg1: Request | IdToken, res: Response, roles?: string[]): Promise<AuthValidateResult> {
     let idToken: IdToken
-    try {
-      idToken = await this.decodeIdToken(encodedIdToken)
-    } catch (err) {
-      res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token"')
-      return {
-        result: false,
-        error: new UnauthorizedException('Authorization failed because the ID token decoding failed.'),
+
+    if (typeof (arg1 as any).uid === 'string') {
+      idToken = arg1 as IdToken
+    } else {
+      const req: Request = arg1 as Request
+      const validated = await this.validateIdToken(req, res)
+      if (!validated.result) {
+        return validated
       }
+      idToken = validated.idToken!
     }
 
     if (idToken.authStatus !== AuthStatus.Available) {
@@ -92,6 +95,38 @@ abstract class AuthService {
             error: new ForbiddenException(`Authorization failed because the user '${idToken.uid}' role is invalid.`),
           }
         }
+      }
+    }
+
+    return {
+      result: true,
+      idToken,
+    }
+  }
+
+  /**
+   * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、そのトークンの検証も行います。
+   * @param req
+   * @param res
+   */
+  async validateIdToken(req: Request, res: Response): Promise<AuthValidateResult> {
+    const encodedIdToken = this.m_getIdToken(req)
+    if (!encodedIdToken) {
+      res.setHeader('WWW-Authenticate', 'Bearer realm="token_required"')
+      return {
+        result: false,
+        error: new UnauthorizedException('Authorization failed because the ID token could not be obtained from the HTTP request header.'),
+      }
+    }
+
+    let idToken: IdToken
+    try {
+      idToken = await this.decodeIdToken(encodedIdToken)
+    } catch (err) {
+      res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token"')
+      return {
+        result: false,
+        error: new UnauthorizedException('Authorization failed because the ID token decoding failed.'),
       }
     }
 

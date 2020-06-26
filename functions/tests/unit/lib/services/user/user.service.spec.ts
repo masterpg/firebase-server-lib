@@ -253,10 +253,6 @@ describe('UserService', () => {
         displayName: 'イチコロ',
       })
 
-      // テスト用にユーザーディレクトリを作成
-      const userDirPath = storageService.getUserDirPath({ uid: added.id, ...added })
-      await storageService.createDirs([userDirPath])
-
       // ユーザー削除
       await userService.deleteUser(DELETE_USER_1.uid)
 

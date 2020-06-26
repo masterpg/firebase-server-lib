@@ -9,7 +9,6 @@ import { Request, Response } from 'express'
 import { StorageNodeShareSettings, StorageNodeType, StoreNode, StoreServiceDI, StoreServiceModule } from './store'
 import { Dayjs } from 'dayjs'
 import { FieldValue } from '../../firestore-ex'
-import { config } from '../../config'
 import dayjs = require('dayjs')
 
 //========================================================================
@@ -100,179 +99,27 @@ interface StorageFileRawMetadata {
 //
 //========================================================================
 
-const MAX_CHUNK = 50
-
 @Injectable()
 class StorageService {
   //----------------------------------------------------------------------
   //
-  //  Constructor
+  //  Variables
   //
   //----------------------------------------------------------------------
 
-  constructor(
-    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type
-  ) {}
+  protected static MAX_CHUNK = 50
+
+  @Inject(AuthServiceDI.symbol)
+  protected readonly authService!: AuthServiceDI.type
+
+  @Inject(StoreServiceDI.symbol)
+  protected readonly storeService!: StoreServiceDI.type
 
   //----------------------------------------------------------------------
   //
   //  Methods
   //
   //----------------------------------------------------------------------
-
-  //--------------------------------------------------
-  //  Utilities
-  //--------------------------------------------------
-
-  /**
-   * 署名付きのアップロードURLを取得します。
-   * @param requestOrigin
-   * @param inputs
-   */
-  async getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
-    const bucket = admin.storage().bucket()
-    const urlDict: { [path: string]: string } = {}
-
-    for (const input of inputs) {
-      const { filePath, contentType } = input
-      const gcsFileNode = bucket.file(filePath)
-      const [url] = await gcsFileNode.createResumableUpload({
-        origin: requestOrigin,
-        metadata: { contentType },
-      })
-      urlDict[filePath] = url
-    }
-
-    return inputs.map(input => urlDict[input.filePath])
-  }
-
-  /**
-   * 指定されたデータをファイルとしてストレージへアップロードします。
-   * @param uploadList
-   */
-  async uploadDataItems(uploadList: StorageUploadDataItem[]): Promise<StorageFileNode[]> {
-    const dirPaths = uploadList
-      .map(uploadItem => {
-        return removeStartDirChars(path.dirname(uploadItem.path))
-      })
-      .filter(dirPath => Boolean(dirPath))
-    await this.createDirs(dirPaths)
-
-    const uploadedFileDict: { [path: string]: StorageFileNode } = {}
-    for (const chunk of splitArrayChunk(uploadList, MAX_CHUNK)) {
-      await Promise.all(
-        chunk.map(async uploadItem => {
-          const fileNode = await this.saveStorageFileNode(
-            uploadItem.path,
-            {
-              data: uploadItem.data,
-              options: { contentType: uploadItem.contentType },
-            },
-            { share: uploadItem.share }
-          )
-          uploadedFileDict[fileNode.path] = fileNode
-        })
-      )
-    }
-
-    return uploadList.reduce((result, item) => {
-      result.push(uploadedFileDict[item.path])
-      return result
-    }, [] as StorageFileNode[])
-  }
-
-  /**
-   * ローカルファイルをストレージへアップロードします。
-   * @param uploadList
-   */
-  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[]): Promise<StorageFileNode[]> {
-    const dirPaths = uploadList
-      .map(uploadItem => {
-        return removeStartDirChars(path.dirname(uploadItem.toFilePath))
-      })
-      .filter(dirPath => Boolean(dirPath))
-    await this.createDirs(dirPaths)
-
-    const uploadedFileDict: { [path: string]: StorageFileNode } = {}
-    const bucket = admin.storage().bucket()
-    for (const chunk of splitArrayChunk(uploadList, MAX_CHUNK)) {
-      await Promise.all(
-        chunk.map(async uploadItem => {
-          const response = await bucket.upload(uploadItem.localFilePath, { destination: uploadItem.toFilePath })
-          const [file, metadata] = response
-          const fileNode = await this.saveFileNode(uploadItem.toFilePath, file)
-          uploadedFileDict[fileNode.path] = fileNode
-        })
-      )
-    }
-
-    return uploadList.reduce<StorageFileNode[]>((result, item) => {
-      result.push(uploadedFileDict[item.toFilePath])
-      return result
-    }, [])
-  }
-
-  /**
-   * クライアントから指定されたファイルをサーブします。
-   * @param req
-   * @param res
-   * @param nodeId
-   */
-  async serveFile(req: Request, res: Response, nodeId: string): Promise<Response> {
-    // 引数のファイルノードを取得
-    const fileNode = await this.getFileNodeById(nodeId)
-    if (!fileNode) {
-      return res.sendStatus(404)
-    }
-
-    // ファイルの共有設定を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
-
-    // ファイルの公開フラグがオンの場合
-    if (share.isPublic) {
-      return this.streamFile(req, res, fileNode)
-    }
-
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
-    }
-    const user = validated.idToken!
-
-    //
-    // 指定されたファイルがユーザーファイルの場合
-    //
-    if (this.isUserNode(fileNode.path)) {
-      // 指定ファイルが自ユーザーの所有物である場合
-      const userDirPath = this.getUserDirPath(user)
-      if (fileNode.path.startsWith(path.join(userDirPath, '/'))) {
-        return this.streamFile(req, res, fileNode)
-      }
-    }
-    //
-    // 指定されたファイルがアプリケーションファイルの場合
-    //
-    else {
-      // 自ユーザーがアプリケーション管理者の場合
-      if (user.isAppAdmin) {
-        return this.streamFile(req, res, fileNode)
-      }
-    }
-
-    // ファイルの読み込み権限に自ユーザーが含まれている場合
-    if (share.readUIds && share.readUIds.includes(user.uid)) {
-      return this.streamFile(req, res, fileNode)
-    }
-
-    return res.sendStatus(403)
-  }
-
-  //--------------------------------------------------
-  //  App storage
-  //--------------------------------------------------
 
   /**
    * 指定されたIDのノードを取得します。
@@ -303,7 +150,32 @@ class StorageService {
   }
 
   /**
-   * 指定されたノードリストを取得します。
+   * 指定されたIDのノードを取得します。
+   * @param nodeIds
+   */
+  async getNodesByIds(nodeIds: string[]): Promise<StorageNode[]> {
+    nodeIds.map(nodeId => {
+      if (!nodeId) throw new Error(`'nodeId' is not specified.`)
+    })
+
+    const nodeDict: { [path: string]: StorageNode } = {}
+    await Promise.all(
+      nodeIds.map(async nodeId => {
+        const node = await this.getNodeById(nodeId)
+        if (!node) return
+        nodeDict[node.id] = node
+      })
+    )
+
+    return nodeIds.reduce((result, nodePath) => {
+      const node = nodeDict[nodePath]
+      node && result.push(node)
+      return result
+    }, [] as StorageNode[])
+  }
+
+  /**
+   * 指定されたパスのノードを取得します。
    * @param nodePaths
    */
   async getNodesByPaths(nodePaths: string[]): Promise<StorageNode[]> {
@@ -403,7 +275,7 @@ class StorageService {
    */
   async getDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<StorageNode>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || MAX_CHUNK
+    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
     const offset = options?.pageToken ? Number(options.pageToken) : 0
 
     let storeNodes: StorageNode[]
@@ -463,7 +335,7 @@ class StorageService {
    */
   async getDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<StorageNode>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || MAX_CHUNK
+    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
     const offset = options?.pageToken ? Number(options.pageToken) : 0
 
     let storeNodes: StorageNode[] = []
@@ -513,7 +385,7 @@ class StorageService {
    */
   async getDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<StorageNode>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || MAX_CHUNK
+    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
     const offset = options?.pageToken ? Number(options.pageToken) : 0
 
     let storeNodes: StorageNode[] = []
@@ -583,7 +455,7 @@ class StorageService {
    */
   async getChildren(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<StorageNode>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || MAX_CHUNK
+    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
     const offset = options?.pageToken ? Number(options.pageToken) : 0
 
     let storeNodes: StorageNode[] = []
@@ -704,7 +576,7 @@ class StorageService {
 
     // ディレクトリを作成
     const result: StorageNode[] = []
-    for (const chunk of splitArrayChunk(hierarchicalDirNodes, MAX_CHUNK)) {
+    for (const chunk of splitArrayChunk(hierarchicalDirNodes, StorageService.MAX_CHUNK)) {
       await Promise.all(
         chunk.map(async dirNode => {
           // ディレクトリが存在する場合はディレクトリを作成せず終了
@@ -749,7 +621,7 @@ class StorageService {
       throw new Error(`The argument 'dirPath' is empty.`)
     }
 
-    const maxChunk = options?.maxChunk || MAX_CHUNK
+    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
     const offset = options?.pageToken ? Number(options.pageToken) : 0
 
     // ストアから削除対象ノードを取得
@@ -757,7 +629,7 @@ class StorageService {
 
     // ストレージとストアからノードを削除
     const removedNodes: StorageNode[] = []
-    for (const chunk of splitArrayChunk(pagination.list, MAX_CHUNK)) {
+    for (const chunk of splitArrayChunk(pagination.list, StorageService.MAX_CHUNK)) {
       await Promise.all(
         chunk.map(async storeNode => {
           // ストレージからノードを削除
@@ -1205,229 +1077,96 @@ class StorageService {
     return { ...fileNode, file }
   }
 
-  //--------------------------------------------------
-  //  User storage
-  //--------------------------------------------------
-
   /**
-   * ユーザーディレクトリパスを取得します。
-   * @param user
+   * 署名付きのアップロードURLを取得します。
+   * @param requestOrigin
+   * @param inputs
    */
-  getUserDirPath(user: { uid: string }): string {
-    return path.join(config.storage.usersDir, user.uid)
-  }
+  async getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
+    const bucket = admin.storage().bucket()
+    const urlDict: { [path: string]: string } = {}
 
-  async getUserNodeById(user: { uid: string }, nodeId: string): Promise<StorageNode | undefined> {
-    const result = await this.getNodeById(nodeId)
-    return result ? this.toUserBaseNode(user, result) : undefined
-  }
-
-  async getUserNodeByPath(user: { uid: string }, nodePath: string): Promise<StorageNode | undefined> {
-    nodePath = this.toUserBasePath(user, nodePath)
-    const result = await this.getNodeByPath(nodePath)
-    return result ? this.toUserBaseNode(user, result) : undefined
-  }
-
-  async getUserNodesByPaths(user: { uid: string }, nodePaths: string[]): Promise<StorageNode[]> {
-    nodePaths = this.toUserBasePaths(user, nodePaths)
-    const result = await this.getNodesByPaths(nodePaths)
-    return this.toUserBaseNodes(user, result)
-  }
-
-  async getUserFileNodeById(user: { uid: string }, nodeId: string): Promise<StorageFileNode | undefined> {
-    const result = await this.getFileNodeById(nodeId)
-    return result ? this.toUserBaseNode(user, result) : undefined
-  }
-
-  async getUserFileNodeByPath(user: { uid: string }, filePath: string): Promise<StorageFileNode | undefined> {
-    filePath = this.toUserBasePath(user, filePath)
-    const result = await this.getFileNodeByPath(filePath)
-    return result ? this.toUserBaseNode(user, result) : undefined
-  }
-
-  async getUserDirDescendants(user: { uid: string }, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.getDirDescendants(dirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async getUserDescendants(user: { uid: string }, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.getDescendants(dirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async getUserDirChildren(user: { uid: string }, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.getDirChildren(dirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async getUserChildren(user: { uid: string }, dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.getChildren(dirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async getUserHierarchicalNodes(user: { uid: string }, nodePath: string): Promise<StorageNode[]> {
-    nodePath = this.toUserBasePath(user, nodePath)
-    const result = await this.getHierarchicalNodes(nodePath)
-    return this.toUserBaseNodes(user, result)
-  }
-
-  async getUserAncestorDirs(user: { uid: string }, nodePath: string): Promise<StorageNode[]> {
-    nodePath = this.toUserBasePath(user, nodePath)
-    const result = await this.getAncestorDirs(nodePath)
-    return this.toUserBaseNodes(user, result)
-  }
-
-  async createUserDirs(user: { uid: string }, dirPaths: string[]): Promise<StorageNode[]> {
-    dirPaths = this.toUserBasePaths(user, dirPaths)
-    const result = await this.createDirs(dirPaths)
-    return this.toUserBaseNodes(user, result)
-  }
-
-  async removeUserDir(user: { uid: string }, dirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.removeDir(dirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async removeUserFile(user: { uid: string }, filePath: string): Promise<StorageNode | undefined> {
-    filePath = this.toUserBasePath(user, filePath)
-    const result = await this.removeFile(filePath)
-    return result ? this.toUserBaseNode(user, result) : undefined
-  }
-
-  async moveUserDir(
-    user: { uid: string },
-    fromDirPath: string,
-    toDirPath: string,
-    options?: StoragePaginationOptionsInput
-  ): Promise<StoragePaginationResult> {
-    fromDirPath = this.toUserBasePath(user, fromDirPath)
-    toDirPath = this.toUserBasePath(user, toDirPath)
-    const result = await this.moveDir(fromDirPath, toDirPath, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async moveUserFile(user: { uid: string }, fromFilePath: string, toDirPath: string): Promise<StorageNode> {
-    fromFilePath = this.toUserBasePath(user, fromFilePath)
-    toDirPath = this.toUserBasePath(user, toDirPath)
-    const result = await this.moveFile(fromFilePath, toDirPath)
-    return this.toUserBaseNode(user, result)
-  }
-
-  async renameUserDir(
-    user: { uid: string },
-    dirPath: string,
-    newName: string,
-    options?: StoragePaginationOptionsInput
-  ): Promise<StoragePaginationResult> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.renameDir(dirPath, newName, options)
-    return {
-      nextPageToken: result.nextPageToken,
-      list: this.toUserBaseNodes(user, result.list),
-    }
-  }
-
-  async renameUserFile(user: { uid: string }, filePath: string, newName: string): Promise<StorageNode> {
-    filePath = this.toUserBasePath(user, filePath)
-    const result = await this.renameFile(filePath, newName)
-    return this.toUserBaseNode(user, result)
-  }
-
-  async setUserDirShareSettings(user: { uid: string }, dirPath: string, settings: StorageNodeShareSettingsInput): Promise<StorageNode> {
-    dirPath = this.toUserBasePath(user, dirPath)
-    const result = await this.setDirShareSettings(dirPath, settings)
-    return this.toUserBaseNode(user, result)
-  }
-
-  async setUserFileShareSettings(user: { uid: string }, filePath: string, settings: StorageNodeShareSettingsInput): Promise<StorageFileNode> {
-    filePath = this.toUserBasePath(user, filePath)
-    const result = await this.setFileShareSettings(filePath, settings)
-    return this.toUserBaseNode(user, result)
-  }
-
-  async handleUploadedUserFile(user: { uid: string }, filePath: string): Promise<StorageFileNode> {
-    filePath = this.toUserBasePath(user, filePath)
-    const result = await this.handleUploadedFile(filePath)
-    return this.toUserBaseNode(user, result)
-  }
-
-  /**
-   * 指定されたユーザーのディレクトリを削除します。
-   * このメソッドはユーザーの削除時に使用されることを想定しています。
-   * @param uid
-   * @param maxChunk
-   */
-  async deleteUserDir(uid: string, maxChunk = MAX_CHUNK): Promise<void> {
-    /**
-     * 指定されたディレクトリのストレージファイルを削除します。
-     * @param userDirPath
-     * @param pageToken
-     */
-    const deleteFiles = async (userDirPath: string, pageToken?: string) => {
-      // ファイルを削除
-      const bucket = admin.storage().bucket()
-      const [files, apiResponse] = await bucket.getFiles({
-        prefix: `users/${uid}`,
-        maxResults: maxChunk,
-        pageToken,
+    for (const input of inputs) {
+      const { filePath, contentType } = input
+      const gcsFileNode = bucket.file(filePath)
+      const [url] = await gcsFileNode.createResumableUpload({
+        origin: requestOrigin,
+        metadata: { contentType },
       })
-      await Promise.all(files.map(file => file.delete()))
-      // まだ残りのファイルがある場合、続けて削除
-      const nextPageToken = (apiResponse as any)?.pageToken
-      if (nextPageToken) await deleteFiles(userDirPath, nextPageToken)
+      urlDict[filePath] = url
     }
 
-    /**
-     * 指定されたディレクトリのストアノードを削除します。
-     * @param userDirPath
-     */
-    const deleteFileNodes = async (userDirPath: string) => {
-      // ユーザーディレクトリと配下ノードを検索
-      const nodes = await this.storeService.storageDao.where('path', '>=', userDirPath).limit(maxChunk).fetch()
-      // 余分に検索されてしまったノードを除去
-      for (let i = 0; i < nodes.length; i++) {
-        const storeNode = nodes[i]
-        // ノードが「ユーザーディレクトリまたはユーザーディレクトリ配下」以外の場合は除去
-        if (!(storeNode.path === userDirPath || storeNode.path.startsWith(`${userDirPath}/`))) {
-          nodes.splice(i--, 1)
-        }
-      }
-      // 検索されたノードを削除
+    return inputs.map(input => urlDict[input.filePath])
+  }
+
+  //--------------------------------------------------
+  //  Utilities
+  //--------------------------------------------------
+
+  /**
+   * 指定されたデータをファイルとしてストレージへアップロードします。
+   * @param uploadList
+   */
+  async uploadDataItems(uploadList: StorageUploadDataItem[]): Promise<StorageFileNode[]> {
+    const dirPaths = uploadList
+      .map(uploadItem => {
+        return removeStartDirChars(path.dirname(uploadItem.path))
+      })
+      .filter(dirPath => Boolean(dirPath))
+    await this.createDirs(dirPaths)
+
+    const uploadedFileDict: { [path: string]: StorageFileNode } = {}
+    for (const chunk of splitArrayChunk(uploadList, StorageService.MAX_CHUNK)) {
       await Promise.all(
-        nodes.map(async node => {
-          await this.storeService.storageDao.delete(node.id)
+        chunk.map(async uploadItem => {
+          const fileNode = await this.saveStorageFileNode(
+            uploadItem.path,
+            {
+              data: uploadItem.data,
+              options: { contentType: uploadItem.contentType },
+            },
+            { share: uploadItem.share }
+          )
+          uploadedFileDict[fileNode.path] = fileNode
         })
       )
-      // まだ残りノードがある場合、続けて削除
-      if (nodes.length > 0) await deleteFileNodes(userDirPath)
     }
 
-    const userDirPath = this.getUserDirPath({ uid })
-    await deleteFiles(userDirPath)
-    await deleteFileNodes(userDirPath)
+    return uploadList.reduce((result, item) => {
+      result.push(uploadedFileDict[item.path])
+      return result
+    }, [] as StorageFileNode[])
+  }
+
+  /**
+   * ローカルファイルをストレージへアップロードします。
+   * @param uploadList
+   */
+  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[]): Promise<StorageFileNode[]> {
+    const dirPaths = uploadList
+      .map(uploadItem => {
+        return removeStartDirChars(path.dirname(uploadItem.toFilePath))
+      })
+      .filter(dirPath => Boolean(dirPath))
+    await this.createDirs(dirPaths)
+
+    const uploadedFileDict: { [path: string]: StorageFileNode } = {}
+    const bucket = admin.storage().bucket()
+    for (const chunk of splitArrayChunk(uploadList, StorageService.MAX_CHUNK)) {
+      await Promise.all(
+        chunk.map(async uploadItem => {
+          const response = await bucket.upload(uploadItem.localFilePath, { destination: uploadItem.toFilePath })
+          const [file, metadata] = response
+          const fileNode = await this.saveFileNode(uploadItem.toFilePath, file)
+          uploadedFileDict[fileNode.path] = fileNode
+        })
+      )
+    }
+
+    return uploadList.reduce<StorageFileNode[]>((result, item) => {
+      result.push(uploadedFileDict[item.toFilePath])
+      return result
+    }, [])
   }
 
   //----------------------------------------------------------------------
@@ -1867,63 +1606,6 @@ class StorageService {
     if (/\//g.test(fileName)) {
       throw new InputValidationError('The specified file name is invalid.', { fileName })
     }
-  }
-
-  //--------------------------------------------------
-  //  User storage
-  //--------------------------------------------------
-
-  /**
-   * 指定されたノードパスをユーザーベースのパスに変換します。
-   * @param user
-   * @param nodePath
-   */
-  protected toUserBasePath(user: { uid: string }, nodePath?: string): string {
-    const userDirPath = this.getUserDirPath(user)
-    return path.join(userDirPath, removeBothEndsSlash(nodePath))
-  }
-
-  /**
-   * 指定されたノードパスをユーザーベースのパスに変換します。
-   * @param user
-   * @param nodePaths
-   */
-  protected toUserBasePaths(user: { uid: string }, nodePaths: string[]): string[] {
-    return nodePaths.map(nodePath => this.toUserBasePath(user, nodePath))
-  }
-
-  /**
-   * 指定されたノードをユーザーベースのノードに変換します。
-   * @param user
-   * @param node
-   */
-  protected toUserBaseNode<NODE extends StorageNode>(user: { uid: string }, node: NODE): NODE {
-    const userDirPath = this.getUserDirPath(user)
-    return this.toBasePathNode(userDirPath, node)
-  }
-
-  /**
-   * 指定されたノードをユーザーベースのノードに変換します。
-   * @param user
-   * @param nodes
-   */
-  protected toUserBaseNodes<NODE extends StorageNode>(user: { uid: string }, nodes: NODE[]): NODE[] {
-    const userDirPath = this.getUserDirPath(user)
-    // 例: ['users', 'users/ichiro']
-    const userHierarchicalPaths = splitHierarchicalPaths(userDirPath)
-    return nodes.reduce((result, node) => {
-      if (userHierarchicalPaths.includes(node.path)) return result
-      result.push(this.toUserBaseNode(user, node))
-      return result
-    }, [] as NODE[])
-  }
-
-  /**
-   * 指定されたノードパスがユーザーノードのものか判定します。
-   * @param nodePath
-   */
-  isUserNode(nodePath: string): boolean {
-    return nodePath.startsWith(`${config.storage.usersDir}/`)
   }
 }
 

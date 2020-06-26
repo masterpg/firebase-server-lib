@@ -136,17 +136,6 @@ export interface IMutation {
     deleteTestFirebaseUsers(uids: string[]): boolean | Promise<boolean>;
     setTestUsers(users: TestUserInput[]): UserInfo[] | Promise<UserInfo[]>;
     deleteTestUsers(uids: string[]): boolean | Promise<boolean>;
-    handleUploadedUserFile(filePath: string): StorageNode | Promise<StorageNode>;
-    createUserStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeUserStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    removeUserStorageFile(filePath: string): StorageNode | Promise<StorageNode>;
-    moveUserStorageDir(fromDirPath: string, toDirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    moveUserStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
-    renameUserStorageDir(dirPath: string, newName: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    renameUserStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
-    setUserStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
-    setUserStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
-    handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
     createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
     removeStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     removeStorageFile(filePath: string): StorageNode | Promise<StorageNode>;
@@ -156,6 +145,7 @@ export interface IMutation {
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
     setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;
 }
@@ -184,13 +174,6 @@ export interface IQuery {
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    userStorageNode(nodePath: string): StorageNode | Promise<StorageNode>;
-    userStorageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    userStorageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    userStorageDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    userStorageChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    userStorageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
-    userStorageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
     storageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     storageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
