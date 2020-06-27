@@ -1,6 +1,8 @@
-import { AuthGuard, AuthGuardModule, AuthRoleType, IdToken, Roles, UserArg } from '../../../lib/nest'
-import { Controller, Get, Module, UseGuards } from '@nestjs/common'
-import { BaseRESTModule } from '../base'
+import { AuthGuard, AuthGuardModule, AuthRoleType, Roles } from '../../../lib'
+import { Query, Resolver } from '@nestjs/graphql'
+import { BaseGQLModule } from '../base'
+import { Module } from '@nestjs/common'
+import { UseGuards } from '@nestjs/common'
 import { sleep } from 'web-base-lib'
 
 //========================================================================
@@ -9,22 +11,22 @@ import { sleep } from 'web-base-lib'
 //
 //========================================================================
 
-@Controller('keepalive')
-class KeepAliveController {
-  @Get()
+@Resolver()
+export class KeepAliveResolver {
+  @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
-  async keepAlive(@UserArg() user: IdToken): Promise<boolean> {
+  async keepAlive(): Promise<boolean> {
     await sleep(500)
     return true
   }
 }
 
 @Module({
-  controllers: [KeepAliveController],
-  imports: [BaseRESTModule, AuthGuardModule],
+  providers: [KeepAliveResolver],
+  imports: [BaseGQLModule, AuthGuardModule],
 })
-class KeepAliveRESTModule {}
+class KeepAliveGQLModule {}
 
 //========================================================================
 //
@@ -32,4 +34,4 @@ class KeepAliveRESTModule {}
 //
 //========================================================================
 
-export default KeepAliveRESTModule
+export default KeepAliveGQLModule

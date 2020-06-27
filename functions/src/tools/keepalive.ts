@@ -1,7 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as chalk from 'chalk'
 import * as program from 'commander'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageServiceModule } from '../lib/services'
 import axios, { AxiosRequestConfig } from 'axios'
+import { Module } from '@nestjs/common'
+import { createNestApplication } from '../example/base'
 import firebaseConfig from './firebase.config'
 import { initFirebaseApp } from '../lib/base'
 
@@ -11,7 +14,7 @@ import { initFirebaseApp } from '../lib/base'
 //
 //========================================================================
 
-const UID = 'app.admin'
+const UID = 'keepalive'
 
 //========================================================================
 //
@@ -19,6 +22,14 @@ const UID = 'app.admin'
 //
 //========================================================================
 
+@Module({
+  imports: [DevUtilsServiceModule, StorageServiceModule],
+})
+class KeepAliveToolModule {}
+
+/**
+ * キープアライブAPI用のIDトークンを取得します。
+ */
 async function getIdToken(): Promise<string> {
   const customToken = await admin.auth().createCustomToken(UID, {})
   let idToken = ''
@@ -43,6 +54,10 @@ async function getIdToken(): Promise<string> {
   return idToken
 }
 
+/**
+ * `gql`のキープアライブAPIをリクエストします。
+ * @param idToken
+ */
 async function keepAliveOfGQL(idToken?: string): Promise<void> {
   const config: AxiosRequestConfig = {
     baseURL: firebaseConfig.apiBaseURL,
@@ -69,6 +84,10 @@ async function keepAliveOfGQL(idToken?: string): Promise<void> {
   }
 }
 
+/**
+ * `rest`のキープアライブAPIをリクエストします。
+ * @param idToken
+ */
 async function keepAliveOfREST(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
     baseURL: firebaseConfig.apiBaseURL,
@@ -92,16 +111,10 @@ async function keepAliveOfREST(idToken: string): Promise<void> {
   }
 }
 
-async function keepAliveAll(idToken: string): Promise<void> {
-  await Promise.all([keepAliveOfGQL(idToken), keepAliveOfREST(idToken), keepAliveOfStorage(idToken)])
-}
-
-//========================================================================
-//
-//  Commands
-//
-//========================================================================
-
+/**
+ * `storage`のキープアライブAPIをリクエストします。
+ * @param idToken
+ */
 async function keepAliveOfStorage(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
     baseURL: firebaseConfig.apiBaseURL,
@@ -125,17 +138,42 @@ async function keepAliveOfStorage(idToken: string): Promise<void> {
   }
 }
 
+/**
+ * 全種別のキープアライブをリクエストします。
+ */
+async function keepAliveAll(): Promise<void> {
+  const idToken = await getIdToken()
+
+  const gqlRequests: Promise<void>[] = []
+  const restRequests: Promise<void>[] = []
+  const storageRequests: Promise<void>[] = []
+  for (let i = 0; i < 5; i++) {
+    gqlRequests.push(keepAliveOfGQL(idToken))
+    restRequests.push(keepAliveOfREST(idToken))
+    storageRequests.push(keepAliveOfStorage(idToken))
+  }
+  await Promise.all([...gqlRequests, ...restRequests, ...storageRequests])
+}
+
+//========================================================================
+//
+//  Commands
+//
+//========================================================================
+
 program.action(async () => {
   initFirebaseApp()
-  const idToken = await getIdToken()
+  const nestApp = await createNestApplication(KeepAliveToolModule)
+  const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
+  const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
   console.log() // 改行
 
-  await keepAliveAll(idToken)
+  await keepAliveAll()
   return new Promise<void>(resolve => {
     setInterval(async () => {
-      await keepAliveAll(idToken)
-    }, 300000)
+      await keepAliveAll()
+    }, 180000)
   })
 })
 

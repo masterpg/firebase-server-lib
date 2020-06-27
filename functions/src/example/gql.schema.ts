@@ -170,9 +170,9 @@ export interface PublicProfile extends TimestampEntity {
 export interface IQuery {
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
-    keepAlive(): boolean | Promise<boolean>;
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     customToken(): string | Promise<string>;
+    keepAlive(): boolean | Promise<boolean>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
     storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
     storageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;

@@ -1,0 +1,10 @@
+POST {{host}}/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "keepalive", "isAppAdmin": true, "authStatus": "Available"}
+
+{
+  "operationName": "KeepAlive",
+  "query": "query KeepAlive { keepAlive }"
+}
+
+###

@@ -16,11 +16,6 @@ export class FoundationResolver {
   constructor(@Inject(FoundationServiceDI.symbol) protected readonly foundationService: FoundationServiceDI.type) {}
 
   @Query()
-  async keepAlive(): Promise<boolean> {
-    return true
-  }
-
-  @Query()
   async appConfig(): Promise<AppConfigResponse> {
     return this.foundationService.appConfig()
   }

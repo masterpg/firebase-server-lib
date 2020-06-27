@@ -1,16 +1,5 @@
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "isAppAdmin": true, "authStatus": "Available"}
-
-{
-  "operationName": "KeepAlive",
-  "query": "query KeepAlive { keepAlive }"
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
 
 {
   "operationName": "GetAppConfig",
