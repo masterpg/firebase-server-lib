@@ -1,8 +1,8 @@
 import { AppConfigResponse, FoundationServiceDI, FoundationServiceModule } from '../../services'
-import { AuthGuard, AuthGuardModule, IdToken, UserArg } from '../../../lib'
-import { Inject, UseGuards } from '@nestjs/common'
 import { Query, Resolver } from '@nestjs/graphql'
+import { AuthGuardModule } from '../../../lib'
 import { BaseGQLModule } from '../base'
+import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
 //========================================================================
@@ -18,12 +18,6 @@ export class FoundationResolver {
   @Query()
   async appConfig(): Promise<AppConfigResponse> {
     return this.foundationService.appConfig()
-  }
-
-  @Query()
-  @UseGuards(AuthGuard)
-  async customToken(@UserArg() user: IdToken): Promise<string> {
-    return this.foundationService.customToken(user)
   }
 }
 

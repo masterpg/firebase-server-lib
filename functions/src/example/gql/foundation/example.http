@@ -8,15 +8,3 @@ Content-Type: application/json
 }
 
 ###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "general"}
-
-{
-  "operationName": "GetCustomToken",
-  "query": "query GetCustomToken { customToken }",
-  "variables": {}
-}
-
-###

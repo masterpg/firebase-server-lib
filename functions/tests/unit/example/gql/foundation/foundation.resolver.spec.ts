@@ -44,31 +44,4 @@ describe('FoundationResolver', () => {
       expect(appConfig.__typename).toBe('AppConfigResponse')
     })
   })
-
-  /**
-   * TODO Jest did not exit one second after the test run has completed.
-   *  admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生しJestが終了しない
-   */
-  describe('customToken', () => {
-    const gql = {
-      query: `
-        query GetCustomToken {
-          customToken
-        }
-      `,
-    }
-
-    it('疎通確認', async () => {
-      const response = await requestGQL(app, gql, {
-        headers: Object.assign({}, GENERAL_USER_HEADER),
-      })
-      const customToken = response.body.data.customToken
-      expect(customToken).toBeDefined()
-    })
-
-    it('サインインしていない場合', async () => {
-      const response = await requestGQL(app, gql)
-      expect(getGQLErrorStatus(response)).toBe(401)
-    })
-  })
 })

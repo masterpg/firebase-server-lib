@@ -171,7 +171,6 @@ export interface IQuery {
     cartItems(ids?: string[]): CartItem[] | Promise<CartItem[]>;
     testSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): string[] | Promise<string[]>;
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
-    customToken(): string | Promise<string>;
     keepAlive(): boolean | Promise<boolean>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
     storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
