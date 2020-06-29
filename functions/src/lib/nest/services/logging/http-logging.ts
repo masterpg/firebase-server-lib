@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { HttpException, Injectable, Module } from '@nestjs/common'
+import { HttpException, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { Request, Response } from 'express'
@@ -244,14 +244,12 @@ abstract class HTTPLoggingService {
 //
 //========================================================================
 
-@Injectable()
 class ProdHTTPLoggingService extends HTTPLoggingService {
   protected getBaseFunctionName(req: Request): string {
     return String(process.env.FUNCTION_TARGET)
   }
 }
 
-@Injectable()
 class DevHTTPLoggingService extends HTTPLoggingService {
   log(loggingSource: HTTPLoggingSource): void {
     const { latencyTimer, error } = loggingSource
@@ -278,7 +276,6 @@ class DevHTTPLoggingService extends HTTPLoggingService {
   }
 }
 
-@Injectable()
 class TestHTTPLoggingService extends HTTPLoggingService {
   log(loggingSource: HTTPLoggingSource): void {}
 

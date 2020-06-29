@@ -3,7 +3,7 @@ import * as path from 'path'
 import { AreOptional, removeBothEndsSlash, removeStartDirChars, removeStartSlash, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { AuthServiceDI, AuthServiceModule } from '../nest'
 import { File, SaveOptions } from '@google-cloud/storage'
-import { Inject, Injectable, Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../base'
 import { Request, Response } from 'express'
 import { StorageNodeShareSettings, StorageNodeType, StoreNode, StoreServiceDI, StoreServiceModule } from './store'
@@ -99,8 +99,12 @@ interface StorageFileRawMetadata {
 //
 //========================================================================
 
-@Injectable()
 class StorageService {
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type
+  ) {}
+
   //----------------------------------------------------------------------
   //
   //  Variables
@@ -108,12 +112,6 @@ class StorageService {
   //----------------------------------------------------------------------
 
   protected static MAX_CHUNK = 50
-
-  @Inject(AuthServiceDI.symbol)
-  protected readonly authService!: AuthServiceDI.type
-
-  @Inject(StoreServiceDI.symbol)
-  protected readonly storeService!: StoreServiceDI.type
 
   //----------------------------------------------------------------------
   //

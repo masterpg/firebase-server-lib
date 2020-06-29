@@ -1,4 +1,4 @@
-import { HttpException, Injectable, Module } from '@nestjs/common'
+import { HttpException, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { clone, merge } from 'lodash'
@@ -160,10 +160,8 @@ abstract class FunctionsEventLoggingService {
   }
 }
 
-@Injectable()
 class ProdFunctionsEventLoggingService extends FunctionsEventLoggingService {}
 
-@Injectable()
 class DevFunctionsEventLoggingService extends FunctionsEventLoggingService {
   async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {
     const { error } = loggingSource
@@ -181,7 +179,6 @@ class DevFunctionsEventLoggingService extends FunctionsEventLoggingService {
   }
 }
 
-@Injectable()
 class TestFunctionsEventLoggingService extends FunctionsEventLoggingService {
   async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {}
 }

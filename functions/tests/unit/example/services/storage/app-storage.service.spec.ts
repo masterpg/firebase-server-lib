@@ -6,11 +6,11 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import { AppStorageService, AppStorageServiceDI } from '../../../../../src/example/services'
 import { DevUtilsServiceDI, DevUtilsServiceModule, StorageService, StorageUploadDataItem, StoreServiceDI, initLib } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { existsNodes, notExistsNodes, removeAllNodes, toGQLResponseStorageNode, toGQLResponseStorageNodes } from '../../../../helpers/common/storage'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
+import { AppStorageServiceDI } from '../../../../../src/example/services'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../src/example/rest/storage'
@@ -31,8 +31,8 @@ let storageService!: TestStorageService
 let storeService!: StoreServiceDI.type
 let devUtilsService!: DevUtilsServiceDI.type
 
-type TestStorageService = AppStorageService & {
-  toNodePaths: AppStorageService['toNodePaths']
+type TestStorageService = AppStorageServiceDI.type & {
+  toNodePaths: AppStorageServiceDI.type['toNodePaths']
 }
 
 //========================================================================

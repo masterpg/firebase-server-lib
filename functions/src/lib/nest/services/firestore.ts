@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import { DocumentReference, Query, Transaction } from '@google-cloud/firestore'
-import { Injectable, Module } from '@nestjs/common'
+import { Module } from '@nestjs/common'
 
 //========================================================================
 //
@@ -8,7 +8,6 @@ import { Injectable, Module } from '@nestjs/common'
 //
 //========================================================================
 
-@Injectable()
 class FirestoreService {
   /**
    * 指定されたコレクションを再帰的に削除します。

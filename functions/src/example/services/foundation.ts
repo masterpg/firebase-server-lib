@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
 import { BaseFoundationService, IdToken } from '../../lib'
-import { Inject, Injectable, Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
 import { AppConfigResponse } from '../gql.schema'
 import { config } from '../../config'
 
@@ -11,7 +11,6 @@ import { config } from '../../config'
 //
 //========================================================================
 
-@Injectable()
 class FoundationService extends BaseFoundationService {
   @Inject(AppStorageServiceDI.symbol)
   protected readonly storageService!: AppStorageServiceDI.type

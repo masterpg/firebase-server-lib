@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { ForbiddenException, HttpException, Injectable, Module, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 
 //========================================================================
@@ -184,7 +184,6 @@ abstract class AuthService {
   }
 }
 
-@Injectable()
 class ProdAuthService extends AuthService {
   protected async decodeIdToken(idToken: string): Promise<IdToken> {
     const decodedIdToken = await admin.auth().verifyIdToken(idToken)
@@ -192,7 +191,6 @@ class ProdAuthService extends AuthService {
   }
 }
 
-@Injectable()
 class DevAuthService extends AuthService {
   protected async decodeIdToken(idToken: string): Promise<IdToken> {
     let decodedIdToken: IdToken

@@ -1,6 +1,6 @@
 import * as vary from 'vary'
 import { HTTPLoggingData, HTTPLoggingServiceDI, HTTPLoggingServiceModule, LoggingLatencyTimer } from './logging'
-import { Inject, Injectable, Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
 import { config } from '../../../config'
@@ -309,10 +309,8 @@ abstract class CORSService {
   }
 }
 
-@Injectable()
 class ProdCORSService extends CORSService {}
 
-@Injectable()
 class DevCORSService extends CORSService {
   protected get defaultOptions(): CORSOptions {
     return {
@@ -331,7 +329,6 @@ class DevCORSService extends CORSService {
   }
 }
 
-@Injectable()
 class TestCORSService extends CORSService {
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {}
 }

@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { Inject, Injectable, Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
 import { PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from './store'
 import { StorageServiceDI, StorageServiceModule } from './storage'
 import { AuthStatus } from '../nest'
@@ -47,7 +47,6 @@ class UserInfoInput {
 //
 //========================================================================
 
-@Injectable()
 class UserService {
   @Inject(StoreServiceDI.symbol)
   protected readonly storeService!: StoreServiceDI.type

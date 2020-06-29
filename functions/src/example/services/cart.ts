@@ -1,6 +1,6 @@
 import { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product } from './store'
 import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
-import { Inject, Injectable, Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { IsPositive } from 'class-validator'
@@ -30,7 +30,6 @@ class CartItemUpdateInput implements _UpdateCartItemInput {
 //
 //========================================================================
 
-@Injectable()
 class CartService {
   constructor(@Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type) {}
 

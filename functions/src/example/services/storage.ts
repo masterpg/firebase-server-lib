@@ -1,7 +1,8 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AuthRoleType, AuthServiceModule, IdToken, StorageService, StoreServiceModule } from '../../lib'
-import { ForbiddenException, Injectable, Module } from '@nestjs/common'
+import { AppStoreServiceDI, AppStoreServiceModule } from './store'
+import { AuthRoleType, AuthServiceDI, AuthServiceModule, IdToken, StorageService } from '../../lib'
+import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { config } from '../../config'
 
@@ -32,8 +33,14 @@ interface ValidateAccessibleTarget {
 //
 //========================================================================
 
-@Injectable()
 class AppStorageService extends StorageService {
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type
+  ) {
+    super(authService, storeService)
+  }
+
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -280,7 +287,7 @@ namespace AppStorageServiceDI {
 @Module({
   providers: [AppStorageServiceDI.provider],
   exports: [AppStorageServiceDI.provider],
-  imports: [AuthServiceModule, StoreServiceModule],
+  imports: [AuthServiceModule, AppStoreServiceModule],
 })
 class AppStorageServiceModule {}
 
@@ -290,4 +297,4 @@ class AppStorageServiceModule {}
 //
 //========================================================================
 
-export { AppStorageService, AppStorageServiceDI, AppStorageServiceModule }
+export { AppStorageServiceDI, AppStorageServiceModule }

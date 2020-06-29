@@ -14,14 +14,28 @@ import {
   Transaction,
   WriteBatch,
 } from '../../firestore-ex'
-import { Injectable, Module } from '@nestjs/common'
 import { Dayjs } from 'dayjs'
+import { Module } from '@nestjs/common'
 import { firestoreExOptions } from '../base'
 import dayjs = require('dayjs')
 
 //========================================================================
 //
 //  Interfaces
+//
+//========================================================================
+
+interface BaseStore {
+  collection: FirestoreEx['collection']
+  collectionFactory: FirestoreEx['collectionFactory']
+  collectionGroup: FirestoreEx['collectionGroup']
+  runTransaction: FirestoreEx['runTransaction']
+  runBatch: FirestoreEx['runBatch']
+}
+
+//========================================================================
+//
+//  Collections
 //
 //========================================================================
 
@@ -32,6 +46,10 @@ import dayjs = require('dayjs')
 interface StoreUser extends TimestampEntity {
   fullName: string
 }
+
+//--------------------------------------------------
+//  PublicProfile
+//--------------------------------------------------
 
 interface PublicProfile extends TimestampEntity {
   displayName: string
@@ -65,21 +83,41 @@ interface StoreNode extends TimestampEntity {
   version: number
 }
 
+const storageEncode: EncodeFunc<StoreNode> = (obj, operation) => {
+  const result: EncodedObject<StoreNode> = {}
+
+  if (typeof obj.nodeType === 'string') result.nodeType = obj.nodeType
+  if (typeof obj.name === 'string') result.name = obj.name
+  if (typeof obj.dir === 'string') result.dir = obj.dir
+  if (typeof obj.path === 'string') result.path = obj.path
+  if (typeof obj.level === 'number') result.level = obj.level
+  if (typeof obj.contentType === 'string') result.contentType = obj.contentType
+  if (typeof obj.size === 'number') result.size = obj.size
+  if (obj.share) result.share = obj.share
+  result.version = obj.version
+
+  const createdAt = StoreService.toStoreDate(obj.createdAt)
+  if (createdAt) result.createdAt = createdAt
+  const updatedAt = StoreService.toStoreDate(obj.updatedAt)
+  if (updatedAt) result.updatedAt = updatedAt
+
+  return result
+}
+
+const storageDecode: DecodeFunc<StoreNode> = doc => {
+  const { createdAt, updatedAt, ...body } = doc
+  const result: DecodedObject<StoreNode> = { ...body }
+  if (createdAt) result.createdAt = dayjs(createdAt.toDate())
+  if (updatedAt) result.updatedAt = dayjs(updatedAt.toDate())
+  return result
+}
+
 //========================================================================
 //
 //  Implementation
 //
 //========================================================================
 
-interface BaseStore {
-  collection: FirestoreEx['collection']
-  collectionFactory: FirestoreEx['collectionFactory']
-  collectionGroup: FirestoreEx['collectionGroup']
-  runTransaction: FirestoreEx['runTransaction']
-  runBatch: FirestoreEx['runBatch']
-}
-
-@Injectable()
 class StoreService implements BaseStore {
   constructor() {
     this.firestoreEx = new FirestoreEx(admin.firestore(), firestoreExOptions)
@@ -105,36 +143,11 @@ class StoreService implements BaseStore {
       },
     })
 
-    this.storageDao = this.firestoreEx.collection({
+    this.m_storageDao = this.firestoreEx.collection({
       path: 'storage-nodes',
       useTimestamp: false,
-      encode: (obj, operation) => {
-        const result: EncodedObject<StoreNode> = {}
-
-        if (typeof obj.nodeType === 'string') result.nodeType = obj.nodeType
-        if (typeof obj.name === 'string') result.name = obj.name
-        if (typeof obj.dir === 'string') result.dir = obj.dir
-        if (typeof obj.path === 'string') result.path = obj.path
-        if (typeof obj.level === 'number') result.level = obj.level
-        if (typeof obj.contentType === 'string') result.contentType = obj.contentType
-        if (typeof obj.size === 'number') result.size = obj.size
-        if (obj.share) result.share = obj.share
-        result.version = obj.version
-
-        const createdAt = this.toStoreDate(obj.createdAt)
-        if (createdAt) result.createdAt = createdAt
-        const updatedAt = this.toStoreDate(obj.updatedAt)
-        if (updatedAt) result.updatedAt = updatedAt
-
-        return result
-      },
-      decode: doc => {
-        const { createdAt, updatedAt, ...body } = doc
-        const result: DecodedObject<StoreNode> = { ...body }
-        if (createdAt) result.createdAt = dayjs(createdAt.toDate())
-        if (updatedAt) result.updatedAt = dayjs(updatedAt.toDate())
-        return result
-      },
+      encode: storageEncode,
+      decode: storageDecode,
     })
   }
 
@@ -148,7 +161,11 @@ class StoreService implements BaseStore {
 
   readonly publicProfileDao: Collection<PublicProfile>
 
-  readonly storageDao: Collection<StoreNode>
+  protected m_storageDao: Collection<StoreNode>
+
+  get storageDao(): Collection<StoreNode> {
+    return this.m_storageDao
+  }
 
   //----------------------------------------------------------------------
   //
@@ -183,20 +200,16 @@ class StoreService implements BaseStore {
   runBatch(updateFunction: (batch: WriteBatch) => Promise<void>): Promise<FirebaseFirestore.WriteResult[]> {
     return this.firestoreEx.runBatch(updateFunction)
   }
+}
 
-  //----------------------------------------------------------------------
-  //
-  //  Internal methods
-  //
-  //----------------------------------------------------------------------
-
+namespace StoreService {
   /**
    * 指定された日付をストアに格納できる形式に変換します。
    * @param date
    */
-  protected toStoreDate(date: Dayjs | FieldValue | undefined | null): Timestamp | FieldValue | undefined {
+  export function toStoreDate(date: Dayjs | FieldValue | undefined | null): Timestamp | FieldValue | undefined {
     if (date instanceof FieldValue) return date
-    if (this.isDate(date)) return Timestamp.fromDate(date.toDate())
+    if (isDate(date)) return Timestamp.fromDate(date.toDate())
     return undefined
   }
 
@@ -204,7 +217,7 @@ class StoreService implements BaseStore {
    * 指定された日付が適切な`Dayjs`型の値か判定します。
    * @param date
    */
-  protected isDate(date: Dayjs | FieldValue | undefined | null): date is Dayjs {
+  export function isDate(date: Dayjs | FieldValue | undefined | null): date is Dayjs {
     // 指定された値がDayjs型の値、かつ有効な値(0でない)場合はtrue
     return dayjs.isDayjs(date) && !date.isSame(dayjs(0))
   }
@@ -213,7 +226,7 @@ class StoreService implements BaseStore {
    * 指定された日付が空値か判定します。
    * @param date
    */
-  protected isEmptyDate(date?: any): date is undefined {
+  export function isEmptyDate(date?: any): date is undefined {
     // 指定された値がundefinedまたはnullの場合、空値と判定
     if (!date) return true
     // 指定された値がDayjs型の値だが、有効な値でない(0)の場合、空値と判定
@@ -242,4 +255,15 @@ class StoreServiceModule {}
 //
 //========================================================================
 
-export { PublicProfile, StorageNodeShareSettings, StorageNodeType, StoreService, StoreServiceDI, StoreServiceModule, StoreNode, StoreUser }
+export {
+  PublicProfile,
+  StorageNodeShareSettings,
+  StorageNodeType,
+  StoreService,
+  StoreServiceDI,
+  StoreServiceModule,
+  StoreNode,
+  StoreUser,
+  storageDecode,
+  storageEncode,
+}
