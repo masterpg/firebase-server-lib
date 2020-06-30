@@ -1,9 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AppStoreServiceDI, AppStoreServiceModule } from './store'
+import { AppStorageNode, AppStoreServiceDI, AppStoreServiceModule } from './store'
 import { AuthRoleType, AuthServiceDI, AuthServiceModule, IdToken, StorageService } from '../../lib'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 
 //========================================================================
@@ -11,6 +12,10 @@ import { config } from '../../config'
 //  Interfaces
 //
 //========================================================================
+
+interface AppStorageFileNode extends AppStorageNode {
+  file: File
+}
 
 interface ValidateAccessibleTarget {
   nodeId?: string
@@ -33,7 +38,7 @@ interface ValidateAccessibleTarget {
 //
 //========================================================================
 
-class AppStorageService extends StorageService {
+class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNode> {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
     @Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type
@@ -46,6 +51,8 @@ class AppStorageService extends StorageService {
   //  Methods
   //
   //----------------------------------------------------------------------
+
+  getNodeById!: (nodeId: string) => Promise<AppStorageNode | undefined>
 
   /**
    * ユーザーディレクトリパスを取得します。
@@ -298,3 +305,4 @@ class AppStorageServiceModule {}
 //========================================================================
 
 export { AppStorageServiceDI, AppStorageServiceModule }
+export { AppStorageFileNode }

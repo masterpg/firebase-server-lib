@@ -71,7 +71,7 @@ interface StorageNodeShareSettings {
   writeUIds: string[] | null
 }
 
-interface StoreNode extends TimestampEntity {
+interface StorageNode extends TimestampEntity {
   nodeType: StorageNodeType
   name: string
   dir: string
@@ -83,8 +83,8 @@ interface StoreNode extends TimestampEntity {
   version: number
 }
 
-const storageEncode: EncodeFunc<StoreNode> = (obj, operation) => {
-  const result: EncodedObject<StoreNode> = {}
+const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
+  const result: EncodedObject<StorageNode> = {}
 
   if (typeof obj.nodeType === 'string') result.nodeType = obj.nodeType
   if (typeof obj.name === 'string') result.name = obj.name
@@ -104,9 +104,9 @@ const storageEncode: EncodeFunc<StoreNode> = (obj, operation) => {
   return result
 }
 
-const storageDecode: DecodeFunc<StoreNode> = doc => {
+const storageDecode: DecodeFunc<StorageNode> = doc => {
   const { createdAt, updatedAt, ...body } = doc
-  const result: DecodedObject<StoreNode> = { ...body }
+  const result: DecodedObject<StorageNode> = { ...body }
   if (createdAt) result.createdAt = dayjs(createdAt.toDate())
   if (updatedAt) result.updatedAt = dayjs(updatedAt.toDate())
   return result
@@ -161,9 +161,9 @@ class StoreService implements BaseStore {
 
   readonly publicProfileDao: Collection<PublicProfile>
 
-  protected m_storageDao: Collection<StoreNode>
+  protected m_storageDao: Collection<StorageNode>
 
-  get storageDao(): Collection<StoreNode> {
+  get storageDao(): Collection<StorageNode> {
     return this.m_storageDao
   }
 
@@ -255,15 +255,5 @@ class StoreServiceModule {}
 //
 //========================================================================
 
-export {
-  PublicProfile,
-  StorageNodeShareSettings,
-  StorageNodeType,
-  StoreService,
-  StoreServiceDI,
-  StoreServiceModule,
-  StoreNode,
-  StoreUser,
-  storageDecode,
-  storageEncode,
-}
+export { StoreService, StoreServiceDI, StoreServiceModule }
+export { PublicProfile, StorageNode, StorageNodeShareSettings, StorageNodeType, StoreUser, storageDecode, storageEncode }

@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { StorageNode, StorageNodeType, StorageService, StoreService } from '../../../src/lib'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
+import { AppStorageNode } from '../../../src/example/services/store'
 import { cloneDeep } from 'lodash'
 import dayjs = require('dayjs')
 import { generateFirestoreId } from './base'
@@ -16,7 +17,7 @@ type TestStorageService = StorageService & {
   sortNodes: StorageService['sortNodes']
 }
 
-interface ResponseStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'> {
+interface ResponseStorageNode extends Omit<AppStorageNode, 'level' | 'createdAt' | 'updatedAt'> {
   createdAt: string
   updatedAt: string
 }
@@ -38,6 +39,7 @@ function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode,
     name,
     dir,
     path: dirPath,
+    level: StorageService.getNodeLevel(dirPath),
     contentType: data.contentType || '',
     size: data.size || 0,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
@@ -59,6 +61,7 @@ function newTestStorageFileNode(filePath: string, data?: Partial<Omit<StorageNod
     name,
     dir,
     path: filePath,
+    level: StorageService.getNodeLevel(filePath),
     contentType: data.contentType || 'text/plain; charset=utf-8',
     size: data.size || 5,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },

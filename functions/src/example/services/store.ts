@@ -1,5 +1,5 @@
-import { Collection, DecodeFunc, EncodeFunc, OmitEntityFields, TimestampEntity } from '../../firestore-ex'
-import { StoreNode, StoreService, storageDecode as libStorageDecode, storageEncode as libStorageEncode } from '../../lib'
+import { Collection, DecodeFunc, EncodeFunc, EncodedObject, OmitEntityFields, TimestampEntity } from '../../firestore-ex'
+import { StorageNode, StoreService, storageDecode, storageEncode } from '../../lib'
 import { CartItem as _CartItem, Product as _Product } from '../gql.schema'
 import { Module } from '@nestjs/common'
 
@@ -23,14 +23,22 @@ interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 //  Storage
 //--------------------------------------------------
 
-interface AppStoreNode extends StoreNode {}
-
-const storageEncode: EncodeFunc<AppStoreNode> = (obj, operation) => {
-  return libStorageEncode(obj, operation)
+interface AppStorageNode extends StorageNode {
+  sortOrder?: number
 }
 
-const storageDecode: DecodeFunc<AppStoreNode> = doc => {
-  return libStorageDecode(doc)
+const appStorageEncode: EncodeFunc<AppStorageNode> = (obj, operation) => {
+  const result: EncodedObject<AppStorageNode> = {
+    ...storageEncode(obj, operation),
+  }
+  if (typeof obj.sortOrder !== 'undefined') {
+    result.sortOrder = obj.sortOrder
+  }
+  return result
+}
+
+const appStorageDecode: DecodeFunc<AppStorageNode> = doc => {
+  return storageDecode(doc)
 }
 
 //========================================================================
@@ -48,8 +56,8 @@ class AppStoreService extends StoreService {
     this.m_storageDao = this.firestoreEx.collection({
       path: 'storage-nodes',
       useTimestamp: false,
-      encode: storageEncode,
-      decode: storageDecode,
+      encode: appStorageEncode,
+      decode: appStorageDecode,
     })
   }
 
@@ -63,9 +71,9 @@ class AppStoreService extends StoreService {
 
   readonly cartDao: Collection<CartItem>
 
-  protected m_storageDao: Collection<AppStoreNode>
+  protected m_storageDao: Collection<AppStorageNode>
 
-  get storageDao(): Collection<AppStoreNode> {
+  get storageDao(): Collection<AppStorageNode> {
     return this.m_storageDao
   }
 }
@@ -91,4 +99,5 @@ class AppStoreServiceModule {}
 //
 //========================================================================
 
-export { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product }
+export { AppStoreServiceDI, AppStoreServiceModule }
+export { AppStorageNode, CartItem, Product }

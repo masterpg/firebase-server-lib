@@ -49,9 +49,6 @@ type TestStorageService = StorageService & {
   sortNodes: StorageService['sortNodes']
   extractMetaData: StorageService['extractMetaData']
   saveMetadata: StorageService['saveMetadata']
-  validatePath: StorageService['validatePath']
-  validateDirName: StorageService['validateDirName']
-  validateFileName: StorageService['validateFileName']
 }
 
 //========================================================================
@@ -923,7 +920,7 @@ describe('StorageService', () => {
     })
 
     it('作成ディレクトリパスへのバリデーション実行確認', async () => {
-      const validatePath = td.replace(storageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validatePath')
 
       await storageService.createDirs([`d1`, `d2`])
 
@@ -1457,7 +1454,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validatePath = td.replace(storageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validatePath')
 
       await storageService.moveDir(`d1`, `d2`)
 
@@ -1662,7 +1659,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validatePath = td.replace(storageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validatePath')
 
       await storageService.moveFile(`d1/fileA.txt`, `d2/fileA.txt`)
 
@@ -1784,7 +1781,7 @@ describe('StorageService', () => {
       await storageService.createDirs([`d1`])
 
       // バリデーションメソッドのモック化
-      const validateDirName = td.replace(storageService, 'validateDirName')
+      const validateDirName = td.replace(StorageService, 'validateDirName')
 
       await storageService.renameDir(`d1`, `d2`)
 
@@ -1947,7 +1944,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validateFileName = td.replace(storageService, 'validateFileName')
+      const validateFileName = td.replace(StorageService, 'validateFileName')
 
       await storageService.renameFile(`d1/fileA.txt`, `fileB.txt`)
 
@@ -2388,7 +2385,7 @@ describe('StorageService', () => {
         },
       ])
 
-      const validatePath = td.replace(storageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validatePath')
 
       await storageService.handleUploadedFile(`d1/fileA.txt`)
 
