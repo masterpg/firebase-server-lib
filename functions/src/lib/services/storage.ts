@@ -1,10 +1,10 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AreOptional, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { AuthServiceDI, AuthServiceModule } from '../nest'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../base'
+import { PartialAre, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { Request, Response } from 'express'
 import { StorageNode, StorageNodeShareSettings, StorageNodeType, StoreServiceDI, StoreServiceModule } from './store'
 import { Dayjs } from 'dayjs'
@@ -1433,7 +1433,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     path: string
     share?: StorageNodeShareSettingsInput | null
     createdAt?: Dayjs
-  }): AreOptional<WriteBaseStorageNode, 'share'> {
+  }): PartialAre<WriteBaseStorageNode, 'share'> {
     const result = this.getAddBaseStorageNode({
       ...node,
       share: node.share ? node.share : {},
