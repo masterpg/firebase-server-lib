@@ -1,4 +1,4 @@
-import { BaseAppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } from './base'
+import { BaseAppConfig, CORSConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
 
 //========================================================================
 //
@@ -7,32 +7,25 @@ import { BaseAppConfig, CORSConfig, FunctionsConfig, GQLConfig, StorageConfig } 
 //========================================================================
 
 class ProdAppConfig extends BaseAppConfig {
-  readonly functions: FunctionsConfig = {
+  readonly functions = new FunctionsConfigImpl({
     region: 'asia-northeast1',
-  }
+  })
 
-  readonly cors: CORSConfig = {
+  readonly cors = new CORSConfigImpl({
     whitelist: ['https://lived-web-app-b9f08.web.app', 'https://lived-web-app-b9f08.firebaseapp.com'],
+    excludes: [{ method: 'GET', pattern: '^storage/' }],
+  })
 
-    excludes: [
-      {
-        method: 'GET',
-        pattern: '^storage/',
-      },
-    ],
-  }
-
-  readonly storage: StorageConfig = {
+  readonly storage = new StorageConfigImpl({
     bucket: 'gs://lived-web-app-b9f08.appspot.com/',
-    usersDir: 'users',
-  }
+  })
 
-  readonly gql: GQLConfig = {
+  readonly gql = new GQLConfigImpl({
     schema: {
       presetFiles: ['dist/example/services/dto.graphql'],
       moduleDir: 'dist/example/gql',
     },
-  }
+  })
 }
 
 //========================================================================

@@ -1,3 +1,4 @@
+import { PartialAre } from 'web-base-lib'
 import { SUPPORTED_REGIONS } from 'firebase-functions'
 
 //========================================================================
@@ -37,6 +38,7 @@ interface CORSConfig {
 interface StorageConfig {
   readonly bucket: string
   readonly usersDir: string
+  readonly siteDir: string
 }
 
 interface GQLConfig {
@@ -62,6 +64,44 @@ interface AppConfig extends LibConfig {
 //
 //========================================================================
 
+class FunctionsConfigImpl implements FunctionsConfig {
+  constructor(params: { region: typeof SUPPORTED_REGIONS[number] }) {
+    this.region = params.region
+  }
+
+  readonly region: typeof SUPPORTED_REGIONS[number]
+}
+
+class CORSConfigImpl implements CORSConfig {
+  constructor(params: CORSConfig) {
+    this.excludes = params.excludes
+    this.whitelist = params.whitelist
+  }
+
+  readonly excludes: CORSExcludeConfig[]
+  readonly whitelist: string[]
+}
+
+class StorageConfigImpl implements StorageConfig {
+  constructor(params: PartialAre<StorageConfig, 'usersDir' | 'siteDir'>) {
+    this.bucket = params.bucket
+    this.usersDir = params.usersDir ?? 'users'
+    this.siteDir = params.siteDir ?? 'site'
+  }
+
+  readonly bucket: string
+  readonly usersDir: string
+  readonly siteDir: string
+}
+
+class GQLConfigImpl implements GQLConfig {
+  constructor(params: GQLConfig) {
+    this.schema = params.schema
+  }
+
+  schema: { presetFiles: string[]; moduleDir: string }
+}
+
 abstract class BaseAppConfig implements AppConfig {
   abstract readonly functions: FunctionsConfig
   abstract readonly cors: CORSConfig
@@ -75,4 +115,5 @@ abstract class BaseAppConfig implements AppConfig {
 //
 //========================================================================
 
-export { FunctionsConfig, CORSExcludeConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig, BaseAppConfig }
+export { FunctionsConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig, BaseAppConfig }
+export { FunctionsConfigImpl, CORSConfigImpl, StorageConfigImpl, GQLConfigImpl }

@@ -38,6 +38,7 @@ describe('FoundationService', () => {
     it('ベーシックケース', async () => {
       const actual = await foundationService.appConfig()
       expect(actual.usersDir).toBe('users')
+      expect(actual.siteDir).toBe('site')
     })
   })
 })

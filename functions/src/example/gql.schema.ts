@@ -95,6 +95,7 @@ export interface TimestampEntity {
 
 export interface AppConfigResponse {
     usersDir: string;
+    siteDir: string;
 }
 
 export interface AuthDataResult {
