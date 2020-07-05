@@ -4,12 +4,12 @@ import { AuthServiceDI, AuthServiceModule } from '../nest'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../base'
-import { PartialAre, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { Request, Response } from 'express'
+import { RequiredAre, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { StorageNode, StorageNodeShareSettings, StorageNodeType, StoreServiceDI, StoreServiceModule } from './store'
-import { Dayjs } from 'dayjs'
 import { FieldValue } from '../../firestore-ex'
 import dayjs = require('dayjs')
+import { log } from 'firebase-functions/lib/logger'
 
 //========================================================================
 //
@@ -60,10 +60,8 @@ interface WriteBaseStorageNode {
   dir: string
   path: string
   level: number
-  share: StorageNodeShareSettings
+  share?: StorageNodeShareSettings
   version: number | FieldValue
-  createdAt: Dayjs | FieldValue
-  updatedAt: Dayjs | FieldValue
 }
 
 interface StorageUploadDataItem {
@@ -742,10 +740,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
       // 移動元ディレクトリを移動先ディレクトリへ移動
       await this.storeService.storageDao.update({
-        ...this.getUpdateBaseStorageNode({
+        ...this.getSaveBaseStorageNode({
           id: dirNode.id,
           path: toDirPath,
-          createdAt: dirNode.createdAt,
         }),
       })
 
@@ -787,10 +784,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         // 移動元ストアノードを移動先に更新
         await this.storeService.storageDao.update(
           {
-            ...this.getUpdateBaseStorageNode({
+            ...this.getSaveBaseStorageNode({
               id: node.id,
               path: newNodePath,
-              createdAt: node.createdAt,
             }),
           },
           batch
@@ -876,10 +872,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       // 移動元ストアノードを移動先に更新
       await this.storeService.storageDao.update(
         {
-          ...this.getUpdateBaseStorageNode({
+          ...this.getSaveBaseStorageNode({
             id: fileNode.id,
             path: toFilePath,
-            createdAt: fileNode.createdAt,
           }),
         },
         batch
@@ -996,11 +991,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     })
 
     await this.storeService.storageDao.update({
-      ...this.getUpdateBaseStorageNode({
+      ...this.getSaveBaseStorageNode({
         id: dirNode.id,
         path: dirPath,
         share: settings === null ? null : Object.assign(dirNode.share, settings),
-        createdAt: dirNode.createdAt,
       }),
     })
 
@@ -1033,11 +1027,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     })
 
     await this.storeService.storageDao.update({
-      ...this.getAddBaseStorageNode({
+      ...this.getSaveBaseStorageNode({
         id: fileNode.id,
         path: filePath,
         share: settings === null ? null : Object.assign(fileNode.share, settings),
-        createdAt: fileNode.createdAt,
       }),
     })
     Object.assign(fileNode, (await this.getNodeById(fileNode.id))!)
@@ -1084,10 +1077,18 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     for (const input of inputs) {
       const { filePath, contentType } = input
+
+      // ファイルノードの新バージョン番号を取得
+      const fileNode = await this.getNodeByPath(filePath)
+      const version = (fileNode?.version ?? 0) + 1
+
       const gcsFileNode = bucket.file(filePath)
       const [url] = await gcsFileNode.createResumableUpload({
         origin: requestOrigin,
-        metadata: { contentType },
+        metadata: {
+          contentType,
+          metadata: this.toRawMetadata({ version }),
+        },
       })
       urlDict[filePath] = url
     }
@@ -1257,7 +1258,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストレージに格納されているファイルをもとにして、ストアのファイルノードを作成/更新します。
+   * ストレージに格納されているファイルをもとに、ストアのファイルノードを作成/更新します。
    * @param filePath
    * @param file
    * @param input
@@ -1268,24 +1269,26 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const existsFileNode = await this.getNodeByPath(filePath)
     const { version } = this.extractMetaData(file)
 
-    // 引数ファイルとストレージに格納されているファイルを比較して、
-    // 引数ファイルのバージョンと同じか古い場合、何もせず終了
+    // クライアント側ではアップロード前に引数ファイルのメタデータに新バージョン番号が書き込まれる。
+    // この新バージョン番頭と現在のストレージファイルのバージョン番号を比較し、
+    // 新バージョン番号がストレージファイルと同じまたは古い場合は何もせず終了
     if (existsFileNode && existsFileNode.version >= version) {
       return { ...existsFileNode, file } as FILE_NODE
     }
 
     const nodeId = existsFileNode?.id ?? this.storeService.storageDao.docRef().id
     await this.storeService.storageDao.set({
-      ...this.getAddBaseStorageNode({
+      ...(this.getSaveBaseStorageNode({
         id: nodeId,
         path: filePath,
         share: Object.assign({}, input?.share ?? existsFileNode?.share),
-        createdAt: existsFileNode?.createdAt,
-      }),
+      }) as RequiredAre<WriteBaseStorageNode, 'share'>),
       nodeType: StorageNodeType.File,
       contentType: file.metadata.contentType ?? '',
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       version,
+      createdAt: existsFileNode?.createdAt ?? FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     })
 
     return {
@@ -1335,16 +1338,17 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     // ストアにノードデータを保存
     //
     await this.storeService.storageDao.set({
-      ...this.getAddBaseStorageNode({
+      ...(this.getSaveBaseStorageNode({
         id: nodeId,
         path: filePath,
         share: Object.assign({}, input?.share ?? fileNode?.share),
-        createdAt: fileNode?.createdAt,
-      }),
+      }) as RequiredAre<WriteBaseStorageNode, 'share'>),
       nodeType: StorageNodeType.File,
       contentType: dataParams?.options?.contentType ?? '',
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       version,
+      createdAt: fileNode?.createdAt ?? FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     })
 
     // 保存されたノードデータを戻り値として返す
@@ -1381,17 +1385,15 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストアノード追加時の基本項目が設定されたオブジェクトを取得します。
+   * ストアノード保存時の基本項目が設定されたオブジェクトを取得します。
    * @param node
    */
-  protected getAddBaseStorageNode(node: {
-    id: string
-    path: string
-    share: StorageNodeShareSettingsInput | null
-    createdAt?: Dayjs
-  }): WriteBaseStorageNode {
-    const share: StorageNodeShareSettings = { isPublic: null, readUIds: null, writeUIds: null }
-    if (node.share) {
+  protected getSaveBaseStorageNode(node: { id: string; path: string; share?: StorageNodeShareSettingsInput | null }): WriteBaseStorageNode {
+    let share: StorageNodeShareSettings | undefined = undefined
+    if (node.share === null) {
+      share = { isPublic: null, readUIds: null, writeUIds: null }
+    } else if (node.share) {
+      share = { isPublic: null, readUIds: null, writeUIds: null }
       if (typeof node.share.isPublic !== 'undefined') {
         share.isPublic = node.share.isPublic
       }
@@ -1419,27 +1421,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       level: StorageService.getNodeLevel(node.path),
       share,
       version: FieldValue.increment(1),
-      createdAt: node.createdAt ? node.createdAt : FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
     }
-  }
-
-  /**
-   * ストアノード更新時の基本項目が設定されたオブジェクトを取得します。
-   * @param node
-   */
-  protected getUpdateBaseStorageNode(node: {
-    id: string
-    path: string
-    share?: StorageNodeShareSettingsInput | null
-    createdAt?: Dayjs
-  }): PartialAre<WriteBaseStorageNode, 'share'> {
-    const result = this.getAddBaseStorageNode({
-      ...node,
-      share: node.share ? node.share : {},
-    })
-    if (typeof node.share === 'undefined') delete result.share
-    return result
   }
 
   /**

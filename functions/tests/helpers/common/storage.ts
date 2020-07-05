@@ -170,7 +170,7 @@ async function verifyMoveNodes(fmNodes: StorageNode[], toNodes: StorageNode[], s
 
     // 移動前と移動後のストアノードを比較検証
     expect(toNode.createdAt).toEqual(fmNode.createdAt)
-    expect(toNode.updatedAt.isAfter(fmNode.updatedAt)).toBeTruthy()
+    expect(toNode.updatedAt).toEqual(fmNode.updatedAt)
     expect(toNode.version).toBe(fmNode.version + 1)
 
     // 移動前ノードが存在しないことを検証

@@ -2091,7 +2091,7 @@ describe('StorageService', () => {
       // 作成日時の検証
       expect(to_d1.createdAt).toEqual(fm_d1.createdAt)
       // 更新日時の検証
-      expect(to_d1.updatedAt.isAfter(fm_d1.updatedAt)).toBeTruthy()
+      expect(to_d1.updatedAt).toEqual(fm_d1.updatedAt)
     })
 
     it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
@@ -2268,7 +2268,7 @@ describe('StorageService', () => {
       // 作成日時の検証
       expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
       // 更新日時の検証
-      expect(to_fileA.updatedAt.isAfter(fm_fileA.updatedAt)).toBeTruthy()
+      expect(to_fileA.updatedAt).toEqual(fm_fileA.updatedAt)
     })
 
     it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
