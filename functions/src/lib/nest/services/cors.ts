@@ -5,6 +5,8 @@ import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
 import { config } from '../../../config'
 import { removeStartSlash } from 'web-base-lib'
+import onFinished = require('on-finished')
+import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -281,16 +283,16 @@ abstract class CORSService {
   protected logNotAllowed(context: { req: Request; res: Response; info?: GraphQLResolveInfo }, options: CORSOptions) {
     const { req, res, info } = context
     const latencyTimer = new LoggingLatencyTimer().start()
-    res.on('finish', () => {
+    const timestamp = dayjs()
+    onFinished(res, () => {
       this.loggingService.log({
         req,
         res,
         info,
         latencyTimer,
-        metadata: {
-          severity: 500, // ERROR
-        },
         data: this.getErrorData(req, options),
+        severity: 500, // ERROR
+        timestamp,
       })
     })
   }

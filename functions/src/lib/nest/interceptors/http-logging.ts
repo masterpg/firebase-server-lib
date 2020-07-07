@@ -4,6 +4,8 @@ import { APP_INTERCEPTOR } from '@nestjs/core'
 import { Observable } from 'rxjs'
 import { getAllExecutionContext } from '../base'
 import { tap } from 'rxjs/operators'
+import dayjs = require('dayjs')
+import onFinished = require('on-finished')
 
 //========================================================================
 //
@@ -18,17 +20,20 @@ class HTTPLoggingInterceptor implements NestInterceptor {
     const { req, res, info } = getAllExecutionContext(context)
     const latencyTimer = new LoggingLatencyTimer().start()
     const loggingSource = { req, res, info, latencyTimer }
+    const executionId = this.loggingService.getExecutionId(req)
 
     return next.handle().pipe(
       tap(
         () => {
-          loggingSource.res.on('finish', () => {
-            this.loggingService.log(loggingSource)
+          const timestamp = dayjs()
+          onFinished(res, () => {
+            this.loggingService.log({ ...loggingSource, timestamp })
           })
         },
         error => {
-          loggingSource.res.on('finish', () => {
-            this.loggingService.log(Object.assign(loggingSource, { error }))
+          const timestamp = dayjs()
+          onFinished(res, () => {
+            this.loggingService.log({ ...loggingSource, error, executionId, timestamp })
           })
         }
       )

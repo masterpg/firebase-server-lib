@@ -3,6 +3,8 @@ import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
 import { getAllExecutionContext } from '../base'
+import onFinished = require('on-finished')
+import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -22,16 +24,19 @@ class AuthGuard implements CanActivate {
     const roles = this.reflector.get<string[]>('roles', context.getHandler())
     const { req, res, info } = getAllExecutionContext(context)
     const latencyTimer = new LoggingLatencyTimer().start()
+    const executionId = this.loggingService.getExecutionId(req)
 
     const validated = await this.authService.validate(req, res, roles)
     if (validated.result) {
       ;(req as any).__idToken = validated.idToken
       return true
     } else {
-      res.on('finish', () => {
-        this.loggingService.log({ req, res, info, latencyTimer, error: validated.error })
+      const error = validated.error
+      const timestamp = dayjs()
+      onFinished(res, () => {
+        this.loggingService.log({ req, res, info, latencyTimer, error, executionId, timestamp })
       })
-      throw validated.error
+      throw error
     }
   }
 }

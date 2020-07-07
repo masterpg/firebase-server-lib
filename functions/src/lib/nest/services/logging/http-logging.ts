@@ -3,6 +3,8 @@ import { HttpException, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { Request, Response } from 'express'
+import { ApiResponse } from '@google-cloud/logging/build/src/log'
+import { Dayjs } from 'dayjs'
 import { GraphQLResolveInfo } from 'graphql'
 import { IdToken } from '../auth'
 import { LogEntry } from '@google-cloud/logging/build/src/entry'
@@ -13,6 +15,7 @@ import { merge } from 'lodash'
 import { removeBothEndsSlash } from 'web-base-lib'
 import IHttpRequest = google.logging.type.IHttpRequest
 import IMonitoredResource = google.api.IMonitoredResource
+import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -27,8 +30,10 @@ interface HTTPLoggingSource {
   logName?: string
   info?: GraphQLResolveInfo
   error?: Error
-  metadata?: Partial<HTTPLoggingMetadata>
   data?: Partial<HTTPLoggingData>
+  severity?: number
+  executionId?: string
+  timestamp?: Dayjs
 }
 
 interface HTTPLoggingMetadata extends LogEntry {
@@ -80,14 +85,14 @@ abstract class HTTPLoggingService {
   //----------------------------------------------------------------------
 
   log(loggingSource: HTTPLoggingSource): void {
-    const { logName, req, res, error, metadata } = loggingSource
+    const { logName, req, res, error, severity, executionId, timestamp } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
     if (!error) {
       merge(realMetadata, {
         severity: 100, // DEBUG
         labels: {
-          execution_id: req.header('Function-Execution-Id'),
+          execution_id: this.getExecutionId(req),
         },
         httpRequest: {
           responseSize: parseInt(res.get('Content-Length')),
@@ -101,8 +106,20 @@ abstract class HTTPLoggingService {
 
     const data = this.getData(loggingSource)
 
-    if (metadata) {
-      merge(realMetadata, metadata)
+    if (typeof severity === 'number') {
+      realMetadata.severity = severity
+    }
+
+    if (executionId) {
+      merge(realMetadata, {
+        labels: {
+          execution_id: executionId,
+        },
+      })
+    }
+
+    if (timestamp) {
+      realMetadata.timestamp = timestamp.toDate()
     }
 
     this.m_writeLog(logName ? logName : DEFAULT_LOG_NAME, realMetadata, data)
@@ -123,6 +140,10 @@ abstract class HTTPLoggingService {
     }
   }
 
+  getExecutionId(req: Request): string | undefined {
+    return req.header('Function-Execution-Id')
+  }
+
   //----------------------------------------------------------------------
   //
   //  Internal methods
@@ -134,7 +155,7 @@ abstract class HTTPLoggingService {
   protected getRequestUrl(req: Request, info?: GraphQLResolveInfo): string {
     let segment: string
     if (info) {
-      segment = `${this.getBaseFunctionName(req)}/${String(info.path.key)}`
+      segment = `${this.getBaseFunctionName(req)}`
     } else {
       const originalUrl = removeBothEndsSlash(req.originalUrl)
       segment = `${this.getBaseFunctionName(req)}/${originalUrl}`
@@ -157,6 +178,7 @@ abstract class HTTPLoggingService {
     return {
       resource: this.m_getResourceData(loggingSource),
       httpRequest: this.m_getRequestData(loggingSource),
+      timestamp: dayjs().toDate(),
     }
   }
 
@@ -196,7 +218,7 @@ abstract class HTTPLoggingService {
     return result
   }
 
-  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HTTPLoggingData) {
+  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | HTTPLoggingData): Promise<ApiResponse> {
     let targetLog = this.m_logDict[logName]
     if (!targetLog) {
       targetLog = new Logging().log(logName)
