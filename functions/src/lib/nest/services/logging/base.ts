@@ -1,4 +1,12 @@
 import * as convertHrtime from 'convert-hrtime'
+import { google } from '@google-cloud/logging/build/protos/protos'
+
+export enum LoggingSeverity {
+  DEBUG = google.logging.type.LogSeverity.DEBUG,
+  INFO = google.logging.type.LogSeverity.INFO,
+  WARNING = google.logging.type.LogSeverity.WARNING,
+  ERROR = google.logging.type.LogSeverity.ERROR,
+}
 
 export interface LoggingLatencyData {
   seconds: number

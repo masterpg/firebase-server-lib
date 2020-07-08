@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { AppStorageNode, AppStoreServiceDI, AppStoreServiceModule } from './store'
-import { AuthRoleType, AuthServiceDI, AuthServiceModule, IdToken, StorageService } from '../../lib'
+import { AuthModule, AuthRoleType, AuthServiceDI, IdToken, StorageService } from '../../lib'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { File } from '@google-cloud/storage'
@@ -294,7 +294,7 @@ namespace AppStorageServiceDI {
 @Module({
   providers: [AppStorageServiceDI.provider],
   exports: [AppStorageServiceDI.provider],
-  imports: [AuthServiceModule, AppStoreServiceModule],
+  imports: [AuthModule, AppStoreServiceModule],
 })
 class AppStorageServiceModule {}
 

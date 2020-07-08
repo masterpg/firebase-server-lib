@@ -1,16 +1,5 @@
 import { AdminSettings, PartnerSettings, PublicSettings } from '../../services'
-import {
-  AuthGuard,
-  AuthGuardModule,
-  AuthRoleType,
-  CORSAppGuardDI,
-  CORSGuardModule,
-  CORSMiddleware,
-  CORSMiddlewareModule,
-  IdToken,
-  Roles,
-  UserArg,
-} from '../../../../../src/lib'
+import { AuthGuard, AuthModule, AuthRoleType, CORSAppGuardDI, CORSMiddleware, CORSModule, IdToken, Roles, UserArg } from '../../../../../src/lib'
 import { GraphQLModule, Query, Resolver } from '@nestjs/graphql'
 import { MiddlewareConsumer, Module, RequestMethod, UseGuards } from '@nestjs/common'
 import { getMockGQLModuleOptions } from '../base'
@@ -44,13 +33,13 @@ class DummyResolver {
 
 @Module({
   providers: [DummyResolver],
-  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule],
+  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthModule],
 })
 class DummyGQLModule {}
 
 @Module({
   providers: [DummyResolver],
-  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule, CORSMiddlewareModule],
+  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthModule, CORSModule],
 })
 class DummyCORSGQLModule {
   configure(consumer: MiddlewareConsumer) {
@@ -60,7 +49,7 @@ class DummyCORSGQLModule {
 
 @Module({
   providers: [DummyResolver, CORSAppGuardDI.provider],
-  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthGuardModule, CORSGuardModule],
+  imports: [GraphQLModule.forRoot(getMockGQLModuleOptions()), AuthModule, CORSModule],
 })
 class DummyCORSGuardGQLModule {
   configure(consumer: MiddlewareConsumer) {

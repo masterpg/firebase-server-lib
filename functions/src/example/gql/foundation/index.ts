@@ -1,6 +1,6 @@
 import { AppConfigResponse, FoundationServiceDI, FoundationServiceModule } from '../../services'
 import { Query, Resolver } from '@nestjs/graphql'
-import { AuthGuardModule } from '../../../lib'
+import { AuthModule } from '../../../lib'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -23,7 +23,7 @@ export class FoundationResolver {
 
 @Module({
   providers: [FoundationResolver],
-  imports: [BaseGQLModule, FoundationServiceModule, AuthGuardModule],
+  imports: [BaseGQLModule, FoundationServiceModule, AuthModule],
 })
 class FoundationGQLModule {}
 

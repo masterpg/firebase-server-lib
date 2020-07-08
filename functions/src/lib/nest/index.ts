@@ -14,4 +14,8 @@ export * from './services/cors'
 export * from './services/firestore'
 export * from './services/logging'
 
+export * from './auth'
+export * from './cors'
+export * from './logging'
+
 export { GQLContext, getAllExecutionContext } from './base'

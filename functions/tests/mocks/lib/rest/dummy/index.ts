@@ -1,11 +1,10 @@
 import {
   AuthGuard,
-  AuthGuardModule,
+  AuthModule,
   AuthRoleType,
   CORSAppGuardDI,
-  CORSGuardModule,
   CORSMiddleware,
-  CORSMiddlewareModule,
+  CORSModule,
   IdToken,
   Roles,
   TransformInterceptor,
@@ -43,13 +42,13 @@ class DummyController {
 
 @Module({
   controllers: [DummyController],
-  imports: [AuthGuardModule],
+  imports: [AuthModule],
 })
 class DummyRESTModule {}
 
 @Module({
   controllers: [DummyController],
-  imports: [AuthGuardModule, CORSMiddlewareModule],
+  imports: [AuthModule, CORSModule],
 })
 class DummyCORSRESTModule {
   configure(consumer: MiddlewareConsumer) {
@@ -60,7 +59,7 @@ class DummyCORSRESTModule {
 @Module({
   controllers: [DummyController],
   providers: [CORSAppGuardDI.provider],
-  imports: [AuthGuardModule, CORSGuardModule],
+  imports: [AuthModule, CORSModule],
 })
 class DummyCORSGuardRESTModule {
   configure(consumer: MiddlewareConsumer) {

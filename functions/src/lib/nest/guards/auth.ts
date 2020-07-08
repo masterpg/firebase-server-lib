@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, Module } from '@nestjs/common'
+import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common'
 import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
 import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
@@ -24,7 +24,6 @@ class AuthGuard implements CanActivate {
     const roles = this.reflector.get<string[]>('roles', context.getHandler())
     const { req, res, info } = getAllExecutionContext(context)
     const latencyTimer = new LoggingLatencyTimer().start()
-    const executionId = this.loggingService.getExecutionId(req)
 
     const validated = await this.authService.validate(req, res, roles)
     if (validated.result) {
@@ -34,18 +33,12 @@ class AuthGuard implements CanActivate {
       const error = validated.error
       const timestamp = dayjs()
       onFinished(res, () => {
-        this.loggingService.log({ req, res, info, latencyTimer, error, executionId, timestamp })
+        this.loggingService.log({ req, res, info, latencyTimer, error, timestamp })
       })
       throw error
     }
   }
 }
-
-@Module({
-  providers: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
-  exports: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
-})
-class AuthGuardModule {}
 
 //========================================================================
 //
@@ -53,4 +46,4 @@ class AuthGuardModule {}
 //
 //========================================================================
 
-export { AuthGuard, AuthGuardModule }
+export { AuthGuard }

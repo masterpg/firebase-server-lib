@@ -1,7 +1,6 @@
-import { Inject, Injectable, Module, NestMiddleware } from '@nestjs/common'
+import { Inject, Injectable, NestMiddleware } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { CORSServiceDI } from '../services/cors'
-import { HTTPLoggingServiceDI } from '../services/logging'
 
 //========================================================================
 //
@@ -18,16 +17,10 @@ class CORSMiddleware implements NestMiddleware {
   }
 }
 
-@Module({
-  providers: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
-  exports: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
-})
-class CORSMiddlewareModule {}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { CORSMiddleware, CORSMiddlewareModule }
+export { CORSMiddleware }

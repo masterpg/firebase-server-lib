@@ -1,7 +1,7 @@
 import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
-  AuthGuardModule,
+  AuthModule,
   GQLContext,
   GQLContextArg,
   SignedUploadUrlInput,
@@ -183,7 +183,7 @@ export class StorageResolver {
 
 @Module({
   providers: [StorageResolver],
-  imports: [BaseGQLModule, AppStorageServiceModule, AuthGuardModule],
+  imports: [BaseGQLModule, AppStorageServiceModule, AuthModule],
 })
 class StorageGQLModule {}
 

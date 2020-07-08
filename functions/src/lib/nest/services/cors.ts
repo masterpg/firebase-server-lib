@@ -1,8 +1,8 @@
 import * as vary from 'vary'
-import { HTTPLoggingData, HTTPLoggingServiceDI, HTTPLoggingServiceModule, LoggingLatencyTimer } from './logging'
-import { Inject, Module } from '@nestjs/common'
+import { HTTPLoggingServiceDI, LoggingLatencyTimer, LoggingSeverity } from './logging'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
+import { Inject } from '@nestjs/common'
 import { config } from '../../../config'
 import { removeStartSlash } from 'web-base-lib'
 import onFinished = require('on-finished')
@@ -290,22 +290,20 @@ abstract class CORSService {
         res,
         info,
         latencyTimer,
-        data: this.getErrorData(req, options),
-        severity: 500, // ERROR
+        error: this.getErrorData(req, options),
+        severity: LoggingSeverity.ERROR,
         timestamp,
       })
     })
   }
 
-  protected getErrorData(req: Request, options: CORSOptions): Partial<HTTPLoggingData> {
+  protected getErrorData(req: Request, options: CORSOptions): any {
     return {
-      error: {
-        message: 'Not allowed by CORS.',
-        detail: {
-          requestOrigin: (req.headers.origin as string) || '',
-          allowedBlankOrigin: !!options.allowedBlankOrigin,
-          whitelist: options.whitelist,
-        },
+      message: 'Not allowed by CORS.',
+      detail: {
+        requestOrigin: (req.headers.origin as string) || '',
+        allowedBlankOrigin: Boolean(options.allowedBlankOrigin),
+        whitelist: options.whitelist,
       },
     }
   }
@@ -352,17 +350,10 @@ namespace CORSServiceDI {
   export type type = CORSService
 }
 
-@Module({
-  providers: [CORSServiceDI.provider],
-  exports: [CORSServiceDI.provider],
-  imports: [HTTPLoggingServiceModule],
-})
-class CORSServiceModule {}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { CORSServiceDI, CORSServiceModule }
+export { CORSServiceDI }

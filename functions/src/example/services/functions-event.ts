@@ -1,5 +1,5 @@
 import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
-import { FunctionsEventLoggingServiceDI, FunctionsEventLoggingServiceModule, UserServiceDI, UserServiceModule } from '../../lib'
+import { FunctionsEventLoggingServiceDI, LoggingModule, UserServiceDI, UserServiceModule } from '../../lib'
 import { Inject, Module } from '@nestjs/common'
 import { EventContext } from 'firebase-functions'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
@@ -18,7 +18,7 @@ class FunctionsEventService {
   ) {}
 
   async authOnCreateUser(user: UserRecord, context: EventContext): Promise<void> {
-    await this.loggingService.log({ functionName: 'authOnCreateUser', data: { user } })
+    this.loggingService.log({ functionName: 'authOnCreateUser', data: { user: this.m_toLogUser(user) } })
   }
 
   async authOnDeleteUser(user: UserRecord, context: EventContext): Promise<void> {
@@ -28,7 +28,11 @@ class FunctionsEventService {
     } catch (err) {
       error = err
     }
-    await this.loggingService.log({ functionName: 'authOnDeleteUser', data: { user }, error })
+    this.loggingService.log({ functionName: 'authOnDeleteUser', data: { user: this.m_toLogUser(user) }, error })
+  }
+
+  private m_toLogUser(user: UserRecord): { uid: string; customClaims: { [p: string]: any } | undefined } {
+    return { uid: user.uid, customClaims: user.customClaims }
   }
 }
 
@@ -44,7 +48,7 @@ namespace FunctionsEventDI {
 @Module({
   providers: [FunctionsEventDI.provider],
   exports: [FunctionsEventDI.provider],
-  imports: [UserServiceModule, AppStorageServiceModule, FunctionsEventLoggingServiceModule],
+  imports: [UserServiceModule, AppStorageServiceModule, LoggingModule],
 })
 class FunctionsEventServiceModule {}
 

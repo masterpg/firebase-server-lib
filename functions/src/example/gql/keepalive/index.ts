@@ -1,4 +1,4 @@
-import { AuthGuard, AuthGuardModule, AuthRoleType, Roles } from '../../../lib'
+import { AuthGuard, AuthModule, AuthRoleType, Roles } from '../../../lib'
 import { Query, Resolver } from '@nestjs/graphql'
 import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
@@ -24,7 +24,7 @@ export class KeepAliveResolver {
 
 @Module({
   providers: [KeepAliveResolver],
-  imports: [BaseGQLModule, AuthGuardModule],
+  imports: [BaseGQLModule, AuthModule],
 })
 class KeepAliveGQLModule {}
 

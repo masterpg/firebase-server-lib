@@ -1,10 +1,7 @@
-import { HttpException, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
-import { Log, Logging } from '@google-cloud/logging'
 import { clone, merge } from 'lodash'
-import { LogEntry } from '@google-cloud/logging/build/src/entry'
-import { google } from '@google-cloud/logging/build/protos/protos'
-import IMonitoredResource = google.api.IMonitoredResource
+import { debug, error, info, warn } from 'firebase-functions/lib/logger'
+import { LoggingSeverity } from './base'
 
 //========================================================================
 //
@@ -14,32 +11,13 @@ import IMonitoredResource = google.api.IMonitoredResource
 
 interface FunctionsEventLoggingSource {
   functionName: string
-  logName?: string
   error?: Error
-  metadata?: Partial<FunctionsEventLoggingMetadata>
-  data?: Partial<FunctionsEventLoggingData>
-}
-
-interface FunctionsEventLoggingMetadata extends LogEntry {
-  resource: FunctionsEventLoggingResourceData
-}
-
-interface FunctionsEventLoggingResourceData extends IMonitoredResource {
-  type: string
-  labels: {
-    function_name: string
-  }
+  data?: any
+  severity?: LoggingSeverity
 }
 
 interface FunctionsEventLoggingData {
-  user?: {
-    uid: string
-    customClaims?: any
-  }
-  error?: {
-    message: string
-    detail?: any
-  }
+  error?: any
 }
 
 //========================================================================
@@ -48,44 +26,34 @@ interface FunctionsEventLoggingData {
 //
 //========================================================================
 
-const DEFAULT_LOG_NAME = 'handler'
-
 abstract class FunctionsEventLoggingService {
-  //----------------------------------------------------------------------
-  //
-  //  Variables
-  //
-  //----------------------------------------------------------------------
-
-  private m_logDict: { [logName: string]: Log } = {}
-
   //----------------------------------------------------------------------
   //
   //  Methods
   //
   //----------------------------------------------------------------------
 
-  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {
-    const { logName, error, metadata } = loggingSource
-
-    const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
-    if (!error) {
-      merge(realMetadata, {
-        severity: 100, // DEBUG
-      })
-    } else {
-      merge(realMetadata, {
-        severity: 500, // ERROR
-      })
-    }
-
+  log(loggingSource: FunctionsEventLoggingSource): void {
     const data = this.getData(loggingSource)
 
-    if (metadata) {
-      merge(realMetadata, metadata)
+    if (typeof loggingSource.severity === 'number') {
+      switch (loggingSource.severity) {
+        case LoggingSeverity.DEBUG:
+          debug(data)
+          break
+        case LoggingSeverity.INFO:
+          info(data)
+          break
+        case LoggingSeverity.WARNING:
+          warn(data)
+          break
+        case LoggingSeverity.ERROR:
+          error(data)
+          break
+      }
+    } else {
+      debug(data)
     }
-
-    await this.m_writeLog(logName ? logName : DEFAULT_LOG_NAME, realMetadata, data)
   }
 
   //----------------------------------------------------------------------
@@ -94,41 +62,23 @@ abstract class FunctionsEventLoggingService {
   //
   //----------------------------------------------------------------------
 
-  protected getBaseMetadata(loggingSource: { functionName: string }): FunctionsEventLoggingMetadata {
-    return {
-      resource: this.m_getResourceData(loggingSource),
-    }
-  }
-
-  protected getData(loggingSource: { data?: Partial<FunctionsEventLoggingData>; error?: Error }): FunctionsEventLoggingData {
+  protected getData(loggingSource: FunctionsEventLoggingSource): FunctionsEventLoggingData {
     const data = clone(loggingSource.data)
     const error = loggingSource.error
 
-    const result = {} as FunctionsEventLoggingData
-
-    if (data) {
-      if (data.user) {
-        result.user = {
-          uid: data.user.uid,
-          customClaims: data.user.customClaims,
-        }
-        delete data.user
-      }
-    }
+    const result: FunctionsEventLoggingData = {}
 
     if (error) {
-      if (error instanceof HttpException) {
-        result.error = {
-          message: (error.getResponse() as any).message,
-        }
-      } else {
+      if (error instanceof Error) {
         result.error = {
           message: error.message,
         }
-      }
 
-      if (error instanceof ValidationErrors || error instanceof InputValidationError) {
-        result.error.detail = error.detail
+        if (error instanceof ValidationErrors || error instanceof InputValidationError) {
+          result.error.detail = error.detail
+        }
+      } else {
+        result.error = error
       }
     }
 
@@ -138,49 +88,29 @@ abstract class FunctionsEventLoggingService {
 
     return result
   }
-
-  private m_writeLog(logName: string, metadata?: LogEntry, data?: string | FunctionsEventLoggingData) {
-    let targetLog = this.m_logDict[logName]
-    if (!targetLog) {
-      targetLog = new Logging().log(logName)
-      this.m_logDict[logName] = targetLog
-    }
-    const entry = targetLog.entry(metadata, data)
-    return targetLog.write(entry)
-  }
-
-  private m_getResourceData(loggingSource: { functionName: string }): FunctionsEventLoggingResourceData {
-    const { functionName } = loggingSource
-    return {
-      type: 'cloud_function',
-      labels: {
-        function_name: functionName,
-      },
-    }
-  }
 }
 
 class ProdFunctionsEventLoggingService extends FunctionsEventLoggingService {}
 
 class DevFunctionsEventLoggingService extends FunctionsEventLoggingService {
-  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {
-    const { error } = loggingSource
-    const functionName = this.getBaseMetadata(loggingSource).resource.labels.function_name
-    const detail = {
+  log(loggingSource: FunctionsEventLoggingSource): void {
+    const { functionName, error } = loggingSource
+    const detail: any = {
       functionName,
     }
 
-    if (!error) {
-      console.log('[DEBUG]:', JSON.stringify(detail, null, 2))
-    } else {
+    if (error) {
       const errorData = this.getData(loggingSource)
       console.error('[ERROR]:', JSON.stringify(errorData, null, 2))
+    } else {
+      detail.data = this.getData(loggingSource)
+      console.log('[DEBUG]:', JSON.stringify(detail, null, 2))
     }
   }
 }
 
 class TestFunctionsEventLoggingService extends FunctionsEventLoggingService {
-  async log(loggingSource: FunctionsEventLoggingSource): Promise<void> {}
+  log(loggingSource: FunctionsEventLoggingSource): void {}
 }
 
 namespace FunctionsEventLoggingServiceDI {
@@ -200,23 +130,10 @@ namespace FunctionsEventLoggingServiceDI {
   export type type = FunctionsEventLoggingService
 }
 
-@Module({
-  providers: [FunctionsEventLoggingServiceDI.provider],
-  exports: [FunctionsEventLoggingServiceDI.provider],
-})
-class FunctionsEventLoggingServiceModule {}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export {
-  FunctionsEventLoggingSource,
-  FunctionsEventLoggingMetadata,
-  FunctionsEventLoggingResourceData,
-  FunctionsEventLoggingData,
-  FunctionsEventLoggingServiceDI,
-  FunctionsEventLoggingServiceModule,
-}
+export { FunctionsEventLoggingSource, FunctionsEventLoggingData, FunctionsEventLoggingServiceDI }

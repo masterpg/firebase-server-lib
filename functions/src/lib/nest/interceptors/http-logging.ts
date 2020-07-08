@@ -20,7 +20,6 @@ class HTTPLoggingInterceptor implements NestInterceptor {
     const { req, res, info } = getAllExecutionContext(context)
     const latencyTimer = new LoggingLatencyTimer().start()
     const loggingSource = { req, res, info, latencyTimer }
-    const executionId = this.loggingService.getExecutionId(req)
 
     return next.handle().pipe(
       tap(
@@ -33,7 +32,7 @@ class HTTPLoggingInterceptor implements NestInterceptor {
         error => {
           const timestamp = dayjs()
           onFinished(res, () => {
-            this.loggingService.log({ ...loggingSource, error, executionId, timestamp })
+            this.loggingService.log({ ...loggingSource, error, timestamp })
           })
         }
       )
@@ -48,16 +47,10 @@ namespace HTTPLoggingAppInterceptorDI {
   }
 }
 
-@Module({
-  providers: [HTTPLoggingServiceDI.provider],
-  exports: [HTTPLoggingServiceDI.provider],
-})
-class HTTPLoggingInterceptorModule {}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule }
+export { HTTPLoggingAppInterceptorDI }

@@ -1,14 +1,14 @@
 import * as path from 'path'
-import { HttpException, Module } from '@nestjs/common'
 import { InputValidationError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
+import { LoggingLatencyTimer, LoggingSeverity } from './base'
 import { Request, Response } from 'express'
 import { ApiResponse } from '@google-cloud/logging/build/src/log'
 import { Dayjs } from 'dayjs'
 import { GraphQLResolveInfo } from 'graphql'
+import { HttpException } from '@nestjs/common'
 import { IdToken } from '../auth'
 import { LogEntry } from '@google-cloud/logging/build/src/entry'
-import { LoggingLatencyTimer } from './base'
 import { config } from '../../../../config'
 import { google } from '@google-cloud/logging/build/protos/protos'
 import { merge } from 'lodash'
@@ -29,10 +29,8 @@ interface HTTPLoggingSource {
   latencyTimer?: LoggingLatencyTimer
   logName?: string
   info?: GraphQLResolveInfo
-  error?: Error
-  data?: Partial<HTTPLoggingData>
-  severity?: number
-  executionId?: string
+  error?: Error | any
+  severity?: LoggingSeverity
   timestamp?: Dayjs
 }
 
@@ -54,11 +52,7 @@ interface HTTPLoggingData {
   user?: {
     uid: string
   }
-  error?: {
-    message: string
-    detail?: any
-    stack?: any
-  }
+  error?: any
 }
 
 //========================================================================
@@ -85,37 +79,26 @@ abstract class HTTPLoggingService {
   //----------------------------------------------------------------------
 
   log(loggingSource: HTTPLoggingSource): void {
-    const { logName, req, res, error, severity, executionId, timestamp } = loggingSource
+    const { logName, req, res, error, severity, timestamp } = loggingSource
 
     const realMetadata = this.getBaseMetadata(loggingSource) as LogEntry
-    if (!error) {
+    if (error) {
       merge(realMetadata, {
-        severity: 100, // DEBUG
-        labels: {
-          execution_id: this.getExecutionId(req),
-        },
-        httpRequest: {
-          responseSize: parseInt(res.get('Content-Length')),
-        },
+        severity: LoggingSeverity.ERROR,
       })
     } else {
       merge(realMetadata, {
-        severity: 500, // ERROR
+        severity: LoggingSeverity.DEBUG,
+        httpRequest: {
+          responseSize: parseInt(res.get('Content-Length')),
+        },
       })
     }
 
     const data = this.getData(loggingSource)
 
     if (typeof severity === 'number') {
-      realMetadata.severity = severity
-    }
-
-    if (executionId) {
-      merge(realMetadata, {
-        labels: {
-          execution_id: executionId,
-        },
-      })
+      realMetadata.severity = severity as number
     }
 
     if (timestamp) {
@@ -138,10 +121,6 @@ abstract class HTTPLoggingService {
       const segment2 = req.path
       return removeBothEndsSlash(path.join(segment1, segment2))
     }
-  }
-
-  getExecutionId(req: Request): string | undefined {
-    return req.header('Function-Execution-Id')
   }
 
   //----------------------------------------------------------------------
@@ -179,10 +158,13 @@ abstract class HTTPLoggingService {
       resource: this.m_getResourceData(loggingSource),
       httpRequest: this.m_getRequestData(loggingSource),
       timestamp: dayjs().toDate(),
+      labels: {
+        execution_id: req.header('Function-Execution-Id') || '',
+      },
     }
   }
 
-  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; data?: Partial<HTTPLoggingData>; error?: Error }): HTTPLoggingData {
+  protected getData(loggingSource: { req: Request; info?: GraphQLResolveInfo; data?: HTTPLoggingData; error?: Error }): HTTPLoggingData {
     const { req, info, data, error } = loggingSource
 
     const result = {} as HTTPLoggingData
@@ -199,15 +181,19 @@ abstract class HTTPLoggingService {
     }
 
     if (error) {
-      result.error = { message: '', stack: error.stack }
-      if (error instanceof HttpException) {
-        result.error.message = (error.getResponse() as any).message
-      } else {
-        result.error.message = error.message
-      }
+      if (error instanceof Error) {
+        result.error = { message: '', stack: error.stack }
+        if (error instanceof HttpException) {
+          result.error.message = (error.getResponse() as any).message
+        } else {
+          result.error.message = error.message
+        }
 
-      if (error instanceof ValidationErrors || error instanceof InputValidationError) {
-        result.error.detail = error.detail
+        if (error instanceof ValidationErrors || error instanceof InputValidationError) {
+          result.error.detail = error.detail
+        }
+      } else {
+        result.error = error
       }
     }
 
@@ -281,11 +267,11 @@ class DevHTTPLoggingService extends HTTPLoggingService {
       latency: latencyTimer ? `${latencyTimer.diff.seconds}s` : undefined,
     }
 
-    if (!error) {
-      console.log('[DEBUG]:', JSON.stringify(detail, null, 2))
-    } else {
+    if (error) {
       const errorData = this.getData(loggingSource)
       console.error('[ERROR]:', JSON.stringify(errorData, null, 2))
+    } else {
+      console.log('[DEBUG]:', JSON.stringify(detail, null, 2))
     }
   }
 
@@ -323,16 +309,10 @@ namespace HTTPLoggingServiceDI {
   export type type = HTTPLoggingService
 }
 
-@Module({
-  providers: [HTTPLoggingServiceDI.provider],
-  exports: [HTTPLoggingServiceDI.provider],
-})
-class HTTPLoggingServiceModule {}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { HTTPLoggingSource, HTTPLoggingMetadata, HTTPLoggingResourceData, HTTPLoggingData, HTTPLoggingServiceDI, HTTPLoggingServiceModule }
+export { HTTPLoggingSource, HTTPLoggingMetadata, HTTPLoggingResourceData, HTTPLoggingData, HTTPLoggingServiceDI }

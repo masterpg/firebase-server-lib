@@ -1,4 +1,4 @@
-import { CORSAppGuardDI, CORSGuardModule, CORSMiddleware, HTTPLoggingAppInterceptorDI, HTTPLoggingInterceptorModule } from '../../lib'
+import { CORSAppGuardDI, CORSMiddleware, CORSModule, HTTPLoggingAppInterceptorDI, LoggingModule } from '../../lib'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import CartRESTModule from './cart'
 import KeepAliveRESTModule from './keepalive'
@@ -14,7 +14,7 @@ const restModules = [KeepAliveRESTModule, CartRESTModule, ProductRESTModule]
 
 @Module({
   providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [HTTPLoggingInterceptorModule, CORSGuardModule, ...restModules],
+  imports: [LoggingModule, CORSModule, ...restModules],
 })
 class RESTContainerModule {
   configure(consumer: MiddlewareConsumer) {

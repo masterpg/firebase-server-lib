@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AuthServiceDI, AuthServiceModule } from '../nest'
+import { AuthModule, AuthServiceDI } from '../nest'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../base'
@@ -9,7 +9,6 @@ import { RequiredAre, removeBothEndsSlash, removeStartDirChars, splitArrayChunk,
 import { StorageNode, StorageNodeShareSettings, StorageNodeType, StoreServiceDI, StoreServiceModule } from './store'
 import { FieldValue } from '../../firestore-ex'
 import dayjs = require('dayjs')
-import { log } from 'firebase-functions/lib/logger'
 
 //========================================================================
 //
@@ -1569,7 +1568,7 @@ namespace StorageServiceDI {
 @Module({
   providers: [StorageServiceDI.provider],
   exports: [StorageServiceDI.provider],
-  imports: [AuthServiceModule, StoreServiceModule],
+  imports: [AuthModule, StoreServiceModule],
 })
 class StorageServiceModule {}
 
