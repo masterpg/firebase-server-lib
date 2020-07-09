@@ -18,7 +18,7 @@ class FoundationService extends BaseFoundationService {
   async appConfig(): Promise<AppConfigResponse> {
     return {
       usersDir: config.storage.usersDir,
-      siteDir: config.storage.siteDir,
+      docsDir: config.storage.docsDir,
     }
   }
 

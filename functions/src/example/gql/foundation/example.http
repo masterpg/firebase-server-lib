@@ -3,7 +3,7 @@ Content-Type: application/json
 
 {
   "operationName": "GetAppConfig",
-  "query": "query GetAppConfig { appConfig { usersDir siteDir } }",
+  "query": "query GetAppConfig { appConfig { usersDir docsDir } }",
   "variables": {}
 }
 

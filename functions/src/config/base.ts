@@ -38,7 +38,7 @@ interface CORSConfig {
 interface StorageConfig {
   readonly bucket: string
   readonly usersDir: string
-  readonly siteDir: string
+  readonly docsDir: string
 }
 
 interface GQLConfig {
@@ -83,15 +83,15 @@ class CORSConfigImpl implements CORSConfig {
 }
 
 class StorageConfigImpl implements StorageConfig {
-  constructor(params: PartialAre<StorageConfig, 'usersDir' | 'siteDir'>) {
+  constructor(params: PartialAre<StorageConfig, 'usersDir' | 'docsDir'>) {
     this.bucket = params.bucket
     this.usersDir = params.usersDir ?? 'users'
-    this.siteDir = params.siteDir ?? 'site'
+    this.docsDir = params.docsDir ?? 'docs'
   }
 
   readonly bucket: string
   readonly usersDir: string
-  readonly siteDir: string
+  readonly docsDir: string
 }
 
 class GQLConfigImpl implements GQLConfig {
