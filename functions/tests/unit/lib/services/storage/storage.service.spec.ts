@@ -184,6 +184,12 @@ describe('StorageService', () => {
       await existsNodes(actual, storageService)
     })
 
+    it('ノードパスを0件指定した場合', async () => {
+      const actual = await storageService.getNodesByPaths([])
+
+      expect(actual.length).toBe(0)
+    })
+
     it('ノードパスを10件より多く指定した場合', async () => {
       await storageService.createDirs([`d1`, `d2`, `d3`])
 
@@ -811,6 +817,22 @@ describe('StorageService', () => {
       await existsNodes(actual, storageService)
     })
 
+    it('ベーシックケース - 引数にバケット直下のファイルを指定', async () => {
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileA.txt`,
+        },
+      ])
+
+      const actual = await storageService.getHierarchicalNodes(`fileA.txt`)
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`fileA.txt`)
+      await existsNodes(actual, storageService)
+    })
+
     it('ベーシックケース - 引数にディレクトリを指定', async () => {
       await storageService.createDirs([`d1/d11/d111`])
 
@@ -820,6 +842,16 @@ describe('StorageService', () => {
       expect(actual[0].path).toBe(`d1`)
       expect(actual[1].path).toBe(`d1/d11`)
       expect(actual[2].path).toBe(`d1/d11/d111`)
+      await existsNodes(actual, storageService)
+    })
+
+    it('ベーシックケース - 引数にバケット直下のディレクトリを指定', async () => {
+      await storageService.createDirs([`d1`])
+
+      const actual = await storageService.getHierarchicalNodes(`d1`)
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`d1`)
       await existsNodes(actual, storageService)
     })
 

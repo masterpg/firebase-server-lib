@@ -172,6 +172,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * @param nodePaths
    */
   async getNodesByPaths(nodePaths: string[]): Promise<NODE[]> {
+    if (nodePaths.length === 0) return []
     nodePaths.map(nodePath => {
       if (!nodePath) throw new Error(`'nodePath' is not specified.`)
     })
@@ -510,7 +511,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     // 引数ノードを取得
     const node = await this.getNodeByPath(nodePath)
 
-    let dirNodes: NODE[]
+    let nodes: NODE[]
 
     // 引数ノードが存在する場合
     // ※引数ノードが存在するので、祖先ディレクトリも存在しなくてはならない
@@ -521,15 +522,15 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         const addedNodes = await this.createDirs(ancestorDirPaths)
         ancestorDirNodes.push(...addedNodes)
       }
-      dirNodes = [...ancestorDirNodes, node]
+      nodes = [...ancestorDirNodes, node]
     }
     // 引数ノードが存在しない場合
     // ※引数ノードは存在しないので、実際に存在する祖先ディレクトリのみを取得する
     else {
-      dirNodes = await this.getNodesByPaths(ancestorDirPaths)
+      nodes = await this.getNodesByPaths(ancestorDirPaths)
     }
 
-    return this.sortNodes(dirNodes)
+    return this.sortNodes(nodes)
   }
 
   /**
