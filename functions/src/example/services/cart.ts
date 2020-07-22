@@ -1,4 +1,4 @@
-import { AppStoreServiceDI, AppStoreServiceModule, CartItem, Product } from './store'
+import { CartItem, Product, StoreServiceDI, StoreServiceModule } from './store'
 import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
@@ -31,7 +31,7 @@ class CartItemUpdateInput implements _UpdateCartItemInput {
 //========================================================================
 
 class CartService {
-  constructor(@Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type) {}
+  constructor(@Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
   //
@@ -328,7 +328,7 @@ namespace CartServiceDI {
 @Module({
   providers: [CartServiceDI.provider],
   exports: [CartServiceDI.provider],
-  imports: [AppStoreServiceModule],
+  imports: [StoreServiceModule],
 })
 class CartServiceModule {}
 
@@ -338,4 +338,4 @@ class CartServiceModule {}
 //
 //========================================================================
 
-export { CartServiceDI, CartServiceModule, CartItem, CartItemEditResponse, CartItemUpdateInput, CartItemAddInput }
+export { CartServiceDI, CartServiceModule, CartItemEditResponse, CartItemUpdateInput, CartItemAddInput }

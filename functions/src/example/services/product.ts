@@ -1,5 +1,5 @@
-import { AppStoreServiceDI, AppStoreServiceModule, Product } from './store'
 import { Inject, Module } from '@nestjs/common'
+import { Product, StoreServiceDI, StoreServiceModule } from './store'
 
 //========================================================================
 //
@@ -8,7 +8,7 @@ import { Inject, Module } from '@nestjs/common'
 //========================================================================
 
 class ProductService {
-  constructor(@Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type) {}
+  constructor(@Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
   //
@@ -48,7 +48,7 @@ namespace ProductServiceDI {
 @Module({
   providers: [ProductServiceDI.provider],
   exports: [ProductServiceDI.provider],
-  imports: [AppStoreServiceModule],
+  imports: [StoreServiceModule],
 })
 class ProductServiceModule {}
 
@@ -58,4 +58,4 @@ class ProductServiceModule {}
 //
 //========================================================================
 
-export { ProductServiceDI, ProductServiceModule, Product }
+export { ProductServiceDI, ProductServiceModule }

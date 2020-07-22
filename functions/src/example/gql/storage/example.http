@@ -1,12 +1,12 @@
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageNode",
-  "query": "query GetUserStorageNode($nodePath: String!) { userStorageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "GetStorageNode",
+  "query": "query GetStorageNode($nodePath: String!) { storageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "nodePath": "d1"
+    "nodePath": "test-files/d1"
   }
 }
 
@@ -14,13 +14,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageDirDescendants",
-  "query": "query GetUserStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "GetStorageDirDescendants",
+  "query": "query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1",
+    "nodePath": "test-files/d1",
     "options": { "maxChunk": 3 }
   }
 }
@@ -29,13 +29,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageDescendants",
-  "query": "query GetUserStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "GetStorageDescendants",
+  "query": "query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1",
+    "nodePath": "test-files/d1",
     "options": { "maxChunk": 3 }
   }
 }
@@ -44,13 +44,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageDirChildren",
-  "query": "query GetUserStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "GetStorageDirChildren",
+  "query": "query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1",
+    "nodePath": "test-files/d1",
     "options": { "maxChunk": 3 }
   }
 }
@@ -59,13 +59,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageChildren",
-  "query": "query GetUserStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) { userStorageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "GetStorageChildren",
+  "query": "query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1",
+    "dirPath": "test-files/d1",
     "options": { "maxChunk": 3 }
   }
 }
@@ -74,13 +74,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageHierarchicalNodes",
-  "query": "query GetUserStorageHierarchicalNodes($nodePath: String!) { userStorageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "GetStorageHierarchicalNodes",
+  "query": "query GetStorageHierarchicalNodes($nodePath: String!) { storageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "nodePath": "d1/d11/d111"
+    "nodePath": "test-files/d1/d11/d111"
   }
 }
 
@@ -88,13 +88,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetUserStorageAncestorDirs",
-  "query": "query GetUserStorageAncestorDirs($nodePath: String!) { userStorageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+"operationName": "GetStorageAncestorDirs",
+"query": "query GetStorageAncestorDirs($nodePath: String!) { storageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "nodePath": "d1/d11/d111"
+    "nodePath": "test-files/d1/d11/d111"
   }
 }
 
@@ -102,31 +102,17 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "HandleUploadedUserFile",
-  "query": "mutation HandleUploadedUserFile($filePath: String!) { handleUploadedUserFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "filePath": "d1/fileA.txt"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
-
-{
-  "operationName": "CreateUserStorageDirs",
-  "query": "mutation CreateUserStorageDirs($dirPaths: [String!]!) { createUserStorageDirs(dirPaths: $dirPaths) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "CreateStorageDirs",
+  "query": "mutation CreateStorageDirs($dirPaths: [String!]!) { createStorageDirs(dirPaths: $dirPaths) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
     "dirPaths": [
-      "d1/d11",
-      "d1/d11/d111",
-      "d1/d11/d112",
-      "dir2/dir2_1"
+      "test-files/d1/d11",
+      "test-files/d1/d11/d111",
+      "test-files/d1/d11/d112",
+      "test-files/dir2/dir2_1"
     ]
   }
 }
@@ -135,13 +121,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "RemoveUserStorageDir",
-  "query": "mutation RemoveUserStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) { removeUserStorageDir(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "RemoveStorageDir",
+  "query": "mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) { removeStorageDir(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1",
+    "dirPath": "test-files/d1",
     "options": { "maxChunk": 3 }
   }
 }
@@ -150,13 +136,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "RemoveUserStorageFile",
-  "query": "mutation RemoveUserStorageFile($filePath: String!) { removeUserStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "RemoveStorageFile",
+  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "filePath": "d1/d11/fileA.txt"
+    "filePath": "test-files/d1/fileA.txt"
   }
 }
 
@@ -164,14 +150,14 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "MoveUserStorageDir",
-  "query": "mutation MoveUserStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) { moveUserStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "MoveStorageDir",
+  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "fromDirPath": "d1/d11",
-    "toDirPath": "d1/d1X",
+    "fromDirPath": "test-files/d1/d11",
+    "toDirPath": "test-files/d1/d1X",
     "options": { "maxChunk": 3 }
   }
 }
@@ -180,14 +166,14 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "MoveUserStorageFile",
-  "query": "mutation MoveUserStorageFile($fromFilePath: String!, $toFilePath: String!) { moveUserStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "MoveStorageFile",
+  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "fromFilePath": "d1/fileA.txt",
-    "toFilePath": "d1/d11/fileA.txt"
+    "fromFilePath": "test-files/d1/fileA.txt",
+    "toFilePath": "test-files/d1/d11/fileA.txt"
   }
 }
 
@@ -195,13 +181,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "RenameUserStorageDir",
-  "query": "mutation RenameUserStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) { renameUserStorageDir(dirPath: $dirPath, newName: $newName, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
+  "operationName": "RenameStorageDir",
+  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
-    "dirPath": "d1/d11",
+    "dirPath": "test-files/d1/d11",
     "newName": "d1X",
     "options": { "maxChunk": 3 }
   }
@@ -211,13 +197,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "RenameUserStorageFile",
-  "query": "mutation RenameUserStorageFile($filePath: String!, $newName: String!) { renameUserStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "RenameStorageFile",
+  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "filePath": "d1/fileA.txt",
+    "filePath": "test-files/d1/fileA.txt",
     "newName": "fileB.txt"
   }
 }
@@ -226,14 +212,14 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "SetUserStorageDirShareSettings",
-  "query": "mutation SetUserStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) { setUserStorageDirShareSettings(dirPath: $dirPath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "SetStorageDirShareSettings",
+  "query": "mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) { setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "dirPath": "d1",
-    "settings": { "isPublic": true, "readUIds": ["ichiro"], "writeUIds": ["ichiro"] }
+    "dirPath": "test-files/d1",
+    "settings": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds": ["ichiro"] }
   }
 }
 
@@ -241,14 +227,28 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{host}}/gql
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "SetUserStorageFileShareSettings",
-  "query": "mutation SetUserStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) { setUserStorageFileShareSettings(filePath: $filePath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
+  "operationName": "SetStorageFileShareSettings",
+  "query": "mutation SetStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) { setStorageFileShareSettings(filePath: $filePath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
   "variables": {
-    "filePath": "d1/fileA.txt",
-    "settings": { "isPublic": true, "readUIds": ["ichiro"], "writeUIds": ["ichiro"] }
+    "filePath": "test-files/d1/fileA.txt",
+    "settings": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds":  ["ichiro"] }
+  }
+}
+
+###
+
+POST {{host}}/gql
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "HandleUploadedFile",
+  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt } }",
+  "variables": {
+    "filePath": "test-files/d1/fileA.txt"
   }
 }
 
@@ -273,258 +273,3 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($nodePath: String!) { storageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "nodePath": "test-files/d1"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageDirDescendants",
-  "query": "query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "nodePath": "test-files/d1",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) { storageDescendants(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "nodePath": "test-files/d1",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageDirChildren",
-  "query": "query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageDirChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "nodePath": "test-files/d1",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) { storageChildren(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "dirPath": "test-files/d1",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageHierarchicalNodes",
-  "query": "query GetStorageHierarchicalNodes($nodePath: String!) { storageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "nodePath": "test-files/d1/d11/d111"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-"operationName": "GetStorageAncestorDirs",
-"query": "query GetStorageAncestorDirs($nodePath: String!) { storageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "nodePath": "test-files/d1/d11/d111"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "HandleUploadedFile",
-  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "filePath": "test-files/d1/fileA.txt"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "CreateStorageDirs",
-  "query": "mutation CreateStorageDirs($dirPaths: [String!]!) { createStorageDirs(dirPaths: $dirPaths) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "dirPaths": [
-      "test-files/d1/d11",
-      "test-files/d1/d11/d111",
-      "test-files/d1/d11/d112",
-      "test-files/dir2/dir2_1"
-    ]
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "RemoveStorageDir",
-  "query": "mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) { removeStorageDir(dirPath: $dirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "dirPath": "test-files/d1",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "RemoveStorageFile",
-  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "filePath": "test-files/d1/fileA.txt"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "fromDirPath": "test-files/d1/d11",
-    "toDirPath": "test-files/d1/d1X",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "MoveStorageFile",
-  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "fromFilePath": "test-files/d1/fileA.txt",
-    "toFilePath": "test-files/d1/d11/fileA.txt"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "RenameStorageDir",
-  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } nextPageToken } }",
-  "variables": {
-    "dirPath": "test-files/d1/d11",
-    "newName": "d1X",
-    "options": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "RenameStorageFile",
-  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "filePath": "test-files/d1/fileA.txt",
-    "newName": "fileB.txt"
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "SetStorageDirShareSettings",
-  "query": "mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) { setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "dirPath": "test-files/d1",
-    "settings": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds": ["ichiro"] }
-  }
-}
-
-###
-
-POST {{host}}/gql
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "SetStorageFileShareSettings",
-  "query": "mutation SetStorageFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) { setStorageFileShareSettings(filePath: $filePath, settings: $settings) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt } }",
-  "variables": {
-    "filePath": "test-files/d1/fileA.txt",
-    "settings": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds":  ["ichiro"] }
-  }
-}
-
-###

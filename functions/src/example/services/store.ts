@@ -1,6 +1,11 @@
 import { Collection, DecodeFunc, EncodeFunc, EncodedObject, OmitEntityFields, TimestampEntity } from '../../firestore-ex'
-import { StorageNode, StoreService, storageDecode, storageEncode } from '../../lib'
 import { CartItem as _CartItem, Product as _Product } from '../gql.schema'
+import {
+  StorageNode as _StorageNode,
+  StoreService as _StoreService,
+  storageDecode as _storageDecode,
+  storageEncode as _storageEncode,
+} from '../../lib'
 import { Module } from '@nestjs/common'
 
 //========================================================================
@@ -23,22 +28,35 @@ interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 //  Storage
 //--------------------------------------------------
 
-interface AppStorageNode extends StorageNode {
-  sortOrder?: number
+enum StorageDocBundleType {
+  List = 'List',
+  Category = 'Category',
 }
 
-const appStorageEncode: EncodeFunc<AppStorageNode> = (obj, operation) => {
-  const result: EncodedObject<AppStorageNode> = {
-    ...storageEncode(obj, operation),
+interface StorageNode extends _StorageNode {
+  docBundleType?: StorageDocBundleType
+  isDoc?: boolean
+  docSortOrder?: number
+}
+
+const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
+  const result: EncodedObject<StorageNode> = {
+    ..._storageEncode(obj, operation),
   }
-  if (typeof obj.sortOrder !== 'undefined') {
-    result.sortOrder = obj.sortOrder
+  if (typeof obj.docBundleType === 'string') {
+    result.docBundleType = obj.docBundleType
+  }
+  if (typeof obj.isDoc === 'boolean') {
+    result.isDoc = obj.isDoc
+  }
+  if (typeof obj.docSortOrder === 'number') {
+    result.docSortOrder = obj.docSortOrder
   }
   return result
 }
 
-const appStorageDecode: DecodeFunc<AppStorageNode> = doc => {
-  return storageDecode(doc)
+const storageDecode: DecodeFunc<StorageNode> = doc => {
+  return _storageDecode(doc)
 }
 
 //========================================================================
@@ -47,7 +65,7 @@ const appStorageDecode: DecodeFunc<AppStorageNode> = doc => {
 //
 //========================================================================
 
-class AppStoreService extends StoreService {
+class StoreService extends _StoreService {
   constructor() {
     super()
 
@@ -56,8 +74,8 @@ class AppStoreService extends StoreService {
     this.m_storageDao = this.firestoreEx.collection({
       path: 'storage-nodes',
       useTimestamp: false,
-      encode: appStorageEncode,
-      decode: appStorageDecode,
+      encode: storageEncode,
+      decode: storageDecode,
     })
   }
 
@@ -71,27 +89,27 @@ class AppStoreService extends StoreService {
 
   readonly cartDao: Collection<CartItem>
 
-  protected m_storageDao: Collection<AppStorageNode>
+  protected m_storageDao: Collection<StorageNode>
 
-  get storageDao(): Collection<AppStorageNode> {
+  get storageDao(): Collection<StorageNode> {
     return this.m_storageDao
   }
 }
 
-namespace AppStoreServiceDI {
-  export const symbol = Symbol(AppStoreService.name)
+namespace StoreServiceDI {
+  export const symbol = Symbol(StoreService.name)
   export const provider = {
     provide: symbol,
-    useClass: AppStoreService,
+    useClass: StoreService,
   }
-  export type type = AppStoreService
+  export type type = StoreService
 }
 
 @Module({
-  providers: [AppStoreServiceDI.provider],
-  exports: [AppStoreServiceDI.provider],
+  providers: [StoreServiceDI.provider],
+  exports: [StoreServiceDI.provider],
 })
-class AppStoreServiceModule {}
+class StoreServiceModule {}
 
 //========================================================================
 //
@@ -99,5 +117,5 @@ class AppStoreServiceModule {}
 //
 //========================================================================
 
-export { AppStoreServiceDI, AppStoreServiceModule }
-export { AppStorageNode, CartItem, Product }
+export { StoreServiceDI, StoreServiceModule }
+export { StorageNode, StorageDocBundleType, CartItem, Product }

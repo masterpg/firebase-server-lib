@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AppStorageNode, AppStoreServiceDI, AppStoreServiceModule } from './store'
-import { AuthModule, AuthRoleType, AuthServiceDI, IdToken, StorageService } from '../../lib'
+import { AuthModule, AuthRoleType, AuthServiceDI, IdToken, StorageService as _StorageService } from '../../lib'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { StorageNode, StoreServiceDI, StoreServiceModule } from './store'
 import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 
@@ -13,7 +13,7 @@ import { config } from '../../config'
 //
 //========================================================================
 
-interface AppStorageFileNode extends AppStorageNode {
+interface StorageFileNode extends StorageNode {
   file: File
 }
 
@@ -38,10 +38,10 @@ interface ValidateAccessibleTarget {
 //
 //========================================================================
 
-class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNode> {
+class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(AppStoreServiceDI.symbol) protected readonly storeService: AppStoreServiceDI.type
+    @Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type
   ) {
     super(authService, storeService)
   }
@@ -51,8 +51,6 @@ class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNod
   //  Methods
   //
   //----------------------------------------------------------------------
-
-  getNodeById!: (nodeId: string) => Promise<AppStorageNode | undefined>
 
   /**
    * ユーザーディレクトリパスを取得します。
@@ -88,14 +86,14 @@ class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNod
     // ノードパスの中に管理者権限が必要なノードがあるか調べる
     // ※ユーザーノード以外は管理者権限が必要
     if (!roles.includes(AuthRoleType.AppAdmin)) {
-      const needIsAppAdmin = nodePaths.some(nodePath => !this.isUserNode(nodePath))
+      const needIsAppAdmin = nodePaths.some(nodePath => !this.m_isUserNode(nodePath))
       needIsAppAdmin && roles.push(AuthRoleType.AppAdmin)
     }
 
     // ユーザーノードパスへアクセス可能か検証
     if (!idToken.isAppAdmin) {
       for (const nodePath of nodePaths) {
-        if (!this.isUserNode(nodePath)) continue
+        if (!this.m_isUserNode(nodePath)) continue
         // 指定ノードが自ユーザーの所有物でない場合
         const userDirPath = this.getUserDirPath({ uid: idToken.uid })
         const isOwnUserNode = nodePath == userDirPath || nodePath.startsWith(`${userDirPath}/`)
@@ -146,7 +144,7 @@ class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNod
     //
     // 指定されたファイルがユーザーファイルの場合
     //
-    if (this.isUserNode(fileNode.path)) {
+    if (this.m_isUserNode(fileNode.path)) {
       // 指定ファイルが自ユーザーの所有物である場合
       const userDirPath = this.getUserDirPath(user)
       if (fileNode.path.startsWith(path.join(userDirPath, '/'))) {
@@ -177,7 +175,7 @@ class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNod
    * @param uid
    * @param maxChunk
    */
-  async deleteUserDir(uid: string, maxChunk = AppStorageService.MAX_CHUNK): Promise<void> {
+  async deleteUserDir(uid: string, maxChunk = StorageService.MAX_CHUNK): Promise<void> {
     /**
      * 指定されたディレクトリのストレージファイルを削除します。
      * @param userDirPath
@@ -277,26 +275,26 @@ class AppStorageService extends StorageService<AppStorageNode, AppStorageFileNod
    * 指定されたノードパスがユーザーノードのものか判定します。
    * @param nodePath
    */
-  isUserNode(nodePath: string): boolean {
+  private m_isUserNode(nodePath: string): boolean {
     return nodePath.startsWith(`${config.storage.usersDir}/`)
   }
 }
 
-namespace AppStorageServiceDI {
-  export const symbol = Symbol(AppStorageService.name)
+namespace StorageServiceDI {
+  export const symbol = Symbol(StorageService.name)
   export const provider = {
     provide: symbol,
-    useClass: AppStorageService,
+    useClass: StorageService,
   }
-  export type type = AppStorageService
+  export type type = StorageService
 }
 
 @Module({
-  providers: [AppStorageServiceDI.provider],
-  exports: [AppStorageServiceDI.provider],
-  imports: [AuthModule, AppStoreServiceModule],
+  providers: [StorageServiceDI.provider],
+  exports: [StorageServiceDI.provider],
+  imports: [AuthModule, StoreServiceModule],
 })
-class AppStorageServiceModule {}
+class StorageServiceModule {}
 
 //========================================================================
 //
@@ -304,5 +302,5 @@ class AppStorageServiceModule {}
 //
 //========================================================================
 
-export { AppStorageServiceDI, AppStorageServiceModule }
-export { AppStorageFileNode }
+export { StorageServiceDI, StorageServiceModule }
+export { StorageFileNode }

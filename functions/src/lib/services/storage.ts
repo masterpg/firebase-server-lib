@@ -970,7 +970,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * @param dirPath
    * @param settings
    */
-  async setDirShareSettings(dirPath: string, settings: StorageNodeShareSettingsInput | null): Promise<StorageNode> {
+  async setDirShareSettings(dirPath: string, settings: StorageNodeShareSettingsInput | null): Promise<NODE> {
     dirPath = removeBothEndsSlash(dirPath)
 
     const dirNode = await this.getNodeByPath(dirPath)

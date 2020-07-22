@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as fs from 'fs'
 import * as td from 'testdouble'
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, STORAGE_USER, STORAGE_USER_HEADER, STORAGE_USER_TOKEN } from '../../../../helpers/common/data'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER } from '../../../../helpers/common/data'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,

@@ -12,6 +12,11 @@ export enum AuthStatus {
     Available = "Available"
 }
 
+export enum StorageDocBundleType {
+    List = "List",
+    Category = "Category"
+}
+
 export enum StorageNodeType {
     File = "File",
     Dir = "Dir"
@@ -194,6 +199,9 @@ export interface StorageNode extends TimestampEntity {
     contentType: string;
     size: number;
     share: StorageNodeShareSettings;
+    docBundleType?: StorageDocBundleType;
+    isDoc?: boolean;
+    docSortOrder?: number;
     version: number;
     createdAt: DateTime;
     updatedAt: DateTime;

@@ -6,14 +6,15 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageService, StorageUploadDataItem, StoreServiceDI, initLib } from '../../../../../src/lib'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageUploadDataItem, StoreServiceDI, initLib } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { existsNodes, notExistsNodes, removeAllNodes, toGQLResponseStorageNode, toGQLResponseStorageNodes } from '../../../../helpers/common/storage'
+import { existsNodes, notExistsNodes, removeAllNodes } from '../../../../helpers/common/storage'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
-import { AppStorageServiceDI } from '../../../../../src/example/services'
+import { toGQLResponseStorageNode, toGQLResponseStorageNodes } from '../../../../helpers/example/storage'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../src/example/rest/storage'
+import { StorageServiceDI } from '../../../../../src/example/services'
 import request = require('supertest')
 import { sleep } from 'web-base-lib'
 
@@ -31,8 +32,8 @@ let storageService!: TestStorageService
 let storeService!: StoreServiceDI.type
 let devUtilsService!: DevUtilsServiceDI.type
 
-type TestStorageService = AppStorageServiceDI.type & {
-  toNodePaths: AppStorageServiceDI.type['toNodePaths']
+type TestStorageService = StorageServiceDI.type & {
+  toNodePaths: StorageServiceDI.type['toNodePaths']
 }
 
 //========================================================================
@@ -55,7 +56,7 @@ describe('AppStorageService', () => {
       imports: [StorageRESTModule, GQLContainerModule],
     }).compile()
 
-    storageService = testingModule.get<TestStorageService>(AppStorageServiceDI.symbol)
+    storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
     storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
 
     await removeAllNodes(storeService)
@@ -651,7 +652,7 @@ describe('AppStorageService', () => {
       query: `
         query GetStorageNode($nodePath: String!) {
           storageNode(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds }version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -662,7 +663,7 @@ describe('AppStorageService', () => {
         query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDirChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }

@@ -84,6 +84,11 @@ enum StorageNodeType {
   Dir
 }
 
+enum StorageDocBundleType {
+  List
+  Category
+}
+
 input StoragePaginationOptionsInput {
   maxChunk: Int
   pageToken: String
@@ -103,6 +108,9 @@ type StorageNode implements TimestampEntity {
   contentType: String!
   size: Int!
   share: StorageNodeShareSettings!
+  docBundleType: StorageDocBundleType
+  isDoc: Boolean
+  docSortOrder: Int
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!

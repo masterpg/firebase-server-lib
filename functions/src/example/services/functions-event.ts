@@ -1,6 +1,6 @@
-import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
 import { FunctionsEventLoggingServiceDI, LoggingModule, UserServiceDI, UserServiceModule } from '../../lib'
 import { Inject, Module } from '@nestjs/common'
+import { StorageServiceDI, StorageServiceModule } from './storage'
 import { EventContext } from 'firebase-functions'
 import { UserRecord } from 'firebase-functions/lib/providers/auth'
 
@@ -13,7 +13,7 @@ import { UserRecord } from 'firebase-functions/lib/providers/auth'
 class FunctionsEventService {
   constructor(
     @Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type,
-    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type,
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type,
     @Inject(FunctionsEventLoggingServiceDI.symbol) protected readonly loggingService: FunctionsEventLoggingServiceDI.type
   ) {}
 
@@ -48,7 +48,7 @@ namespace FunctionsEventDI {
 @Module({
   providers: [FunctionsEventDI.provider],
   exports: [FunctionsEventDI.provider],
-  imports: [UserServiceModule, AppStorageServiceModule, LoggingModule],
+  imports: [UserServiceModule, StorageServiceModule, LoggingModule],
 })
 class FunctionsEventServiceModule {}
 

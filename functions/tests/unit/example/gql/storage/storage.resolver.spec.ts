@@ -15,10 +15,10 @@ import {
   newTestStorageFileNode,
   toGQLResponseStorageNode,
   toGQLResponseStorageNodes,
-} from '../../../../helpers/common/storage'
-import { AppStorageServiceDI } from '../../../../../src/example/services'
+} from '../../../../helpers/example/storage'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { StorageResolver } from '../../../../../src/example/gql/storage'
+import { StorageServiceDI } from '../../../../../src/example/services'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -38,17 +38,6 @@ const SHARE_SETTINGS: StorageNodeShareSettings = {
 
 //========================================================================
 //
-//  Test helpers
-//
-//========================================================================
-
-interface ResponseStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'> {
-  createdAt: string
-  updatedAt: string
-}
-
-//========================================================================
-//
 //  Tests
 //
 //========================================================================
@@ -64,7 +53,7 @@ beforeAll(async () => {
 
 describe('StorageResolver', () => {
   let app: any
-  let storageService: AppStorageServiceDI.type
+  let storageService: StorageServiceDI.type
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -73,7 +62,7 @@ describe('StorageResolver', () => {
 
     app = module.createNestApplication()
     await app.init()
-    storageService = module.get<AppStorageServiceDI.type>(AppStorageServiceDI.symbol)
+    storageService = module.get<StorageServiceDI.type>(StorageServiceDI.symbol)
   })
 
   describe('storageNode', () => {
@@ -81,7 +70,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageNode($nodePath: String!) {
           storageNode(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -186,7 +175,7 @@ describe('StorageResolver', () => {
         query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDirDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -288,7 +277,7 @@ describe('StorageResolver', () => {
         query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDescendants(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -390,7 +379,7 @@ describe('StorageResolver', () => {
         query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageDirChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -492,7 +481,7 @@ describe('StorageResolver', () => {
         query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
           storageChildren(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -593,7 +582,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageHierarchicalNodes($nodePath: String!) {
           storageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -686,7 +675,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageAncestorDirs($nodePath: String!) {
           storageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -779,7 +768,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFile($filePath: String!) {
           handleUploadedFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -870,7 +859,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDirs($dirPaths: [String!]!) {
           createStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -965,7 +954,7 @@ describe('StorageResolver', () => {
         mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) {
           removeStorageDir(dirPath: $dirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1066,7 +1055,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFile($filePath: String!) {
           removeStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1156,7 +1145,7 @@ describe('StorageResolver', () => {
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1252,7 +1241,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1337,7 +1326,7 @@ describe('StorageResolver', () => {
         mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) {
           renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1433,7 +1422,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1517,7 +1506,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1608,7 +1597,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
           setStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
           }
         }
       `,
