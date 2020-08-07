@@ -1,14 +1,18 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
   AuthModule,
+  AuthServiceDI,
+  CreateStorageNodeInput,
   GQLContext,
   GQLContextArg,
+  InputValidationError,
   SignedUploadUrlInput,
+  StorageNodeKeyInput,
   StorageNodeShareSettingsInput,
-  StoragePaginationOptionsInput,
+  StoragePaginationInput,
   StoragePaginationResult,
 } from '../../../lib'
-import { StorageNode, StorageServiceDI, StorageServiceModule } from '../../services'
+import { CreateArticleDirInput, SetArticleSortOrderInput, StorageNode, StorageServiceDI, StorageServiceModule } from '../../services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -21,52 +25,79 @@ import { Module } from '@nestjs/common'
 
 @Resolver('StorageNode')
 export class StorageResolver {
-  constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type
+  ) {}
 
   @Query()
-  async storageNode(@GQLContextArg() ctx: GQLContext, @Args('nodePath') nodePath: string): Promise<StorageNode | undefined> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath })
-    return this.storageService.getNodeByPath(nodePath)
+  async storageNode(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode | undefined> {
+    // パス検索
+    if (input.path) {
+      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: input.path })
+      return this.storageService.getNodeByPath(input.path)
+    }
+    // ID検索
+    else if (input.id) {
+      // サインインしていることを検証
+      const validated = await this.authService.validateIdToken(ctx.req, ctx.res)
+      if (!validated.result) {
+        throw validated.error
+      }
+      // IDでノードを検索
+      const node = await this.storageService.getNodeById(input.id)
+      if (node) {
+        // 検索されたノードにアクセス可能な権限があるか検証
+        await this.storageService.validateAccessible(ctx.req, ctx.res, { nodeId: node.id })
+        return node
+      } else {
+        return undefined
+      }
+    }
+    // 引数指定なしエラー
+    else {
+      throw new InputValidationError(`Both 'path' and 'id' are not specified.`)
+    }
   }
 
   @Query()
   async storageDirDescendants(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: StoragePaginationOptionsInput
+    @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getDirDescendants(dirPath, options)
+    return this.storageService.getDirDescendants(dirPath, input)
   }
 
   @Query()
   async storageDescendants(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: StoragePaginationOptionsInput
+    @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getDescendants(dirPath, options)
+    return this.storageService.getDescendants(dirPath, input)
   }
 
   @Query()
   async storageDirChildren(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: StoragePaginationOptionsInput
+    @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getDirChildren(dirPath, options)
+    return this.storageService.getDirChildren(dirPath, input)
   }
 
   @Query()
   async storageChildren(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath?: string,
-    @Args('options') options?: StoragePaginationOptionsInput
+    @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getChildren(dirPath, options)
+    return this.storageService.getChildren(dirPath, input)
   }
 
   @Query()
@@ -82,19 +113,29 @@ export class StorageResolver {
   }
 
   @Mutation()
-  async createStorageDirs(@GQLContextArg() ctx: GQLContext, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+  async createStorageDir(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('dirPath') dirPath: string,
+    @Args('input') input?: CreateStorageNodeInput
+  ): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    return this.storageService.createDir(dirPath, input)
+  }
+
+  @Mutation()
+  async createStorageHierarchicalDirs(@GQLContextArg() ctx: GQLContext, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPaths })
-    return this.storageService.createDirs(dirPaths)
+    return this.storageService.createHierarchicalDirs(dirPaths)
   }
 
   @Mutation()
   async removeStorageDir(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
-    @Args('options') options: StoragePaginationOptionsInput
+    @Args('input') input: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return await this.storageService.removeDir(dirPath, options)
+    return await this.storageService.removeDir(dirPath, input)
   }
 
   @Mutation()
@@ -108,10 +149,10 @@ export class StorageResolver {
     @GQLContextArg() ctx: GQLContext,
     @Args('fromDirPath') fromDirPath: string,
     @Args('toDirPath') toDirPath: string,
-    @Args('options') options: StoragePaginationOptionsInput
+    @Args('input') input: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths: [fromDirPath, toDirPath] })
-    return await this.storageService.moveDir(fromDirPath, toDirPath, options)
+    return await this.storageService.moveDir(fromDirPath, toDirPath, input)
   }
 
   @Mutation()
@@ -129,10 +170,10 @@ export class StorageResolver {
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
     @Args('newName') newName: string,
-    @Args('options') options: StoragePaginationOptionsInput
+    @Args('input') input: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return await this.storageService.renameDir(dirPath, newName, options)
+    return await this.storageService.renameDir(dirPath, newName, input)
   }
 
   @Mutation()
@@ -149,20 +190,20 @@ export class StorageResolver {
   async setStorageDirShareSettings(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
-    @Args('settings') settings: StorageNodeShareSettingsInput
+    @Args('input') input: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.setDirShareSettings(dirPath, settings)
+    return this.storageService.setDirShareSettings(dirPath, input)
   }
 
   @Mutation()
   async setStorageFileShareSettings(
     @GQLContextArg() ctx: GQLContext,
     @Args('filePath') filePath: string,
-    @Args('settings') settings: StorageNodeShareSettingsInput
+    @Args('input') input: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { filePath })
-    return this.storageService.setFileShareSettings(filePath, settings)
+    return this.storageService.setFileShareSettings(filePath, input)
   }
 
   @Mutation()
@@ -177,6 +218,38 @@ export class StorageResolver {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { filePaths })
     const requestOrigin = (ctx.req.headers.origin as string) || ''
     return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
+  }
+
+  @Mutation()
+  async createArticleDir(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('dirPath') dirPath: string,
+    @Args('input') input: CreateArticleDirInput
+  ): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    return this.storageService.createArticleDir(dirPath, input)
+  }
+
+  @Mutation()
+  async setArticleSortOrder(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('nodePath') nodePath: string,
+    @Args('input') input: SetArticleSortOrderInput
+  ): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, {
+      nodePaths: [nodePath, input.insertBeforeNodePath, input.insertAfterNodePath],
+    })
+    return this.storageService.setArticleSortOrder(nodePath, input)
+  }
+
+  @Query()
+  async articleChildren(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('dirPath') dirPath: string,
+    @Args('input') input?: StoragePaginationInput
+  ): Promise<StoragePaginationResult<StorageNode>> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    return this.storageService.getArticleChildren(dirPath, input)
   }
 }
 

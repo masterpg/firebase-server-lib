@@ -5,6 +5,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "dir",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "articleSortOrder",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "storage-nodes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "level",
           "order": "ASCENDING"
         },

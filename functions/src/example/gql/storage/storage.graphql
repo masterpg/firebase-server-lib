@@ -1,23 +1,27 @@
 type Mutation {
-  createStorageDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeStorageDir(dirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  createStorageDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
+  createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
+  removeStorageDir(dirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
   removeStorageFile(filePath: String!): StorageNode
-  moveStorageDir(fromDirPath: String!, toDirPath: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  moveStorageDir(fromDirPath: String!, toDirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
   moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
-  renameStorageDir(dirPath: String!, newName: String!, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  renameStorageDir(dirPath: String!, newName: String!, input: StoragePaginationInput): StoragePaginationResult!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
-  setStorageDirShareSettings(dirPath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
-  setStorageFileShareSettings(filePath: String!, settings: StorageNodeShareSettingsInput): StorageNode!
+  setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
+  setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   handleUploadedFile(filePath: String!): StorageNode!
+  createArticleDir(dirPath: String!, input: CreateArticleDirInput!): StorageNode!
+  setArticleSortOrder(nodePath: String!, input: SetArticleSortOrderInput!): StorageNode!
 }
 
 type Query {
-  storageNode(nodePath: String!): StorageNode
-  storageDirDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
-  storageDescendants(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
-  storageDirChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
-  storageChildren(dirPath: String, options: StoragePaginationOptionsInput): StoragePaginationResult!
+  storageNode(input: StorageNodeKeyInput!): StorageNode
+  storageDirDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageDirChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+  articleChildren(dirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
 }

@@ -7,16 +7,27 @@ import { SUPPORTED_REGIONS } from 'firebase-functions'
 //
 //========================================================================
 
+interface LibConfig {
+  readonly functions: FunctionsConfig
+  readonly cors: CORSConfig
+  readonly storage: StorageConfig
+}
+
+interface AppConfig extends LibConfig {
+  readonly gql: GQLConfig
+}
+
+//--------------------------------------------------
+//  Functions
+//--------------------------------------------------
+
 interface FunctionsConfig {
   readonly region: typeof SUPPORTED_REGIONS[number]
 }
 
-const CORSExcludeConfigMethods = ['GET', 'PUT', 'POST', 'DELETE']
-
-interface CORSExcludeConfig {
-  readonly method?: typeof CORSExcludeConfigMethods[number]
-  readonly pattern: string
-}
+//--------------------------------------------------
+//  CORS
+//--------------------------------------------------
 
 interface CORSConfig {
   /**
@@ -35,27 +46,42 @@ interface CORSConfig {
   readonly excludes: CORSExcludeConfig[]
 }
 
+const CORSExcludeConfigMethods = ['GET', 'PUT', 'POST', 'DELETE']
+
+interface CORSExcludeConfig {
+  readonly method?: typeof CORSExcludeConfigMethods[number]
+  readonly pattern: string
+}
+
+//--------------------------------------------------
+//  Storage
+//--------------------------------------------------
+
 interface StorageConfig {
   readonly bucket: string
-  readonly usersDir: string
-  readonly docsDir: string
+  readonly users: StorageUsersConfig
+  readonly articles: StorageArticlesConfig
 }
+
+interface StorageUsersConfig {
+  dir: string
+}
+
+interface StorageArticlesConfig {
+  dir: string
+  assetsDir: string
+  fileName: string
+}
+
+//--------------------------------------------------
+//  GraphQL
+//--------------------------------------------------
 
 interface GQLConfig {
   schema: {
     presetFiles: string[]
     moduleDir: string
   }
-}
-
-interface LibConfig {
-  readonly functions: FunctionsConfig
-  readonly cors: CORSConfig
-  readonly storage: StorageConfig
-}
-
-interface AppConfig extends LibConfig {
-  readonly gql: GQLConfig
 }
 
 //========================================================================
@@ -83,15 +109,21 @@ class CORSConfigImpl implements CORSConfig {
 }
 
 class StorageConfigImpl implements StorageConfig {
-  constructor(params: PartialAre<StorageConfig, 'usersDir' | 'docsDir'>) {
+  constructor(params: PartialAre<StorageConfig, 'users' | 'articles'>) {
     this.bucket = params.bucket
-    this.usersDir = params.usersDir ?? 'users'
-    this.docsDir = params.docsDir ?? 'docs'
+    this.users = {
+      dir: params.users?.dir ?? 'users',
+    }
+    this.articles = {
+      dir: params.articles?.dir ?? 'articles',
+      assetsDir: params.articles?.assetsDir ?? 'articles/assets',
+      fileName: params.articles?.fileName ?? '__index__.md',
+    }
   }
 
   readonly bucket: string
-  readonly usersDir: string
-  readonly docsDir: string
+  readonly users: StorageUsersConfig
+  readonly articles: StorageArticlesConfig
 }
 
 class GQLConfigImpl implements GQLConfig {

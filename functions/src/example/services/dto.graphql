@@ -6,6 +6,8 @@
 
 scalar DateTime
 
+scalar Long
+
 scalar JSON
 
 scalar JSONObject
@@ -70,9 +72,19 @@ input UserInfoInput {
 #  foundation
 #--------------------------------------------------
 
+type StorageUsersConfig {
+  dir: String!
+}
+
+type StorageArticlesConfig {
+  dir: String!
+  assetsDir: String!
+  fileName: String!
+}
+
 type AppConfigResponse {
-  usersDir: String!
-  docsDir: String!
+  users: StorageUsersConfig!
+  articles: StorageArticlesConfig!
 }
 
 #--------------------------------------------------
@@ -84,19 +96,11 @@ enum StorageNodeType {
   Dir
 }
 
-enum StorageDocBundleType {
-  List
-  Category
-}
-
-input StoragePaginationOptionsInput {
-  maxChunk: Int
-  pageToken: String
-}
-
-type StoragePaginationResult {
-  list: [StorageNode!]!
-  nextPageToken: String
+enum StorageArticleNodeType {
+  ListBundle
+  CategoryBundle
+  ArticleDir
+  CategoryDir
 }
 
 type StorageNode implements TimestampEntity {
@@ -108,12 +112,21 @@ type StorageNode implements TimestampEntity {
   contentType: String!
   size: Int!
   share: StorageNodeShareSettings!
-  docBundleType: StorageDocBundleType
-  isDoc: Boolean
-  docSortOrder: Int
+  articleNodeType: StorageArticleNodeType
+  articleSortOrder: Long
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
+}
+
+input StoragePaginationInput {
+  maxChunk: Int
+  pageToken: String
+}
+
+type StoragePaginationResult {
+  list: [StorageNode!]!
+  nextPageToken: String
 }
 
 type StorageNodeShareSettings {
@@ -128,9 +141,29 @@ input StorageNodeShareSettingsInput {
   writeUIds: [String!]
 }
 
+input StorageNodeKeyInput {
+  id: String
+  path: String
+}
+
 input SignedUploadUrlInput {
   filePath: String!
   contentType: String
+}
+
+input CreateStorageNodeInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input CreateArticleDirInput {
+  articleNodeType: StorageArticleNodeType!
+}
+
+input SetArticleSortOrderInput {
+  insertBeforeNodePath: String
+  insertAfterNodePath: String
 }
 
 #--------------------------------------------------

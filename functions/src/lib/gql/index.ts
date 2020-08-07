@@ -64,5 +64,6 @@ function getBaseGQLModuleOptions(
 
 export * from './decorators/context'
 export * from './scalars/date-time'
+export * from './scalars/long'
 
 export { getTypeDefs, getBaseGQLModuleOptions }

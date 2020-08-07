@@ -6,16 +6,6 @@ import { removeStartDirChars } from 'web-base-lib'
 
 //========================================================================
 //
-//  Interfaces
-//
-//========================================================================
-
-type TestStorageService = StorageService & {
-  sortNodes: StorageService['sortNodes']
-}
-
-//========================================================================
-//
 //  Implementation
 //
 //========================================================================
@@ -105,8 +95,8 @@ async function notExistsNodes(nodes: StorageNode[], storageService: StorageServi
  * @param storeService
  */
 async function verifyMoveNodes(fmNodes: StorageNode[], toNodes: StorageNode[], storageService: StorageService, storeService: StoreService) {
-  ;(storageService as TestStorageService).sortNodes(fmNodes)
-  ;(storageService as TestStorageService).sortNodes(toNodes)
+  StorageService.sortNodes(fmNodes)
+  StorageService.sortNodes(toNodes)
 
   for (let i = 0; i < toNodes.length; i++) {
     const fmNode = fmNodes[i]

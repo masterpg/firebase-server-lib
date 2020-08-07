@@ -108,7 +108,7 @@ Content-Type: application/json
 
 {
   "operationName": "RemoveTestStorageFiles",
-  "query": "mutation RemoveTestStorageFiles { removeTestStorageFiles(filePaths: [\"docs/fileA.png\"]) }",
+  "query": "mutation RemoveTestStorageFiles { removeTestStorageFiles(filePaths: [\"docs/memo.txt\"]) }",
   "variables": {}
 }
 

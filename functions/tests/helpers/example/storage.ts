@@ -1,4 +1,4 @@
-import { StorageDocBundleType, StorageNode } from '../../../src/example/services/store'
+import { StorageArticleNodeType, StorageNode } from '../../../src/example/services/store'
 import { newTestStorageDirNode as _newTestStorageDirNode, newTestStorageFileNode as _newTestStorageFileNode } from '../lib/storage'
 import { removeBothEndsSlash } from 'web-base-lib'
 
@@ -8,10 +8,9 @@ import { removeBothEndsSlash } from 'web-base-lib'
 //
 //========================================================================
 
-interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'docBundleType' | 'isDoc' | 'docSortOrder' | 'createdAt' | 'updatedAt'> {
-  docBundleType?: StorageDocBundleType | null
-  isDoc?: boolean | null
-  docSortOrder?: number | null
+interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'articleNodeType' | 'articleSortOrder' | 'createdAt' | 'updatedAt'> {
+  articleNodeType?: StorageArticleNodeType | null
+  articleSortOrder?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -28,9 +27,8 @@ function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode,
 
   return {
     ..._newTestStorageDirNode(dirPath, data),
-    docBundleType: data.docBundleType,
-    isDoc: data.isDoc,
-    docSortOrder: data.docSortOrder,
+    articleNodeType: data.articleNodeType,
+    articleSortOrder: data.articleSortOrder,
   }
 }
 
@@ -40,9 +38,8 @@ function newTestStorageFileNode(filePath: string, data?: Partial<Omit<StorageNod
 
   return {
     ..._newTestStorageFileNode(filePath, data),
-    docBundleType: data.docBundleType,
-    isDoc: data.isDoc,
-    docSortOrder: data.docSortOrder,
+    articleNodeType: data.articleNodeType,
+    articleSortOrder: data.articleSortOrder,
   }
 }
 
@@ -64,9 +61,8 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       readUIds: node.share.readUIds ?? null,
       writeUIds: node.share.writeUIds ?? null,
     },
-    docBundleType: node.docBundleType ?? null,
-    isDoc: node.isDoc ?? null,
-    docSortOrder: node.docSortOrder ?? null,
+    articleNodeType: node.articleNodeType ?? null,
+    articleSortOrder: node.articleSortOrder ?? null,
     version: node.version,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),

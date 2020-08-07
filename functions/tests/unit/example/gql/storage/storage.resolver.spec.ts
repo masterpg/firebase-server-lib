@@ -7,7 +7,14 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageNode, StorageNodeShareSettings, StoragePaginationResult } from '../../../../../src/lib'
+import { CreateArticleDirInput, SetArticleSortOrderInput, StorageArticleNodeType, StorageServiceDI } from '../../../../../src/example/services'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  StorageNodeKeyInput,
+  StorageNodeShareSettings,
+  StoragePaginationResult,
+} from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import {
@@ -18,7 +25,6 @@ import {
 } from '../../../../helpers/example/storage'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { StorageResolver } from '../../../../../src/example/gql/storage'
-import { StorageServiceDI } from '../../../../../src/example/services'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -68,114 +74,238 @@ describe('StorageResolver', () => {
   describe('storageNode', () => {
     const gql = {
       query: `
-        query GetStorageNode($nodePath: String!) {
-          storageNode(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+        query GetStorageNode($input: StorageNodeKeyInput!) {
+          storageNode(input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
     }
 
-    it('疎通確認 - アプリケーションノード', async () => {
-      const d1 = newTestStorageDirNode('d1')
-      const getNodeByPath = td.replace(storageService, 'getNodeByPath')
-      td.when(getNodeByPath(d1.path)).thenResolve(d1)
+    describe('パス検索', () => {
+      it('疎通確認 - アプリケーションノード', async () => {
+        const d1 = newTestStorageDirNode('d1')
+        const input: StorageNodeKeyInput = { path: d1.path }
 
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { nodePath: d1.path },
-        },
-        { headers: APP_ADMIN_USER_HEADER }
-      )
+        const getNodeByPath = td.replace(storageService, 'getNodeByPath')
+        td.when(getNodeByPath(d1.path)).thenResolve(d1)
 
-      expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
-    })
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: APP_ADMIN_USER_HEADER }
+        )
 
-    it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d`)
-      const getNodeByPath = td.replace(storageService, 'getNodeByPath')
-      td.when(getNodeByPath(d1.path)).thenResolve(d1)
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { nodePath: d1.path },
-        },
-        { headers: STORAGE_USER_HEADER }
-      )
-
-      expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
-    })
-
-    it('疎通確認 - 結果が空だった場合', async () => {
-      const d1 = newTestStorageDirNode(`d1`)
-      const getNodeByPath = td.replace(storageService, 'getNodeByPath')
-      td.when(getNodeByPath(d1.path)).thenResolve(undefined)
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { nodePath: d1.path },
-        },
-        { headers: APP_ADMIN_USER_HEADER }
-      )
-
-      expect(response.body.data.storageNode).toBeNull()
-    })
-
-    it('サインインしていない場合', async () => {
-      const d1 = newTestStorageDirNode(`d1`)
-      const response = await requestGQL(app, {
-        ...gql,
-        variables: { nodePath: d1.path },
+        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
       })
-      expect(getGQLErrorStatus(response)).toBe(401)
+
+      it('疎通確認 - ユーザーノード', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const input: StorageNodeKeyInput = { path: d1.path }
+
+        const getNodeByPath = td.replace(storageService, 'getNodeByPath')
+        td.when(getNodeByPath(d1.path)).thenResolve(d1)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: STORAGE_USER_HEADER }
+        )
+
+        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
+      })
+
+      it('疎通確認 - 結果が空だった場合', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { path: d1.path }
+
+        const getNodeByPath = td.replace(storageService, 'getNodeByPath')
+        td.when(getNodeByPath(d1.path)).thenResolve(undefined)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: APP_ADMIN_USER_HEADER }
+        )
+
+        expect(response.body.data.storageNode).toBeNull()
+      })
+
+      it('サインインしていない場合', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { path: d1.path }
+
+        const response = await requestGQL(app, {
+          ...gql,
+          variables: { input },
+        })
+
+        expect(getGQLErrorStatus(response)).toBe(401)
+      })
+
+      it('アクセス権限がない場合 - アプリケーションノード', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { path: d1.path }
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: STORAGE_USER_HEADER }
+        )
+
+        expect(getGQLErrorStatus(response)).toBe(403)
+      })
+
+      it('アクセス権限がない場合 - ユーザーノード', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const input: StorageNodeKeyInput = { path: d1.path }
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: GENERAL_USER_HEADER }
+        )
+
+        expect(getGQLErrorStatus(response)).toBe(403)
+      })
     })
 
-    it('アクセス権限がない場合 - アプリケーションノード', async () => {
-      const d1 = newTestStorageDirNode(`d1`)
+    describe('ID検索', () => {
+      it('疎通確認 - アプリケーションノード', async () => {
+        const d1 = newTestStorageDirNode('d1')
+        const input: StorageNodeKeyInput = { id: d1.id }
 
-      const response = await requestGQL(
-        app,
-        {
+        const getNodeById = td.replace(storageService, 'getNodeById')
+        td.when(getNodeById(d1.id)).thenResolve(d1)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: APP_ADMIN_USER_HEADER }
+        )
+
+        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
+      })
+
+      it('疎通確認 - ユーザーノード', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const input: StorageNodeKeyInput = { id: d1.id }
+
+        const getNodeById = td.replace(storageService, 'getNodeById')
+        td.when(getNodeById(d1.id)).thenResolve(d1)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: STORAGE_USER_HEADER }
+        )
+
+        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
+      })
+
+      it('疎通確認 - 結果が空だった場合', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { id: d1.id }
+
+        const getNodeById = td.replace(storageService, 'getNodeById')
+        td.when(getNodeById(d1.id)).thenResolve(undefined)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: APP_ADMIN_USER_HEADER }
+        )
+
+        expect(response.body.data.storageNode).toBeNull()
+      })
+
+      it('サインインしていない場合', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { id: d1.id }
+
+        const response = await requestGQL(app, {
           ...gql,
-          variables: { nodePath: d1.path },
-        },
-        { headers: STORAGE_USER_HEADER }
-      )
+          variables: { input },
+        })
 
-      expect(getGQLErrorStatus(response)).toBe(403)
-    })
+        expect(getGQLErrorStatus(response)).toBe(401)
+      })
 
-    it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d`)
+      it('アクセス権限がない場合 - アプリケーションノード', async () => {
+        const d1 = newTestStorageDirNode(`d1`)
+        const input: StorageNodeKeyInput = { id: d1.id }
 
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { nodePath: d1.path },
-        },
-        { headers: GENERAL_USER_HEADER }
-      )
+        const getNodeById = td.replace(storageService, 'getNodeById')
+        td.when(getNodeById(d1.id)).thenResolve(d1)
 
-      expect(getGQLErrorStatus(response)).toBe(403)
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: STORAGE_USER_HEADER }
+        )
+
+        expect(getGQLErrorStatus(response)).toBe(403)
+      })
+
+      it('アクセス権限がない場合 - ユーザーノード', async () => {
+        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const input: StorageNodeKeyInput = { id: d1.id }
+
+        const getNodeById = td.replace(storageService, 'getNodeById')
+        td.when(getNodeById(d1.id)).thenResolve(d1)
+
+        const response = await requestGQL(
+          app,
+          {
+            ...gql,
+            variables: { input },
+          },
+          { headers: GENERAL_USER_HEADER }
+        )
+
+        expect(getGQLErrorStatus(response)).toBe(403)
+      })
     })
   })
 
   describe('storageDirDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDirDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
-          storageDirDescendants(dirPath: $dirPath, options: $options) {
+        query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) {
+          storageDirDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -196,7 +326,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -219,7 +349,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -233,7 +363,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -246,7 +376,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -262,7 +392,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -274,10 +404,10 @@ describe('StorageResolver', () => {
   describe('storageDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDescendants($dirPath: String, $options: StoragePaginationOptionsInput) {
-          storageDescendants(dirPath: $dirPath, options: $options) {
+        query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) {
+          storageDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -298,7 +428,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -321,7 +451,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -335,7 +465,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -348,7 +478,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -364,7 +494,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -376,10 +506,10 @@ describe('StorageResolver', () => {
   describe('storageDirChildren', () => {
     const gql = {
       query: `
-        query GetStorageDirChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
-          storageDirChildren(dirPath: $dirPath, options: $options) {
+        query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
+          storageDirChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -400,7 +530,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -423,7 +553,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -437,7 +567,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -450,7 +580,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -466,7 +596,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -478,10 +608,10 @@ describe('StorageResolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageChildren($dirPath: String, $options: StoragePaginationOptionsInput) {
-          storageChildren(dirPath: $dirPath, options: $options) {
+        query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) {
+          storageChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -502,7 +632,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -525,7 +655,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -539,7 +669,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -552,7 +682,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -568,7 +698,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -582,7 +712,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageHierarchicalNodes($nodePath: String!) {
           storageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -675,7 +805,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageAncestorDirs($nodePath: String!) {
           storageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -768,7 +898,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFile($filePath: String!) {
           handleUploadedFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -854,12 +984,101 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('createStorageDirs', () => {
+  describe('createStorageDir', () => {
     const gql = {
       query: `
-        mutation CreateStorageDirs($dirPaths: [String!]!) {
-          createStorageDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+        mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) {
+          createStorageDir(dirPath: $dirPath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+          }
+        }
+      `,
+    }
+
+    it('疎通確認 - アプリケーションノード', async () => {
+      const d1 = newTestStorageDirNode(`d1`, { share: SHARE_SETTINGS })
+      const createDir = td.replace(storageService, 'createDir')
+      td.when(createDir(d1.path, SHARE_SETTINGS)).thenResolve(d1)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
+        },
+        { headers: APP_ADMIN_USER_HEADER }
+      )
+
+      expect(response.body.data.createStorageDir).toEqual(toGQLResponseStorageNode(d1))
+    })
+
+    it('疎通確認 - ユーザーノード', async () => {
+      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userDirPath}/d1`, { share: SHARE_SETTINGS })
+      const createDir = td.replace(storageService, 'createDir')
+      td.when(createDir(d1.path, SHARE_SETTINGS)).thenResolve(d1)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
+        },
+        { headers: APP_ADMIN_USER_HEADER }
+      )
+
+      expect(response.body.data.createStorageDir).toEqual(toGQLResponseStorageNode(d1))
+    })
+
+    it('サインインしていない場合', async () => {
+      const d1 = newTestStorageDirNode(`d1`)
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { dirPath: d1.path },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合 - アプリケーションノード', async () => {
+      const d1 = newTestStorageDirNode(`d1`)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+
+    it('アクセス権限がない場合 - ユーザーノード', async () => {
+      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('createStorageHierarchicalDirs', () => {
+    const gql = {
+      query: `
+        mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) {
+          createStorageHierarchicalDirs(dirPaths: $dirPaths) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -868,8 +1087,8 @@ describe('StorageResolver', () => {
     it('疎通確認 - アプリケーションノード', async () => {
       const d11 = newTestStorageDirNode(`d1/d11`)
       const d12 = newTestStorageDirNode(`d1/d12`)
-      const createDirs = td.replace(storageService, 'createDirs')
-      td.when(createDirs([d11.path, d12.path])).thenResolve([d11, d12])
+      const createHierarchicalDirs = td.replace(storageService, 'createHierarchicalDirs')
+      td.when(createHierarchicalDirs([d11.path, d12.path])).thenResolve([d11, d12])
 
       const response = await requestGQL(
         app,
@@ -880,15 +1099,15 @@ describe('StorageResolver', () => {
         { headers: APP_ADMIN_USER_HEADER }
       )
 
-      expect(response.body.data.createStorageDirs).toEqual(toGQLResponseStorageNodes([d11, d12]))
+      expect(response.body.data.createStorageHierarchicalDirs).toEqual(toGQLResponseStorageNodes([d11, d12]))
     })
 
     it('疎通確認 - ユーザーノード', async () => {
       const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
       const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
       const d12 = newTestStorageDirNode(`${userDirPath}/d1/d12`)
-      const createDirs = td.replace(storageService, 'createDirs')
-      td.when(createDirs([d11.path, d12.path])).thenResolve([d11, d12])
+      const createHierarchicalDirs = td.replace(storageService, 'createHierarchicalDirs')
+      td.when(createHierarchicalDirs([d11.path, d12.path])).thenResolve([d11, d12])
 
       const response = await requestGQL(
         app,
@@ -899,7 +1118,7 @@ describe('StorageResolver', () => {
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.createStorageDirs).toEqual(toGQLResponseStorageNodes([d11, d12]))
+      expect(response.body.data.createStorageHierarchicalDirs).toEqual(toGQLResponseStorageNodes([d11, d12]))
     })
 
     it('サインインしていない場合', async () => {
@@ -951,10 +1170,10 @@ describe('StorageResolver', () => {
   describe('removeStorageDir', () => {
     const gql = {
       query: `
-        mutation RemoveStorageDir($dirPath: String!, $options: StoragePaginationOptionsInput) {
-          removeStorageDir(dirPath: $dirPath, options: $options) {
+        mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) {
+          removeStorageDir(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -975,7 +1194,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -998,7 +1217,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1012,7 +1231,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1025,7 +1244,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1041,7 +1260,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1055,7 +1274,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFile($filePath: String!) {
           removeStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1142,10 +1361,10 @@ describe('StorageResolver', () => {
   describe('moveStorageDir', () => {
     const gql = {
       query: `
-        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $options: StoragePaginationOptionsInput) {
-          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, options: $options) {
+        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) {
+          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1166,7 +1385,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, options: { maxChunk: 3 } },
+          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -1189,7 +1408,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, options: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1201,7 +1420,7 @@ describe('StorageResolver', () => {
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, options: { maxChunk: 3 } },
+        variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1212,7 +1431,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, options: { maxChunk: 3 } },
+          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1227,7 +1446,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, options: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1241,7 +1460,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1323,10 +1542,10 @@ describe('StorageResolver', () => {
   describe('renameStorageDir', () => {
     const gql = {
       query: `
-        mutation RenameStorageDir($dirPath: String!, $newName: String!, $options: StoragePaginationOptionsInput) {
-          renameStorageDir(dirPath: $dirPath, newName: $newName, options: $options) {
+        mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) {
+          renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1347,7 +1566,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `documents`, newName: `docs`, options: { maxChunk: 3 } },
+          variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -1370,7 +1589,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, options: { maxChunk: 3 } },
+          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1382,7 +1601,7 @@ describe('StorageResolver', () => {
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: `documents`, newName: `docs`, options: { maxChunk: 3 } },
+        variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1393,7 +1612,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `documents`, newName: `docs`, options: { maxChunk: 3 } },
+          variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1408,7 +1627,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, options: { maxChunk: 3 } },
+          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1422,7 +1641,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1504,9 +1723,9 @@ describe('StorageResolver', () => {
   describe('setStorageDirShareSettings', () => {
     const gql = {
       query: `
-        mutation SetStorageDirShareSettings($dirPath: String!, $settings: StorageNodeShareSettingsInput!) {
-          setStorageDirShareSettings(dirPath: $dirPath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+        mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) {
+          setStorageDirShareSettings(dirPath: $dirPath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1521,7 +1740,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, settings: SHARE_SETTINGS },
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -1539,7 +1758,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, settings: SHARE_SETTINGS },
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1552,7 +1771,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, settings: SHARE_SETTINGS },
+        variables: { dirPath: d1.path, input: SHARE_SETTINGS },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1565,7 +1784,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, settings: SHARE_SETTINGS },
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1583,7 +1802,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, settings: SHARE_SETTINGS },
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1595,9 +1814,9 @@ describe('StorageResolver', () => {
   describe('setStorageFileShareSettings', () => {
     const gql = {
       query: `
-        mutation SetFileShareSettings($filePath: String!, $settings: StorageNodeShareSettingsInput!) {
-          setStorageFileShareSettings(filePath: $filePath, settings: $settings) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } docBundleType isDoc docSortOrder version createdAt updatedAt
+        mutation SetFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) {
+          setStorageFileShareSettings(filePath: $filePath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1612,7 +1831,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path, settings: SHARE_SETTINGS },
+          variables: { filePath: fileA.path, input: SHARE_SETTINGS },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -1630,7 +1849,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path, settings: SHARE_SETTINGS },
+          variables: { filePath: fileA.path, input: SHARE_SETTINGS },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1643,7 +1862,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { filePath: fileA.path, settings: SHARE_SETTINGS },
+        variables: { filePath: fileA.path, input: SHARE_SETTINGS },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1656,7 +1875,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path, settings: SHARE_SETTINGS },
+          variables: { filePath: fileA.path, input: SHARE_SETTINGS },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1672,7 +1891,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path, settings: SHARE_SETTINGS },
+          variables: { filePath: fileA.path, input: SHARE_SETTINGS },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1765,6 +1984,200 @@ describe('StorageResolver', () => {
         {
           ...gql,
           variables: { inputs },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('createArticleDir', () => {
+    const gql = {
+      query: `
+        mutation CreateArticleDir($dirPath: String!, $input: CreateArticleDirInput!) {
+          createArticleDir(dirPath: $dirPath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+          }
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const bundleNode = newTestStorageDirNode(`${bundlePath}`, input)
+
+      const createArticleDir = td.replace(storageService, 'createArticleDir')
+      td.when(createArticleDir(bundleNode.path, input)).thenResolve(bundleNode)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: bundlePath, input },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(response.body.data.createArticleDir).toEqual(toGQLResponseStorageNode(bundleNode))
+    })
+
+    it('サインインしていない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { dirPath: bundlePath, input },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: bundlePath, input },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('setArticleSortOrder', () => {
+    const gql = {
+      query: `
+        mutation SetArticleSortOrder($nodePath: String!, $input: SetArticleSortOrderInput!) {
+          setArticleSortOrder(nodePath: $nodePath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+          }
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+
+      const setArticleSortOrder = td.replace(storageService, 'setArticleSortOrder')
+      td.when(setArticleSortOrder(cat1Node.path, input)).thenResolve(cat1Node)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { nodePath: cat1Node.path, input },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(response.body.data.setArticleSortOrder).toEqual(toGQLResponseStorageNode(cat1Node))
+    })
+
+    it('サインインしていない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { nodePath: cat1Node.path, input },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { nodePath: cat1Node.path, input },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('articleChildren', () => {
+    const gql = {
+      query: `
+        query GetArticleChildren($dirPath: String!, $input: StoragePaginationInput) {
+          articleChildren(dirPath: $dirPath, input: $input) {
+            list {
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            }
+            nextPageToken
+          }
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
+      const getArticleChildren = td.replace(storageService, 'getArticleChildren')
+      td.when(getArticleChildren(bundlePath, { maxChunk: 3 })).thenResolve({
+        list: [cat1Node],
+        nextPageToken: 'abcdefg',
+      } as StoragePaginationResult)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(response.body.data.articleChildren.list).toEqual(toGQLResponseStorageNodes([cat1Node]))
+      expect(response.body.data.articleChildren.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合', async () => {
+      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articlesPath}/blog`
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )

@@ -20,7 +20,7 @@ import dayjs = require('dayjs')
 //  For GraphQL
 //--------------------------------------------------
 
-interface StoragePaginationOptionsInput {
+interface StoragePaginationInput {
   maxChunk?: number
   pageToken?: string
 }
@@ -36,10 +36,17 @@ interface StorageNodeShareSettingsInput {
   writeUIds?: string[] | null
 }
 
+interface StorageNodeKeyInput {
+  id?: string
+  path?: string
+}
+
 class SignedUploadUrlInput {
   filePath!: string
   contentType?: string
 }
+
+interface CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
 
 //--------------------------------------------------
 //  For inside of Storage
@@ -127,6 +134,19 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
+   * 指定されたIDのノードを取得します。
+   * 指定されたノードが見つからなかった場合、例外がスローされます。
+   * @param nodeId
+   */
+  async sgetNodeById(nodeId: string): Promise<NODE> {
+    const node = await this.getNodeById(nodeId)
+    if (!node) {
+      throw new Error(`There is no node in the specified ID: '${nodeId}'`)
+    }
+    return node
+  }
+
+  /**
    * 指定されたパスのノードを取得します。
    * @param nodePath
    */
@@ -140,6 +160,19 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     if (storeNodes.length === 0) return
 
     return storeNodes[0]
+  }
+
+  /**
+   * 指定されたパスのノードを取得します。
+   * 指定されたノードが見つからなかった場合、例外がスローされます。
+   * @param nodePath
+   */
+  async sgetNodeByPath(nodePath: string): Promise<NODE> {
+    const node = await this.getNodeByPath(nodePath)
+    if (!node) {
+      throw new Error(`There is no node in the specified path: '${nodePath}'`)
+    }
+    return node
   }
 
   /**
@@ -265,12 +298,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   + 'archives/photos/family.png'
    *
    * @param dirPath
-   * @param options
+   * @param input
    */
-  async getDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async getDirDescendants(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
+    const maxChunk = input?.maxChunk || StorageService.MAX_CHUNK
+    const offset = input?.pageToken ? Number(input.pageToken) : 0
 
     let storeNodes: NODE[]
 
@@ -282,7 +315,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // 初回検索の場合
-    if (!options?.pageToken) {
+    if (!input?.pageToken) {
       // 引数で指定されたパスのノードがディレクトリでない場合
       const dirNode = storeNodes.find(node => node.path === dirPath)
       if (dirNode && dirNode.nodeType !== StorageNodeType.Dir) {
@@ -325,12 +358,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   + 'archives/photos/family.png'
    *
    * @param dirPath
-   * @param options
+   * @param input
    */
-  async getDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async getDescendants(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
+    const maxChunk = input?.maxChunk || StorageService.MAX_CHUNK
+    const offset = input?.pageToken ? Number(input.pageToken) : 0
 
     let storeNodes: NODE[] = []
 
@@ -375,12 +408,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   + 'archives/photos/children.png'
    *
    * @param dirPath
-   * @param options
+   * @param input
    */
-  async getDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async getDirChildren(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
+    const maxChunk = input?.maxChunk || StorageService.MAX_CHUNK
+    const offset = input?.pageToken ? Number(input.pageToken) : 0
 
     let storeNodes: NODE[] = []
 
@@ -404,7 +437,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // 初回検索の場合
-    if (!options?.pageToken) {
+    if (!input?.pageToken) {
       // 引数で指定されたパスのノードがディレクトリでない場合
       const dirNode = storeNodes.find(node => node.path === dirPath)
       if (dirNode && dirNode.nodeType !== StorageNodeType.Dir) {
@@ -445,12 +478,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   + 'archives/photos/children.png'
    *
    * @param dirPath
-   * @param options
+   * @param input
    */
-  async getChildren(dirPath?: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async getChildren(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
+    const maxChunk = input?.maxChunk || StorageService.MAX_CHUNK
+    const offset = input?.pageToken ? Number(input.pageToken) : 0
 
     let storeNodes: NODE[] = []
 
@@ -519,7 +552,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       const ancestorDirNodes = await this.getNodesByPaths(ancestorDirPaths)
       // 欠けているディレクトリがあった場合は穴埋めする
       if (ancestorDirNodes.length !== ancestorDirPaths.length) {
-        const addedNodes = await this.createDirs(ancestorDirPaths)
+        const addedNodes = await this.createHierarchicalDirs(ancestorDirPaths)
         ancestorDirNodes.push(...addedNodes)
       }
       nodes = [...ancestorDirNodes, node]
@@ -530,7 +563,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       nodes = await this.getNodesByPaths(ancestorDirPaths)
     }
 
-    return this.sortNodes(nodes)
+    return StorageService.sortNodes(nodes)
   }
 
   /**
@@ -548,6 +581,55 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
   /**
    * ディレクトリを作成します。
+   * @param dirPath
+   * @param input
+   */
+  async createDir(dirPath: string, input?: CreateStorageNodeInput): Promise<NODE> {
+    // 指定されたパスのバリデーションチェック
+    StorageService.validatePath(dirPath)
+    dirPath = removeBothEndsSlash(dirPath)
+
+    // 共有設定の入力値を検証
+    StorageService.validateShareSettingInput(input)
+
+    // 引数ディレクトリの階層構造形成に必要なノードを取得
+    const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
+
+    let dirNode!: StorageNode
+    for (const iDirNode of hierarchicalDirNodes) {
+      // 指定されたディレクトリがまだ存在しないことをチェック
+      if (iDirNode.path === dirPath) {
+        if (iDirNode.exists) {
+          throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
+        }
+        dirNode = iDirNode
+      }
+      // 祖先ディレクトリが存在することをチェック
+      else if (!iDirNode.exists) {
+        throw new InputValidationError(`The ancestor directory of the specified directory does not exist.`, {
+          specifiedDirPath: dirPath,
+          ancestorDirPath: iDirNode.path,
+        })
+      }
+    }
+
+    // ディレクトリを作成
+    const nodeId = this.storeService.storageDao.docRef().id
+    await this.storeService.storageDao.set({
+      ...dirNode,
+      id: nodeId,
+      share: this.toStoreShareSettings(input ?? null),
+      version: FieldValue.increment(1),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+
+    // ストアに追加された最新ディレクトリを取得
+    return (await this.getNodeById(nodeId))!
+  }
+
+  /**
+   * ディレクトリを作成します。
    *
    * 引数が次のように指定された場合、
    *   + dirPaths[0]: 'home/photos'
@@ -560,7 +642,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *
    * @param dirPaths
    */
-  async createDirs(dirPaths: string[]): Promise<NODE[]> {
+  async createHierarchicalDirs(dirPaths: string[]): Promise<NODE[]> {
     // 指定されたパスのバリデーションチェック
     dirPaths.forEach(dirPath => StorageService.validatePath(dirPath))
     dirPaths = dirPaths.map(dirPath => removeBothEndsSlash(dirPath))
@@ -593,7 +675,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       )
     }
 
-    return this.sortNodes(result)
+    return StorageService.sortNodes(result)
   }
 
   /**
@@ -608,15 +690,15 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   + 'home/photos/children.png'
    *
    * @param dirPath
-   * @param options
+   * @param input
    */
-  async removeDir(dirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async removeDir(dirPath: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     if (!dirPath) {
       throw new Error(`The argument 'dirPath' is empty.`)
     }
 
-    const maxChunk = options?.maxChunk || StorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
+    const maxChunk = input?.maxChunk || StorageService.MAX_CHUNK
+    const offset = input?.pageToken ? Number(input.pageToken) : 0
 
     // ストアから削除対象ノードを取得
     const pagination = await this.getDirDescendants(dirPath, { maxChunk })
@@ -688,9 +770,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *
    * @param fromDirPath
    * @param toDirPath
-   * @param options
+   * @param input
    */
-  async moveDir(fromDirPath: string, toDirPath: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async moveDir(fromDirPath: string, toDirPath: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
 
@@ -713,7 +795,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     //
     // 移動元ディレクトリの移動処理
     //
-    if (!options?.pageToken) {
+    if (!input?.pageToken) {
       // 移動元ディレクトリの取得
       const dirNode = await this.getNodeByPath(fromDirPath)
       if (!dirNode) {
@@ -753,7 +835,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     // 移動元ディレクトリの配下ノードの移動処理
     //
     // 配下ノードを取得
-    const pagination = await this.getDirDescendants(fromDirPath, { maxChunk: options?.maxChunk })
+    const pagination = await this.getDirDescendants(fromDirPath, { maxChunk: input?.maxChunk })
     // 配下ノードの移動処理
     const promises: Promise<NODE>[] = pagination.list.map(async node => {
       // 移動元ノードのパスを移動先のパスへ変換
@@ -908,9 +990,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *
    * @param dirPath
    * @param newName
-   * @param options
+   * @param input
    */
-  async renameDir(dirPath: string, newName: string, options?: StoragePaginationOptionsInput): Promise<StoragePaginationResult<NODE>> {
+  async renameDir(dirPath: string, newName: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
 
     StorageService.validateDirName(newName)
@@ -920,7 +1002,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const toDirPath = dirPath.replace(reg, newName)
 
     // 初回実行の場合
-    if (!options || !options.pageToken) {
+    if (!input || !input.pageToken) {
       // 既に同じ名前のディレクトリがある場合
       const toDirNode = await this.getNodeByPath(toDirPath)
       if (toDirNode) {
@@ -928,7 +1010,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       }
     }
 
-    return await this.moveDir(dirPath, toDirPath, options)
+    return await this.moveDir(dirPath, toDirPath, input)
   }
 
   /**
@@ -968,9 +1050,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   /**
    * ディレクトリに対して共有設定を行います。
    * @param dirPath
-   * @param settings
+   * @param input
    */
-  async setDirShareSettings(dirPath: string, settings: StorageNodeShareSettingsInput | null): Promise<NODE> {
+  async setDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
     dirPath = removeBothEndsSlash(dirPath)
 
     const dirNode = await this.getNodeByPath(dirPath)
@@ -978,23 +1060,13 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       throw new Error(`The specified directory does not exist: '${dirPath}'`)
     }
 
-    settings?.readUIds?.forEach(uid => {
-      if (!validateUID(uid)) {
-        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
-      }
-    })
-
-    settings?.writeUIds?.forEach(uid => {
-      if (!validateUID(uid)) {
-        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
-      }
-    })
+    StorageService.validateShareSettingInput(input)
 
     await this.storeService.storageDao.update({
       ...this.getSaveBaseStorageNode({
         id: dirNode.id,
         path: dirPath,
-        share: settings === null ? null : Object.assign(dirNode.share, settings),
+        share: input === null ? null : Object.assign(dirNode.share, input),
       }),
     })
 
@@ -1004,9 +1076,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   /**
    * ファイルに対して共有設定を行います。
    * @param filePath
-   * @param settings
+   * @param input
    */
-  async setFileShareSettings(filePath: string, settings: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
+  async setFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
     const fileNode = await this.getFileNodeByPath(filePath)
@@ -1014,23 +1086,13 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       throw new Error(`The specified file does not exist: '${filePath}'`)
     }
 
-    settings?.readUIds?.forEach(uid => {
-      if (!validateUID(uid)) {
-        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
-      }
-    })
-
-    settings?.writeUIds?.forEach(uid => {
-      if (!validateUID(uid)) {
-        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
-      }
-    })
+    StorageService.validateShareSettingInput(input)
 
     await this.storeService.storageDao.update({
       ...this.getSaveBaseStorageNode({
         id: fileNode.id,
         path: filePath,
-        share: settings === null ? null : Object.assign(fileNode.share, settings),
+        share: input === null ? null : Object.assign(fileNode.share, input),
       }),
     })
     Object.assign(fileNode, (await this.getNodeById(fileNode.id))!)
@@ -1061,7 +1123,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // 祖先ディレクトリの穴埋め
     const dirPath = removeStartDirChars(path.dirname(filePath))
-    await this.createDirs([dirPath])
+    await this.createHierarchicalDirs([dirPath])
 
     return { ...fileNode, file } as FILE_NODE
   }
@@ -1110,7 +1172,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         return removeStartDirChars(path.dirname(uploadItem.path))
       })
       .filter(dirPath => Boolean(dirPath))
-    await this.createDirs(dirPaths)
+    await this.createHierarchicalDirs(dirPaths)
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     for (const chunk of splitArrayChunk(uploadList, StorageService.MAX_CHUNK)) {
@@ -1145,7 +1207,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         return removeStartDirChars(path.dirname(uploadItem.toFilePath))
       })
       .filter(dirPath => Boolean(dirPath))
-    await this.createDirs(dirPaths)
+    await this.createHierarchicalDirs(dirPaths)
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     const bucket = admin.storage().bucket()
@@ -1216,14 +1278,14 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたディレクトリの階層構造を形成するのに必要なノードを取得します。
    * @param dirPaths
    */
-  protected async getRequiredHierarchicalDirNodes(...dirPaths: string[]): Promise<(StorageNode & { exists: boolean })[]> {
+  protected async getRequiredHierarchicalDirNodes(...dirPaths: string[]): Promise<(NODE & { exists: boolean })[]> {
     const hierarchicalPaths = splitHierarchicalPaths(...dirPaths)
-    const hierarchicalNodes: (StorageNode & { exists: boolean })[] = []
+    const hierarchicalNodes: (NODE & { exists: boolean })[] = []
     await Promise.all(
       hierarchicalPaths.map(async dirPath => {
         const dirNode = await this.getNodeByPath(dirPath)
 
-        let resultNode: StorageNode & { exists: boolean }
+        let resultNode: NODE & { exists: boolean }
         if (!dirNode) {
           resultNode = {
             ...this.dirPathToStorageNode(dirPath),
@@ -1236,7 +1298,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       })
     )
 
-    return this.sortNodes(hierarchicalNodes)
+    return StorageService.sortNodes(hierarchicalNodes)
   }
 
   /**
@@ -1245,7 +1307,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
    */
   protected getInheritedShareSettings(hierarchicalNodes: StorageNode[]): Required<StorageNodeShareSettings> {
-    hierarchicalNodes = this.sortNodes([...hierarchicalNodes])
+    hierarchicalNodes = StorageService.sortNodes([...hierarchicalNodes])
 
     const result: Required<StorageNodeShareSettings> = { isPublic: false, readUIds: null, writeUIds: null }
     for (const node of hierarchicalNodes) {
@@ -1365,67 +1427,17 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ノード配列をディレクトリ階層に従ってソートします。
-   * @param nodes
-   */
-  protected sortNodes<NODE extends StorageNode>(nodes: NODE[]): NODE[] {
-    nodes.sort((a, b) => {
-      // ソート用文字列(strA, strB)の説明:
-      //   ノードがファイルの場合、同じ階層にあるディレクトリより順位を下げるために
-      //   大きな文字コード'0xffff'を付加している。これにより同一階層のファイルと
-      //   ディレクトリを比較した際、ファイルの方が文字的に大きいと判断され、下の方へ
-      //   配置されることになる。
-
-      let strA = a.path
-      let strB = b.path
-      if (a.nodeType === StorageNodeType.File) {
-        strA = `${a.dir}${String.fromCodePoint(0xffff)}${a.name}`
-      }
-      if (b.nodeType === StorageNodeType.File) {
-        strB = `${b.dir}${String.fromCodePoint(0xffff)}${b.name}`
-      }
-
-      return strA < strB ? -1 : strA > strB ? 1 : 0
-    })
-    return nodes
-  }
-
-  /**
    * ストアノード保存時の基本項目が設定されたオブジェクトを取得します。
    * @param node
    */
   protected getSaveBaseStorageNode(node: { id: string; path: string; share?: StorageNodeShareSettingsInput | null }): WriteBaseStorageNode {
-    let share: StorageNodeShareSettings | undefined = undefined
-    if (node.share === null) {
-      share = { isPublic: null, readUIds: null, writeUIds: null }
-    } else if (node.share) {
-      share = { isPublic: null, readUIds: null, writeUIds: null }
-      if (typeof node.share.isPublic !== 'undefined') {
-        share.isPublic = node.share.isPublic
-      }
-      if (typeof node.share.readUIds !== 'undefined') {
-        if (Array.isArray(node.share.readUIds) && node.share.readUIds.length === 0) {
-          share.readUIds = null
-        } else {
-          share.readUIds = node.share.readUIds
-        }
-      }
-      if (typeof node.share.writeUIds !== 'undefined') {
-        if (Array.isArray(node.share.writeUIds) && node.share.writeUIds.length === 0) {
-          share.writeUIds = null
-        } else {
-          share.writeUIds = node.share.writeUIds
-        }
-      }
-    }
-
     return {
       id: node.id,
       name: path.basename(node.path),
       dir: removeStartDirChars(path.dirname(node.path)),
       path: node.path,
       level: StorageService.getNodeLevel(node.path),
-      share,
+      share: this.toStoreShareSettings(node.share),
       version: FieldValue.increment(1),
     }
   }
@@ -1453,6 +1465,39 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       createdAt: dayjs(0),
       updatedAt: dayjs(0),
     } as NODE
+  }
+
+  /**
+   * 共有設定の入力値をストアの格納形式に変換します。
+   * @param input
+   */
+  protected toStoreShareSettings(input?: StorageNodeShareSettingsInput | null): StorageNodeShareSettings {
+    let share!: StorageNodeShareSettings
+
+    if (input === null) {
+      share = { isPublic: null, readUIds: null, writeUIds: null }
+    } else if (input) {
+      share = { isPublic: null, readUIds: null, writeUIds: null }
+      if (typeof input.isPublic !== 'undefined') {
+        share.isPublic = input.isPublic
+      }
+      if (typeof input.readUIds !== 'undefined') {
+        if (Array.isArray(input.readUIds) && input.readUIds.length === 0) {
+          share.readUIds = null
+        } else {
+          share.readUIds = input.readUIds
+        }
+      }
+      if (typeof input.writeUIds !== 'undefined') {
+        if (Array.isArray(input.writeUIds) && input.writeUIds.length === 0) {
+          share.writeUIds = null
+        } else {
+          share.writeUIds = input.writeUIds
+        }
+      }
+    }
+
+    return share
   }
 
   //--------------------------------------------------
@@ -1555,6 +1600,50 @@ namespace StorageService {
       throw new InputValidationError('The specified file name is invalid.', { fileName })
     }
   }
+
+  /**
+   * 共有設定の入力値を検証します。
+   * @param input
+   */
+  export function validateShareSettingInput(input?: StorageNodeShareSettingsInput | null): void {
+    input?.readUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
+      }
+    })
+
+    input?.writeUIds?.forEach(uid => {
+      if (!validateUID(uid)) {
+        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
+      }
+    })
+  }
+
+  /**
+   * ノード配列をディレクトリ階層に従ってソートします。
+   * @param nodes
+   */
+  export function sortNodes<NODE extends StorageNode>(nodes: NODE[]): NODE[] {
+    nodes.sort((a, b) => {
+      // ソート用文字列(strA, strB)の説明:
+      //   ノードがファイルの場合、同じ階層にあるディレクトリより順位を下げるために
+      //   大きな文字コード'0xffff'を付加している。これにより同一階層のファイルと
+      //   ディレクトリを比較した際、ファイルの方が文字的に大きいと判断され、下の方へ
+      //   配置されることになる。
+
+      let strA = a.path
+      let strB = b.path
+      if (a.nodeType === StorageNodeType.File) {
+        strA = `${a.dir}${String.fromCodePoint(0xffff)}${a.name}`
+      }
+      if (b.nodeType === StorageNodeType.File) {
+        strB = `${b.dir}${String.fromCodePoint(0xffff)}${b.name}`
+      }
+
+      return strA < strB ? -1 : strA > strB ? 1 : 0
+    })
+    return nodes
+  }
 }
 
 namespace StorageServiceDI {
@@ -1581,12 +1670,14 @@ class StorageServiceModule {}
 
 export { StorageService, StorageServiceDI, StorageServiceModule }
 export {
+  CreateStorageNodeInput,
   SignedUploadUrlInput,
   StorageFileNode,
   StorageNode,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
-  StoragePaginationOptionsInput,
+  StorageNodeKeyInput,
+  StoragePaginationInput,
   StoragePaginationResult,
   StorageUploadDataItem,
 }

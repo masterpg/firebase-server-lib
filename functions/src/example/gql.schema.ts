@@ -12,9 +12,11 @@ export enum AuthStatus {
     Available = "Available"
 }
 
-export enum StorageDocBundleType {
-    List = "List",
-    Category = "Category"
+export enum StorageArticleNodeType {
+    ListBundle = "ListBundle",
+    CategoryBundle = "CategoryBundle",
+    ArticleDir = "ArticleDir",
+    CategoryDir = "CategoryDir"
 }
 
 export enum StorageNodeType {
@@ -34,14 +36,34 @@ export interface CartItemUpdateInput {
     quantity: number;
 }
 
+export interface CreateArticleDirInput {
+    articleNodeType: StorageArticleNodeType;
+}
+
+export interface CreateStorageNodeInput {
+    isPublic?: boolean;
+    readUIds?: string[];
+    writeUIds?: string[];
+}
+
 export interface PutTestStoreDataInput {
     collectionName: string;
     collectionRecords: JSONObject[];
 }
 
+export interface SetArticleSortOrderInput {
+    insertBeforeNodePath?: string;
+    insertAfterNodePath?: string;
+}
+
 export interface SignedUploadUrlInput {
     filePath: string;
     contentType?: string;
+}
+
+export interface StorageNodeKeyInput {
+    id?: string;
+    path?: string;
 }
 
 export interface StorageNodeShareSettingsInput {
@@ -50,7 +72,7 @@ export interface StorageNodeShareSettingsInput {
     writeUIds?: string[];
 }
 
-export interface StoragePaginationOptionsInput {
+export interface StoragePaginationInput {
     maxChunk?: number;
     pageToken?: string;
 }
@@ -99,8 +121,8 @@ export interface TimestampEntity {
 }
 
 export interface AppConfigResponse {
-    usersDir: string;
-    docsDir: string;
+    users: StorageUsersConfig;
+    articles: StorageArticlesConfig;
 }
 
 export interface AuthDataResult {
@@ -142,16 +164,19 @@ export interface IMutation {
     deleteTestFirebaseUsers(uids: string[]): boolean | Promise<boolean>;
     setTestUsers(users: TestUserInput[]): UserInfo[] | Promise<UserInfo[]>;
     deleteTestUsers(uids: string[]): boolean | Promise<boolean>;
-    createStorageDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
-    removeStorageDir(dirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    createStorageDir(dirPath: string, input?: CreateStorageNodeInput): StorageNode | Promise<StorageNode>;
+    createStorageHierarchicalDirs(dirPaths: string[]): StorageNode[] | Promise<StorageNode[]>;
+    removeStorageDir(dirPath: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     removeStorageFile(filePath: string): StorageNode | Promise<StorageNode>;
-    moveStorageDir(fromDirPath: string, toDirPath: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    moveStorageDir(fromDirPath: string, toDirPath: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     moveStorageFile(fromFilePath: string, toFilePath: string): StorageNode | Promise<StorageNode>;
-    renameStorageDir(dirPath: string, newName: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    renameStorageDir(dirPath: string, newName: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     renameStorageFile(filePath: string, newName: string): StorageNode | Promise<StorageNode>;
-    setStorageDirShareSettings(dirPath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
-    setStorageFileShareSettings(filePath: string, settings?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    setStorageDirShareSettings(dirPath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
+    setStorageFileShareSettings(filePath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
+    createArticleDir(dirPath: string, input: CreateArticleDirInput): StorageNode | Promise<StorageNode>;
+    setArticleSortOrder(nodePath: string, input: SetArticleSortOrderInput): StorageNode | Promise<StorageNode>;
     setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;
 }
@@ -179,15 +204,22 @@ export interface IQuery {
     appConfig(): AppConfigResponse | Promise<AppConfigResponse>;
     keepAlive(): boolean | Promise<boolean>;
     products(ids?: string[]): Product[] | Promise<Product[]>;
-    storageNode(nodePath: string): StorageNode | Promise<StorageNode>;
-    storageDirDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    storageDescendants(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    storageDirChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
-    storageChildren(dirPath?: string, options?: StoragePaginationOptionsInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageNode(input: StorageNodeKeyInput): StorageNode | Promise<StorageNode>;
+    storageDirDescendants(dirPath?: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageDescendants(dirPath?: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageDirChildren(dirPath?: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    storageChildren(dirPath?: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     storageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
+    articleChildren(dirPath: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     authData(): AuthDataResult | Promise<AuthDataResult>;
+}
+
+export interface StorageArticlesConfig {
+    dir: string;
+    assetsDir: string;
+    fileName: string;
 }
 
 export interface StorageNode extends TimestampEntity {
@@ -199,9 +231,8 @@ export interface StorageNode extends TimestampEntity {
     contentType: string;
     size: number;
     share: StorageNodeShareSettings;
-    docBundleType?: StorageDocBundleType;
-    isDoc?: boolean;
-    docSortOrder?: number;
+    articleNodeType?: StorageArticleNodeType;
+    articleSortOrder?: Long;
     version: number;
     createdAt: DateTime;
     updatedAt: DateTime;
@@ -218,6 +249,10 @@ export interface StoragePaginationResult {
     nextPageToken?: string;
 }
 
+export interface StorageUsersConfig {
+    dir: string;
+}
+
 export interface UserInfo extends TimestampEntity {
     id: string;
     fullName: string;
@@ -232,3 +267,4 @@ export interface UserInfo extends TimestampEntity {
 export type DateTime = any;
 export type JSON = any;
 export type JSONObject = any;
+export type Long = any;

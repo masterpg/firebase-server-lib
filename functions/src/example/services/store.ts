@@ -5,6 +5,7 @@ import {
   StoreService as _StoreService,
   storageDecode as _storageDecode,
   storageEncode as _storageEncode,
+  isFieldValue,
 } from '../../lib'
 import { Module } from '@nestjs/common'
 
@@ -28,29 +29,27 @@ interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 //  Storage
 //--------------------------------------------------
 
-enum StorageDocBundleType {
-  List = 'List',
-  Category = 'Category',
+enum StorageArticleNodeType {
+  ListBundle = 'ListBundle',
+  CategoryBundle = 'CategoryBundle',
+  ArticleDir = 'ArticleDir',
+  CategoryDir = 'CategoryDir',
 }
 
 interface StorageNode extends _StorageNode {
-  docBundleType?: StorageDocBundleType
-  isDoc?: boolean
-  docSortOrder?: number
+  articleNodeType?: StorageArticleNodeType
+  articleSortOrder?: number
 }
 
 const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
   const result: EncodedObject<StorageNode> = {
     ..._storageEncode(obj, operation),
   }
-  if (typeof obj.docBundleType === 'string') {
-    result.docBundleType = obj.docBundleType
+  if (typeof obj.articleNodeType === 'string' || isFieldValue(obj.articleNodeType)) {
+    result.articleNodeType = obj.articleNodeType
   }
-  if (typeof obj.isDoc === 'boolean') {
-    result.isDoc = obj.isDoc
-  }
-  if (typeof obj.docSortOrder === 'number') {
-    result.docSortOrder = obj.docSortOrder
+  if (typeof obj.articleSortOrder === 'number' || isFieldValue(obj.articleNodeType)) {
+    result.articleSortOrder = obj.articleSortOrder
   }
   return result
 }
@@ -118,4 +117,4 @@ class StoreServiceModule {}
 //========================================================================
 
 export { StoreServiceDI, StoreServiceModule }
-export { StorageNode, StorageDocBundleType, CartItem, Product }
+export { StorageNode, StorageArticleNodeType, CartItem, Product }

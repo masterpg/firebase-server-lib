@@ -4,7 +4,6 @@ import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import * as program from 'commander'
 import {
-  StorageNode,
   StorageNodeType,
   StorageServiceDI,
   StorageServiceModule,
@@ -15,6 +14,7 @@ import {
 } from '../lib'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
+import { StorageNode } from '../example/services'
 import { createNestApplication } from '../example/base'
 import dayjs = require('dayjs')
 import utc = require('dayjs/plugin/utc')
@@ -74,7 +74,11 @@ function printInOneLine(nodes: StorageNode[]): void {
     if (node.nodeType === StorageNodeType.Dir) {
       nodePath = chalk.blue(node.path)
     } else {
-      nodePath = `${chalk.blue(node.dir + '/')}${node.name}`
+      if (node.dir) {
+        nodePath = `${chalk.blue(node.dir + '/')}${node.name}`
+      } else {
+        nodePath = `${node.name}`
+      }
     }
     console.log(`${formatDate(node.updatedAt)} ${formatSize(node, padding.size)} ${formatId(node.id, padding.id)} ${nodePath}`)
   }
@@ -101,6 +105,9 @@ function toNodeObject(node: StorageNode) {
     contentType: node.contentType,
     size: node.size,
     share: node.share,
+    articleNodeType: node.articleNodeType,
+    articleSortOrder: node.articleSortOrder,
+    version: node.share,
     createdAt: formatDate(node.createdAt),
     updatedAt: formatDate(node.updatedAt),
   }
@@ -303,7 +310,7 @@ program
     const nestApp = await createNestApplication(StorageToolModule)
     const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
-    await storageService.createDirs([dirPath])
+    await storageService.createHierarchicalDirs([dirPath])
   })
 
 program
@@ -351,7 +358,7 @@ program
       testDirPaths.push(testDriPath)
     }
 
-    await storageService.createDirs(testDirPaths)
+    await storageService.createHierarchicalDirs(testDirPaths)
   })
 
 program.parseAsync(process.argv)

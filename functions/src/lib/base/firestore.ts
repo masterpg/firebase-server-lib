@@ -1,4 +1,4 @@
-import { FirestoreExOptions } from '../../firestore-ex'
+import { FieldValue, FirestoreExOptions } from '../../firestore-ex'
 
 //========================================================================
 //
@@ -42,10 +42,14 @@ class WriteReadyObserver {
   }
 }
 
+function isFieldValue(obj: any) {
+  return obj instanceof FieldValue
+}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { WriteReadyObserver, firestoreExOptions }
+export { WriteReadyObserver, firestoreExOptions, isFieldValue }
