@@ -59,18 +59,18 @@ interface CORSExcludeConfig {
 
 interface StorageConfig {
   readonly bucket: string
-  readonly users: StorageUsersConfig
-  readonly articles: StorageArticlesConfig
+  readonly user: StorageUsersConfig
+  readonly article: StorageArticlesConfig
 }
 
 interface StorageUsersConfig {
-  dir: string
+  rootName: string
 }
 
 interface StorageArticlesConfig {
-  dir: string
-  assetsDir: string
+  rootName: string
   fileName: string
+  assetsName: string
 }
 
 //--------------------------------------------------
@@ -109,21 +109,21 @@ class CORSConfigImpl implements CORSConfig {
 }
 
 class StorageConfigImpl implements StorageConfig {
-  constructor(params: PartialAre<StorageConfig, 'users' | 'articles'>) {
+  constructor(params: PartialAre<StorageConfig, 'user' | 'article'>) {
     this.bucket = params.bucket
-    this.users = {
-      dir: params.users?.dir ?? 'users',
+    this.user = {
+      rootName: params.user?.rootName ?? 'users',
     }
-    this.articles = {
-      dir: params.articles?.dir ?? 'articles',
-      assetsDir: params.articles?.assetsDir ?? 'articles/assets',
-      fileName: params.articles?.fileName ?? '__index__.md',
+    this.article = {
+      rootName: params.article?.rootName ?? 'articles',
+      fileName: params.article?.fileName ?? '__index__.md',
+      assetsName: params.article?.assetsName ?? 'assets',
     }
   }
 
   readonly bucket: string
-  readonly users: StorageUsersConfig
-  readonly articles: StorageArticlesConfig
+  readonly user: StorageUsersConfig
+  readonly article: StorageArticlesConfig
 }
 
 class GQLConfigImpl implements GQLConfig {

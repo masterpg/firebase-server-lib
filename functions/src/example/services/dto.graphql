@@ -73,18 +73,18 @@ input UserInfoInput {
 #--------------------------------------------------
 
 type StorageUsersConfig {
-  dir: String!
+  rootName: String!
 }
 
 type StorageArticlesConfig {
-  dir: String!
-  assetsDir: String!
+  rootName: String!
   fileName: String!
+  assetsName: String!
 }
 
 type AppConfigResponse {
-  users: StorageUsersConfig!
-  articles: StorageArticlesConfig!
+  user: StorageUsersConfig!
+  article: StorageArticlesConfig!
 }
 
 #--------------------------------------------------

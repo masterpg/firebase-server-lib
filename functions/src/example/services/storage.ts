@@ -78,8 +78,8 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
    * ユーザーディレクトリパスを取得します。
    * @param user
    */
-  getUserDirPath(user: { uid: string }): string {
-    return path.join(config.storage.users.dir, user.uid)
+  getUserRootPath(user: { uid: string }): string {
+    return path.join(config.storage.user.rootName, user.uid)
   }
 
   /**
@@ -117,8 +117,8 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
       for (const nodePath of nodePaths) {
         if (!this.m_isUserNode(nodePath)) continue
         // 指定ノードが自ユーザーの所有物でない場合
-        const userDirPath = this.getUserDirPath({ uid: idToken.uid })
-        const isOwnUserNode = nodePath == userDirPath || nodePath.startsWith(`${userDirPath}/`)
+        const userRootPath = this.getUserRootPath({ uid: idToken.uid })
+        const isOwnUserNode = nodePath == userRootPath || nodePath.startsWith(`${userRootPath}/`)
         if (!isOwnUserNode) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
         }
@@ -168,8 +168,8 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
     //
     if (this.m_isUserNode(fileNode.path)) {
       // 指定ファイルが自ユーザーの所有物である場合
-      const userDirPath = this.getUserDirPath(user)
-      if (fileNode.path.startsWith(path.join(userDirPath, '/'))) {
+      const userRootPath = this.getUserRootPath(user)
+      if (fileNode.path.startsWith(path.join(userRootPath, '/'))) {
         return this.streamFile(req, res, fileNode)
       }
     }
@@ -200,10 +200,10 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   async deleteUserDir(uid: string, maxChunk = StorageService.MAX_CHUNK): Promise<void> {
     /**
      * 指定されたディレクトリのストレージファイルを削除します。
-     * @param userDirPath
+     * @param userRootPath
      * @param pageToken
      */
-    const deleteFiles = async (userDirPath: string, pageToken?: string) => {
+    const deleteFiles = async (userRootPath: string, pageToken?: string) => {
       // ファイルを削除
       const bucket = admin.storage().bucket()
       const [files, apiResponse] = await bucket.getFiles({
@@ -214,21 +214,21 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
       await Promise.all(files.map(file => file.delete()))
       // まだ残りのファイルがある場合、続けて削除
       const nextPageToken = (apiResponse as any)?.pageToken
-      if (nextPageToken) await deleteFiles(userDirPath, nextPageToken)
+      if (nextPageToken) await deleteFiles(userRootPath, nextPageToken)
     }
 
     /**
      * 指定されたディレクトリのストアノードを削除します。
-     * @param userDirPath
+     * @param userRootPath
      */
-    const deleteFileNodes = async (userDirPath: string) => {
+    const deleteFileNodes = async (userRootPath: string) => {
       // ユーザーディレクトリと配下ノードを検索
-      const nodes = await this.storeService.storageDao.where('path', '>=', userDirPath).limit(maxChunk).fetch()
+      const nodes = await this.storeService.storageDao.where('path', '>=', userRootPath).limit(maxChunk).fetch()
       // 余分に検索されてしまったノードを除去
       for (let i = 0; i < nodes.length; i++) {
         const storeNode = nodes[i]
         // ノードが「ユーザーディレクトリまたはユーザーディレクトリ配下」以外の場合は除去
-        if (!(storeNode.path === userDirPath || storeNode.path.startsWith(`${userDirPath}/`))) {
+        if (!(storeNode.path === userRootPath || storeNode.path.startsWith(`${userRootPath}/`))) {
           nodes.splice(i--, 1)
         }
       }
@@ -239,12 +239,12 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
         })
       )
       // まだ残りノードがある場合、続けて削除
-      if (nodes.length > 0) await deleteFileNodes(userDirPath)
+      if (nodes.length > 0) await deleteFileNodes(userRootPath)
     }
 
-    const userDirPath = this.getUserDirPath({ uid })
-    await deleteFiles(userDirPath)
-    await deleteFileNodes(userDirPath)
+    const userRootPath = this.getUserRootPath({ uid })
+    await deleteFiles(userRootPath)
+    await deleteFileNodes(userRootPath)
   }
 
   //--------------------------------------------------
@@ -255,8 +255,8 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
    * ユーザーの記事ルートのパスを取得します。
    * @param user
    */
-  getUserArticlesDirPath(user: { uid: string }): string {
-    return path.join(this.getUserDirPath(user), config.storage.articles.dir)
+  getArticleRootPath(user: { uid: string }): string {
+    return path.join(this.getUserRootPath(user), config.storage.article.rootName)
   }
 
   /**
@@ -427,7 +427,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
    * @param nodePath
    */
   private m_isUserNode(nodePath: string): boolean {
-    return nodePath.startsWith(`${config.storage.users.dir}/`)
+    return nodePath.startsWith(`${config.storage.user.rootName}/`)
   }
 
   //--------------------------------------------------
@@ -447,11 +447,11 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
     const parentDir = removeStartDirChars(path.dirname(dirPath))
 
     // 指定されたディレクトリパスが記事ルート直下であることを検証
-    const usersDir = config.storage.users.dir
-    const articlesDir = config.storage.articles.dir
-    const reg = new RegExp(`${usersDir}/[^/]+/${articlesDir}$`)
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const reg = new RegExp(`${userRootName}/[^/]+/${articleRootName}$`)
     if (!reg.test(parentDir)) {
-      throw new InputValidationError(`The article bundle must be created directly under the articles root: '${dirPath}'`)
+      throw new InputValidationError(`The article bundle must be created directly under the article root: '${dirPath}'`)
     }
 
     // 記事バンドルを作成
@@ -514,7 +514,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
     })
 
     // 記事ディレクトリに記事内容のもととなるMarkdownファイルを配置
-    const articleFilePath = path.join(dirPath, config.storage.articles.fileName)
+    const articleFilePath = path.join(dirPath, config.storage.article.fileName)
     await this.uploadDataItems([{ path: articleFilePath, contentType: 'text/markdown', data: '' }])
 
     return result
@@ -537,9 +537,9 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
     dirPath = removeBothEndsSlash(dirPath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
-    const usersDir = config.storage.users.dir
-    const articlesDir = config.storage.articles.dir
-    const reg = new RegExp(`^${usersDir}/[^/]+/${articlesDir}/`)
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/`)
     if (!reg.test(dirPath)) {
       throw new InputValidationError(`The specified directory path is not under article root: '${dirPath}'`)
     }
@@ -579,16 +579,16 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   }
 
   /**
-   * 指定されたノードが記事バンドル配下にあることを検証します。
+   * 指定されたパスが記事バンドル配下であることを検証します。
    * @param nodePath
    */
   protected async m_validateArticleBundleDescendant(nodePath: string): Promise<void> {
     nodePath = removeBothEndsSlash(nodePath)
-    const usersDir = config.storage.users.dir
-    const articlesDir = config.storage.articles.dir
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
 
     // 引数パスから記事バンドルのパスを取得
-    const reg = new RegExp(`(?<articleBundlePath>${usersDir}/[^/]+/${articlesDir}/[^/]+)/`)
+    const reg = new RegExp(`(?<articleBundlePath>^${userRootName}/[^/]+/${articleRootName}/[^/]+)/`)
     const regResult = reg.exec(nodePath)
     const articleBundlePath = regResult?.groups?.articleBundlePath
     if (!articleBundlePath) {
@@ -603,16 +603,16 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   }
 
   /**
-   * 指定されたノードが記事バンドル配下にあることを検証します。
+   * 指定されたパスが記事バンドル配下であることを検証します。
    * @param nodePath
    */
   protected async m_validateArticleDescendant(nodePath: string): Promise<void> {
     nodePath = removeBothEndsSlash(nodePath)
-    const usersDir = config.storage.users.dir
-    const articlesDir = config.storage.articles.dir
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
 
     // 引数パスが記事ルート配下にあることを検証
-    const reg = new RegExp(`${usersDir}/[^/]+/${articlesDir}/`)
+    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/`)
     if (!reg.test(nodePath)) {
       throw new InputValidationError(`The specified path is not under article root: '${nodePath}'`)
     }

@@ -121,8 +121,8 @@ export interface TimestampEntity {
 }
 
 export interface AppConfigResponse {
-    users: StorageUsersConfig;
-    articles: StorageArticlesConfig;
+    user: StorageUsersConfig;
+    article: StorageArticlesConfig;
 }
 
 export interface AuthDataResult {
@@ -217,9 +217,9 @@ export interface IQuery {
 }
 
 export interface StorageArticlesConfig {
-    dir: string;
-    assetsDir: string;
+    rootName: string;
     fileName: string;
+    assetsName: string;
 }
 
 export interface StorageNode extends TimestampEntity {
@@ -250,7 +250,7 @@ export interface StoragePaginationResult {
 }
 
 export interface StorageUsersConfig {
-    dir: string;
+    rootName: string;
 }
 
 export interface UserInfo extends TimestampEntity {

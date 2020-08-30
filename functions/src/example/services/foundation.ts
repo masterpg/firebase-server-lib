@@ -17,8 +17,8 @@ class FoundationService extends BaseFoundationService {
 
   async appConfig(): Promise<AppConfigResponse> {
     return {
-      users: config.storage.users,
-      articles: config.storage.articles,
+      user: config.storage.user,
+      article: config.storage.article,
     }
   }
 

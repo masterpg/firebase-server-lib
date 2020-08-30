@@ -103,8 +103,8 @@ describe('StorageResolver', () => {
       })
 
       it('疎通確認 - ユーザーノード', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
         const input: StorageNodeKeyInput = { path: d1.path }
 
         const getNodeByPath = td.replace(storageService, 'getNodeByPath')
@@ -170,8 +170,8 @@ describe('StorageResolver', () => {
       })
 
       it('アクセス権限がない場合 - ユーザーノード', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
         const input: StorageNodeKeyInput = { path: d1.path }
 
         const response = await requestGQL(
@@ -208,8 +208,8 @@ describe('StorageResolver', () => {
       })
 
       it('疎通確認 - ユーザーノード', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
         const input: StorageNodeKeyInput = { id: d1.id }
 
         const getNodeById = td.replace(storageService, 'getNodeById')
@@ -278,8 +278,8 @@ describe('StorageResolver', () => {
       })
 
       it('アクセス権限がない場合 - ユーザーノード', async () => {
-        const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-        const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
         const input: StorageNodeKeyInput = { id: d1.id }
 
         const getNodeById = td.replace(storageService, 'getNodeById')
@@ -336,9 +336,9 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
       const getDirDescendants = td.replace(storageService, 'getDirDescendants')
       td.when(getDirDescendants(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
@@ -385,8 +385,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -438,9 +438,9 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
       const getDescendants = td.replace(storageService, 'getDescendants')
       td.when(getDescendants(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d11],
@@ -487,8 +487,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -540,9 +540,9 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
       const getDirChildren = td.replace(storageService, 'getDirChildren')
       td.when(getDirChildren(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
@@ -589,8 +589,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -642,8 +642,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
       const d11 = newTestStorageDirNode(`d1/d11`)
       const getChildren = td.replace(storageService, 'getChildren')
       td.when(getChildren(d1.path, { maxChunk: 3 })).thenResolve({
@@ -691,8 +691,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -738,10 +738,10 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const getHierarchicalNodes = td.replace(storageService, 'getHierarchicalNodes')
       td.when(getHierarchicalNodes(fileA.path)).thenResolve([d1, d11])
 
@@ -784,8 +784,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
 
       const response = await requestGQL(
         app,
@@ -831,10 +831,10 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const getAncestorDirs = td.replace(storageService, 'getAncestorDirs')
       td.when(getAncestorDirs(fileA.path)).thenResolve([d1, d11])
 
@@ -877,8 +877,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
 
       const response = await requestGQL(
         app,
@@ -922,8 +922,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
       td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
 
@@ -966,8 +966,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
       td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
 
@@ -1013,8 +1013,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`, { share: SHARE_SETTINGS })
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`, { share: SHARE_SETTINGS })
       const createDir = td.replace(storageService, 'createDir')
       td.when(createDir(d1.path, SHARE_SETTINGS)).thenResolve(d1)
 
@@ -1057,8 +1057,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -1103,9 +1103,9 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
-      const d12 = newTestStorageDirNode(`${userDirPath}/d1/d12`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
+      const d12 = newTestStorageDirNode(`${userRootPath}/d1/d12`)
       const createHierarchicalDirs = td.replace(storageService, 'createHierarchicalDirs')
       td.when(createHierarchicalDirs([d11.path, d12.path])).thenResolve([d11, d12])
 
@@ -1150,9 +1150,9 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d11 = newTestStorageDirNode(`${userDirPath}/d1/d11`)
-      const d12 = newTestStorageDirNode(`${userDirPath}/d1/d12`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d11 = newTestStorageDirNode(`${userRootPath}/d1/d11`)
+      const d12 = newTestStorageDirNode(`${userRootPath}/d1/d12`)
 
       const response = await requestGQL(
         app,
@@ -1204,9 +1204,9 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/fileA.txt`)
       const removeDir = td.replace(storageService, 'removeDir')
       td.when(removeDir(d1.path, { maxChunk: 3 })).thenResolve({
         list: [d1, fileA],
@@ -1253,8 +1253,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
         app,
@@ -1298,8 +1298,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const removeFile = td.replace(storageService, 'removeFile')
       td.when(removeFile(fileA.path)).thenResolve(fileA)
 
@@ -1342,8 +1342,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
 
       const response = await requestGQL(
         app,
@@ -1395,11 +1395,11 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const docs = newTestStorageDirNode(`${userDirPath}/docs`)
-      const fileA = newTestStorageFileNode(`${userDirPath}/archive/docs/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const docs = newTestStorageDirNode(`${userRootPath}/docs`)
+      const fileA = newTestStorageFileNode(`${userRootPath}/archive/docs/fileA.txt`)
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(`${userDirPath}/docs`, `${userDirPath}/archive/docs`, { maxChunk: 3 })).thenResolve({
+      td.when(moveDir(`${userRootPath}/docs`, `${userRootPath}/archive/docs`, { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1408,7 +1408,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1440,13 +1440,13 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userDirPath}/docs`, toDirPath: `${userDirPath}/archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs`, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1484,16 +1484,16 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/docs/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/docs/fileA.txt`)
       const moveFile = td.replace(storageService, 'moveFile')
-      td.when(moveFile(`${userDirPath}/fileA.txt`, `${userDirPath}/docs/fileA.txt`)).thenResolve(fileA)
+      td.when(moveFile(`${userRootPath}/fileA.txt`, `${userRootPath}/docs/fileA.txt`)).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromFilePath: `${userDirPath}/fileA.txt`, toFilePath: `${userDirPath}/docs/fileA.txt` },
+          variables: { fromFilePath: `${userRootPath}/fileA.txt`, toFilePath: `${userRootPath}/docs/fileA.txt` },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1524,13 +1524,13 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromFilePath: `${userDirPath}/fileA.txt`, toFilePath: `${userDirPath}/docs/fileA.txt` },
+          variables: { fromFilePath: `${userRootPath}/fileA.txt`, toFilePath: `${userRootPath}/docs/fileA.txt` },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1576,11 +1576,11 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const docs = newTestStorageDirNode(`${userDirPath}/docs`)
-      const fileA = newTestStorageFileNode(`${userDirPath}/docs/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const docs = newTestStorageDirNode(`${userRootPath}/docs`)
+      const fileA = newTestStorageFileNode(`${userRootPath}/docs/fileA.txt`)
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(`${userDirPath}/documents`, `${userDirPath}/docs`, { maxChunk: 3 })).thenResolve({
+      td.when(renameDir(`${userRootPath}/documents`, `${userRootPath}/docs`, { maxChunk: 3 })).thenResolve({
         list: [docs, fileA],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -1589,7 +1589,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs`, input: { maxChunk: 3 } },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1621,13 +1621,13 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: `${userDirPath}/documents`, newName: `${userDirPath}/docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs`, input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1665,16 +1665,16 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileB = newTestStorageFileNode(`${userDirPath}/fileB.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileB = newTestStorageFileNode(`${userRootPath}/fileB.txt`)
       const renameFile = td.replace(storageService, 'renameFile')
-      td.when(renameFile(`${userDirPath}/fileA.txt`, `${userDirPath}/fileB.txt`)).thenResolve(fileB)
+      td.when(renameFile(`${userRootPath}/fileA.txt`, `${userRootPath}/fileB.txt`)).thenResolve(fileB)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: `${userDirPath}/fileA.txt`, newName: `${userDirPath}/fileB.txt` },
+          variables: { filePath: `${userRootPath}/fileA.txt`, newName: `${userRootPath}/fileB.txt` },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1705,13 +1705,13 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: `${userDirPath}/fileA.txt`, newName: `${userDirPath}/fileB.txt` },
+          variables: { filePath: `${userRootPath}/fileA.txt`, newName: `${userRootPath}/fileB.txt` },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1749,8 +1749,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
       const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
       td.when(setDirShareSettings(d1.path, SHARE_SETTINGS)).thenResolve(d1)
 
@@ -1793,8 +1793,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const d1 = newTestStorageDirNode(`${userDirPath}/d1`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const d1 = newTestStorageDirNode(`${userRootPath}/d1`)
       const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
       td.when(setDirShareSettings(d1.path, SHARE_SETTINGS)).thenResolve(d1)
 
@@ -1840,8 +1840,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const setFileShareSettings = td.replace(storageService, 'setFileShareSettings')
       td.when(setFileShareSettings(fileA.path, SHARE_SETTINGS)).thenResolve(fileA)
 
@@ -1884,8 +1884,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
 
       const response = await requestGQL(
         app,
@@ -1928,8 +1928,8 @@ describe('StorageResolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
       const getSignedUploadUrls = td.replace(storageService, 'getSignedUploadUrls')
       td.when(getSignedUploadUrls(td.matchers.anything(), inputs)).thenResolve([`xxx`])
@@ -1975,8 +1975,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userDirPath = storageService.getUserDirPath(STORAGE_USER_TOKEN)
-      const fileA = newTestStorageFileNode(`${userDirPath}/d1/d11/fileA.txt`)
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const fileA = newTestStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
       const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
 
       const response = await requestGQL(
@@ -2004,8 +2004,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
       const bundleNode = newTestStorageDirNode(`${bundlePath}`, input)
 
@@ -2025,8 +2025,8 @@ describe('StorageResolver', () => {
     })
 
     it('サインインしていない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
 
       const response = await requestGQL(app, {
@@ -2038,8 +2038,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
 
       const response = await requestGQL(
@@ -2067,8 +2067,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
       const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
 
@@ -2088,8 +2088,8 @@ describe('StorageResolver', () => {
     })
 
     it('サインインしていない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
       const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
 
@@ -2102,8 +2102,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
       const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
 
@@ -2135,8 +2135,8 @@ describe('StorageResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
       const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
       td.when(getArticleChildren(bundlePath, { maxChunk: 3 })).thenResolve({
@@ -2158,8 +2158,8 @@ describe('StorageResolver', () => {
     })
 
     it('サインインしていない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
 
       const response = await requestGQL(app, {
         ...gql,
@@ -2170,8 +2170,8 @@ describe('StorageResolver', () => {
     })
 
     it('アクセス権限がない場合', async () => {
-      const articlesPath = storageService.getUserArticlesDirPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articlesPath}/blog`
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/blog`
 
       const response = await requestGQL(
         app,

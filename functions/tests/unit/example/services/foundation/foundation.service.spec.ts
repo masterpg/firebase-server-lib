@@ -37,14 +37,14 @@ describe('FoundationService', () => {
   describe('appConfig', () => {
     it('ベーシックケース', async () => {
       const actual = await foundationService.appConfig()
-      expect(actual.users).toEqual({
-        dir: 'users',
-      } as AppConfigResponse['users'])
-      expect(actual.articles).toEqual({
-        dir: 'articles',
-        assetsDir: 'articles/assets',
+      expect(actual.user).toEqual({
+        rootName: 'users',
+      } as AppConfigResponse['user'])
+      expect(actual.article).toEqual({
+        rootName: 'articles',
         fileName: '__index__.md',
-      } as AppConfigResponse['articles'])
+        assetsName: 'assets',
+      } as AppConfigResponse['article'])
     })
   })
 })
