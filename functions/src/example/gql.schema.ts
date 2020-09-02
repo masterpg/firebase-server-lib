@@ -212,7 +212,7 @@ export interface IQuery {
     storageHierarchicalNodes(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     storageAncestorDirs(nodePath: string): StorageNode[] | Promise<StorageNode[]>;
     signedUploadUrls(inputs: SignedUploadUrlInput[]): string[] | Promise<string[]>;
-    articleChildren(dirPath: string, input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
+    articleChildren(dirPath: string, articleTypes: StorageArticleNodeType[], input?: StoragePaginationInput): StoragePaginationResult | Promise<StoragePaginationResult>;
     authData(): AuthDataResult | Promise<AuthDataResult>;
 }
 

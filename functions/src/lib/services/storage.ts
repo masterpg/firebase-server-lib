@@ -1172,7 +1172,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         return removeStartDirChars(path.dirname(uploadItem.path))
       })
       .filter(dirPath => Boolean(dirPath))
-    await this.createHierarchicalDirs(dirPaths)
+    const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(...dirPaths)
+    for (const dirNode of hierarchicalDirNodes) {
+      if (!dirNode.exists) {
+        throw new InputValidationError(`The directory '${dirNode.path}' to upload to does not exist.`)
+      }
+    }
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     for (const chunk of splitArrayChunk(uploadList, StorageService.MAX_CHUNK)) {
@@ -1207,7 +1212,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         return removeStartDirChars(path.dirname(uploadItem.toFilePath))
       })
       .filter(dirPath => Boolean(dirPath))
-    await this.createHierarchicalDirs(dirPaths)
+    const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(...dirPaths)
+    for (const dirNode of hierarchicalDirNodes) {
+      if (!dirNode.exists) {
+        throw new InputValidationError(`The directory '${dirNode.path}' to upload to does not exist.`)
+      }
+    }
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     const bucket = admin.storage().bucket()

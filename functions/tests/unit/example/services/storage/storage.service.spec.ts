@@ -7,10 +7,10 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import { DevUtilsServiceDI, DevUtilsServiceModule, InputValidationError, StorageNode, StorageUploadDataItem, initLib } from '../../../../../src/lib'
-import { StorageArticleNodeType, StorageService, StorageServiceDI, StoreServiceDI } from '../../../../../src/example/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, InputValidationError, StorageUploadDataItem, initLib } from '../../../../../src/lib'
+import { StorageArticleNodeType, StorageNode, StorageService, StorageServiceDI, StoreServiceDI } from '../../../../../src/example/services'
 import { Test, TestingModule } from '@nestjs/testing'
-import { existsNodes, notExistsNodes, removeAllNodes } from '../../../../helpers/common/storage'
+import { existsNodes, notExistsNodes, removeAllNodes, verifyMoveNodes } from '../../../../helpers/common/storage'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/common/gql'
 import {
   newTestStorageDirNode,
@@ -42,7 +42,7 @@ let devUtilsService!: DevUtilsServiceDI.type
 type TestStorageService = StorageServiceDI.type & {
   m_toNodePaths: StorageServiceDI.type['m_toNodePaths']
   m_validateArticleBundleDescendant: StorageServiceDI.type['m_validateArticleBundleDescendant']
-  m_validateArticleDescendant: StorageServiceDI.type['m_validateArticleDescendant']
+  m_validateArticleRootDescendant: StorageServiceDI.type['m_validateArticleRootDescendant']
 }
 
 //========================================================================
@@ -89,6 +89,7 @@ describe('AppStorageService', () => {
     describe('ユーザーファイル', () => {
       it('ファイルは公開設定 -> 誰でもアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -112,6 +113,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは非公開設定 -> 自ユーザーはアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -138,6 +140,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは非公開設定 -> 他ユーザーはアクセス不可', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -161,6 +164,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは公開未設定 -> 自ユーザーはアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -187,6 +191,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは公開未設定 -> 他ユーザーはアクセス不可', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -210,6 +215,7 @@ describe('AppStorageService', () => {
 
       it('ファイルに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -236,6 +242,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -262,6 +269,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーはアクセス不可', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -287,6 +295,7 @@ describe('AppStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -313,6 +322,7 @@ describe('AppStorageService', () => {
 
       it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -340,6 +350,7 @@ describe('AppStorageService', () => {
 
     describe('アプリケーションファイル', () => {
       it('ファイルは公開設定 -> 誰でもアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -362,6 +373,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 -> アプリケーション管理者はアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -387,6 +399,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -409,6 +422,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 -> アプリケーション管理者はアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -434,6 +448,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 -> アプリケーション管理者以外はアクセス不可', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -456,6 +471,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルに読み込み権限設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -481,6 +497,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -506,6 +523,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -530,6 +548,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み込み権限設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -555,6 +574,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -586,6 +606,7 @@ describe('AppStorageService', () => {
       const user1Dir = storageService.getUserRootPath({ uid: 'user1' })
       const user2Dir = storageService.getUserRootPath({ uid: 'user2' })
       const user3Dir = storageService.getUserRootPath({ uid: 'user3' })
+      await storageService.createHierarchicalDirs([`${user1Dir}`, `${user2Dir}/d1`, `${user3Dir}`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -620,6 +641,7 @@ describe('AppStorageService', () => {
 
     it('大量データの場合', async () => {
       const user1Dir = storageService.getUserRootPath({ uid: 'user1' })
+      await storageService.createHierarchicalDirs([`${user1Dir}/d1/d11/d111`, `${user1Dir}/d1/d12`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
@@ -799,14 +821,11 @@ describe('AppStorageService', () => {
       })
 
       it('記事カテゴリを記事バンドル配下以外に作成しようとした場合', async () => {
-        // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-        await storageService.createHierarchicalDirs([articleRootPath])
-        // 記事バンドルをただのディレクトリとして作成
-        const bundlePath = `${articleRootPath}/blog`
-        await storageService.createHierarchicalDirs([bundlePath])
+        // ユーザールートの作成
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([userRootPath])
         // 記事カテゴリのパスを作成
-        const cat1DirPath = `${bundlePath}/cat1`
+        const cat1DirPath = `${userRootPath}/cat1`
 
         let actual!: InputValidationError
         try {
@@ -946,14 +965,11 @@ describe('AppStorageService', () => {
       })
 
       it('記事を記事バンドル配下以外に作成しようとした場合', async () => {
-        // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-        await storageService.createHierarchicalDirs([articleRootPath])
-        // 記事バンドルをただのディレクトリとして作成
-        const bundlePath = `${articleRootPath}/blog`
-        await storageService.createHierarchicalDirs([bundlePath])
+        // ユーザールートの作成
+        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([userRootPath])
         // 記事のパスを作成
-        const art1Path = `${bundlePath}/art1`
+        const art1Path = `${userRootPath}/art1`
 
         let actual!: InputValidationError
         try {
@@ -1244,58 +1260,100 @@ describe('AppStorageService', () => {
   })
 
   describe('getArticleChildren', () => {
-    let articleRootPath: string
-    let bundlePath: string
-    let cat1DirPath: string
-    let cat2DirPath: string
-    let art1DirPath: string
-    let fileAPath: string
+    let articleRoot: StorageNode
+    let programing: StorageNode
+    let introduction: StorageNode
+    let introductionIndex: StorageNode
+    let js: StorageNode
+    let variable: StorageNode
+    let variableIndex: StorageNode
+    let ts: StorageNode
+    let clazz: StorageNode
+    let clazzIndex: StorageNode
+    let py: StorageNode
+    let tmp: StorageNode
 
     beforeEach(async () => {
-      // 記事ルートの作成
-      articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      await storageService.createHierarchicalDirs([articleRootPath])
-      // 記事バンドルの作成
-      bundlePath = `${articleRootPath}/category`
-      await storageService.createArticleDir(bundlePath, {
+      const articleFileName = config.storage.article.fileName
+
+      // users
+      // └test.storage
+      //   ├articles
+      //   │└programing
+      //   │  ├introduction
+      //   │  │└index.md
+      //   │  ├js
+      //   │  │└variable
+      //   │  │  └index.md
+      //   │  └ts
+      //   │  │└class
+      //   │  │  └index.md
+      //   │  └py
+      //   └tmp
+
+      // users/test.storage
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
+      // programing
+      programing = await storageService.createArticleDir(`${articleRootPath}/programing`, {
         articleNodeType: StorageArticleNodeType.CategoryBundle,
       })
-      // カテゴリの作成
-      cat1DirPath = `${bundlePath}/cat1`
-      await storageService.createArticleDir(cat1DirPath, {
-        articleNodeType: StorageArticleNodeType.CategoryDir,
-      })
-      cat2DirPath = `${bundlePath}/cat2`
-      await storageService.createArticleDir(cat2DirPath, {
-        articleNodeType: StorageArticleNodeType.CategoryDir,
-      })
-      art1DirPath = `${cat2DirPath}/art1`
-      await storageService.createArticleDir(art1DirPath, {
+      // introduction
+      introduction = await storageService.createArticleDir(`${programing.path}/introduction`, {
         articleNodeType: StorageArticleNodeType.ArticleDir,
       })
-      fileAPath = `${art1DirPath}/fileA.txt`
-      await storageService.uploadDataItems([
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: fileAPath,
-        },
-      ])
+      // introduction/index.md
+      introductionIndex = await storageService.sgetNodeByPath(`${introduction.path}/${articleFileName}`)
+      // js
+      js = await storageService.createArticleDir(`${programing.path}/js`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(js.path, { insertAfterNodePath: introduction.path })
+      // js/variable
+      variable = await storageService.createArticleDir(`${js.path}/variable`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+      })
+      // js/variable/index.md
+      variableIndex = await storageService.sgetNodeByPath(`${variable.path}/${articleFileName}`)
+      // ts
+      ts = await storageService.createArticleDir(`${programing.path}/ts`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(ts.path, { insertAfterNodePath: js.path })
+      // ts/class
+      clazz = await storageService.createArticleDir(`${ts.path}/class`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+      })
+      // ts/class/index.md
+      clazzIndex = await storageService.sgetNodeByPath(`${clazz.path}/${articleFileName}`)
+      // py
+      py = await storageService.createArticleDir(`${programing.path}/py`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(py.path, { insertAfterNodePath: ts.path })
+      // tmp
+      const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      tmp = await storageService.createDir(`${uerRootPath}/tmp`)
     })
 
     it('ベーシックケース', async () => {
-      const actual = await storageService.getArticleChildren(`${bundlePath}`)
+      const actual = await storageService.getArticleChildren(`${programing.path}`, [
+        StorageArticleNodeType.CategoryDir,
+        StorageArticleNodeType.ArticleDir,
+      ])
 
       expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`${cat2DirPath}`)
-      expect(actual.list[1].path).toBe(`${cat1DirPath}`)
+      expect(actual.list.length).toBe(4)
+      expect(actual.list[0].path).toBe(`${introduction.path}`)
+      expect(actual.list[1].path).toBe(`${js.path}`)
+      expect(actual.list[2].path).toBe(`${ts.path}`)
+      expect(actual.list[3].path).toBe(`${py.path}`)
       await existsNodes(actual.list, storageService)
     })
 
     it('dirPathに存在しないノードを指定した場合', async () => {
       // dirPathに存在しないノードを指定
-      const actual = await storageService.getArticleChildren(`${bundlePath}/cat999`)
+      const actual = await storageService.getArticleChildren(`${programing.path}/cobol`, [StorageArticleNodeType.CategoryDir])
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(0)
@@ -1303,165 +1361,36 @@ describe('AppStorageService', () => {
 
     it('大量データの場合', async () => {
       for (let i = 1; i <= 10; i++) {
-        const artDirPath = `${cat1DirPath}/art${i.toString().padStart(2, '0')}`
-        await storageService.createArticleDir(artDirPath, {
+        const artPath = `${py.path}/art${i.toString().padStart(2, '0')}`
+        await storageService.createArticleDir(artPath, {
           articleNodeType: StorageArticleNodeType.ArticleDir,
         })
       }
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getArticleChildren(`${cat1DirPath}`, { maxChunk: 3 })
+      let fetched = await storageService.getArticleChildren(`${py.path}`, [StorageArticleNodeType.ArticleDir], { maxChunk: 3 })
       actual.push(...fetched.list)
       while (fetched.nextPageToken) {
-        fetched = await storageService.getArticleChildren(`${cat1DirPath}`, { maxChunk: 3, pageToken: fetched.nextPageToken })
+        fetched = await storageService.getArticleChildren(`${py.path}`, [StorageArticleNodeType.ArticleDir], {
+          maxChunk: 3,
+          pageToken: fetched.nextPageToken,
+        })
         actual.push(...fetched.list)
       }
 
       expect(actual.length).toBe(10)
-      expect(actual[0].path).toBe(`${cat1DirPath}/art10`)
-      expect(actual[1].path).toBe(`${cat1DirPath}/art09`)
-      expect(actual[2].path).toBe(`${cat1DirPath}/art08`)
-      expect(actual[3].path).toBe(`${cat1DirPath}/art07`)
-      expect(actual[4].path).toBe(`${cat1DirPath}/art06`)
-      expect(actual[5].path).toBe(`${cat1DirPath}/art05`)
-      expect(actual[6].path).toBe(`${cat1DirPath}/art04`)
-      expect(actual[7].path).toBe(`${cat1DirPath}/art03`)
-      expect(actual[8].path).toBe(`${cat1DirPath}/art02`)
-      expect(actual[9].path).toBe(`${cat1DirPath}/art01`)
+      expect(actual[0].path).toBe(`${py.path}/art10`)
+      expect(actual[1].path).toBe(`${py.path}/art09`)
+      expect(actual[2].path).toBe(`${py.path}/art08`)
+      expect(actual[3].path).toBe(`${py.path}/art07`)
+      expect(actual[4].path).toBe(`${py.path}/art06`)
+      expect(actual[5].path).toBe(`${py.path}/art05`)
+      expect(actual[6].path).toBe(`${py.path}/art04`)
+      expect(actual[7].path).toBe(`${py.path}/art03`)
+      expect(actual[8].path).toBe(`${py.path}/art02`)
+      expect(actual[9].path).toBe(`${py.path}/art01`)
       await existsNodes(actual, storageService)
-    })
-
-    it('m_validateArticleDescendant()の呼び出しを検証', async () => {
-      // モック設定
-      const m_validateArticleDescendant = td.replace(storageService, 'm_validateArticleDescendant')
-
-      // テスト対象実行
-      await storageService.getArticleChildren(`${bundlePath}`)
-
-      const explanation = td.explain(m_validateArticleDescendant)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(bundlePath)
-    })
-  })
-
-  describe('m_validateArticleBundleDescendant', () => {
-    it('ベーシックケース', async () => {
-      // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      await storageService.createHierarchicalDirs([articleRootPath])
-      // 記事バンドルを作成
-      const bundlePath = `${articleRootPath}/blog`
-      await storageService.createArticleDir(bundlePath, {
-        articleNodeType: StorageArticleNodeType.ListBundle,
-      })
-      // 引数ノードに記事バンドル配下のディレクトリを指定
-      const art1Dir = `${bundlePath}/art1`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleBundleDescendant(art1Dir)
-      } catch (err) {
-        actual = err
-      }
-
-      // エラーは発生せず正常終了
-      expect(actual).toBeUndefined()
-    })
-
-    it('引数ノードが記事配下でない場合①', async () => {
-      const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
-      // 引数ノードにユーザーディレクトリ直下のディレクトリを指定
-      const art1Dir = `${userDirPath}/art1`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleBundleDescendant(art1Dir)
-      } catch (err) {
-        actual = err
-      }
-
-      // 引数ノードが記事配下でないためエラーが発生
-      expect(actual.detail.message).toBe(`The specified path is not under article bundle: '${art1Dir}'`)
-    })
-
-    it('引数ノードが記事配下でない場合②', async () => {
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/category`
-      // 'category'をただのディレクトリとして作成
-      await storageService.createHierarchicalDirs([bundlePath])
-      // 'category'を記事バンドルと想定しているが実際はだたのディレクトリだった場合
-      const art1Dir = `${bundlePath}/art1`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleBundleDescendant(art1Dir)
-      } catch (err) {
-        actual = err
-      }
-
-      // 引数ノードが記事配下でないためエラーが発生
-      expect(actual.detail.message).toBe(`The specified path is not under article bundle: '${art1Dir}'`)
-    })
-  })
-
-  describe('m_validateArticleDescendant', () => {
-    it('ベーシックケース - 記事ルート直下', async () => {
-      // 記事ルートのパスを作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      // 記事バンドルのパスを作成
-      const bundlePath = `${articleRootPath}/blog`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleDescendant(bundlePath)
-      } catch (err) {
-        actual = err
-      }
-
-      // エラーは発生せず正常終了
-      expect(actual).toBeUndefined()
-    })
-
-    it('ベーシックケース - 記事バンドル配下', async () => {
-      // 記事ルートのパスを作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      // 記事バンドルのパスを作成
-      const bundlePath = `${articleRootPath}/blog`
-      // 記事のパスを作成
-      const art1Dir = `${bundlePath}/art1`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleDescendant(art1Dir)
-      } catch (err) {
-        actual = err
-      }
-
-      // エラーは発生せず正常終了
-      expect(actual).toBeUndefined()
-    })
-
-    it('引数ノードが記事ルート配下でない場合', async () => {
-      const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
-      // 記事バンドルを記事ルート以外に指定
-      const bundlePath = `${userDirPath}/blog`
-
-      let actual!: InputValidationError
-      try {
-        // テスト対象実行
-        await storageService.m_validateArticleDescendant(bundlePath)
-      } catch (err) {
-        actual = err
-      }
-
-      // 記事バンドルを記事ルートでないためエラーが発生
-      expect(actual.detail.message).toBe(`The specified path is not under article root: '${bundlePath}'`)
     })
   })
 
@@ -1756,6 +1685,7 @@ describe('AppStorageService', () => {
     describe('ユーザーファイル', () => {
       it('自ユーザーのファイルにアクセス', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
             data: 'test',
@@ -1801,6 +1731,7 @@ describe('AppStorageService', () => {
 
       it('アプリケーション管理者でアクセス', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
             data: 'test',
@@ -1827,6 +1758,7 @@ describe('AppStorageService', () => {
 
       it('自ユーザー以外でアクセス', async () => {
         const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
             data: 'test',
@@ -1850,6 +1782,437 @@ describe('AppStorageService', () => {
 
         expect(getGQLErrorStatus(response)).toBe(403)
       })
+    })
+  })
+
+  describe('createDir', () => {
+    let userRootPath: string
+
+    beforeEach(async () => {
+      // ユーザールートの作成
+      userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([userRootPath])
+    })
+
+    it('バケット直下にディレクトリを作成', async () => {
+      // バケット直下にディレクトリを作成
+      const tmp = `tmp`
+      const actual = await storageService.createDir(tmp)
+
+      expect(actual.path).toBe(tmp)
+    })
+
+    it('ユーザールート配下にディレクトリを作成', async () => {
+      // ユーザールート配下にディレクトリを作成
+      const tmp = `${userRootPath}/tmp`
+      const actual = await storageService.createDir(tmp)
+
+      expect(actual.path).toBe(tmp)
+    })
+
+    it('記事ルートの作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const actual = await storageService.createDir(articleRootPath)
+
+      expect(actual.path).toBe(articleRootPath)
+    })
+
+    it('アセットディレクトリの作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createDir(articleRootPath)
+
+      // アセットディレクトリの作成
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const actual = await storageService.createDir(assetsPath)
+
+      expect(actual.path).toBe(assetsPath)
+    })
+
+    it('アセットディレクトリ配下にディレクトリを作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createDir(articleRootPath)
+
+      // アセットディレクトリの作成
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      await storageService.createDir(assetsPath)
+
+      const tmpPath = `${assetsPath}/tmp`
+      const actual = await storageService.createDir(tmpPath)
+
+      expect(actual.path).toBe(tmpPath)
+    })
+
+    it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createDir(articleRootPath)
+
+      const dirPath = `${articleRootPath}/blog`
+      let actual!: InputValidationError
+      try {
+        // 記事ルート配下にディレクトリを作成
+        await storageService.createDir(dirPath)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe(`This method 'createDir()' cannot create an article type directory '${dirPath}'.`)
+    })
+  })
+
+  describe('createHierarchicalDirs', () => {
+    let userRootPath: string
+
+    beforeEach(async () => {
+      // ユーザールートの作成
+      userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([userRootPath])
+    })
+
+    it('バケット直下にディレクトリを作成', async () => {
+      // バケット直下にディレクトリを作成
+      const tmp = `tmp`
+      const actual = await storageService.createHierarchicalDirs([tmp])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(tmp)
+    })
+
+    it('ユーザールート配下にディレクトリを作成', async () => {
+      // ユーザールート配下にディレクトリを作成
+      const tmp = `${userRootPath}/tmp`
+      const actual = await storageService.createHierarchicalDirs([tmp])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(tmp)
+    })
+
+    it('記事ルートの作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const actual = await storageService.createHierarchicalDirs([articleRootPath])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(articleRootPath)
+    })
+
+    it('アセットディレクトリの作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      // アセットディレクトリの作成
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const actual = await storageService.createHierarchicalDirs([assetsPath])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(assetsPath)
+    })
+
+    it('アセットディレクトリ配下にディレクトリを作成', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      // アセットディレクトリの作成
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      await storageService.createHierarchicalDirs([assetsPath])
+
+      const tmpPath = `${assetsPath}/tmp`
+      const actual = await storageService.createHierarchicalDirs([tmpPath])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(tmpPath)
+    })
+
+    it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      const dirPath = `${articleRootPath}/blog`
+      let actual!: InputValidationError
+      try {
+        // 記事ルート配下にディレクトリを作成
+        await storageService.createHierarchicalDirs([dirPath])
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe(`This method 'createHierarchicalDirs()' cannot create an article type directory '${dirPath}'.`)
+    })
+  })
+
+  describe('moveDir', () => {
+    let articleRoot: StorageNode
+    let programing: StorageNode
+    let introduction: StorageNode
+    let introductionIndex: StorageNode
+    let js: StorageNode
+    let variable: StorageNode
+    let variableIndex: StorageNode
+    let ts: StorageNode
+    let clazz: StorageNode
+    let clazzIndex: StorageNode
+    let py: StorageNode
+    let tmp: StorageNode
+
+    beforeEach(async () => {
+      const articleFileName = config.storage.article.fileName
+
+      // users
+      // └test.storage
+      //   ├articles
+      //   │└programing
+      //   │  ├introduction
+      //   │  │└index.md
+      //   │  ├js
+      //   │  │└variable
+      //   │  │  └index.md
+      //   │  └ts
+      //   │  │└class
+      //   │  │  └index.md
+      //   │  └py
+      //   └tmp
+
+      // users/test.storage
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
+      // programing
+      programing = await storageService.createArticleDir(`${articleRootPath}/programing`, {
+        articleNodeType: StorageArticleNodeType.CategoryBundle,
+      })
+      // introduction
+      introduction = await storageService.createArticleDir(`${programing.path}/introduction`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+      })
+      // introduction/index.md
+      introductionIndex = await storageService.sgetNodeByPath(`${introduction.path}/${articleFileName}`)
+      // js
+      js = await storageService.createArticleDir(`${programing.path}/js`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(js.path, { insertAfterNodePath: introduction.path })
+      // js/variable
+      variable = await storageService.createArticleDir(`${js.path}/variable`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+      })
+      // js/variable/index.md
+      variableIndex = await storageService.sgetNodeByPath(`${variable.path}/${articleFileName}`)
+      // ts
+      ts = await storageService.createArticleDir(`${programing.path}/ts`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(ts.path, { insertAfterNodePath: js.path })
+      // ts/class
+      clazz = await storageService.createArticleDir(`${ts.path}/class`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+      })
+      // ts/class/index.md
+      clazzIndex = await storageService.sgetNodeByPath(`${clazz.path}/${articleFileName}`)
+      // py
+      py = await storageService.createArticleDir(`${programing.path}/py`, {
+        articleNodeType: StorageArticleNodeType.CategoryDir,
+      })
+      await storageService.setArticleSortOrder(py.path, { insertAfterNodePath: ts.path })
+      // tmp
+      const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      tmp = await storageService.createDir(`${uerRootPath}/tmp`)
+    })
+
+    describe('記事バンドルの移動', () => {
+      it('記事バンドルは移動できない', async () => {
+        let actual!: InputValidationError
+        try {
+          // 記事バンドルを移動しようとした場合
+          // 'programing'を'tmp/programing'へ移動
+          await storageService.moveDir(`${programing.path}`, `${tmp.path}/${programing.name}`)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.detail.message).toBe(`Article bundles cannot be moved.`)
+        expect(actual.detail.values!['movingNode']).toEqual({ path: programing.path, articleNodeType: programing.articleNodeType })
+      })
+    })
+
+    describe('カテゴリの移動', () => {
+      it('ベーシックケース', async () => {
+        // カテゴリを別のカテゴリへ移動
+        // 'programing/ts'を'programing/js/ts'へ移動
+        const actual = await storageService.moveDir(`${ts.path}`, `${js.path}/${ts.name}`)
+
+        // 戻り値の検証
+        StorageService.sortNodes(actual.list)
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(3)
+        expect(actual.list[0].path).toBe(`${js.path}/${ts.name}`)
+        expect(actual.list[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
+        expect(actual.list[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazzIndex.name}`)
+      })
+
+      it('移動不可なディレクトリへ移動しようとした場合', async () => {
+        let actual!: InputValidationError
+        try {
+          // カテゴリを記事へ移動しようとした場合
+          // 'programing/ts'を'programing/js/variable/ts'へ移動
+          await storageService.moveDir(`${ts.path}`, `${variable.path}/${ts.name}`)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.detail.message).toBe(`Categories can only be moved to category bundles or categories.`)
+        expect(actual.detail.values!['movingNode']).toEqual({ path: ts.path, articleNodeType: ts.articleNodeType })
+        expect(actual.detail.values!['toParentNode']).toEqual({ path: variable.path, articleNodeType: variable.articleNodeType })
+      })
+    })
+
+    describe('記事の移動', () => {
+      it('ベーシックケース', async () => {
+        // 記事をカテゴリへ移動
+        // 'programing/js/variable'を'programing/ts/variable'へ移動
+        const actual = await storageService.moveDir(`${variable.path}`, `${ts.path}/${variable.name}`)
+
+        // 戻り値の検証
+        StorageService.sortNodes(actual.list)
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(2)
+        expect(actual.list[0].path).toBe(`${ts.path}/${variable.name}`)
+        expect(actual.list[1].path).toBe(`${ts.path}/${variable.name}/${variableIndex.name}`)
+      })
+
+      it('移動不可なディレクトリへ移動しようとした場合', async () => {
+        let actual!: InputValidationError
+        try {
+          //  記事を記事へ移動しようとした場合
+          // 'programing/ts/class'を'programing/js/variable/class'へ移動
+          await storageService.moveDir(`${clazz.path}`, `${variable.path}/${clazz.name}`)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.detail.message).toBe(`Articles can only be moved to list bundles or category bundles or categories.`)
+        expect(actual.detail.values!['movingNode']).toEqual({ path: clazz.path, articleNodeType: clazz.articleNodeType })
+        expect(actual.detail.values!['toParentNode']).toEqual({ path: variable.path, articleNodeType: variable.articleNodeType })
+      })
+    })
+
+    describe('一般ディレクトリの移動', () => {
+      it('ベーシックケース', async () => {
+        // 一般ディレクトリを記事へ移動
+        // 'tmp'を'programing/js/variable/tmp'へ移動
+        const actual = await storageService.moveDir(`${tmp.path}`, `${variable.path}/${tmp.name}`)
+
+        // 戻り値の検証
+        StorageService.sortNodes(actual.list)
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(1)
+        expect(actual.list[0].path).toBe(`${variable.path}/${tmp.name}`)
+      })
+
+      it('ルートノードへ移動', async () => {
+        // 一般ディレクトリをルートノードへ移動
+        // 'tmp'をルートノードへ移動
+        const actual = await storageService.moveDir(`${tmp.path}`, `${tmp.name}`)
+
+        // 戻り値の検証
+        StorageService.sortNodes(actual.list)
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(1)
+        expect(actual.list[0].path).toBe(`${tmp.name}`)
+      })
+
+      it('移動不可なディレクトリへ移動しようとした場合', async () => {
+        let actual!: InputValidationError
+        try {
+          //  一般ディレクトリをカテゴリバンドルへ移動しようとした場合
+          // 'tmp'を'programing/tmp'へ移動
+          await storageService.moveDir(`${tmp.path}`, `${programing.path}/${tmp.name}`)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.detail.message).toBe(`The general directory can only be moved to the general directory or articles.`)
+        expect(actual.detail.values!['movingNode']).toEqual({ path: tmp.path, articleNodeType: tmp.articleNodeType })
+        expect(actual.detail.values!['toParentNode']).toEqual({ path: programing.path, articleNodeType: programing.articleNodeType })
+      })
+    })
+
+    it('大量データの場合', async () => {
+      // ディレクトリを作成
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`, `dA`])
+
+      // ファイルをアップロード
+      const uploadItems: StorageUploadDataItem[] = []
+      for (let i = 1; i <= 5; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/d111/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      for (let i = 6; i <= 10; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d12/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      await storageService.uploadDataItems(uploadItems)
+
+      // 移動前のノードを取得
+      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
+
+      // 大量データを想定して分割で移動を行う
+      // 'd1'を'dA/d1'へ移動
+      const actual = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3 })
+      while (actual.nextPageToken) {
+        const pagination = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3, pageToken: actual.nextPageToken })
+        actual.nextPageToken = pagination.nextPageToken
+        actual.list.push(...pagination.list)
+      }
+
+      // 戻り値の検証
+      StorageService.sortNodes(actual.list)
+      expect(actual.list.length).toBe(14)
+      expect(actual.list[0].path).toBe(`dA/d1`)
+      expect(actual.list[1].path).toBe(`dA/d1/d11`)
+      expect(actual.list[2].path).toBe(`dA/d1/d11/d111`)
+      expect(actual.list[3].path).toBe(`dA/d1/d11/d111/file01.txt`)
+      expect(actual.list[4].path).toBe(`dA/d1/d11/d111/file02.txt`)
+      expect(actual.list[5].path).toBe(`dA/d1/d11/d111/file03.txt`)
+      expect(actual.list[6].path).toBe(`dA/d1/d11/d111/file04.txt`)
+      expect(actual.list[7].path).toBe(`dA/d1/d11/d111/file05.txt`)
+      expect(actual.list[8].path).toBe(`dA/d1/d12`)
+      expect(actual.list[9].path).toBe(`dA/d1/d12/file06.txt`)
+      expect(actual.list[10].path).toBe(`dA/d1/d12/file07.txt`)
+      expect(actual.list[11].path).toBe(`dA/d1/d12/file08.txt`)
+      expect(actual.list[12].path).toBe(`dA/d1/d12/file09.txt`)
+      expect(actual.list[13].path).toBe(`dA/d1/d12/file10.txt`)
+      await verifyMoveNodes(fmNodes, actual.list, storageService, storeService)
+
+      // 移動後の'dA'＋配下ノードを検証
+      const movedNodes = (await storageService.getDirDescendants(`dA`)).list
+      StorageService.sortNodes(movedNodes)
+      expect(movedNodes.length).toBe(15)
+      expect(movedNodes[0].path).toBe(`dA`)
+      expect(movedNodes[1].path).toBe(`dA/d1`)
+      expect(movedNodes[2].path).toBe(`dA/d1/d11`)
+      expect(movedNodes[3].path).toBe(`dA/d1/d11/d111`)
+      expect(movedNodes[4].path).toBe(`dA/d1/d11/d111/file01.txt`)
+      expect(movedNodes[5].path).toBe(`dA/d1/d11/d111/file02.txt`)
+      expect(movedNodes[6].path).toBe(`dA/d1/d11/d111/file03.txt`)
+      expect(movedNodes[7].path).toBe(`dA/d1/d11/d111/file04.txt`)
+      expect(movedNodes[8].path).toBe(`dA/d1/d11/d111/file05.txt`)
+      expect(movedNodes[9].path).toBe(`dA/d1/d12`)
+      expect(movedNodes[10].path).toBe(`dA/d1/d12/file06.txt`)
+      expect(movedNodes[11].path).toBe(`dA/d1/d12/file07.txt`)
+      expect(movedNodes[12].path).toBe(`dA/d1/d12/file08.txt`)
+      expect(movedNodes[13].path).toBe(`dA/d1/d12/file09.txt`)
+      expect(movedNodes[14].path).toBe(`dA/d1/d12/file10.txt`)
     })
   })
 
@@ -1923,6 +2286,127 @@ describe('AppStorageService', () => {
       const actual = await storageService.m_toNodePaths({})
 
       expect(actual.length).toBe(0)
+    })
+  })
+
+  describe('m_validateArticleBundleDescendant', () => {
+    it('ベーシックケース', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // 記事バンドルを作成
+      const bundlePath = `${articleRootPath}/blog`
+      await storageService.createArticleDir(bundlePath, {
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      })
+      // 引数ノードに記事バンドル配下のディレクトリを指定
+      const art1Dir = `${bundlePath}/art1`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleBundleDescendant(art1Dir)
+      } catch (err) {
+        actual = err
+      }
+
+      // エラーは発生せず正常終了
+      expect(actual).toBeUndefined()
+    })
+
+    it('引数ノードが記事配下でない場合①', async () => {
+      // ユーザールートのパス
+      const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      // 引数ノードにユーザールート直下のディレクトリを指定
+      const art1Dir = `${userDirPath}/art1`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleBundleDescendant(art1Dir)
+      } catch (err) {
+        actual = err
+      }
+
+      // 引数ノードが記事配下でないためエラーが発生
+      expect(actual.detail.message).toBe(`The specified path is not under article bundle: '${art1Dir}'`)
+    })
+
+    it('引数ノードが記事配下でない場合②', async () => {
+      // アセットディレクトリの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      await storageService.createHierarchicalDirs([assetsPath])
+      // アセットディレクトリ配下に記事を配置するパスを作成
+      const art1Dir = `${assetsPath}/art1`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleBundleDescendant(art1Dir)
+      } catch (err) {
+        actual = err
+      }
+
+      // 引数ノードが記事配下でないためエラーが発生
+      expect(actual.detail.message).toBe(`The specified path is not under article bundle: '${art1Dir}'`)
+    })
+  })
+
+  describe('m_validateArticleRootDescendant', () => {
+    it('ベーシックケース - 記事ルート直下', async () => {
+      // 記事ルートのパスを作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      // 記事バンドルのパスを作成
+      const bundlePath = `${articleRootPath}/blog`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleRootDescendant(bundlePath)
+      } catch (err) {
+        actual = err
+      }
+
+      // エラーは発生せず正常終了
+      expect(actual).toBeUndefined()
+    })
+
+    it('ベーシックケース - 記事バンドル配下', async () => {
+      // 記事ルートのパスを作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      // 記事バンドルのパスを作成
+      const bundlePath = `${articleRootPath}/blog`
+      // 記事のパスを作成
+      const art1Dir = `${bundlePath}/art1`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleRootDescendant(art1Dir)
+      } catch (err) {
+        actual = err
+      }
+
+      // エラーは発生せず正常終了
+      expect(actual).toBeUndefined()
+    })
+
+    it('引数ノードが記事ルート配下でない場合', async () => {
+      const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      // 記事バンドルを記事ルート以外に指定
+      const bundlePath = `${userDirPath}/blog`
+
+      let actual!: InputValidationError
+      try {
+        // テスト対象実行
+        await storageService.m_validateArticleRootDescendant(bundlePath)
+      } catch (err) {
+        actual = err
+      }
+
+      // 記事バンドルを記事ルートでないためエラーが発生
+      expect(actual.detail.message).toBe(`The specified path is not under article root: '${bundlePath}'`)
     })
   })
 })

@@ -5,6 +5,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "articleNodeType",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "dir",
           "order": "ASCENDING"
         },

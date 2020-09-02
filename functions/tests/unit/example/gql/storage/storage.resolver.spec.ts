@@ -2123,8 +2123,8 @@ describe('StorageResolver', () => {
   describe('articleChildren', () => {
     const gql = {
       query: `
-        query GetArticleChildren($dirPath: String!, $input: StoragePaginationInput) {
-          articleChildren(dirPath: $dirPath, input: $input) {
+        query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) {
+          articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) {
             list {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
             }
@@ -2137,10 +2137,13 @@ describe('StorageResolver', () => {
     it('疎通確認', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const bundlePath = `${articleRootPath}/blog`
-      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
+      const art1Node = newTestStorageDirNode(`${bundlePath}/art1`, {
+        articleNodeType: StorageArticleNodeType.ArticleDir,
+        articleSortOrder: 999,
+      })
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
-      td.when(getArticleChildren(bundlePath, { maxChunk: 3 })).thenResolve({
-        list: [cat1Node],
+      td.when(getArticleChildren(bundlePath, [StorageArticleNodeType.ArticleDir], { maxChunk: 3 })).thenResolve({
+        list: [art1Node],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
 
@@ -2148,12 +2151,16 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
+          variables: {
+            dirPath: bundlePath,
+            articleTypes: [StorageArticleNodeType.ArticleDir],
+            input: { maxChunk: 3 },
+          },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.articleChildren.list).toEqual(toGQLResponseStorageNodes([cat1Node]))
+      expect(response.body.data.articleChildren.list).toEqual(toGQLResponseStorageNodes([art1Node]))
       expect(response.body.data.articleChildren.nextPageToken).toBe('abcdefg')
     })
 
@@ -2163,7 +2170,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
+        variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.ArticleDir], input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2177,7 +2184,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, input: { maxChunk: 3 } },
+          variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.ArticleDir], input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )

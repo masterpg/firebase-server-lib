@@ -97,6 +97,7 @@ describe('StorageService', () => {
     })
 
     it('ベーシックケース - ファイル', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       const [fileNodeA] = await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -133,6 +134,7 @@ describe('StorageService', () => {
     })
 
     it('ベーシックケース - ファイル', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -170,6 +172,7 @@ describe('StorageService', () => {
     })
 
     it('ベーシックケース - ファイル', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -219,6 +222,7 @@ describe('StorageService', () => {
 
   describe('getDirDescendants', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -250,6 +254,7 @@ describe('StorageService', () => {
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -275,6 +280,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -301,6 +307,7 @@ describe('StorageService', () => {
     })
 
     it('dirPathにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -317,6 +324,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
@@ -370,6 +378,7 @@ describe('StorageService', () => {
 
   describe('getDescendants', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -400,6 +409,7 @@ describe('StorageService', () => {
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -424,6 +434,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -450,6 +461,7 @@ describe('StorageService', () => {
     })
 
     it('dirPathにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -466,6 +478,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
@@ -518,6 +531,7 @@ describe('StorageService', () => {
 
   describe('getDirChildren', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -548,6 +562,7 @@ describe('StorageService', () => {
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -573,6 +588,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -598,6 +614,7 @@ describe('StorageService', () => {
     })
 
     it('dirPathにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -614,6 +631,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1/d11`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 10; i++) {
         uploadItems.push({
@@ -663,6 +681,7 @@ describe('StorageService', () => {
 
   describe('getChildren', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -692,6 +711,7 @@ describe('StorageService', () => {
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -716,6 +736,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -741,6 +762,7 @@ describe('StorageService', () => {
     })
 
     it('dirPathにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -757,6 +779,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 10; i++) {
         uploadItems.push({
@@ -805,6 +828,7 @@ describe('StorageService', () => {
 
   describe('getHierarchicalNodes', () => {
     it('ベーシックケース - 引数にファイルを指定', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -862,6 +886,7 @@ describe('StorageService', () => {
     })
 
     it('階層構造の形成に必要なディレクトリが欠けている場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -908,6 +933,7 @@ describe('StorageService', () => {
 
   describe('getAncestorDirs', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1054,6 +1080,7 @@ describe('StorageService', () => {
 
   describe('removeDir', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1104,6 +1131,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
@@ -1157,6 +1185,7 @@ describe('StorageService', () => {
 
   describe('removeFile', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1191,10 +1220,8 @@ describe('StorageService', () => {
 
   describe('moveDir', () => {
     it('ベーシックケース', async () => {
-      // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`d2`])
-
-      // 作成したディレクトリにファイルをアップロード
+      // ファイルをアップロード
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1229,6 +1256,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下へ移動する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/docs`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1305,6 +1333,7 @@ describe('StorageService', () => {
     it('移動先に同名のファイルが存在する場合', async () => {
       // ファイルをアップロード
       // 'd1'と'd2'配下に同じ名前の'file.txt'を配置
+      await storageService.createHierarchicalDirs([`d1/docs`, `d2/docs`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1363,6 +1392,7 @@ describe('StorageService', () => {
     })
 
     it('移動先ディレクトリが存在しない場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1382,6 +1412,7 @@ describe('StorageService', () => {
     })
 
     it('移動先ディレクトリが移動元のサブディレクトリの場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1401,10 +1432,8 @@ describe('StorageService', () => {
     })
 
     it('移動元から移動先に共有設定が引き継がれるか検証 - 移動先に同名のディレクトリはない', async () => {
-      // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`dY`])
-
-      // 作成したディレクトリにファイルをアップロード
+      // ファイルをアップロード
+      await storageService.createHierarchicalDirs([`dX/dA/dB`, `dY`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1484,6 +1513,7 @@ describe('StorageService', () => {
 
     it('移動元から移動先に共有設定が引き継がれるか検証 - 移動先に同名のディレクトリがある', async () => {
       // ファイルをアップロード
+      await storageService.createHierarchicalDirs([`dX/dA`, `dY/dA`])
       await storageService.uploadDataItems([
         {
           data: 'testA-X',
@@ -1566,6 +1596,7 @@ describe('StorageService', () => {
     })
 
     it('移動先ディレクトリパスへのバリデーション実行確認', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1586,7 +1617,7 @@ describe('StorageService', () => {
 
     it('大量データの場合', async () => {
       // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`dA`])
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`, `dA`])
 
       // ファイルをアップロード
       const uploadItems: StorageUploadDataItem[] = []
@@ -1662,7 +1693,7 @@ describe('StorageService', () => {
   describe('moveFile', () => {
     it('ベーシックケース', async () => {
       // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`d2`])
+      await storageService.createHierarchicalDirs([`d1`, `d2`])
 
       // ファイルをアップロード
       await storageService.uploadDataItems([
@@ -1684,6 +1715,7 @@ describe('StorageService', () => {
     })
 
     it('バケット直下へ移動する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1705,6 +1737,7 @@ describe('StorageService', () => {
     it('移動先に同名のファイルが存在する場合', async () => {
       // ファイルをアップロード
       // 'd1'と'd2'配下に'file.txt'を配置
+      await storageService.createHierarchicalDirs([`d1`, `d2`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1747,6 +1780,7 @@ describe('StorageService', () => {
     })
 
     it('移動先ディレクトリが存在しない場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1768,7 +1802,7 @@ describe('StorageService', () => {
 
     it('移動先ファイルパスへのバリデーション実行確認', async () => {
       // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`d2`])
+      await storageService.createHierarchicalDirs([`d1`, `d2`])
 
       // ファイルをアップロード
       await storageService.uploadDataItems([
@@ -1792,6 +1826,7 @@ describe('StorageService', () => {
 
   describe('renameDir', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -1913,6 +1948,7 @@ describe('StorageService', () => {
 
     it('大量データの場合', async () => {
       // ファイルをアップロード
+      await storageService.createHierarchicalDirs([`dA/d1/d11/d111`, `dA/d1/d12`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
         uploadItems.push({
@@ -1985,6 +2021,7 @@ describe('StorageService', () => {
 
   describe('renameFile', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2004,6 +2041,7 @@ describe('StorageService', () => {
     })
 
     it('リネームしようとする名前のファイルが既に存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2056,6 +2094,7 @@ describe('StorageService', () => {
     })
 
     it('リネームディレクトリパスへのバリデーション実行確認', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2077,6 +2116,7 @@ describe('StorageService', () => {
 
   describe('setDirShareSettings', () => {
     beforeEach(async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2242,6 +2282,7 @@ describe('StorageService', () => {
 
   describe('setFileShareSettings', () => {
     beforeEach(async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2417,6 +2458,7 @@ describe('StorageService', () => {
 
   describe('handleUploadedFile', () => {
     it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2444,6 +2486,7 @@ describe('StorageService', () => {
     })
 
     it('アップロードによるファイル更新後の実行', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       const [fileNodeA_1] = await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2471,6 +2514,7 @@ describe('StorageService', () => {
     })
 
     it('複数回実行した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`])
       const [fileNodeA] = await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2498,6 +2542,7 @@ describe('StorageService', () => {
     })
 
     it('ファイルパスへのバリデーション実行確認', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
@@ -2554,6 +2599,7 @@ describe('StorageService', () => {
     })
 
     it('画像ファイルをダウンロード', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       const localFilePath = `${__dirname}/${TEST_FILES_DIR}/desert.jpg`
       const toFilePath = `d1/desert.jpg`
       const [fileNode] = await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
@@ -2569,6 +2615,7 @@ describe('StorageService', () => {
     })
 
     it('テキストファイルをダウンロード', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       const fileData = 'test'
       const [fileNode] = await storageService.uploadDataItems([
         {
@@ -2588,6 +2635,7 @@ describe('StorageService', () => {
     })
 
     it('If-Modified-Sinceの検証', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
       const [fileNode] = await storageService.uploadDataItems([
         {
           data: 'test',

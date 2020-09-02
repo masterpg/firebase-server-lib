@@ -12,7 +12,14 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
 } from '../../../lib'
-import { CreateArticleDirInput, SetArticleSortOrderInput, StorageNode, StorageServiceDI, StorageServiceModule } from '../../services'
+import {
+  CreateArticleDirInput,
+  SetArticleSortOrderInput,
+  StorageArticleNodeType,
+  StorageNode,
+  StorageServiceDI,
+  StorageServiceModule,
+} from '../../services'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -246,10 +253,11 @@ export class StorageResolver {
   async articleChildren(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
+    @Args('articleTypes') articleTypes: StorageArticleNodeType[],
     @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getArticleChildren(dirPath, input)
+    return this.storageService.getArticleChildren(dirPath, articleTypes, input)
   }
 }
 

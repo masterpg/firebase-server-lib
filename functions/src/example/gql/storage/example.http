@@ -293,9 +293,10 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetArticleChildren",
-  "query": "query GetArticleChildren($dirPath: String!, $input: StoragePaginationInput) { articleChildren(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) { articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "dirPath": "users/general/articles/blog",
+    "articleTypes": "ArticleDir",
     "input": { "maxChunk": 3 }
   }
 }

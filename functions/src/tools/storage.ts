@@ -325,6 +325,8 @@ program
     const nestApp = await createNestApplication(StorageToolModule)
     const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
+    await storageService.createHierarchicalDirs([dirPath])
+
     const uploadItems: StorageUploadDataItem[] = []
     for (let i = 1; i <= num; i++) {
       const fileNamePrefix = `file${i.toString(10).padStart(num.toString(10).length, '0')}`
