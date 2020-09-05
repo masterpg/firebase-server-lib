@@ -15,8 +15,8 @@ export enum AuthStatus {
 export enum StorageArticleNodeType {
     ListBundle = "ListBundle",
     CategoryBundle = "CategoryBundle",
-    ArticleDir = "ArticleDir",
-    CategoryDir = "CategoryDir"
+    Article = "Article",
+    Category = "Category"
 }
 
 export enum StorageNodeType {
@@ -36,8 +36,8 @@ export interface CartItemUpdateInput {
     quantity: number;
 }
 
-export interface CreateArticleDirInput {
-    articleNodeType: StorageArticleNodeType;
+export interface CreateArticleRootUnderDirInput {
+    articleNodeType?: StorageArticleNodeType;
 }
 
 export interface CreateStorageNodeInput {
@@ -175,7 +175,7 @@ export interface IMutation {
     setStorageDirShareSettings(dirPath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
-    createArticleDir(dirPath: string, input: CreateArticleDirInput): StorageNode | Promise<StorageNode>;
+    createArticleRootUnderDir(dirPath: string, input?: CreateArticleRootUnderDirInput): StorageNode | Promise<StorageNode>;
     setArticleSortOrder(nodePath: string, input: SetArticleSortOrderInput): StorageNode | Promise<StorageNode>;
     setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;

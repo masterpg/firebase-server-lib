@@ -42,7 +42,7 @@ describe('FoundationService', () => {
       } as AppConfigResponse['user'])
       expect(actual.article).toEqual({
         rootName: 'articles',
-        fileName: '__index__.md',
+        fileName: 'index.md',
         assetsName: 'assets',
       } as AppConfigResponse['article'])
     })

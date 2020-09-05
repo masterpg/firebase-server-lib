@@ -7,7 +7,12 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import { CreateArticleDirInput, SetArticleSortOrderInput, StorageArticleNodeType, StorageServiceDI } from '../../../../../src/example/services'
+import {
+  CreateArticleRootUnderDirInput,
+  SetArticleSortOrderInput,
+  StorageArticleNodeType,
+  StorageServiceDI,
+} from '../../../../../src/example/services'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -1992,11 +1997,11 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('createArticleDir', () => {
+  describe('createArticleRootUnderDir', () => {
     const gql = {
       query: `
-        mutation CreateArticleDir($dirPath: String!, $input: CreateArticleDirInput!) {
-          createArticleDir(dirPath: $dirPath, input: $input) {
+        mutation CreateArticleRootUnderDir($dirPath: String!, $input: CreateArticleRootUnderDirInput) {
+          createArticleRootUnderDir(dirPath: $dirPath, input: $input) {
             id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
@@ -2006,11 +2011,11 @@ describe('StorageResolver', () => {
     it('疎通確認', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
       const bundleNode = newTestStorageDirNode(`${bundlePath}`, input)
 
-      const createArticleDir = td.replace(storageService, 'createArticleDir')
-      td.when(createArticleDir(bundleNode.path, input)).thenResolve(bundleNode)
+      const createArticleRootUnderDir = td.replace(storageService, 'createArticleRootUnderDir')
+      td.when(createArticleRootUnderDir(bundleNode.path, input)).thenResolve(bundleNode)
 
       const response = await requestGQL(
         app,
@@ -2021,13 +2026,13 @@ describe('StorageResolver', () => {
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.createArticleDir).toEqual(toGQLResponseStorageNode(bundleNode))
+      expect(response.body.data.createArticleRootUnderDir).toEqual(toGQLResponseStorageNode(bundleNode))
     })
 
     it('サインインしていない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
 
       const response = await requestGQL(app, {
         ...gql,
@@ -2040,7 +2045,7 @@ describe('StorageResolver', () => {
     it('アクセス権限がない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
 
       const response = await requestGQL(
         app,
@@ -2138,11 +2143,11 @@ describe('StorageResolver', () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const bundlePath = `${articleRootPath}/blog`
       const art1Node = newTestStorageDirNode(`${bundlePath}/art1`, {
-        articleNodeType: StorageArticleNodeType.ArticleDir,
+        articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 999,
       })
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
-      td.when(getArticleChildren(bundlePath, [StorageArticleNodeType.ArticleDir], { maxChunk: 3 })).thenResolve({
+      td.when(getArticleChildren(bundlePath, [StorageArticleNodeType.Article], { maxChunk: 3 })).thenResolve({
         list: [art1Node],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -2153,7 +2158,7 @@ describe('StorageResolver', () => {
           ...gql,
           variables: {
             dirPath: bundlePath,
-            articleTypes: [StorageArticleNodeType.ArticleDir],
+            articleTypes: [StorageArticleNodeType.Article],
             input: { maxChunk: 3 },
           },
         },
@@ -2170,7 +2175,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.ArticleDir], input: { maxChunk: 3 } },
+        variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.Article], input: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2184,7 +2189,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.ArticleDir], input: { maxChunk: 3 } },
+          variables: { dirPath: bundlePath, articleTypes: [StorageArticleNodeType.Article], input: { maxChunk: 3 } },
         },
         { headers: GENERAL_USER_HEADER }
       )

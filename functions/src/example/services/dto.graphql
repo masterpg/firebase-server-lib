@@ -99,8 +99,8 @@ enum StorageNodeType {
 enum StorageArticleNodeType {
   ListBundle
   CategoryBundle
-  ArticleDir
-  CategoryDir
+  Article
+  Category
 }
 
 type StorageNode implements TimestampEntity {
@@ -157,8 +157,8 @@ input CreateStorageNodeInput {
   writeUIds: [String!]
 }
 
-input CreateArticleDirInput {
-  articleNodeType: StorageArticleNodeType!
+input CreateArticleRootUnderDirInput {
+  articleNodeType: StorageArticleNodeType
 }
 
 input SetArticleSortOrderInput {

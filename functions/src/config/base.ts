@@ -116,7 +116,7 @@ class StorageConfigImpl implements StorageConfig {
     }
     this.article = {
       rootName: params.article?.rootName ?? 'articles',
-      fileName: params.article?.fileName ?? '__index__.md',
+      fileName: params.article?.fileName ?? 'index.md',
       assetsName: params.article?.assetsName ?? 'assets',
     }
   }

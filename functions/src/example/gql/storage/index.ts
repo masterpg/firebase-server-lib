@@ -13,7 +13,7 @@ import {
   StoragePaginationResult,
 } from '../../../lib'
 import {
-  CreateArticleDirInput,
+  CreateArticleRootUnderDirInput,
   SetArticleSortOrderInput,
   StorageArticleNodeType,
   StorageNode,
@@ -228,13 +228,13 @@ export class StorageResolver {
   }
 
   @Mutation()
-  async createArticleDir(
+  async createArticleRootUnderDir(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
-    @Args('input') input: CreateArticleDirInput
+    @Args('input') input?: CreateArticleRootUnderDirInput
   ): Promise<StorageNode> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.createArticleDir(dirPath, input)
+    return this.storageService.createArticleRootUnderDir(dirPath, input)
   }
 
   @Mutation()

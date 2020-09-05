@@ -10,7 +10,7 @@ type Mutation {
   setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   handleUploadedFile(filePath: String!): StorageNode!
-  createArticleDir(dirPath: String!, input: CreateArticleDirInput!): StorageNode!
+  createArticleRootUnderDir(dirPath: String!, input: CreateArticleRootUnderDirInput): StorageNode!
   setArticleSortOrder(nodePath: String!, input: SetArticleSortOrderInput!): StorageNode!
 }
 

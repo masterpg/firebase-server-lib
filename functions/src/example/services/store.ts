@@ -32,8 +32,8 @@ interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 enum StorageArticleNodeType {
   ListBundle = 'ListBundle',
   CategoryBundle = 'CategoryBundle',
-  ArticleDir = 'ArticleDir',
-  CategoryDir = 'CategoryDir',
+  Category = 'Category',
+  Article = 'Article',
 }
 
 interface StorageNode extends _StorageNode {
