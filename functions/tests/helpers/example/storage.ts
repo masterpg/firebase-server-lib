@@ -8,7 +8,9 @@ import { removeBothEndsSlash } from 'web-base-lib'
 //
 //========================================================================
 
-interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'articleNodeType' | 'articleSortOrder' | 'createdAt' | 'updatedAt'> {
+interface ResponseStorageNode
+  extends Omit<StorageNode, 'level' | 'articleNodeName' | 'articleNodeType' | 'articleSortOrder' | 'createdAt' | 'updatedAt'> {
+  articleNodeName?: string | null
   articleNodeType?: StorageArticleNodeType | null
   articleSortOrder?: number | null
   createdAt: string
@@ -61,6 +63,7 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       readUIds: node.share.readUIds ?? null,
       writeUIds: node.share.writeUIds ?? null,
     },
+    articleNodeName: node.articleNodeName ?? null,
     articleNodeType: node.articleNodeType ?? null,
     articleSortOrder: node.articleSortOrder ?? null,
     version: node.version,

@@ -990,18 +990,35 @@ describe('StorageService', () => {
       await existsNodes([actual], storageService)
     })
 
-    it('既に存在するディレクトリを作成しようとした場合', async () => {
-      await storageService.createDir(`d1`)
+    it('既に存在するディレクトリを作成しようとした場合 - 共有設定なし', async () => {
+      const before = await storageService.createDir(`d1`)
 
-      let actual!: InputValidationError
-      try {
-        // 同じパスのディレクトリ作成を試みる
-        const actual = await storageService.createDir(`d1`)
-      } catch (err) {
-        actual = err
-      }
+      // 同じパスのディレクトリ作成を試みる
+      const actual = await storageService.createDir(`d1`)
 
-      expect(actual.detail.message).toBe(`The specified directory already exists: 'd1'`)
+      expect(actual).toEqual(before)
+      await existsNodes([actual], storageService)
+    })
+
+    it('既に存在するディレクトリを作成しようとした場合 - 共有設定あり', async () => {
+      const before = await storageService.createDir(`d1`)
+
+      // 同じパスのディレクトリ作成を試みる
+      const actual = await storageService.createDir(`d1`, {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['jiro'],
+      })
+
+      expect(actual.path).toBe(`d1`)
+      expect(actual.share).toEqual<StorageNodeShareSettings>({
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['jiro'],
+      })
+      expect(actual.version).toBe(before.version + 1)
+
+      await existsNodes([actual], storageService)
     })
 
     it('祖先が存在しない場合', async () => {
@@ -1015,8 +1032,8 @@ describe('StorageService', () => {
 
       expect(actual.detail.message).toBe(`The ancestor directory of the specified directory does not exist.`)
       expect(actual.detail.values).toEqual({
-        specifiedDirPath: `d1/d11`,
-        ancestorDirPath: `d1`,
+        specifiedPath: `d1/d11`,
+        ancestorPath: `d1`,
       })
     })
 
@@ -2467,9 +2484,7 @@ describe('StorageService', () => {
         },
       ])
 
-      // テストのためストアからノードを削除しておく
-      await storeService.storageDao.delete((await storageService.getNodeByPath(`d1`))!.id)
-      await storeService.storageDao.delete((await storageService.getNodeByPath(`d1/d11`))!.id)
+      // テストのためストアからファイルノードを削除しておく
       await storeService.storageDao.delete((await storageService.getNodeByPath(`d1/d11/fileA.txt`))!.id)
 
       // ファイルアップロードの後処理を実行
@@ -2523,7 +2538,7 @@ describe('StorageService', () => {
         },
       ])
 
-      // テストのためストアからノードを削除しておく
+      // テストのためストアからファイルノードを削除しておく
       await storeService.storageDao.delete((await storageService.getNodeByPath(`d1/d11/fileA.txt`))!.id)
 
       // ファイルアップロードの後処理を実行 - 1
@@ -2561,14 +2576,36 @@ describe('StorageService', () => {
     })
 
     it('存在しないファイルを指定した場合', async () => {
-      let actual: Error
+      let actual!: Error
       try {
         await storageService.handleUploadedFile(`d1/fileA.txt`)
       } catch (err) {
         actual = err
       }
 
-      expect(actual!.message).toBe(`Uploaded file not found: 'd1/fileA.txt'`)
+      expect(actual.message).toBe(`Uploaded file not found: 'd1/fileA.txt'`)
+    })
+
+    it('ファイルの祖先が存在しない場合', async () => {
+      const bucket = admin.storage().bucket()
+      const file = bucket.file(`d1/fileA.txt`)
+      await file.save('testA', { contentType: 'text/plain' })
+
+      let actual!: InputValidationError
+      try {
+        await storageService.handleUploadedFile(`${file.name}`)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe(`The ancestor directory of the file does not exist.`)
+      expect(actual.detail.values).toEqual({
+        filePath: file.name,
+        ancestorPath: `d1`,
+      })
+
+      const { exists } = await storageService.getStorageFile(file.name)
+      expect(exists).toBeFalsy()
     })
   })
 

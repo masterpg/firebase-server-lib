@@ -36,7 +36,9 @@ export interface CartItemUpdateInput {
     quantity: number;
 }
 
-export interface CreateArticleRootUnderDirInput {
+export interface CreateArticleTypeDirInput {
+    dir: string;
+    articleNodeName: string;
     articleNodeType?: StorageArticleNodeType;
 }
 
@@ -175,7 +177,8 @@ export interface IMutation {
     setStorageDirShareSettings(dirPath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     setStorageFileShareSettings(filePath: string, input?: StorageNodeShareSettingsInput): StorageNode | Promise<StorageNode>;
     handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
-    createArticleRootUnderDir(dirPath: string, input?: CreateArticleRootUnderDirInput): StorageNode | Promise<StorageNode>;
+    createArticleTypeDir(input: CreateArticleTypeDirInput): StorageNode | Promise<StorageNode>;
+    createArticleGeneralDir(dirPath: string, input?: CreateStorageNodeInput): StorageNode | Promise<StorageNode>;
     setArticleSortOrder(nodePath: string, input: SetArticleSortOrderInput): StorageNode | Promise<StorageNode>;
     setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;
@@ -231,6 +234,7 @@ export interface StorageNode extends TimestampEntity {
     contentType: string;
     size: number;
     share: StorageNodeShareSettings;
+    articleNodeName?: string;
     articleNodeType?: StorageArticleNodeType;
     articleSortOrder?: Long;
     version: number;

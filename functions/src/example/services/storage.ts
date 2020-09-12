@@ -27,8 +27,10 @@ import dayjs = require('dayjs')
 //
 //========================================================================
 
-interface CreateArticleRootUnderDirInput {
-  articleNodeType?: StorageArticleNodeType
+interface CreateArticleTypeDirInput {
+  dir: string
+  articleNodeName: string
+  articleNodeType: StorageArticleNodeType
 }
 
 interface SetArticleSortOrderInput {
@@ -261,28 +263,95 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   }
 
   /**
-   * 記事ルート配下にディレクトリを作成します。
-   * @param dirPath
+   * 記事系ディレクトリを作成します。
    * @param input
    */
-  async createArticleRootUnderDir(dirPath: string, input: CreateArticleRootUnderDirInput = {}): Promise<StorageNode> {
+  async createArticleTypeDir(input: CreateArticleTypeDirInput): Promise<StorageNode> {
     let result!: StorageNode
     switch (input.articleNodeType) {
       case StorageArticleNodeType.ListBundle:
       case StorageArticleNodeType.CategoryBundle:
-        result = await this.m_createArticleBundle(dirPath, input.articleNodeType)
+        result = await this.m_createArticleBundle(input)
         break
       case StorageArticleNodeType.Category:
-        result = await this.m_createArticleCategory(dirPath)
+        result = await this.m_createArticleCategory(input)
         break
       case StorageArticleNodeType.Article:
-        result = await this.m_createArticle(dirPath)
-        break
-      default:
-        result = await this.m_createArticleGeneralDir(dirPath)
+        result = await this.m_createArticle(input)
         break
     }
     return result
+  }
+
+  /**
+   * 記事ルート配下に一般ディレクトリを作成します。
+   * @param dirPath
+   * @param input
+   */
+  async createArticleGeneralDir(dirPath: string, input?: CreateStorageNodeInput): Promise<StorageNode> {
+    StorageService.validatePath(dirPath)
+
+    // 引数ディレクトリのパスが記事ルート配下のものか検証
+    this.m_validateArticleRootDescendant(dirPath)
+
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const assetsName = config.storage.article.assetsName
+
+    const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
+    const ancestorDirNodes = hierarchicalDirNodes.filter(node => node.path !== dirPath)
+    const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
+
+    // 祖先ディレクトリが存在することを検証
+    for (const iDirNode of ancestorDirNodes) {
+      if (!iDirNode.exists) {
+        throw new InputValidationError(`The ancestor of the specified path does not exist.`, {
+          specifiedPath: dirPath,
+          ancestorPath: iDirNode.path,
+        })
+      }
+    }
+
+    // 引数パスがアセット配下以外の場合
+    // ※アセットとその配下はディレクトリ作成が可能なので、このブロック内の検証を行う必要はない
+    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/(?:${assetsName}$|${assetsName}/)`)
+    if (!reg.test(dirPath)) {
+      // 祖先に｢記事｣が存在することを確認
+      const parentPath = removeStartDirChars(path.dirname(dirPath))
+      let nearestArticleNodeType: StorageArticleNodeType | undefined = undefined
+      for (let i = ancestorDirNodes.length - 1; i >= 0; i--) {
+        const ancestorNode = ancestorDirNodes[i]
+        if (ancestorNode?.articleNodeType) {
+          nearestArticleNodeType = ancestorNode.articleNodeType
+          break
+        }
+      }
+      if (nearestArticleNodeType !== StorageArticleNodeType.Article) {
+        throw new InputValidationError(`The specified path is not under article root: '${dirPath}'`)
+      }
+    }
+
+    const dirNode = hierarchicalDirNodeDict[dirPath]
+    // 引数ディレクトリがまだ存在しない場合
+    if (!dirNode.exists) {
+      // ディレクトリを作成
+      const nodeId = await this.storeService.storageDao.add({
+        ...dirNode,
+        version: FieldValue.increment(1),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      // ストアに追加された最新ディレクトリを取得
+      return (await this.getNodeById(nodeId))!
+    }
+    // 引数ディレクトリが既に存在する場合
+    else {
+      if (input) {
+        return await this.setDirShareSettings(dirPath, input)
+      } else {
+        return (await this.getNodeByPath(dirPath))!
+      }
+    }
   }
 
   /**
@@ -596,57 +665,55 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
 
   /**
    * 記事バンドルを作成します。
-   * @param dirPath
-   * @param bundleType
+   * @param input
    */
-  private async m_createArticleBundle(
-    dirPath: string,
-    bundleType: StorageArticleNodeType.ListBundle | StorageArticleNodeType.CategoryBundle
-  ): Promise<StorageNode> {
-    dirPath = removeBothEndsSlash(dirPath)
-    const parentDir = removeStartDirChars(path.dirname(dirPath))
+  private async m_createArticleBundle(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+    StorageService.validatePath(input.dir)
+    StorageService.validateArticleNodeName(input.articleNodeName)
+    const parentPath = removeBothEndsSlash(input.dir)
 
     // 指定されたディレクトリパスが記事ルート直下であることを検証
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
     const reg = new RegExp(`${userRootName}/[^/]+/${articleRootName}$`)
-    if (!reg.test(parentDir)) {
-      throw new InputValidationError(`The article bundle must be created directly under the article root: '${dirPath}'`)
+    if (!reg.test(parentPath)) {
+      throw new InputValidationError(`The article bundle must be created directly under the article root.`, { input })
     }
 
     // 記事バンドルを作成
+    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
     return this.m_createArticleTypeDir(dirPath, {
-      articleNodeType: bundleType,
+      articleNodeName: input.articleNodeName,
+      articleNodeType: input.articleNodeType,
       articleSortOrder: StorageService.generateArticleSortOrder(),
     })
   }
 
   /**
    * 記事カテゴリを作成します。
-   * @param dirPath
+   * @param input
    */
-  private async m_createArticleCategory(dirPath: string): Promise<StorageNode> {
-    dirPath = removeBothEndsSlash(dirPath)
+  private async m_createArticleCategory(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+    StorageService.validatePath(input.dir)
+    StorageService.validateArticleNodeName(input.articleNodeName)
+    const parentPath = removeBothEndsSlash(input.dir)
 
     // 親ディレクトリが｢カテゴリバンドル、カテゴリ｣以外の場合、
     // カテゴリの作成はできないためエラー
-    const parentPath = removeStartDirChars(path.dirname(dirPath))
     const parentNode = await this.getNodeByPath(parentPath)
     if (!parentNode) {
-      throw new InputValidationError(`The parent of the specified path does not exist.`, {
-        specifiedPath: dirPath,
-        parentPath,
-      })
+      throw new InputValidationError(`There is no parent directory for the category to be created.`, { parentPath })
     }
     if (!(parentNode.articleNodeType === StorageArticleNodeType.CategoryBundle || parentNode.articleNodeType === StorageArticleNodeType.Category)) {
-      throw new InputValidationError(`Cannot create a article category for a specified path.`, {
-        specifiedPath: dirPath,
+      throw new InputValidationError(`Categories cannot be created under the specified parent.`, {
         parentNode: { path: parentNode.path, articleNodeType: parentNode.articleNodeType },
       })
     }
 
     // カテゴリを作成
+    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
     return this.m_createArticleTypeDir(dirPath, {
+      articleNodeName: input.articleNodeName,
       articleNodeType: StorageArticleNodeType.Category,
       articleSortOrder: StorageService.generateArticleSortOrder(),
     })
@@ -655,10 +722,12 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   /**
    * 記事を作成します。
    * 作成される記事とはディレクトリであり、記事に必要なファイルが格納されることになります。
-   * @param dirPath
+   * @param input
    */
-  private async m_createArticle(dirPath: string): Promise<StorageNode> {
-    dirPath = removeBothEndsSlash(dirPath)
+  private async m_createArticle(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+    StorageService.validateArticleNodeName(input.articleNodeName)
+    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
+    const parentPath = removeBothEndsSlash(input.dir)
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
@@ -666,13 +735,9 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
 
     // 親ディレクトリが｢リストバンドル、カテゴリバンドル、カテゴリ｣以外の場合、
     // カテゴリの作成はできないためエラー
-    const parentPath = removeStartDirChars(path.dirname(dirPath))
     const parentNode = hierarchicalDirNodeDict[parentPath]
     if (!parentNode.exists) {
-      throw new InputValidationError(`The parent of the specified path does not exist.`, {
-        specifiedPath: dirPath,
-        parentPath,
-      })
+      throw new InputValidationError(`There is no parent directory for the article to be created.`, { parentPath })
     }
     if (
       !(
@@ -681,8 +746,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
         parentNode.articleNodeType === StorageArticleNodeType.Category
       )
     ) {
-      throw new InputValidationError(`Cannot create a article for a specified path.`, {
-        specifiedPath: dirPath,
+      throw new InputValidationError(`Articles cannot be created under the specified parent.`, {
         parentNode: { path: parentNode.path, articleNodeType: parentNode.articleNodeType },
       })
     }
@@ -699,6 +763,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
 
     // 記事用ディレクトリを作成
     const result = await this.m_createArticleTypeDir(hierarchicalDirNodes, {
+      articleNodeName: input.articleNodeName,
       articleNodeType: StorageArticleNodeType.Article,
       articleSortOrder: StorageService.generateArticleSortOrder(),
     })
@@ -714,64 +779,16 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   }
 
   /**
-   * 記事ルート配下に一般ディレクトリを作成します。
-   * ディレクトリを作成できるのは以下の場所のみになります。
-   * - アセット配下(例: 'users/xxx/articles/assets'の配下)
-   * - 記事配下(例: 'users/xxx/articles/programing/js/variable'の配下)
-   * @param dirPath
-   */
-  private async m_createArticleGeneralDir(dirPath: string): Promise<StorageNode> {
-    dirPath = removeBothEndsSlash(dirPath)
-
-    // 引数ディレクトリのパスが記事ルート配下のものか検証
-    this.m_validateArticleRootDescendant(dirPath)
-
-    const userRootName = config.storage.user.rootName
-    const articleRootName = config.storage.article.rootName
-    const assetsName = config.storage.article.assetsName
-
-    let hierarchicalDirNodes: (StorageNode & { exists: boolean })[] | undefined = undefined
-
-    // 引数パスがアセット配下以外の場合
-    // ※アセットとその配下はディレクトリ作成が可能なので、このブロック内の検証を行う必要はない
-    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/(?:${assetsName}$|${assetsName}/)`)
-    if (!reg.test(dirPath)) {
-      hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
-      const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
-      // 祖先に｢記事｣が存在することを確認
-      let nearestArticleNodeType: StorageArticleNodeType | undefined = undefined
-      const parentPath = removeStartDirChars(path.dirname(dirPath))
-      const parentHierarchicalPaths = splitHierarchicalPaths(parentPath)
-      for (let i = parentHierarchicalPaths.length - 1; i >= 0; i--) {
-        const ancestorPath = parentHierarchicalPaths[i]
-        const ancestorNode = hierarchicalDirNodeDict[ancestorPath]
-        if (ancestorNode?.articleNodeType) {
-          nearestArticleNodeType = ancestorNode.articleNodeType
-          break
-        }
-      }
-      if (nearestArticleNodeType !== StorageArticleNodeType.Article) {
-        throw new InputValidationError(`The specified path is not under article root: '${dirPath}'`)
-      }
-    }
-
-    if (hierarchicalDirNodes) {
-      return await this.m_createArticleTypeDir(hierarchicalDirNodes)
-    } else {
-      return await this.m_createArticleTypeDir(dirPath)
-    }
-  }
-
-  /**
    * 記事ルート配下にディレクトリを作成します。
    * @param dirPath
    * @param input
    */
   private async m_createArticleTypeDir(
     dirPath: string,
-    input?: {
-      articleNodeType?: StorageArticleNodeType
-      articleSortOrder?: number
+    input: {
+      articleNodeName: string
+      articleNodeType: StorageArticleNodeType
+      articleSortOrder: number
     }
   ): Promise<StorageNode>
 
@@ -782,18 +799,20 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
    */
   private async m_createArticleTypeDir(
     hierarchicalDirNodes: (StorageNode & { exists: boolean })[],
-    input?: {
-      articleNodeType?: StorageArticleNodeType
-      articleSortOrder?: number
+    input: {
+      articleNodeName: string
+      articleNodeType: StorageArticleNodeType
+      articleSortOrder: number
     }
   ): Promise<StorageNode>
 
   private async m_createArticleTypeDir(
     dirPath_or_hierarchicalDirNodes: string | (StorageNode & { exists: boolean })[],
     input: {
-      articleNodeType?: StorageArticleNodeType
-      articleSortOrder?: number
-    } = {}
+      articleNodeName: string
+      articleNodeType: StorageArticleNodeType
+      articleSortOrder: number
+    }
   ): Promise<StorageNode> {
     let dirPath: string
     let hierarchicalDirNodes: (StorageNode & { exists: boolean })[]
@@ -813,17 +832,18 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
       this.m_validateArticleRootDescendant(dirPath)
     }
 
-    let dirNode!: StorageNode
-    for (const iDirNode of hierarchicalDirNodes) {
-      // 引数ディレクトリがまだ存在しないことをチェック
-      if (iDirNode.path === dirPath) {
-        if (iDirNode.exists) {
-          throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
-        }
-        dirNode = iDirNode
-      }
-      // 祖先ディレクトリが存在することをチェック
-      else if (!iDirNode.exists) {
+    const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
+    const ancestorDirNodes = hierarchicalDirNodes.filter(node => node.path !== dirPath)
+
+    // 引数ディレクトリがまだ存在しないことを検証
+    const dirNode = hierarchicalDirNodeDict[dirPath]
+    if (dirNode.exists) {
+      throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
+    }
+
+    for (const iDirNode of ancestorDirNodes) {
+      // 祖先ディレクトリが存在することを検証
+      if (!iDirNode.exists) {
         throw new InputValidationError(`The ancestor of the specified path does not exist.`, {
           specifiedPath: dirPath,
           ancestorPath: iDirNode.path,
@@ -832,8 +852,9 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
     }
 
     // ディレクトリを作成
-    const nodeId = await this.storeService.storageDao.add({
+    const nodeId = await this.storeService.storageDao.set({
       ...dirNode,
+      id: dirNode.name,
       version: FieldValue.increment(1),
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -848,7 +869,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
    * 指定されたパスが記事ルート配下のノードであることを検証します。
    * @param nodePath
    */
-  protected async m_validateArticleRootDescendant(nodePath: string): Promise<void> {
+  protected m_validateArticleRootDescendant(nodePath: string): void {
     nodePath = removeBothEndsSlash(nodePath)
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
@@ -975,6 +996,12 @@ namespace StorageService {
     const str = String(dayjs().valueOf()).padEnd(16, '0')
     return parseInt(str)
   }
+
+  /**
+   * 記事ノード名の検証を行います。
+   * @param articleNodeName
+   */
+  export function validateArticleNodeName(articleNodeName?: string) {}
 }
 
 namespace StorageServiceDI {
@@ -1000,4 +1027,4 @@ class StorageServiceModule {}
 //========================================================================
 
 export { StorageService, StorageServiceDI, StorageServiceModule }
-export { CreateArticleRootUnderDirInput, SetArticleSortOrderInput, StorageFileNode }
+export { CreateArticleTypeDirInput, SetArticleSortOrderInput, StorageFileNode }

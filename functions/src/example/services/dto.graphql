@@ -112,6 +112,7 @@ type StorageNode implements TimestampEntity {
   contentType: String!
   size: Int!
   share: StorageNodeShareSettings!
+  articleNodeName: String
   articleNodeType: StorageArticleNodeType
   articleSortOrder: Long
   version: Int!
@@ -157,7 +158,9 @@ input CreateStorageNodeInput {
   writeUIds: [String!]
 }
 
-input CreateArticleRootUnderDirInput {
+input CreateArticleTypeDirInput {
+  dir: String!
+  articleNodeName: String!
   articleNodeType: StorageArticleNodeType
 }
 

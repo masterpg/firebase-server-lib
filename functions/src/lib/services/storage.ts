@@ -5,7 +5,7 @@ import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../base'
 import { Request, Response } from 'express'
-import { RequiredAre, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
+import { RequiredAre, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { StorageNode, StorageNodeShareSettings, StorageNodeType, StoreServiceDI, StoreServiceModule } from './store'
 import { FieldValue } from '../../firestore-ex'
 import dayjs = require('dayjs')
@@ -594,38 +594,43 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
+    const ancestorDirNodes = hierarchicalDirNodes.filter(node => node.path !== dirPath)
+    const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
 
-    let dirNode!: StorageNode
-    for (const iDirNode of hierarchicalDirNodes) {
-      // 指定されたディレクトリがまだ存在しないことをチェック
-      if (iDirNode.path === dirPath) {
-        if (iDirNode.exists) {
-          throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
-        }
-        dirNode = iDirNode
-      }
+    for (const ancestorDirNode of ancestorDirNodes) {
       // 祖先ディレクトリが存在することをチェック
-      else if (!iDirNode.exists) {
+      if (!ancestorDirNode.exists) {
         throw new InputValidationError(`The ancestor directory of the specified directory does not exist.`, {
-          specifiedDirPath: dirPath,
-          ancestorDirPath: iDirNode.path,
+          specifiedPath: dirPath,
+          ancestorPath: ancestorDirNode.path,
         })
       }
     }
 
-    // ディレクトリを作成
-    const nodeId = this.storeService.storageDao.docRef().id
-    await this.storeService.storageDao.set({
-      ...dirNode,
-      id: nodeId,
-      share: this.toStoreShareSettings(input ?? null),
-      version: FieldValue.increment(1),
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    })
-
-    // ストアに追加された最新ディレクトリを取得
-    return (await this.getNodeById(nodeId))!
+    const dirNode = hierarchicalDirNodeDict[dirPath]
+    // 引数ディレクトリがまだ存在しない場合
+    if (!dirNode.exists) {
+      // ディレクトリを作成
+      const nodeId = this.storeService.storageDao.docRef().id
+      await this.storeService.storageDao.set({
+        ...dirNode,
+        id: nodeId,
+        share: this.toStoreShareSettings(input ?? null),
+        version: FieldValue.increment(1),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      // ストアに追加された最新ディレクトリを取得
+      return (await this.getNodeById(nodeId))!
+    }
+    // 引数ディレクトリが既に存在する場合
+    else {
+      if (input) {
+        return await this.setDirShareSettings(dirPath, input)
+      } else {
+        return (await this.getNodeByPath(dirPath))!
+      }
+    }
   }
 
   /**
@@ -1118,12 +1123,24 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       throw new Error(`Uploaded file not found: '${filePath}'`)
     }
 
+    // ファイルを格納するディレクトリが存在することを検証
+    const parentPath = removeStartDirChars(path.dirname(filePath))
+    const dirNodes = await this.getRequiredHierarchicalDirNodes(parentPath)
+    for (const dirNode of dirNodes) {
+      if (!dirNode.exists) {
+        // ファイルの祖先であるディレクトリが一部でも欠けている状態では、そのファイルはツリーをだどって
+        // 到達できない迷子のファイルになってしまう。このため対象ファイルはストレージから削除する。
+        await file.delete()
+        // 例外をスロー
+        throw new InputValidationError(`The ancestor directory of the file does not exist.`, {
+          filePath: filePath,
+          ancestorPath: dirNode.path,
+        })
+      }
+    }
+
     // ファイルノードの作成/更新
     const fileNode = await this.saveFileNode(filePath, file)
-
-    // 祖先ディレクトリの穴埋め
-    const dirPath = removeStartDirChars(path.dirname(filePath))
-    await this.createHierarchicalDirs([dirPath])
 
     return { ...fileNode, file } as FILE_NODE
   }
@@ -1574,7 +1591,7 @@ namespace StorageService {
    * ノードパスのチェックを行います。
    * @param nodePath
    */
-  export function validatePath(nodePath: string): void {
+  export function validatePath(nodePath?: string): void {
     if (!nodePath) {
       throw new InputValidationError('The specified path is empty.')
     }
@@ -1591,10 +1608,10 @@ namespace StorageService {
    * ディレクトリ名のチェックを行います。
    * @param dirName
    */
-  export function validateDirName(dirName: string): void {
+  export function validateDirName(dirName?: string): void {
     validatePath(dirName)
     // '/'が含まれないことを検証
-    if (/\//g.test(dirName)) {
+    if (/\//g.test(dirName!)) {
       throw new InputValidationError('The specified directory name is invalid.', { dirName })
     }
   }
@@ -1603,10 +1620,10 @@ namespace StorageService {
    * ファイル名のチェックを行います。
    * @param fileName
    */
-  export function validateFileName(fileName: string): void {
+  export function validateFileName(fileName?: string): void {
     validatePath(fileName)
     // '/'が含まれないことを検証
-    if (/\//g.test(fileName)) {
+    if (/\//g.test(fileName!)) {
       throw new InputValidationError('The specified file name is invalid.', { fileName })
     }
   }

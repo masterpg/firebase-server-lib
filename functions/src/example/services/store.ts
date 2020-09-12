@@ -37,6 +37,7 @@ enum StorageArticleNodeType {
 }
 
 interface StorageNode extends _StorageNode {
+  articleNodeName?: string
   articleNodeType?: StorageArticleNodeType
   articleSortOrder?: number
 }
@@ -44,6 +45,9 @@ interface StorageNode extends _StorageNode {
 const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
   const result: EncodedObject<StorageNode> = {
     ..._storageEncode(obj, operation),
+  }
+  if (typeof obj.articleNodeName === 'string' || isFieldValue(obj.articleNodeName)) {
+    result.articleNodeName = obj.articleNodeName
   }
   if (typeof obj.articleNodeType === 'string' || isFieldValue(obj.articleNodeType)) {
     result.articleNodeType = obj.articleNodeType

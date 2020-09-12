@@ -7,12 +7,7 @@ import {
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
 } from '../../../../helpers/common/data'
-import {
-  CreateArticleRootUnderDirInput,
-  SetArticleSortOrderInput,
-  StorageArticleNodeType,
-  StorageServiceDI,
-} from '../../../../../src/example/services'
+import { CreateArticleTypeDirInput, SetArticleSortOrderInput, StorageArticleNodeType, StorageServiceDI } from '../../../../../src/example/services'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -30,6 +25,8 @@ import {
 } from '../../../../helpers/example/storage'
 import GQLContainerModule from '../../../../../src/example/gql/gql.module'
 import { StorageResolver } from '../../../../../src/example/gql/storage'
+import { config } from '../../../../../src/config'
+import { generateFirestoreId } from '../../../../helpers/common/base'
 import { initApp } from '../../../../../src/example/base'
 
 jest.setTimeout(25000)
@@ -81,7 +78,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageNode($input: StorageNodeKeyInput!) {
           storageNode(input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -310,7 +307,7 @@ describe('StorageResolver', () => {
         query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) {
           storageDirDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -412,7 +409,7 @@ describe('StorageResolver', () => {
         query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) {
           storageDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -514,7 +511,7 @@ describe('StorageResolver', () => {
         query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
           storageDirChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -616,7 +613,7 @@ describe('StorageResolver', () => {
         query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) {
           storageChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -717,7 +714,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageHierarchicalNodes($nodePath: String!) {
           storageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -810,7 +807,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageAncestorDirs($nodePath: String!) {
           storageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -903,7 +900,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFile($filePath: String!) {
           handleUploadedFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -994,7 +991,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) {
           createStorageDir(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1083,7 +1080,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) {
           createStorageHierarchicalDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1178,7 +1175,7 @@ describe('StorageResolver', () => {
         mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) {
           removeStorageDir(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1279,7 +1276,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFile($filePath: String!) {
           removeStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1369,7 +1366,7 @@ describe('StorageResolver', () => {
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1465,7 +1462,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1550,7 +1547,7 @@ describe('StorageResolver', () => {
         mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) {
           renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1646,7 +1643,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1730,7 +1727,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) {
           setStorageDirShareSettings(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1821,7 +1818,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) {
           setStorageFileShareSettings(filePath: $filePath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -1997,12 +1994,12 @@ describe('StorageResolver', () => {
     })
   })
 
-  describe('createArticleRootUnderDir', () => {
+  describe('createArticleTypeDir', () => {
     const gql = {
       query: `
-        mutation CreateArticleRootUnderDir($dirPath: String!, $input: CreateArticleRootUnderDirInput) {
-          createArticleRootUnderDir(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+        mutation CreateArticleTypeDir($input: CreateArticleTypeDirInput!) {
+          createArticleTypeDir(input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -2010,33 +2007,39 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
-      const bundleNode = newTestStorageDirNode(`${bundlePath}`, input)
+      const input: CreateArticleTypeDirInput = {
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      }
+      const bundle = newTestStorageDirNode(`${input.dir}/${generateFirestoreId()}`, input)
 
-      const createArticleRootUnderDir = td.replace(storageService, 'createArticleRootUnderDir')
-      td.when(createArticleRootUnderDir(bundleNode.path, input)).thenResolve(bundleNode)
+      const createArticleTypeDir = td.replace(storageService, 'createArticleTypeDir')
+      td.when(createArticleTypeDir(input)).thenResolve(bundle)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, input },
+          variables: { input },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.createArticleRootUnderDir).toEqual(toGQLResponseStorageNode(bundleNode))
+      expect(response.body.data.createArticleTypeDir).toEqual(toGQLResponseStorageNode(bundle))
     })
 
     it('サインインしていない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const input: CreateArticleTypeDirInput = {
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      }
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: bundlePath, input },
+        variables: { input },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2044,14 +2047,79 @@ describe('StorageResolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const input: CreateArticleRootUnderDirInput = { articleNodeType: StorageArticleNodeType.ListBundle }
+      const input: CreateArticleTypeDirInput = {
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      }
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, input },
+          variables: { input },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('createArticleGeneralDir', () => {
+    const gql = {
+      query: `
+        mutation CreateArticleGeneralDir($dirPath: String!, $input: CreateStorageNodeInput) {
+          createArticleGeneralDir(dirPath: $dirPath, input: $input) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+          }
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const d1 = newTestStorageDirNode(`${assetsPath}/d1`)
+
+      const createArticleGeneralDir = td.replace(storageService, 'createArticleGeneralDir')
+      td.when(createArticleGeneralDir(d1.path, SHARE_SETTINGS)).thenResolve(d1)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path, input: SHARE_SETTINGS },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(response.body.data.createArticleGeneralDir).toEqual(toGQLResponseStorageNode(d1))
+    })
+
+    it('サインインしていない場合', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const d1 = newTestStorageDirNode(`${assetsPath}/d1`)
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { dirPath: d1.path },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const d1 = newTestStorageDirNode(`${assetsPath}/d1`)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { dirPath: d1.path },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -2065,7 +2133,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetArticleSortOrder($nodePath: String!, $input: SetArticleSortOrderInput!) {
           setArticleSortOrder(nodePath: $nodePath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
           }
         }
       `,
@@ -2131,7 +2199,7 @@ describe('StorageResolver', () => {
         query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) {
           articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
             }
             nextPageToken
           }
@@ -2141,14 +2209,15 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const art1Node = newTestStorageDirNode(`${bundlePath}/art1`, {
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const art1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 999,
       })
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
       td.when(getArticleChildren(bundlePath, [StorageArticleNodeType.Article], { maxChunk: 3 })).thenResolve({
-        list: [art1Node],
+        list: [art1],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
 
@@ -2165,7 +2234,7 @@ describe('StorageResolver', () => {
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.articleChildren.list).toEqual(toGQLResponseStorageNodes([art1Node]))
+      expect(response.body.data.articleChildren.list).toEqual(toGQLResponseStorageNodes([art1]))
       expect(response.body.data.articleChildren.nextPageToken).toBe('abcdefg')
     })
 

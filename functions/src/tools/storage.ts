@@ -12,6 +12,7 @@ import {
   UserServiceModule,
   initFirebaseApp,
 } from '../lib'
+import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import { StorageNode } from '../example/services'
@@ -47,12 +48,12 @@ const maxChunk = 10000
 })
 class StorageToolModule {}
 
-function print(nodes: StorageNode[], format: OutputFormat) {
+function print(nodes: StorageNode[], ancestors: StorageNode[], format: OutputFormat) {
   if (nodes.length === 0) return
 
   switch (format) {
     case 'oneline':
-      printInOneLine(nodes)
+      printInOneLine(nodes, ancestors)
       return
     case 'json':
       printInJSON(nodes)
@@ -67,19 +68,19 @@ function print(nodes: StorageNode[], format: OutputFormat) {
   throw new Error(`An incorrect format was specified: ${format}`)
 }
 
-function printInOneLine(nodes: StorageNode[]): void {
+function printInOneLine(nodes: StorageNode[], ancestors: StorageNode[]): void {
+  const nodeDict = arrayToDict([...nodes, ...ancestors], 'path')
+  const toDisplayPath = (node: StorageNode) => {
+    return splitHierarchicalPaths(node.path).reduce((result, nodePath) => {
+      const node = nodeDict[nodePath]
+      const name = node.articleNodeName ? node.articleNodeName : node.name
+      return result ? `${result}/${name}` : name
+    }, '')
+  }
+
   const padding = getPadding(nodes)
   for (const node of nodes) {
-    let nodePath: any
-    if (node.nodeType === StorageNodeType.Dir) {
-      nodePath = chalk.blue(node.path)
-    } else {
-      if (node.dir) {
-        nodePath = `${chalk.blue(node.dir + '/')}${node.name}`
-      } else {
-        nodePath = `${node.name}`
-      }
-    }
+    const nodePath = toDisplayPath(node)
     console.log(`${formatDate(node.updatedAt)} ${formatSize(node, padding.size)} ${formatId(node.id, padding.id)} ${nodePath}`)
   }
 }
@@ -105,6 +106,7 @@ function toNodeObject(node: StorageNode) {
     contentType: node.contentType,
     size: node.size,
     share: node.share,
+    articleNodeName: node.articleNodeName,
     articleNodeType: node.articleNodeType,
     articleSortOrder: node.articleSortOrder,
     version: node.share,
@@ -207,14 +209,17 @@ program
     }
     console.log() // 改行
 
+    // 祖先ノードの取得
+    const ancestors = await storageService.getAncestorDirs(node.path)
+
     // 取得されたノードがファイルの場合
     if (node.nodeType === StorageNodeType.File) {
-      print([node], cmdObj.format)
+      print([node], ancestors, cmdObj.format)
     }
     // 取得されたノードがディレクトリの場合
     else if (node.nodeType === StorageNodeType.Dir) {
       const pagination = await storageService.getDirDescendants(node.path, { maxChunk })
-      print(pagination.list, cmdObj.format)
+      print(pagination.list, ancestors, cmdObj.format)
       if (pagination.nextPageToken) {
         console.log(chalk.yellow(`\nThe specified directory has reached the display limit: '${id_or_path}'`))
       }
@@ -248,8 +253,11 @@ program
 
     console.log() // 改行
 
+    // 祖先ノードの取得
+    const ancestors = await storageService.getAncestorDirs(nodePath)
+
     // 検索結果をコンソール出力
-    print(pagination.list, cmdObj.format)
+    print(pagination.list, ancestors, cmdObj.format)
 
     // ディレクトリが見つからなかった場合
     if (!pagination.list.length) {
