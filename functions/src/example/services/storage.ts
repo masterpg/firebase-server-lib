@@ -355,6 +355,37 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
   }
 
   /**
+   * 記事系ノードの名前変更を行います。
+   * @param nodePath
+   * @param newName
+   */
+  async renameArticleNode(nodePath: string, newName: string): Promise<StorageNode> {
+    nodePath = removeBothEndsSlash(nodePath)
+
+    // 引数ディレクトリのパスが記事ルート配下のものか検証
+    this.m_validateArticleRootDescendant(nodePath)
+
+    const node = await this.sgetNodeByPath(nodePath)
+    switch (node.nodeType) {
+      case StorageNodeType.Dir:
+        StorageService.validateDirName(newName)
+        break
+      // ※現時点では記事ノードにファイルはないが、今後登場するかもしれないので…
+      case StorageNodeType.File:
+        StorageService.validateFileName(newName)
+        break
+    }
+
+    await this.storeService.storageDao.update({
+      id: node.id,
+      articleNodeName: newName,
+      version: FieldValue.increment(1),
+    })
+
+    return this.sgetNodeByPath(nodePath)
+  }
+
+  /**
    * 指定されたターゲットノードにソート順を設定します。
    * `input.insertBeforeNodePath`か`input.insertAfterNodePath`どちらかに値を設定する必要があります。
    * `input.insertBeforeNodePath`を指定すると、このノードより前にターゲットノードを挿入します。

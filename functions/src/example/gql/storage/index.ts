@@ -244,6 +244,16 @@ export class StorageResolver {
   }
 
   @Mutation()
+  async renameArticleNode(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('nodePath') nodePath: string,
+    @Args('newName') newName: string
+  ): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath })
+    return this.storageService.renameArticleNode(nodePath, newName)
+  }
+
+  @Mutation()
   async setArticleSortOrder(
     @GQLContextArg() ctx: GQLContext,
     @Args('nodePath') nodePath: string,

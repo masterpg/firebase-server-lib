@@ -12,6 +12,7 @@ type Mutation {
   handleUploadedFile(filePath: String!): StorageNode!
   createArticleTypeDir(input: CreateArticleTypeDirInput!): StorageNode!
   createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
+  renameArticleNode(nodePath: String!, newName: String!): StorageNode!
   setArticleSortOrder(nodePath: String!, input: SetArticleSortOrderInput!): StorageNode!
 }
 

@@ -1484,6 +1484,75 @@ describe('AppStorageService', () => {
     })
   })
 
+  describe('renameArticleNode', () => {
+    it('ベーシックケース', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      })
+      // 記事1を作成
+      const art1 = await storageService.createArticleTypeDir({
+        dir: `${bundle.path}`,
+        articleNodeName: '記事1',
+        articleNodeType: StorageArticleNodeType.Article,
+      })
+
+      // 期待値の作成
+      const expectArt1: StorageNode = {
+        ...art1,
+        articleNodeName: 'Article1',
+        version: art1.version + 1,
+      }
+
+      // テスト対象実行
+      const actual = await storageService.renameArticleNode(art1.path, 'Article1')
+
+      // 戻り値の検証
+      expect(actual).toMatchObject(expectArt1)
+
+      // ストアから取得して検証
+      const updatedArt1 = await storageService.sgetNodeByPath(art1.path)
+      expect(updatedArt1).toMatchObject(expectArt1)
+    })
+
+    it('記事ルート配下でないノードを名前変更しようとした場合', async () => {
+      // ユーザールート配下にノードを作成
+      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const [users, user, d1] = await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+
+      let actual!: InputValidationError
+      try {
+        // パスに存在しないノードを指定
+        await storageService.renameArticleNode(`${d1.path}`, 'D1')
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.detail.message).toBe(`The specified path is not under article root: '${d1.path}'`)
+    })
+
+    it('存在しないノードを名前変更しようとした場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      let actual!: Error
+      try {
+        // パスに存在しないノードを指定
+        await storageService.renameArticleNode(`${articleRootPath}/xxx`, 'Bundle')
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.message).toBe(`There is no node in the specified path: '${articleRootPath}/xxx'`)
+    })
+  })
+
   describe('setArticleSortOrder', () => {
     it('ベーシックケース - insertBeforeNodePath', async () => {
       // 記事ルートの作成
@@ -1862,7 +1931,7 @@ describe('AppStorageService', () => {
     })
 
     it('dirPathに存在しないノードを指定した場合', async () => {
-      // dirPathに存在しないノードを指定
+      // パスに存在しないノードを指定
       const actual = await storageService.getArticleChildren(`${programing.path}/cobol`, [StorageArticleNodeType.Category])
 
       expect(actual.nextPageToken).toBeUndefined()

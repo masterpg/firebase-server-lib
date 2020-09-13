@@ -2128,6 +2128,80 @@ describe('StorageResolver', () => {
     })
   })
 
+  describe('renameArticleNode', () => {
+    const gql = {
+      query: `
+        mutation RenameArticleNode($nodePath: String!, $newName: String!) {
+          renameArticleNode(nodePath: $nodePath, newName: $newName) {
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+          }
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 999,
+      })
+
+      const renameArticleNode = td.replace(storageService, 'renameArticleNode')
+      td.when(renameArticleNode(cat1.path, cat1.articleNodeName)).thenResolve(cat1)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { nodePath: cat1.path, newName: cat1.articleNodeName },
+        },
+        { headers: STORAGE_USER_HEADER }
+      )
+
+      expect(response.body.data.renameArticleNode).toEqual(toGQLResponseStorageNode(cat1))
+    })
+
+    it('サインインしていない場合', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 999,
+      })
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { nodePath: cat1.path, newName: cat1.articleNodeName },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合', async () => {
+      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 999,
+      })
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { nodePath: cat1.path, newName: cat1.articleNodeName },
+        },
+        { headers: GENERAL_USER_HEADER }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
   describe('setArticleSortOrder', () => {
     const gql = {
       query: `
@@ -2141,34 +2215,52 @@ describe('StorageResolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 2,
+      })
+      const cat2 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ2',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 1,
+      })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
 
       const setArticleSortOrder = td.replace(storageService, 'setArticleSortOrder')
-      td.when(setArticleSortOrder(cat1Node.path, input)).thenResolve(cat1Node)
+      td.when(setArticleSortOrder(cat1.path, input)).thenResolve(cat1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { nodePath: cat1Node.path, input },
+          variables: { nodePath: cat1.path, input },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.setArticleSortOrder).toEqual(toGQLResponseStorageNode(cat1Node))
+      expect(response.body.data.setArticleSortOrder).toEqual(toGQLResponseStorageNode(cat1))
     })
 
     it('サインインしていない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 2,
+      })
+      const cat2 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ2',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 1,
+      })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { nodePath: cat1Node.path, input },
+        variables: { nodePath: cat1.path, input },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2176,15 +2268,24 @@ describe('StorageResolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/blog`
-      const cat1Node = newTestStorageDirNode(`${bundlePath}/cat1`, { articleSortOrder: 999 })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${bundlePath}/cat2` }
+      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
+      const cat1 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 2,
+      })
+      const cat2 = newTestStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+        articleNodeName: 'カテゴリ2',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 1,
+      })
+      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { nodePath: cat1Node.path, input },
+          variables: { nodePath: cat1.path, input },
         },
         { headers: GENERAL_USER_HEADER }
       )

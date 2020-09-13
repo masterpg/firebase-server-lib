@@ -179,6 +179,7 @@ export interface IMutation {
     handleUploadedFile(filePath: string): StorageNode | Promise<StorageNode>;
     createArticleTypeDir(input: CreateArticleTypeDirInput): StorageNode | Promise<StorageNode>;
     createArticleGeneralDir(dirPath: string, input?: CreateStorageNodeInput): StorageNode | Promise<StorageNode>;
+    renameArticleNode(nodePath: string, newName: string): StorageNode | Promise<StorageNode>;
     setArticleSortOrder(nodePath: string, input: SetArticleSortOrderInput): StorageNode | Promise<StorageNode>;
     setOwnUserInfo(input: UserInfoInput): UserInfo | Promise<UserInfo>;
     deleteOwnUser(): boolean | Promise<boolean>;

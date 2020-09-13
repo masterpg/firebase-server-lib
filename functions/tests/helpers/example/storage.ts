@@ -29,6 +29,7 @@ function newTestStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode,
 
   return {
     ..._newTestStorageDirNode(dirPath, data),
+    articleNodeName: data.articleNodeName,
     articleNodeType: data.articleNodeType,
     articleSortOrder: data.articleSortOrder,
   }
@@ -40,6 +41,7 @@ function newTestStorageFileNode(filePath: string, data?: Partial<Omit<StorageNod
 
   return {
     ..._newTestStorageFileNode(filePath, data),
+    articleNodeName: data.articleNodeName,
     articleNodeType: data.articleNodeType,
     articleSortOrder: data.articleSortOrder,
   }
