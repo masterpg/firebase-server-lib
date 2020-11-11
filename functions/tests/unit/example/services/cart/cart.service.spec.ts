@@ -1,4 +1,12 @@
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartServiceDI, Product, ProductServiceDI } from '../../../../../src/example/services'
+import {
+  CartItem,
+  CartItemAddInput,
+  CartItemUpdateInput,
+  CartServiceDI,
+  Product,
+  ProductServiceDI,
+  StoreServiceDI,
+} from '../../../../../src/example/services'
 import { DevUtilsServiceDI, DevUtilsServiceModule, InputValidationError, ValidationErrors } from '../../../../../src/lib'
 import DevUtilsGQLModule from '../../../../../src/example/gql/dev'
 import { GENERAL_USER } from '../../../../helpers/common/data'
@@ -7,6 +15,7 @@ import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
 import { initApp } from '../../../../../src/example/base'
+import dayjs = require('dayjs')
 
 jest.setTimeout(25000)
 initApp()
@@ -23,13 +32,44 @@ process.env.FIRESTORE_EMULATOR_HOST = ''
 //
 //========================================================================
 
-const PRODUCTS: OmitEntityTimestamp<Product>[] = [
-  { id: 'product1', title: 'iPad 4 Mini', price: 500.01, stock: 3 },
-  { id: 'product2', title: 'Fire HD 8 Tablet', price: 80.99, stock: 5 },
-  { id: 'product3', title: 'MediaPad T5 10', price: 150.8, stock: 10 },
+type RawProduct = OmitEntityTimestamp<Product> & { createdAt: string; updatedAt: string }
+
+const RAW_PRODUCTS: RawProduct[] = [
+  {
+    id: 'product1',
+    title: 'iPad 4 Mini',
+    price: 500.01,
+    stock: 3,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    updatedAt: '2020-01-02T00:00:00.000Z',
+  },
+  {
+    id: 'product2',
+    title: 'Fire HD 8 Tablet',
+    price: 80.99,
+    stock: 5,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    updatedAt: '2020-01-02T00:00:00.000Z',
+  },
+  {
+    id: 'product3',
+    title: 'MediaPad T5 10',
+    price: 150.8,
+    stock: 10,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    updatedAt: '2020-01-02T00:00:00.000Z',
+  },
 ]
 
-const CART_ITEMS: OmitEntityTimestamp<CartItem>[] = [
+const PRODUCTS: Product[] = RAW_PRODUCTS.map(rawProduct => ({
+  ...rawProduct,
+  createdAt: dayjs(rawProduct.createdAt),
+  updatedAt: dayjs(rawProduct.updatedAt),
+}))
+
+type RawCartItem = OmitEntityTimestamp<CartItem> & { createdAt: string; updatedAt: string }
+
+const RAW_CART_ITEMS: RawCartItem[] = [
   {
     id: 'cartItem1',
     uid: GENERAL_USER.uid,
@@ -37,6 +77,8 @@ const CART_ITEMS: OmitEntityTimestamp<CartItem>[] = [
     title: 'iPad 4 Mini',
     price: 500.01,
     quantity: 1,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    updatedAt: '2020-01-02T00:00:00.000Z',
   },
   {
     id: 'cartItem2',
@@ -45,8 +87,16 @@ const CART_ITEMS: OmitEntityTimestamp<CartItem>[] = [
     title: 'Fire HD 8 Tablet',
     price: 80.99,
     quantity: 2,
+    createdAt: '2020-01-01T00:00:00.000Z',
+    updatedAt: '2020-01-02T00:00:00.000Z',
   },
 ]
+
+const CART_ITEMS: CartItem[] = RAW_CART_ITEMS.map(rawCartItem => ({
+  ...rawCartItem,
+  createdAt: dayjs(rawCartItem.createdAt),
+  updatedAt: dayjs(rawCartItem.updatedAt),
+}))
 
 //========================================================================
 //
@@ -65,6 +115,7 @@ beforeAll(async () => {
 
 describe('CartService', () => {
   let devUtilsService: DevUtilsServiceDI.type
+  let storeService: StoreServiceDI.type
   let cartService: CartServiceDI.type
   let productService: ProductServiceDI.type
 
@@ -74,6 +125,7 @@ describe('CartService', () => {
     }).compile()
 
     devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
     cartService = testingModule.get<CartServiceDI.type>(CartServiceDI.symbol)
     productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
   })
@@ -81,19 +133,19 @@ describe('CartService', () => {
   describe('findList', () => {
     it('カートアイテムIDを指定しない場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
 
       const actual = await cartService.findList(GENERAL_USER)
 
-      expect(actual).toMatchObject(CART_ITEMS)
+      expect(actual).toEqual(CART_ITEMS)
     })
 
     it('カートアイテムIDを1つ指定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const cartItem = CART_ITEMS[0]
 
@@ -104,8 +156,8 @@ describe('CartService', () => {
 
     it('カートアイテムIDを複数指定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const ids = [CART_ITEMS[0].id, CART_ITEMS[1].id]
 
@@ -116,8 +168,8 @@ describe('CartService', () => {
 
     it('一部存在しない商品IDを指定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const ids = ['cartItemXXX', CART_ITEMS[0].id]
 
@@ -128,8 +180,8 @@ describe('CartService', () => {
 
     it('全て存在しない商品IDを指定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const ids = ['cartItemXXX', 'cartItemYYY']
 
@@ -140,8 +192,8 @@ describe('CartService', () => {
 
     it('存在しないカートアイテムIDを指定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const actual = await cartService.findList(GENERAL_USER, ['cartItemXXX'])
 
@@ -150,44 +202,36 @@ describe('CartService', () => {
   })
 
   describe('addList', () => {
-    const ADD_CART_ITEMS = cloneDeep(CART_ITEMS).map(item => {
+    const ADD_INPUTS = cloneDeep(CART_ITEMS).map(item => {
       delete item.id
       delete item.uid
+      delete item.createdAt
+      delete item.updatedAt
       return item
     }) as CartItemAddInput[]
 
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItems = cloneDeep(ADD_CART_ITEMS)
-      const expectedItems = addItems.map(addItem => {
-        const product = PRODUCTS.find(product => product.id === addItem.productId)!
-        return {
-          ...addItem,
-          product: {
-            id: product.id,
-            stock: product.stock - addItem.quantity,
-          },
-        }
-      }) as CartItemEditResponse[]
+      const inputs = cloneDeep(ADD_INPUTS)
 
-      const actual = await cartService.addList(GENERAL_USER, addItems)
+      const actual = await cartService.addList(GENERAL_USER, inputs)
 
-      expect(actual.length).toBe(addItems.length)
+      expect(actual.length).toBe(inputs.length)
       for (let i = 0; i < actual.length; i++) {
-        // 戻り値の検証
         const actualItem = actual[i]
-        expect(actualItem.id).toEqual(expect.anything())
-        expect(actualItem.uid).toBe(GENERAL_USER.uid)
-        expect(actualItem).toMatchObject(expectedItems[i])
-        // カートアイテムが追加されているか検証
-        const addedItem = (await cartService.findList(GENERAL_USER, [actualItem.id]))[0]
-        expect(addedItem).toMatchObject(addItems[i])
+        const addedCartItem = (await storeService.cartDao.fetch(actualItem.id))!
+        const updatedProduct = (await storeService.productDao.fetch(actualItem.productId))!
+        const beforeProduct = PRODUCTS.find(product => product.id === actualItem.productId)!
+        // 戻り値の検証
+        expect(actualItem).toEqual({ ...addedCartItem, product: updatedProduct })
+        expect(actualItem.product.stock).toEqual(beforeProduct.stock - actualItem.quantity)
         // 商品の在庫が更新されているか検証
-        const product = (await productService.findList([actualItem.productId]))[0]
-        expect(product).toMatchObject(actualItem.product)
+        expect(updatedProduct).toEqual(actualItem.product)
+        expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
+        expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }
     })
 
@@ -196,12 +240,12 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: [] },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0])
-      addItem.productId = 'abcdefg'
+      const input = cloneDeep(ADD_INPUTS[0])
+      input.productId = 'abcdefg'
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [addItem])
+        await cartService.addList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -211,14 +255,14 @@ describe('CartService', () => {
 
     it('既に存在するカートアイテムを追加しようとした場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
+      const input = cloneDeep(ADD_INPUTS[0])
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [addItem])
+        await cartService.addList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -228,15 +272,15 @@ describe('CartService', () => {
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
-      addItem.quantity = 4 // 在庫数を上回る数を設定
+      const input = cloneDeep(ADD_INPUTS[0])
+      input.quantity = 4 // 在庫数を上回る数を設定
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [addItem])
+        await cartService.addList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -246,15 +290,15 @@ describe('CartService', () => {
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItem = cloneDeep(ADD_CART_ITEMS[0]) as CartItemAddInput
-      addItem.quantity = -1 // マイナス値を設定
+      const input = cloneDeep(ADD_INPUTS[0])
+      input.quantity = -1 // マイナス値を設定
 
       let actual!: ValidationErrors
       try {
-        await cartService.addList(GENERAL_USER, [addItem])
+        await cartService.addList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -264,11 +308,11 @@ describe('CartService', () => {
     })
 
     it('カートアイテムの商品を重複指定していた場合', async () => {
-      const addItems = [cloneDeep(ADD_CART_ITEMS[0]), cloneDeep(ADD_CART_ITEMS[0])]
+      const inputs = [cloneDeep(ADD_INPUTS[0]), cloneDeep(ADD_INPUTS[0])]
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, addItems)
+        await cartService.addList(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -278,15 +322,15 @@ describe('CartService', () => {
 
     it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: [] },
       ])
-      const addItems = cloneDeep(ADD_CART_ITEMS) as CartItemAddInput[]
-      addItems[1].productId = 'abcdefg' // 2件目に存在しない商品IDを指定
+      const inputs = cloneDeep(ADD_INPUTS) as CartItemAddInput[]
+      inputs[1].productId = 'abcdefg' // 2件目に存在しない商品IDを指定
 
       let actual!: Error
       try {
-        await cartService.addList(GENERAL_USER, addItems)
+        await cartService.addList(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -305,45 +349,48 @@ describe('CartService', () => {
   describe('updateList', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const updateItems = CART_ITEMS.map(item => {
-        return { ...item, quantity: item.quantity + 1 }
-      })
-      const expectedItems = updateItems.map(item => {
-        const product = PRODUCTS.find(product => product.id === item.productId)!
-        return { ...item, product: { id: product.id, stock: product.stock - 1 } }
+      const inputs: CartItemUpdateInput[] = CART_ITEMS.map(item => {
+        return { id: item.id, quantity: item.quantity + 1 }
       })
 
-      const actual = await cartService.updateList(GENERAL_USER, updateItems)
+      const actual = await cartService.updateList(GENERAL_USER, inputs)
 
-      expect(actual.length).toBe(updateItems.length)
+      expect(actual.length).toBe(inputs.length)
       for (let i = 0; i < actual.length; i++) {
+        const actualItem = actual[i]
+        const input = inputs[i]
+        const updatedCartItem = (await storeService.cartDao.fetch(actualItem.id))!
+        const updatedProduct = (await storeService.productDao.fetch(actualItem.productId))!
+        const beforeCartItem = CART_ITEMS.find(item => item.id === actualItem.id)!
+        const beforeProduct = PRODUCTS.find(product => product.id === actualItem.productId)!
         // 戻り値の検証
-        expect(actual[i]).toMatchObject(expectedItems[i])
-        // カートアイテムが更新されているか検証
-        const updatedItem = (await cartService.findList(GENERAL_USER, [updateItems[i].id]))[0]
-        expect(updatedItem).toMatchObject(updateItems[i])
+        expect(actualItem).toEqual({ ...updatedCartItem, product: updatedProduct })
+        expect(actualItem.quantity).toEqual(input.quantity)
+        expect(actualItem.createdAt).toEqual(beforeCartItem.createdAt)
+        expect(actualItem.updatedAt.isAfter(beforeCartItem.updatedAt)).toBeTruthy()
         // 商品の在庫が更新されているか検証
-        const updatedProduct = (await productService.findList([expectedItems[i].productId]))[0]
-        expect(updatedProduct).toMatchObject(expectedItems[i].product)
+        expect(updatedProduct.stock).toBe(beforeProduct.stock - 1)
+        expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
+        expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }
     })
 
     it('自ユーザー以外のカートアイテムを変更しようとした場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
-          collectionRecords: CART_ITEMS.map(item => {
+          collectionRecords: RAW_CART_ITEMS.map(item => {
             return { ...item, uid: 'test.general.xxx' }
           }),
         },
       ])
       const updateItems = CART_ITEMS.map(item => {
-        return { ...item, quantity: item.quantity + 1 }
+        return { id: item.id, quantity: item.quantity + 1 }
       })
 
       let actual!: InputValidationError
@@ -358,16 +405,17 @@ describe('CartService', () => {
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const updateItem = cloneDeep(CART_ITEMS[0]) as CartItem
+      const updateItem = CART_ITEMS[0]
+      const input = { id: updateItem.id, quantity: updateItem.quantity }
       const product = PRODUCTS.find(product => product.id === updateItem.productId)!
-      updateItem.quantity += product.stock + 1 // 在庫数を上回る数を設定
+      input.quantity += product.stock + 1 // 在庫数を上回る数を設定
 
       let actual!: InputValidationError
       try {
-        await cartService.updateList(GENERAL_USER, [updateItem])
+        await cartService.updateList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -377,15 +425,16 @@ describe('CartService', () => {
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const updateItem = cloneDeep(CART_ITEMS[0]) as CartItem
-      updateItem.quantity = -1 // マイナス値を設定
+      const updateItem = CART_ITEMS[0]
+      const input = { id: updateItem.id, quantity: updateItem.quantity }
+      input.quantity = -1 // マイナス値を設定
 
       let actual!: ValidationErrors
       try {
-        await cartService.updateList(GENERAL_USER, [updateItem])
+        await cartService.updateList(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -395,11 +444,14 @@ describe('CartService', () => {
     })
 
     it('更新対象のカートアイテムを重複指定していた場合', async () => {
-      const updateItems = [cloneDeep(CART_ITEMS[0]), cloneDeep(CART_ITEMS[0])]
+      const inputs = [
+        { id: CART_ITEMS[0].id, quantity: CART_ITEMS[0].quantity },
+        { id: CART_ITEMS[0].id, quantity: CART_ITEMS[0].quantity },
+      ]
 
       let actual!: InputValidationError
       try {
-        await cartService.updateList(GENERAL_USER, updateItems)
+        await cartService.updateList(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -409,16 +461,19 @@ describe('CartService', () => {
 
     it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const updateItems = cloneDeep(CART_ITEMS) as CartItem[]
-      updateItems[0].quantity = 2
-      updateItems[1].quantity = 9999999999 // 2件目に在庫数を上回る数を設定
+      const inputs = [
+        { id: CART_ITEMS[0].id, quantity: CART_ITEMS[0].quantity },
+        { id: CART_ITEMS[1].id, quantity: CART_ITEMS[1].quantity },
+      ]
+      inputs[0].quantity = 2
+      inputs[1].quantity = 9999999999 // 2件目に在庫数を上回る数を設定
 
       let actual!: Error
       try {
-        await cartService.updateList(GENERAL_USER, updateItems)
+        await cartService.updateList(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -437,47 +492,41 @@ describe('CartService', () => {
   describe('removeList', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const removeIds = CART_ITEMS.map(item => item.id)
-      const expectedItems = removeIds.map(id => {
-        const cartItem = CART_ITEMS.find(item => item.id === id)!
-        const product = PRODUCTS.find(product => product.id === cartItem.productId)!
-        return {
-          ...cartItem,
-          quantity: 0,
-          product: {
-            id: product.id,
-            stock: product.stock + cartItem.quantity,
-          },
-        }
-      })
 
       const actual = await cartService.removeList(GENERAL_USER, removeIds)
 
       expect(actual.length).toBe(removeIds.length)
       for (let i = 0; i < actual.length; i++) {
+        const actualItem = actual[i]
+        const updatedProduct = (await storeService.productDao.fetch(actualItem.productId))!
+        const beforeCartItem = CART_ITEMS.find(item => item.id === actualItem.id)!
+        const beforeProduct = PRODUCTS.find(product => product.id === actualItem.productId)!
         // 戻り値の検証
-        expect(actual[i]).toMatchObject(expectedItems[i])
+        expect(actualItem).toEqual({ ...beforeCartItem, product: updatedProduct })
+        expect(actualItem.quantity).toEqual(beforeCartItem.quantity)
+        expect(actualItem.createdAt).toEqual(beforeCartItem.createdAt)
+        expect(actualItem.updatedAt).toEqual(beforeCartItem.updatedAt)
         // カートアイテムが削除されているか検証
-        const removeItemId = removeIds[i]
-        const removedItem = (await cartService.findList(GENERAL_USER, [removeItemId]))[0]
+        const removedItem = await storeService.cartDao.fetch(actualItem.id)
         expect(removedItem).toBeUndefined()
         // 商品の在庫が更新されているか検証
-        const updatedProductId = expectedItems[i].productId
-        const updatedProduct = (await productService.findList([updatedProductId]))[0]
-        expect(updatedProduct).toMatchObject(expectedItems[i].product)
+        expect(updatedProduct.stock).toBe(beforeProduct.stock + beforeCartItem.quantity)
+        expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
+        expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }
     })
 
     it('自ユーザー以外のカートアイテムを削除しようとした場合', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         {
           collectionName: 'cart',
           // 自ユーザー以外のカートアイテムをテストデータ投入
-          collectionRecords: CART_ITEMS.map(item => {
+          collectionRecords: RAW_CART_ITEMS.map(item => {
             return { ...item, uid: 'test.general.xxx' }
           }),
         },
@@ -509,8 +558,8 @@ describe('CartService', () => {
 
     it('アトミックオペレーションの検証', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
       const removeIds = CART_ITEMS.map(item => item.id)
       removeIds[1] = 'cartItemXXX' // 2件目に存在しないカートアイテムIDを設定
@@ -526,18 +575,18 @@ describe('CartService', () => {
 
       // カートアイテムが削除されていないことを検証
       const cartItems = await cartService.findList(GENERAL_USER)
-      expect(cartItems).toMatchObject(CART_ITEMS)
+      expect(cartItems).toEqual(CART_ITEMS)
       // 商品の在庫数が更新されていないことを検証
       const products = await productService.findList()
-      expect(products).toMatchObject(PRODUCTS)
+      expect(products).toEqual(PRODUCTS)
     })
   })
 
   describe('checkout', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
-        { collectionName: 'products', collectionRecords: PRODUCTS },
-        { collectionName: 'cart', collectionRecords: CART_ITEMS },
+        { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
+        { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
 
       const actual = await cartService.checkoutCart(GENERAL_USER)

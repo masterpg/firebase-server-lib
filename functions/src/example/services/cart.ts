@@ -1,8 +1,13 @@
 import { CartItem, Product, StoreServiceDI, StoreServiceModule } from './store'
-import { CartItemEditResponse, CartItemAddInput as _AddCartItemInput, CartItemUpdateInput as _UpdateCartItemInput } from '../gql.schema'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, WriteReadyObserver, validate } from '../../lib'
+import {
+  CartItemAddInput as _CartItemAddInput,
+  CartItemEditResponse as _CartItemEditResponse,
+  CartItemUpdateInput as _CartItemUpdateInput,
+} from '../gql.schema'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
+import { Dayjs } from 'dayjs'
 import { IsPositive } from 'class-validator'
 import { Transaction } from '../../firestore-ex'
 
@@ -12,16 +17,21 @@ import { Transaction } from '../../firestore-ex'
 //
 //========================================================================
 
-class CartItemAddInput implements _AddCartItemInput {
+class CartItemAddInput implements _CartItemAddInput {
   productId!: string
   title!: string
   @IsPositive() price!: number
   @IsPositive() quantity!: number
 }
 
-class CartItemUpdateInput implements _UpdateCartItemInput {
+class CartItemUpdateInput implements _CartItemUpdateInput {
   id!: string
   @IsPositive() quantity!: number
+}
+
+interface CartItemEditResponse extends _CartItemEditResponse {
+  createdAt: Dayjs
+  updatedAt: Dayjs
 }
 
 //========================================================================
@@ -62,44 +72,49 @@ class CartService {
     await validate(CartItemAddInput, inputs)
     this.m_validateAddInputDuplication(inputs)
 
-    let result!: CartItemEditResponse[]
+    let addedCartItemIds!: string[]
 
     await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(inputs.length)
       const promises = inputs.map(input => this.m_addCartItem(user.uid, input, tx, writeReady))
-      result = await Promise.all(promises)
+      addedCartItemIds = await Promise.all(promises)
     })
 
-    return result
+    return await this.m_getCartItemEditResponses(addedCartItemIds)
   }
 
   async updateList(user: { uid: string }, inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
     await validate(CartItemUpdateInput, inputs)
     this.m_validateUpdateInputDuplication(inputs)
 
-    let result!: CartItemEditResponse[]
+    let updatedCartItemIds!: string[]
 
     await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(inputs.length)
       const promises = inputs.map(input => this.m_updateCartItem(user.uid, input, tx, writeReady))
-      result = await Promise.all(promises)
+      updatedCartItemIds = await Promise.all(promises)
     })
 
-    return result
+    return await this.m_getCartItemEditResponses(updatedCartItemIds)
   }
 
   async removeList(user: { uid: string }, ids: string[]): Promise<CartItemEditResponse[]> {
     this.m_validateRemoveInputDuplication(ids)
 
-    let result!: CartItemEditResponse[]
+    let removedCartItems!: CartItem[]
 
     await this.storeService.runTransaction(async tx => {
       const writeReady = new WriteReadyObserver(ids.length)
       const promises = ids.map(id => this.m_removeCartItem(user.uid, id, tx, writeReady))
-      result = await Promise.all(promises)
+      removedCartItems = await Promise.all(promises)
     })
 
-    return result
+    return await Promise.all(
+      removedCartItems.map(async cartItem => {
+        const product = (await this.storeService.productDao.fetch(cartItem.productId))!
+        return { ...cartItem, product }
+      })
+    )
   }
 
   async checkoutCart(user: { uid: string }): Promise<boolean> {
@@ -126,12 +141,7 @@ class CartService {
    * @param tx
    * @param writeReady
    */
-  private async m_addCartItem(
-    uid: string,
-    itemInput: CartItemAddInput,
-    tx: Transaction,
-    writeReady: WriteReadyObserver
-  ): Promise<CartItemEditResponse> {
+  private async m_addCartItem(uid: string, itemInput: CartItemAddInput, tx: Transaction, writeReady: WriteReadyObserver): Promise<string> {
     // 商品を取得
     const product = await this.m_getProductById(itemInput.productId, tx)
 
@@ -169,7 +179,7 @@ class CartService {
     product.stock = newStock
     await this.storeService.productDao.update(product, tx)
 
-    return { ...cartItem, product }
+    return cartItem.id
   }
 
   /**
@@ -179,12 +189,7 @@ class CartService {
    * @param tx
    * @param writeReady
    */
-  private async m_updateCartItem(
-    uid: string,
-    input: CartItemUpdateInput,
-    tx: Transaction,
-    writeReady: WriteReadyObserver
-  ): Promise<CartItemEditResponse> {
+  private async m_updateCartItem(uid: string, input: CartItemUpdateInput, tx: Transaction, writeReady: WriteReadyObserver): Promise<string> {
     // カートアイテムを取得
     const cartItem = await this.m_getCartItemById(uid, input.id, tx)
 
@@ -228,7 +233,7 @@ class CartService {
       tx
     )
 
-    return { ...cartItem, product }
+    return cartItem.id
   }
 
   /**
@@ -238,7 +243,7 @@ class CartService {
    * @param tx
    * @param writeReady
    */
-  private async m_removeCartItem(uid: string, cartItemId: string, tx: Transaction, writeReady: WriteReadyObserver): Promise<CartItemEditResponse> {
+  private async m_removeCartItem(uid: string, cartItemId: string, tx: Transaction, writeReady: WriteReadyObserver): Promise<CartItem> {
     // カートアイテムを取得
     const cartItem = await this.m_getCartItemById(uid, cartItemId, tx)
 
@@ -257,7 +262,7 @@ class CartService {
     product.stock = newStock
     await this.storeService.productDao.update(product, tx)
 
-    return { ...cartItem, quantity: 0, product }
+    return cartItem
   }
 
   private async m_getProductById(id: string, tx: Transaction): Promise<Product> {
@@ -286,6 +291,16 @@ class CartService {
       })
     }
     return cartItem
+  }
+
+  async m_getCartItemEditResponses(cartItemIds: string[]): Promise<CartItemEditResponse[]> {
+    return await Promise.all(
+      cartItemIds.map(async id => {
+        const cartItem = (await this.storeService.cartDao.fetch(id))!
+        const product = (await this.storeService.productDao.fetch(cartItem.productId))!
+        return { ...cartItem, product }
+      })
+    )
   }
 
   private m_validateAddInputDuplication(inputs: CartItemAddInput[]): void {

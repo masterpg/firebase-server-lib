@@ -15,14 +15,8 @@ class CartController {
   constructor(@Inject(CartServiceDI.symbol) protected readonly cartService: CartServiceDI.type) {}
 
   @Get()
-  async findAll(@UserArg() user: IdToken): Promise<CartItem[]> {
-    return this.cartService.findList(user)
-  }
-
-  @Get(':id')
-  async findOne(@UserArg() user: IdToken, @Param('id') id: string): Promise<CartItem | undefined> {
-    const list = await this.cartService.findList(user, [id])
-    return list.length ? list[0] : undefined
+  async findAll(@UserArg() user: IdToken, @Query('ids') ids?: string[]): Promise<CartItem[]> {
+    return this.cartService.findList(user, ids)
   }
 
   @Put()

@@ -152,6 +152,8 @@ export interface CartItemEditResponse {
     price: number;
     quantity: number;
     product: Product;
+    createdAt: DateTime;
+    updatedAt: DateTime;
 }
 
 export interface IMutation {

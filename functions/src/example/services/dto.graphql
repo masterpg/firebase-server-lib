@@ -241,6 +241,8 @@ type CartItemEditResponse {
   price: Float!
   quantity: Int!
   product: Product!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 #--------------------------------------------------

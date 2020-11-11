@@ -1,27 +1,16 @@
 GET {{host}}/rest/cartItems
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 ###
 
-GET {{host}}/rest/cartItems/cartItem1
-Authorization: Bearer {"uid": "general.user"}
-
-###
-
-DELETE {{host}}/rest/cartItems
-Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
-
-[
-  "cartItem1",
-  "cartItem2"
-]
+GET {{host}}/rest/cartItems?ids[]=cartItem1&ids[]=cartItem2
+Authorization: Bearer {"uid": "general"}
 
 ###
 
 POST {{host}}/rest/cartItems
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 [
   {
@@ -42,7 +31,7 @@ Authorization: Bearer {"uid": "general.user"}
 
 PUT {{host}}/rest/cartItems
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 [
   {
@@ -57,8 +46,14 @@ Authorization: Bearer {"uid": "general.user"}
 
 ###
 
+DELETE {{host}}/cartItems?ids[]=cartItem1&ids[]=cartItem2
+Content-Type: application/json
+Authorization: Bearer {"uid": "general"}
+
+###
+
 PUT {{host}}/rest/cartItems/checkout
 Content-Type: application/json
-Authorization: Bearer {"uid": "general.user"}
+Authorization: Bearer {"uid": "general"}
 
 ###
