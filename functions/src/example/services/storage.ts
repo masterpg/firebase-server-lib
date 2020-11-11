@@ -327,7 +327,7 @@ class StorageService extends _StorageService<StorageNode, StorageFileNode> {
         }
       }
       if (nearestArticleNodeType !== StorageArticleNodeType.Article) {
-        throw new InputValidationError(`The specified path is not under article root: '${dirPath}'`)
+        throw new InputValidationError(`The specified path is not under article: '${dirPath}'`)
       }
     }
 

@@ -1424,7 +1424,7 @@ describe('AppStorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The specified path is not under article root: '${d1Path}'`)
+      expect(actual.detail.message).toBe(`The specified path is not under article: '${d1Path}'`)
     })
 
     it('カテゴリ配下にディレクトリを作成しようとした場合', async () => {
@@ -1454,7 +1454,7 @@ describe('AppStorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The specified path is not under article root: '${d1Path}'`)
+      expect(actual.detail.message).toBe(`The specified path is not under article: '${d1Path}'`)
     })
 
     it('親ディレクトリが存在しない場合', async () => {
