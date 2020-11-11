@@ -12,7 +12,13 @@ class DevAppConfig extends BaseAppConfig {
   })
 
   readonly cors = new CORSConfigImpl({
-    whitelist: ['http://localhost', 'http://localhost:5000', 'http://localhost:5010', 'chrome-extension://aejoelaoggembcahagimdiliamlcdmfm'],
+    whitelist: [
+      'http://localhost',
+      'http://localhost:5000',
+      'http://localhost:5010',
+      'http://localhost:5030',
+      'chrome-extension://aejoelaoggembcahagimdiliamlcdmfm',
+    ],
     excludes: [{ method: 'GET', pattern: '^storage/' }],
   })
 
