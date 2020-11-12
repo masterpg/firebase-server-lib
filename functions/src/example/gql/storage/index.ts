@@ -1,7 +1,7 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
-  AuthModule,
   AuthServiceDI,
+  AuthServiceModule,
   CreateStorageNodeInput,
   GQLContext,
   GQLContextArg,
@@ -279,7 +279,7 @@ export class StorageResolver {
 
 @Module({
   providers: [StorageResolver],
-  imports: [BaseGQLModule, StorageServiceModule, AuthModule],
+  imports: [BaseGQLModule, StorageServiceModule, AuthServiceModule],
 })
 class StorageGQLModule {}
 

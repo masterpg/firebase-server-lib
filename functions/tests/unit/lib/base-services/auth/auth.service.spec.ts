@@ -1,8 +1,8 @@
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/common/data'
-import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims, initLib } from '../../../../../../src/lib'
+import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../helpers/common/data'
+import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims, initLib } from '../../../../../src/lib'
 import { Test, TestingModule } from '@nestjs/testing'
-import { DummyGQLModule } from '../../../../../mocks/lib/gql/dummy'
-import { DummyRESTModule } from '../../../../../mocks/lib/rest/dummy'
+import { DummyGQLModule } from '../../../../mocks/lib/gql/dummy'
+import { DummyRESTModule } from '../../../../mocks/lib/rest/dummy'
 import { Response } from 'supertest'
 import request = require('supertest')
 

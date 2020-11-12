@@ -1,8 +1,7 @@
 import * as admin from 'firebase-admin'
+import { AuthStatus, PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from '../base-service'
 import { Inject, Module } from '@nestjs/common'
-import { PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from './store'
 import { StorageServiceDI, StorageServiceModule } from './storage'
-import { AuthStatus } from '../nest'
 import { EntityId } from '../../firestore-ex'
 import { IsNotEmpty } from 'class-validator'
 import UserRecord = admin.auth.UserRecord
@@ -210,4 +209,4 @@ class UserServiceModule {}
 //
 //========================================================================
 
-export { UserService, UserServiceDI, UserServiceModule, AuthDataResult, PublicProfile, UserInfo, UserInfoInput, AuthStatus }
+export { UserService, UserServiceDI, UserServiceModule, AuthDataResult, PublicProfile, UserInfo, UserInfoInput }

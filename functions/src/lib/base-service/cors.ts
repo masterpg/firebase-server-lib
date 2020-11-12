@@ -1,9 +1,9 @@
 import * as vary from 'vary'
 import { HTTPLoggingServiceDI, LoggingLatencyTimer, LoggingSeverity } from './logging'
+import { Inject, Module } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { GraphQLResolveInfo } from 'graphql'
-import { Inject } from '@nestjs/common'
-import { config } from '../../../config'
+import { config } from '../../config'
 import { removeStartSlash } from 'web-base-lib'
 import onFinished = require('on-finished')
 import dayjs = require('dayjs')
@@ -350,10 +350,16 @@ namespace CORSServiceDI {
   export type type = CORSService
 }
 
+@Module({
+  providers: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
+  exports: [CORSServiceDI.provider, HTTPLoggingServiceDI.provider],
+})
+class CORSServiceModule {}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { CORSServiceDI }
+export { CORSServiceModule, CORSServiceDI }

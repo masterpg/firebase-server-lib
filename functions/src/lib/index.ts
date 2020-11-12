@@ -1,4 +1,4 @@
 export * from './base'
-export * from './gql'
+export * from './base-service'
 export * from './nest'
 export * from './services'

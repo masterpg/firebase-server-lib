@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin'
-import { ForbiddenException, HttpException, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { HTTPLoggingServiceDI } from './logging'
 
 //========================================================================
 //
@@ -216,10 +217,16 @@ namespace AuthServiceDI {
   export type type = AuthService
 }
 
+@Module({
+  providers: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
+  exports: [AuthServiceDI.provider, HTTPLoggingServiceDI.provider],
+})
+class AuthServiceModule {}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { AuthServiceDI, UserClaims, UserIdClaims, AuthStatus, AuthRoleType, AuthValidateResult, IdToken }
+export { AuthServiceModule, AuthServiceDI, UserClaims, UserIdClaims, AuthStatus, AuthRoleType, AuthValidateResult, IdToken }

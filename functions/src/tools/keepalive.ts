@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as chalk from 'chalk'
 import * as program from 'commander'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageServiceModule } from '../lib/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageServiceModule } from '../lib'
 import axios, { AxiosRequestConfig } from 'axios'
 import { Module } from '@nestjs/common'
 import { createNestApplication } from '../example/base'

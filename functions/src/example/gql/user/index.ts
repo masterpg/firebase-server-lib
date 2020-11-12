@@ -1,8 +1,8 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
   AuthDataResult,
-  AuthModule,
   AuthServiceDI,
+  AuthServiceModule,
   GQLContext,
   GQLContextArg,
   IdToken,
@@ -70,7 +70,7 @@ export class UserResolver {
 
 @Module({
   providers: [UserResolver],
-  imports: [BaseGQLModule, AuthModule, UserServiceModule],
+  imports: [BaseGQLModule, AuthServiceModule, UserServiceModule],
 })
 class UserGQLModule {}
 

@@ -1,5 +1,5 @@
 import { ExecutionContext, createParamDecorator } from '@nestjs/common'
-import { GQLContext } from '../../nest'
+import { GQLContext } from '../base'
 
 export const GQLContextArg = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
   const type = ctx.getType() as 'http' | 'graphql'

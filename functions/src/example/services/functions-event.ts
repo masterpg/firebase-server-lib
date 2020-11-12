@@ -1,4 +1,4 @@
-import { FunctionsEventLoggingServiceDI, LoggingModule, UserServiceDI, UserServiceModule } from '../../lib'
+import { FunctionsEventLoggingServiceDI, LoggingServiceModule, UserServiceDI, UserServiceModule } from '../../lib'
 import { Inject, Module } from '@nestjs/common'
 import { StorageServiceDI, StorageServiceModule } from './storage'
 import { EventContext } from 'firebase-functions'
@@ -48,7 +48,7 @@ namespace FunctionsEventDI {
 @Module({
   providers: [FunctionsEventDI.provider],
   exports: [FunctionsEventDI.provider],
-  imports: [UserServiceModule, StorageServiceModule, LoggingModule],
+  imports: [UserServiceModule, StorageServiceModule, LoggingServiceModule],
 })
 class FunctionsEventServiceModule {}
 

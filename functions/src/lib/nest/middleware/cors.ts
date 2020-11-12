@@ -1,6 +1,6 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
-import { CORSServiceDI } from '../services/cors'
+import { CORSServiceDI } from '../../base-service'
 
 //========================================================================
 //

@@ -1,5 +1,5 @@
-import { CallHandler, ExecutionContext, Inject, Module, NestInterceptor } from '@nestjs/common'
-import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
+import { CallHandler, ExecutionContext, Inject, NestInterceptor } from '@nestjs/common'
+import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../../base-service'
 import { APP_INTERCEPTOR } from '@nestjs/core'
 import { Observable } from 'rxjs'
 import { getAllExecutionContext } from '../base'

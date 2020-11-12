@@ -2,7 +2,7 @@ import * as path from 'path'
 import { Context, ContextFunction } from 'apollo-server-core'
 import { IResolverValidationOptions, IResolvers } from 'graphql-tools'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
-import { GQLContext } from '../nest'
+import { GQLContext } from './base'
 import GraphQLJSON from 'graphql-type-json'
 import { print } from 'graphql/language/printer'
 
@@ -62,8 +62,8 @@ function getBaseGQLModuleOptions(
 //
 //========================================================================
 
+export { getTypeDefs, getBaseGQLModuleOptions }
+export * from './base'
 export * from './decorators/context'
 export * from './scalars/date-time'
 export * from './scalars/long'
-
-export { getTypeDefs, getBaseGQLModuleOptions }

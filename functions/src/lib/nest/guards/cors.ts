@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Inject } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
-import { CORSServiceDI } from '../services/cors'
+import { CORSServiceDI } from '../../base-service'
 import { getAllExecutionContext } from '../base'
 
 //========================================================================

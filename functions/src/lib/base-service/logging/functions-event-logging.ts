@@ -1,4 +1,4 @@
-import { InputValidationError, ValidationErrors } from '../../../base'
+import { InputValidationError, ValidationErrors } from '../../base'
 import { clone, merge } from 'lodash'
 import { debug, error, info, warn } from 'firebase-functions/lib/logger'
 import { LoggingSeverity } from './base'

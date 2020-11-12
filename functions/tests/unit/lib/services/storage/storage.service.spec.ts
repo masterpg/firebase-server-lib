@@ -26,7 +26,7 @@ import { config } from '../../../../../src/config'
 import request = require('supertest')
 import { sleep } from 'web-base-lib'
 
-jest.setTimeout(900000)
+jest.setTimeout(25000)
 initLib()
 
 //========================================================================

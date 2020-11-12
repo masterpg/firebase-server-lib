@@ -1,6 +1,5 @@
+import { AuthServiceDI, HTTPLoggingServiceDI, LoggingLatencyTimer } from '../../base-service'
 import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common'
-import { HTTPLoggingServiceDI, LoggingLatencyTimer } from '../services/logging'
-import { AuthServiceDI } from '../services/auth'
 import { Reflector } from '@nestjs/core'
 import { getAllExecutionContext } from '../base'
 import onFinished = require('on-finished')

@@ -1,5 +1,5 @@
 import { ExecutionContext, createParamDecorator } from '@nestjs/common'
-import { GQLContext } from '../base'
+import { GQLContext } from '../../base'
 import { GraphQLResolveInfo } from 'graphql'
 import { Request } from 'express'
 

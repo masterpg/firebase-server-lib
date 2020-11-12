@@ -1,5 +1,5 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthGuard, AuthModule, IdToken, UserArg } from '../../../lib'
+import { AuthGuard, AuthServiceModule, IdToken, UserArg } from '../../../lib'
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, CartServiceDI, CartServiceModule } from '../../services'
 import { Inject, UseGuards } from '@nestjs/common'
 import { BaseGQLModule } from '../base'
@@ -44,7 +44,7 @@ class CartResolver {
 
 @Module({
   providers: [CartResolver],
-  imports: [BaseGQLModule, CartServiceModule, AuthModule],
+  imports: [BaseGQLModule, CartServiceModule, AuthServiceModule],
 })
 class CartGQLModule {}
 

@@ -11,6 +11,7 @@ function initFirebaseApp() {
   })
 }
 
-export * from './firestore'
-export * from './validator'
 export { initFirebaseApp, initLib }
+export * from './firestore'
+export * from './gql'
+export * from './validator'

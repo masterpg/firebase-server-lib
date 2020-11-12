@@ -1,4 +1,4 @@
-import { AuthGuard, AuthModule, AuthRoleType, IdToken, Roles, UserArg } from '../../../lib/nest'
+import { AuthGuard, AuthRoleType, AuthServiceModule, IdToken, Roles, UserArg } from '../../../lib'
 import { Controller, Get, Module, UseGuards } from '@nestjs/common'
 import { BaseRESTModule } from '../base'
 import { sleep } from 'web-base-lib'
@@ -22,7 +22,7 @@ class KeepAliveController {
 
 @Module({
   controllers: [KeepAliveController],
-  imports: [BaseRESTModule, AuthModule],
+  imports: [BaseRESTModule, AuthServiceModule],
 })
 class KeepAliveRESTModule {}
 

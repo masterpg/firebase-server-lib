@@ -1,12 +1,11 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
-import { FirestoreServiceDI, FirestoreServiceModule, UserClaims } from '../nest'
+import { FirestoreServiceDI, FirestoreServiceModule, JSONObject, UserClaims } from '../base-service'
 import { Inject, Module } from '@nestjs/common'
 import { UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
-import { JSONObject } from './base'
 import dayjs = require('dayjs')
 import { isISO8601 } from 'validator'
 import { isNumber } from 'lodash'

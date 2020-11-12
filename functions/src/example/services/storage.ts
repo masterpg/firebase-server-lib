@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import {
-  AuthModule,
   AuthRoleType,
   AuthServiceDI,
+  AuthServiceModule,
   CreateStorageNodeInput,
   IdToken,
   InputValidationError,
@@ -1047,7 +1047,7 @@ namespace StorageServiceDI {
 @Module({
   providers: [StorageServiceDI.provider],
   exports: [StorageServiceDI.provider],
-  imports: [AuthModule, StoreServiceModule],
+  imports: [AuthServiceModule, StoreServiceModule],
 })
 class StorageServiceModule {}
 
