@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
 import * as crypto from 'crypto'
 import { Firestore } from '../../../src/firestore-ex/types'
-import { initFirebaseApp } from '../../../src/lib'
+import { initFirebaseApp } from '../../../src/app/base'
 
 export const deleteCollection = async (db: Firestore, collectionPath: string) => {
   const batch = db.batch()

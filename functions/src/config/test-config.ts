@@ -27,8 +27,8 @@ class TestAppConfig extends BaseAppConfig {
 
   readonly gql = new GQLConfigImpl({
     schema: {
-      presetFiles: ['dist/example/services/dto.graphql', 'tests/mocks/lib/gql/dummy/schema.graphql'],
-      moduleDir: 'dist/example/gql',
+      presetFiles: ['dist/app/services/dto.graphql', 'tests/mocks/app/gql/dummy/schema.graphql'],
+      moduleDir: 'dist/app/gql',
     },
   })
 }

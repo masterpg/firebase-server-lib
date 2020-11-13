@@ -2,5 +2,5 @@
 dist/
 node_module/
 
-src/example/gql.schema.ts
-tests/mocks/lib/gql.schema.ts
+src/app/gql.schema.ts
+tests/mocks/app/gql.schema.ts

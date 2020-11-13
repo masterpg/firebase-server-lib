@@ -59,5 +59,5 @@ to propagate to our systems and retry.
 ## 単体テスト
 
 ### FirestoreEx の単体テスト実行
-1. ターミナルで`yarn emulators:firestore`を実行。
+1. ターミナルで`yarn firestore`を実行。
 2. 上記とは別のターミナルを開き、`yarn test:firestore-ex`を実行。

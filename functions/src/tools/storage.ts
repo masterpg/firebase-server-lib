@@ -4,19 +4,18 @@ import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import * as program from 'commander'
 import {
+  AppStorageServiceDI,
+  AppStorageServiceModule,
+  StorageNode,
   StorageNodeType,
-  StorageServiceDI,
-  StorageServiceModule,
   StorageUploadDataItem,
   UserServiceDI,
   UserServiceModule,
-  initFirebaseApp,
-} from '../lib'
+} from '../app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
+import { createNestApplication, initFirebaseApp } from '../app/base'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
-import { StorageNode } from '../example/services'
-import { createNestApplication } from '../example/base'
 import dayjs = require('dayjs')
 import utc = require('dayjs/plugin/utc')
 
@@ -44,7 +43,7 @@ const maxChunk = 10000
 //========================================================================
 
 @Module({
-  imports: [StorageServiceModule, UserServiceModule],
+  imports: [AppStorageServiceModule, UserServiceModule],
 })
 class StorageToolModule {}
 
@@ -191,7 +190,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
     const userService = nestApp.get(UserServiceDI.symbol) as UserServiceDI.type
 
     // まずはパスで検索
@@ -236,7 +235,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     // まずはパスで検索
     let nodePath = id_or_path
@@ -279,7 +278,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNodeByPath(id_or_path)
@@ -316,7 +315,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     await storageService.createHierarchicalDirs([dirPath])
   })
@@ -331,7 +330,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     await storageService.createHierarchicalDirs([dirPath])
 
@@ -359,7 +358,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     const testDirPaths: string[] = []
     for (let i = 1; i <= num; i++) {

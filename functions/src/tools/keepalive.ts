@@ -1,12 +1,11 @@
 import * as admin from 'firebase-admin'
 import * as chalk from 'chalk'
 import * as program from 'commander'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI, StorageServiceModule } from '../lib'
+import { AppStorageServiceDI, AppStorageServiceModule, DevUtilsServiceDI, DevUtilsServiceModule } from '../app/services'
 import axios, { AxiosRequestConfig } from 'axios'
+import { createNestApplication, initFirebaseApp } from '../app/base'
 import { Module } from '@nestjs/common'
-import { createNestApplication } from '../example/base'
 import firebaseConfig from './firebase.config'
-import { initFirebaseApp } from '../lib/base'
 
 //========================================================================
 //
@@ -23,7 +22,7 @@ const UID = 'keepalive'
 //========================================================================
 
 @Module({
-  imports: [DevUtilsServiceModule, StorageServiceModule],
+  imports: [DevUtilsServiceModule, AppStorageServiceModule],
 })
 class KeepAliveToolModule {}
 
@@ -165,7 +164,7 @@ program.action(async () => {
   initFirebaseApp()
   const nestApp = await createNestApplication(KeepAliveToolModule)
   const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
-  const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
+  const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
   console.log() // 改行
 

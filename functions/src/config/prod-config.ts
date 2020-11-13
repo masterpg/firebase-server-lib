@@ -22,8 +22,8 @@ class ProdAppConfig extends BaseAppConfig {
 
   readonly gql = new GQLConfigImpl({
     schema: {
-      presetFiles: ['dist/example/services/dto.graphql'],
-      moduleDir: 'dist/example/gql',
+      presetFiles: ['dist/app/services/dto.graphql'],
+      moduleDir: 'dist/app/gql',
     },
   })
 }
