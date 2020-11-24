@@ -2,7 +2,7 @@
   "name": "firebase-server-lib-functions",
   "private": true,
   "engines": {
-    "node": "10"
+    "node": "12"
   },
   "main": "dist/app/index.js",
   "scripts": {
@@ -25,7 +25,7 @@
     "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/keepalive.js"
   },
   "dependencies": {
-    "@google-cloud/logging": "^7.3.0",
+    "@google-cloud/logging": "^8.1.1",
     "@nestjs/common": "7.0.7",
     "@nestjs/core": "7.0.7",
     "@nestjs/graphql": "7.1.5",
@@ -35,11 +35,10 @@
     "class-transformer": "^0.2.3",
     "class-validator": "^0.11.1",
     "convert-hrtime": "^3.0.0",
-    "crypto": "^1.0.1",
     "dayjs": "^1.8.23",
-    "firebase-admin": "^8.12.1",
-    "firebase-functions": "^3.7.0",
-    "firebase-tools": "^8.4.2",
+    "firebase-admin": "^9.4.1",
+    "firebase-functions": "^3.11.0",
+    "firebase-tools": "^8.16.2",
     "glob": "^7.1.6",
     "graphql": "14.6.0",
     "graphql-subscriptions": "1.1.0",

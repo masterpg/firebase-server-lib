@@ -9,7 +9,7 @@
     "url": "https://github.com/masterpg/firebase-server-lib.git"
   },
   "engines": {
-    "node": "10"
+    "node": "12"
   },
   "scripts": {
     "build": "npm --prefix ./functions run build",
