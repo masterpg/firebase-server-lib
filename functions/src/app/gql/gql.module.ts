@@ -3,7 +3,7 @@ import { CORSServiceModule, LoggingServiceModule } from '../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import CartGQLModule from './cart'
 import DevUtilsGQLModule from './dev'
-import FoundationGQLModule from './foundation'
+import EnvGQLModule from './env'
 import { GraphQLModule } from '@nestjs/graphql'
 import KeepAliveGQLModule from './keepalive'
 import ProductGQLModule from './product'
@@ -20,7 +20,7 @@ import { getGQLModuleOptions } from './base'
 
 const gqlOptions = getGQLModuleOptions([config.gql.schema.moduleDir])
 
-const gqlModules = [FoundationGQLModule, StorageGQLModule, UserGQLModule, KeepAliveGQLModule, CartGQLModule, ProductGQLModule]
+const gqlModules = [EnvGQLModule, StorageGQLModule, UserGQLModule, KeepAliveGQLModule, CartGQLModule, ProductGQLModule]
 if (process.env.NODE_ENV !== 'production') {
   gqlModules.push(DevUtilsGQLModule)
 }

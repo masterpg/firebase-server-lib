@@ -16,7 +16,7 @@ beforeAll(async () => {
   await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
 })
 
-describe('FoundationResolver', () => {
+describe('EnvResolver', () => {
   let app: any
 
   beforeEach(async () => {

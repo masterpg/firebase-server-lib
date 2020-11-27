@@ -63,7 +63,7 @@ function getBaseGQLModuleOptions(
   }
 }
 
-export function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
+function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
   const result: GqlModuleOptions = {
     ...getBaseGQLModuleOptions([...config.gql.schema.presetFiles, ...schemaFiles]),
     path: '/',
@@ -89,7 +89,7 @@ export class BaseGQLModule {}
 //
 //========================================================================
 
-export { getBaseGQLModuleOptions }
+export { getBaseGQLModuleOptions, getGQLModuleOptions }
 export * from './base'
 export * from './decorators/context'
 export * from './scalars/date-time'

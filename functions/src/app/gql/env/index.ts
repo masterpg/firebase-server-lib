@@ -1,4 +1,4 @@
-import { AppConfigResponse, AuthServiceModule, FoundationServiceDI, FoundationServiceModule } from '../../services'
+import { AppConfigResponse, AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../services'
 import { Query, Resolver } from '@nestjs/graphql'
 import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
@@ -11,20 +11,20 @@ import { Module } from '@nestjs/common'
 //========================================================================
 
 @Resolver()
-export class FoundationResolver {
-  constructor(@Inject(FoundationServiceDI.symbol) protected readonly foundationService: FoundationServiceDI.type) {}
+export class EnvResolver {
+  constructor(@Inject(EnvServiceDI.symbol) protected readonly envService: EnvServiceDI.type) {}
 
   @Query()
   async appConfig(): Promise<AppConfigResponse> {
-    return this.foundationService.appConfig()
+    return this.envService.appConfig()
   }
 }
 
 @Module({
-  providers: [FoundationResolver],
-  imports: [BaseGQLModule, FoundationServiceModule, AuthServiceModule],
+  providers: [EnvResolver],
+  imports: [BaseGQLModule, EnvServiceModule, AuthServiceModule],
 })
-class FoundationGQLModule {}
+class EnvGQLModule {}
 
 //========================================================================
 //
@@ -32,4 +32,4 @@ class FoundationGQLModule {}
 //
 //========================================================================
 
-export default FoundationGQLModule
+export default EnvGQLModule

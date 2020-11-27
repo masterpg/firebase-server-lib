@@ -9,7 +9,7 @@ import { BaseAppConfig, CORSConfigImpl, FunctionsConfigImpl, GQLConfigImpl, Stor
 class TestAppConfig extends BaseAppConfig {
   constructor() {
     super()
-    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5020'
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5012'
   }
 
   readonly functions = new FunctionsConfigImpl({

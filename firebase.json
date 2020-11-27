@@ -15,7 +15,7 @@
   },
   "emulators": {
     "firestore": {
-      "port": 5020
+      "port": 5012
     }
   }
 }
