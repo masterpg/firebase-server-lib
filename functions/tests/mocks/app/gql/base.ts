@@ -4,7 +4,7 @@ import { getBaseGQLModuleOptions } from '../../../../src/app/gql'
 
 export function getMockGQLModuleOptions(): GqlModuleOptions {
   const result: GqlModuleOptions = {
-    ...getBaseGQLModuleOptions([...config.gql.schema.presetFiles]),
+    ...getBaseGQLModuleOptions(config.gql.schemaFilesOrDirs),
     path: '/dummyService',
   }
   return result

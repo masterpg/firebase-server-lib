@@ -63,9 +63,9 @@ function getBaseGQLModuleOptions(
   }
 }
 
-function getGQLModuleOptions(schemaFiles: string[]): GqlModuleOptions {
+function getGQLModuleOptions(): GqlModuleOptions {
   const result: GqlModuleOptions = {
-    ...getBaseGQLModuleOptions([...config.gql.schema.presetFiles, ...schemaFiles]),
+    ...getBaseGQLModuleOptions(config.gql.schemaFilesOrDirs),
     path: '/',
   }
   if (isDevelopment()) {

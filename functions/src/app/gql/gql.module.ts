@@ -18,7 +18,7 @@ import { getGQLModuleOptions } from './base'
 //
 //========================================================================
 
-const gqlOptions = getGQLModuleOptions([config.gql.schema.moduleDir])
+const gqlOptions = getGQLModuleOptions()
 
 const gqlModules = [EnvGQLModule, StorageGQLModule, UserGQLModule, KeepAliveGQLModule, CartGQLModule, ProductGQLModule]
 if (process.env.NODE_ENV !== 'production') {

@@ -37,7 +37,7 @@ import { StoreServiceDI } from '../../../../../src/app/services/base/store'
 import { config } from '../../../../../src/config'
 import request = require('supertest')
 
-jest.setTimeout(900000)
+jest.setTimeout(25000)
 initApp()
 
 //========================================================================

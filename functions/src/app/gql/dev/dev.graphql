@@ -1,3 +1,36 @@
+input PutTestStoreDataInput {
+  collectionName: String!
+  collectionRecords: [JSONObject!]!
+}
+
+input TestSignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+input TestFirebaseUserInput {
+  uid: ID!
+  email: String
+  emailVerified: Boolean
+  password: String
+  displayName: String
+  disabled: Boolean
+  photoURL: String
+  customClaims: JSONObject
+}
+
+input TestUserInput {
+  uid: ID!
+  email: String
+  emailVerified: Boolean
+  password: String
+  displayName: String!
+  disabled: Boolean
+  photoURL: String
+  customClaims: JSONObject
+  fullName: String!
+}
+
 type Mutation {
   putTestStoreData(inputs: [PutTestStoreDataInput!]!): Boolean!
   removeTestStorageDir(dirPath: String!): Boolean!

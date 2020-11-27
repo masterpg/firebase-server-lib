@@ -150,6 +150,9 @@ function newStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 'na
     contentType: data.contentType || '',
     size: data.size || 0,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
+    articleNodeName: null,
+    articleNodeType: null,
+    articleSortOrder: null,
     version: 1,
     createdAt: data.createdAt || dayjs(),
     updatedAt: data.updatedAt || dayjs(),
@@ -172,6 +175,9 @@ function newStorageFileNode(filePath: string, data?: Partial<Omit<StorageNode, '
     contentType: data.contentType || 'text/plain; charset=utf-8',
     size: data.size || 5,
     share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
+    articleNodeName: null,
+    articleNodeType: null,
+    articleSortOrder: null,
     version: 1,
     createdAt: data.createdAt || dayjs(),
     updatedAt: data.updatedAt || dayjs(),
@@ -185,9 +191,9 @@ function newAppStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 
 
   return {
     ...newStorageDirNode(dirPath, data),
-    articleNodeName: data.articleNodeName,
-    articleNodeType: data.articleNodeType,
-    articleSortOrder: data.articleSortOrder,
+    articleNodeName: data.articleNodeName ?? null,
+    articleNodeType: data.articleNodeType ?? null,
+    articleSortOrder: data.articleSortOrder ?? null,
   }
 }
 
@@ -197,9 +203,9 @@ function newAppStorageFileNode(filePath: string, data?: Partial<Omit<StorageNode
 
   return {
     ...newStorageFileNode(filePath, data),
-    articleNodeName: data.articleNodeName,
-    articleNodeType: data.articleNodeType,
-    articleSortOrder: data.articleSortOrder,
+    articleNodeName: data.articleNodeName ?? null,
+    articleNodeType: data.articleNodeType ?? null,
+    articleSortOrder: data.articleSortOrder ?? null,
   }
 }
 

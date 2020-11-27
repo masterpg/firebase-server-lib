@@ -1,3 +1,38 @@
+type CartItem implements TimestampEntity {
+  id: ID!
+  uid: ID!
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input CartItemAddInput {
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+}
+
+input CartItemUpdateInput {
+  id: ID!
+  quantity: Int!
+}
+
+type CartItemEditResponse {
+  id: ID!
+  uid: ID!
+  productId: ID!
+  title: String!
+  price: Float!
+  quantity: Int!
+  product: Product!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
 type Mutation {
   addCartItems(inputs: [CartItemAddInput!]!): [CartItemEditResponse!]!
   updateCartItems(inputs: [CartItemUpdateInput!]!): [CartItemEditResponse!]!

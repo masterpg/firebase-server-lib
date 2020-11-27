@@ -78,10 +78,7 @@ interface StorageArticlesConfig {
 //--------------------------------------------------
 
 interface GQLConfig {
-  schema: {
-    presetFiles: string[]
-    moduleDir: string
-  }
+  schemaFilesOrDirs: string[]
 }
 
 //========================================================================
@@ -128,10 +125,10 @@ class StorageConfigImpl implements StorageConfig {
 
 class GQLConfigImpl implements GQLConfig {
   constructor(params: GQLConfig) {
-    this.schema = params.schema
+    this.schemaFilesOrDirs = params.schemaFilesOrDirs
   }
 
-  schema: { presetFiles: string[]; moduleDir: string }
+  schemaFilesOrDirs: string[]
 }
 
 abstract class BaseAppConfig implements AppConfig {

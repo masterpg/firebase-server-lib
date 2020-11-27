@@ -76,9 +76,9 @@ interface StorageNode extends TimestampEntity {
   contentType: string
   size: number
   share: StorageNodeShareSettings
-  articleNodeName?: string
-  articleNodeType?: StorageArticleNodeType
-  articleSortOrder?: number
+  articleNodeName: string | null
+  articleNodeType: StorageArticleNodeType | null
+  articleSortOrder: number | null
   version: number
 }
 
@@ -122,13 +122,13 @@ const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
   if (typeof obj.contentType === 'string') result.contentType = obj.contentType
   if (typeof obj.size === 'number') result.size = obj.size
   if (obj.share) result.share = obj.share
-  if (typeof obj.articleNodeName === 'string' || isFieldValue(obj.articleNodeName)) {
+  if (typeof obj.articleNodeName === 'string' || obj.articleNodeName === null || isFieldValue(obj.articleNodeName)) {
     result.articleNodeName = obj.articleNodeName
   }
-  if (typeof obj.articleNodeType === 'string' || isFieldValue(obj.articleNodeType)) {
+  if (typeof obj.articleNodeType === 'string' || obj.articleNodeType === null || isFieldValue(obj.articleNodeType)) {
     result.articleNodeType = obj.articleNodeType
   }
-  if (typeof obj.articleSortOrder === 'number' || isFieldValue(obj.articleNodeType)) {
+  if (typeof obj.articleSortOrder === 'number' || obj.articleSortOrder === null || isFieldValue(obj.articleNodeType)) {
     result.articleSortOrder = obj.articleSortOrder
   }
   result.version = obj.version
