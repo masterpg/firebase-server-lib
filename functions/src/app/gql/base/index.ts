@@ -1,6 +1,6 @@
 import * as path from 'path'
 import { Context, ContextFunction } from 'apollo-server-core'
-import { IResolverValidationOptions, IResolvers } from 'graphql-tools'
+import { IResolverValidationOptions, IResolvers } from '@kamilkisiela/graphql-tools'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
 import { DateTimeScalar } from './scalars/date-time'
 import { GQLContext } from './base'

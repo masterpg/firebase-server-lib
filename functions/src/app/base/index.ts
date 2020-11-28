@@ -11,11 +11,11 @@ import { config } from '../../config'
 //
 //========================================================================
 
-function initApp() {
+function initApp(): void {
   initFirebaseApp()
 }
 
-function initFirebaseApp() {
+function initFirebaseApp(): void {
   admin.initializeApp({
     storageBucket: config.storage.bucket,
   })

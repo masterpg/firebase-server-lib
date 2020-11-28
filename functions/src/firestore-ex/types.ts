@@ -30,7 +30,7 @@ type Storable<T> = {
     ? FieldValue
     : T[K] extends Array<infer R>
     ? Array<Storable<R>> | FieldValue
-    : T[K] extends object
+    : T[K] extends Record<string, unknown>
     ? Storable<T[K]>
     : T[K] | FieldValue
 }
@@ -46,7 +46,7 @@ type PartialStorable<T> = {
     ? FieldValue
     : T[K] extends Array<infer R>
     ? Array<PartialStorable<R>> | FieldValue
-    : T[K] extends object
+    : T[K] extends Record<string, unknown>
     ? PartialStorable<T[K]>
     : T[K] | FieldValue
 }

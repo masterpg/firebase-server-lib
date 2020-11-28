@@ -6,10 +6,6 @@ scalar JSON
 
 scalar JSONObject
 
-interface Entity {
-  id: ID!
-}
-
 interface TimestampEntity {
   id: ID!
   createdAt: DateTime!

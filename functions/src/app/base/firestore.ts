@@ -42,7 +42,7 @@ class WriteReadyObserver {
   }
 }
 
-function isFieldValue(obj: any) {
+function isFieldValue(obj: any): boolean {
   return obj instanceof FieldValue
 }
 

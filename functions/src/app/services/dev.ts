@@ -10,7 +10,7 @@ import { JSONObject } from './base/types'
 import UserRecord = admin.auth.UserRecord
 import { UserClaims } from './base/auth'
 import dayjs = require('dayjs')
-import { isISO8601 } from 'validator'
+import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
 const firebaseTools = require('firebase-tools')
 

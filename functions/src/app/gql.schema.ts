@@ -112,10 +112,6 @@ export interface UserInfoInput {
     displayName: string;
 }
 
-export interface Entity {
-    id: string;
-}
-
 export interface TimestampEntity {
     id: string;
     createdAt: DateTime;
