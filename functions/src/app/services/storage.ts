@@ -793,9 +793,13 @@ class AppStorageService extends StorageService {
 
     // 記事用ディレクトリに記事のもととなるMarkdownファイルを配置
     const articleFilePath = path.join(dirPath, config.storage.article.fileName)
-    await this.saveStorageFileNode(articleFilePath, {
-      data: '',
-      options: { contentType: 'text/markdown' },
+    await this.saveStorageFileNode({
+      filePath: articleFilePath,
+      isArticleFile: true,
+      dataParams: {
+        data: '',
+        options: { contentType: 'text/markdown' },
+      },
     })
 
     return result

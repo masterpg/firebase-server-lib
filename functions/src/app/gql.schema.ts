@@ -240,6 +240,7 @@ export interface StorageNode extends TimestampEntity {
     articleNodeName?: string;
     articleNodeType?: StorageArticleNodeType;
     articleSortOrder?: Long;
+    isArticleFile?: boolean;
     version: number;
     createdAt: DateTime;
     updatedAt: DateTime;

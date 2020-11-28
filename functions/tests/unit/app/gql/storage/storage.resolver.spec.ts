@@ -80,7 +80,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageNode($input: StorageNodeKeyInput!) {
           storageNode(input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -309,7 +309,7 @@ describe('StorageResolver', () => {
         query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) {
           storageDirDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -411,7 +411,7 @@ describe('StorageResolver', () => {
         query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) {
           storageDescendants(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -513,7 +513,7 @@ describe('StorageResolver', () => {
         query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
           storageDirChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -615,7 +615,7 @@ describe('StorageResolver', () => {
         query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) {
           storageChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -716,7 +716,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageHierarchicalNodes($nodePath: String!) {
           storageHierarchicalNodes(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -809,7 +809,7 @@ describe('StorageResolver', () => {
       query: `
         query GetStorageAncestorDirs($nodePath: String!) {
           storageAncestorDirs(nodePath: $nodePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -902,7 +902,7 @@ describe('StorageResolver', () => {
       query: `
         mutation HandleUploadedFile($filePath: String!) {
           handleUploadedFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -993,7 +993,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) {
           createStorageDir(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1082,7 +1082,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) {
           createStorageHierarchicalDirs(dirPaths: $dirPaths) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1177,7 +1177,7 @@ describe('StorageResolver', () => {
         mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) {
           removeStorageDir(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1278,7 +1278,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RemoveStorageFile($filePath: String!) {
           removeStorageFile(filePath: $filePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1368,7 +1368,7 @@ describe('StorageResolver', () => {
         mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) {
           moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1464,7 +1464,7 @@ describe('StorageResolver', () => {
       query: `
         mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
           moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1549,7 +1549,7 @@ describe('StorageResolver', () => {
         mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) {
           renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }
@@ -1645,7 +1645,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameStorageFile($filePath: String!, $newName: String!) {
           renameStorageFile(filePath: $filePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1729,7 +1729,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) {
           setStorageDirShareSettings(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -1820,7 +1820,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) {
           setStorageFileShareSettings(filePath: $filePath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2001,7 +2001,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateArticleTypeDir($input: CreateArticleTypeDirInput!) {
           createArticleTypeDir(input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2073,7 +2073,7 @@ describe('StorageResolver', () => {
       query: `
         mutation CreateArticleGeneralDir($dirPath: String!, $input: CreateStorageNodeInput) {
           createArticleGeneralDir(dirPath: $dirPath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2135,7 +2135,7 @@ describe('StorageResolver', () => {
       query: `
         mutation RenameArticleNode($nodePath: String!, $newName: String!) {
           renameArticleNode(nodePath: $nodePath, newName: $newName) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2209,7 +2209,7 @@ describe('StorageResolver', () => {
       query: `
         mutation SetArticleSortOrder($nodePath: String!, $input: SetArticleSortOrderInput!) {
           setArticleSortOrder(nodePath: $nodePath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2302,7 +2302,7 @@ describe('StorageResolver', () => {
         query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) {
           articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }

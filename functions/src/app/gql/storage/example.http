@@ -4,7 +4,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($nodePath: String!) { storageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "query GetStorageNode($nodePath: String!) { storageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "nodePath": "test-files/d1"
   }
@@ -18,7 +18,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDirDescendants",
-  "query": "query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) { storageDirDescendants(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) { storageDirDescendants(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -33,7 +33,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) { storageDescendants(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) { storageDescendants(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -48,7 +48,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDirChildren",
-  "query": "query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) { storageDirChildren(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) { storageDirChildren(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -63,7 +63,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) { storageChildren(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) { storageChildren(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -78,7 +78,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageHierarchicalNodes",
-  "query": "query GetStorageHierarchicalNodes($nodePath: String!) { storageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "query GetStorageHierarchicalNodes($nodePath: String!) { storageHierarchicalNodes(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "nodePath": "test-files/d1/d11/d111"
   }
@@ -92,7 +92,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
 "operationName": "GetStorageAncestorDirs",
-"query": "query GetStorageAncestorDirs($nodePath: String!) { storageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+"query": "query GetStorageAncestorDirs($nodePath: String!) { storageAncestorDirs(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "nodePath": "test-files/d1/d11/d111"
   }
@@ -106,7 +106,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "CreateStorageDir",
-  "query": "mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) { createStorageDir(dirPath: $dirPath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) { createStorageDir(dirPath: $dirPath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "dirPath": "test-files"
   }
@@ -120,7 +120,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "CreateStorageHierarchicalDirs",
-  "query": "mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) { createStorageHierarchicalDirs(dirPaths: $dirPaths) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) { createStorageHierarchicalDirs(dirPaths: $dirPaths) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "dirPaths": [
       "test-files/d1/d11",
@@ -139,7 +139,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RemoveStorageDir",
-  "query": "mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) { removeStorageDir(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) { removeStorageDir(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -154,7 +154,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RemoveStorageFile",
-  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "filePath": "test-files/d1/fileA.txt"
   }
@@ -168,7 +168,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "fromDirPath": "test-files/d1/d11",
     "toDirPath": "test-files/d1/d1X",
@@ -184,7 +184,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "MoveStorageFile",
-  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) { moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "fromFilePath": "test-files/d1/fileA.txt",
     "toFilePath": "test-files/d1/d11/fileA.txt"
@@ -199,7 +199,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RenameStorageDir",
-  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1/d11",
     "newName": "d1X",
@@ -215,7 +215,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RenameStorageFile",
-  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "filePath": "test-files/d1/fileA.txt",
     "newName": "fileB.txt"
@@ -230,7 +230,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "SetStorageDirShareSettings",
-  "query": "mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) { setStorageDirShareSettings(dirPath: $dirPath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) { setStorageDirShareSettings(dirPath: $dirPath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "dirPath": "test-files/d1",
     "input": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds": ["ichiro"] }
@@ -245,7 +245,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "SetStorageFileShareSettings",
-  "query": "mutation SetStorageFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) { setStorageFileShareSettings(filePath: $filePath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation SetStorageFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) { setStorageFileShareSettings(filePath: $filePath, input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "filePath": "test-files/d1/fileA.txt",
     "input": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds":  ["ichiro"] }
@@ -260,7 +260,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "HandleUploadedFile",
-  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } }",
+  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "filePath": "test-files/d1/fileA.txt"
   }
@@ -293,7 +293,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetArticleChildren",
-  "query": "query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) { articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt } nextPageToken } }",
+  "query": "query GetArticleChildren($dirPath: String!, $articleTypes: [StorageArticleNodeType!]!, $input: StoragePaginationInput) { articleChildren(dirPath: $dirPath, articleTypes: $articleTypes, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
   "variables": {
     "dirPath": "users/general/articles/blog",
     "articleTypes": "Article",

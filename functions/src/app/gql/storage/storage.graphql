@@ -22,6 +22,7 @@ type StorageNode implements TimestampEntity {
   articleNodeName: String
   articleNodeType: StorageArticleNodeType
   articleSortOrder: Long
+  isArticleFile: Boolean
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!

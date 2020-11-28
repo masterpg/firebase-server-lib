@@ -42,6 +42,7 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
     articleNodeName: node.articleNodeName ?? null,
     articleNodeType: node.articleNodeType ?? null,
     articleSortOrder: node.articleSortOrder ?? null,
+    isArticleFile: node.isArticleFile ?? null,
     version: node.version,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),

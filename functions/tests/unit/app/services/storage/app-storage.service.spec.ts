@@ -1103,6 +1103,7 @@ describe('AppStorageService', () => {
         const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
+        expect(art1FileNode.isArticleFile).toBeTruthy()
       })
 
       it('ベーシックケース - カテゴリ直下に記事を作成', async () => {
@@ -1144,6 +1145,7 @@ describe('AppStorageService', () => {
         const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
+        expect(art1FileNode.isArticleFile).toBeTruthy()
       })
 
       it('同じ記事ノード名の記事を作成', async () => {
@@ -1181,6 +1183,7 @@ describe('AppStorageService', () => {
         const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
+        expect(art1FileNode.isArticleFile).toBeTruthy()
       })
 
       it('バケット直下に記事を作成しようとした場合', async () => {
@@ -2166,7 +2169,7 @@ describe('AppStorageService', () => {
       query: `
         query GetStorageNode($input: StorageNodeKeyInput!) {
           storageNode(input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
       `,
@@ -2177,7 +2180,7 @@ describe('AppStorageService', () => {
         query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
           storageDirChildren(dirPath: $dirPath, input: $input) {
             list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder version createdAt updatedAt
+              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
           }

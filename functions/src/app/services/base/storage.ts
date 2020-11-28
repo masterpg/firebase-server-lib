@@ -1192,14 +1192,14 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     for (const chunk of splitArrayChunk(uploadList, StorageService.MAX_CHUNK)) {
       await Promise.all(
         chunk.map(async uploadItem => {
-          const fileNode = await this.saveStorageFileNode(
-            uploadItem.path,
-            {
+          const fileNode = await this.saveStorageFileNode({
+            filePath: uploadItem.path,
+            dataParams: {
               data: uploadItem.data,
               options: { contentType: uploadItem.contentType },
             },
-            { share: uploadItem.share }
-          )
+            share: uploadItem.share,
+          })
           uploadedFileDict[fileNode.path] = fileNode
         })
       )
@@ -1376,6 +1376,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       articleNodeName: null,
       articleNodeType: null,
       articleSortOrder: null,
+      isArticleFile: false,
       version,
       createdAt: existsFileNode?.createdAt ?? FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -1389,16 +1390,19 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
   /**
    * ストレージ/ストアへファイルノードを保存します。
-   * @param filePath
-   * @param dataParams
-   * @param input
+   * @param params
    */
   protected async saveStorageFileNode(
-    filePath: string,
-    dataParams: { data: any; options?: SaveOptions },
-    input?: StorageNodeInput
+    params: {
+      filePath: string
+      isArticleFile?: boolean | null
+      dataParams: { data: any; options?: SaveOptions }
+    } & StorageNodeInput
   ): Promise<FILE_NODE> {
-    filePath = removeBothEndsSlash(filePath)
+    const filePath = removeBothEndsSlash(params.filePath)
+    const isArticleFile = typeof params.isArticleFile === 'boolean' ? params.isArticleFile : null
+    const { dataParams, share } = params
+
     const fileNode = await this.getNodeByPath(filePath)
     const nodeId = fileNode ? fileNode.id : this.storeService.storageDao.docRef().id
     let version = 0
@@ -1431,7 +1435,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       ...(this.getSaveBaseStorageNode({
         id: nodeId,
         path: filePath,
-        share: Object.assign({}, input?.share ?? fileNode?.share),
+        share: Object.assign({}, share ?? fileNode?.share),
       }) as RequiredAre<WriteBaseStorageNode, 'share'>),
       nodeType: StorageNodeType.File,
       contentType: dataParams?.options?.contentType ?? '',
@@ -1439,6 +1443,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       articleNodeName: null,
       articleNodeType: null,
       articleSortOrder: null,
+      isArticleFile,
       version,
       createdAt: fileNode?.createdAt ?? FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

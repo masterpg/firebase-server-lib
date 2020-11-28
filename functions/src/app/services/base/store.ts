@@ -79,6 +79,7 @@ interface StorageNode extends TimestampEntity {
   articleNodeName: string | null
   articleNodeType: StorageArticleNodeType | null
   articleSortOrder: number | null
+  isArticleFile: boolean | null
   version: number
 }
 
@@ -122,14 +123,17 @@ const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
   if (typeof obj.contentType === 'string') result.contentType = obj.contentType
   if (typeof obj.size === 'number') result.size = obj.size
   if (obj.share) result.share = obj.share
-  if (typeof obj.articleNodeName === 'string' || obj.articleNodeName === null || isFieldValue(obj.articleNodeName)) {
+  if (typeof obj.articleNodeName === 'string' || obj.articleNodeName === null) {
     result.articleNodeName = obj.articleNodeName
   }
-  if (typeof obj.articleNodeType === 'string' || obj.articleNodeType === null || isFieldValue(obj.articleNodeType)) {
+  if (typeof obj.articleNodeType === 'string' || obj.articleNodeType === null) {
     result.articleNodeType = obj.articleNodeType
   }
-  if (typeof obj.articleSortOrder === 'number' || obj.articleSortOrder === null || isFieldValue(obj.articleNodeType)) {
+  if (typeof obj.articleSortOrder === 'number' || obj.articleSortOrder === null || isFieldValue(obj.articleSortOrder)) {
     result.articleSortOrder = obj.articleSortOrder
+  }
+  if (typeof obj.isArticleFile === 'boolean' || obj.isArticleFile === null) {
+    result.isArticleFile = obj.isArticleFile
   }
   result.version = obj.version
 
