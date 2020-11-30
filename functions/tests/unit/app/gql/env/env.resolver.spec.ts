@@ -1,7 +1,8 @@
-import { DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, EnvAppConfig } from '../../../../../src/app/services'
 import { GENERAL_USER, requestGQL } from '../../../../helpers/app'
 import GQLContainerModule from '../../../../../src/app/gql/gql.module'
 import { Test } from '@nestjs/testing'
+import { config } from '../../../../../src/config'
 import { initApp } from '../../../../../src/app/base'
 
 jest.setTimeout(25000)
@@ -32,7 +33,12 @@ describe('EnvResolver', () => {
     const gql = {
       query: `
         query GetAppConfig {
-          appConfig { __typename }
+          appConfig { 
+            storage {
+              user { rootName }
+              article { rootName fileName assetsName }
+            }
+          }
         }
       `,
     }
@@ -40,7 +46,12 @@ describe('EnvResolver', () => {
     it('疎通確認', async () => {
       const response = await requestGQL(app, gql)
       const appConfig = response.body.data.appConfig
-      expect(appConfig.__typename).toBe('AppConfigResponse')
+      expect(appConfig).toEqual({
+        storage: {
+          user: config.storage.user,
+          article: config.storage.article,
+        },
+      } as EnvAppConfig)
     })
   })
 })

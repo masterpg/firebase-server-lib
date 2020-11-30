@@ -1,7 +1,6 @@
 import { AuthGuard, Roles } from '../../nest'
 import { AuthRoleType, AuthServiceModule } from '../../services'
 import { Query, Resolver } from '@nestjs/graphql'
-import { BaseGQLModule } from '../base'
 import { Module } from '@nestjs/common'
 import { UseGuards } from '@nestjs/common'
 import { sleep } from 'web-base-lib'
@@ -14,7 +13,7 @@ import { sleep } from 'web-base-lib'
 
 @Resolver()
 export class KeepAliveResolver {
-  @Query()
+  @Query(returns => Boolean)
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async keepAlive(): Promise<boolean> {
@@ -25,7 +24,7 @@ export class KeepAliveResolver {
 
 @Module({
   providers: [KeepAliveResolver],
-  imports: [BaseGQLModule, AuthServiceModule],
+  imports: [AuthServiceModule],
 })
 class KeepAliveGQLModule {}
 
@@ -35,4 +34,4 @@ class KeepAliveGQLModule {}
 //
 //========================================================================
 
-export default KeepAliveGQLModule
+export { KeepAliveGQLModule }

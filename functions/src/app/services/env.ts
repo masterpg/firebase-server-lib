@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
-import { AppConfigResponse } from '../gql.schema'
-import { IdToken } from './base/auth'
+import { EnvAppConfig } from './types'
+import { IdToken } from './types'
 import { Module } from '@nestjs/common'
 import { config } from '../../config'
 
@@ -11,10 +11,12 @@ import { config } from '../../config'
 //========================================================================
 
 class EnvService {
-  async appConfig(): Promise<AppConfigResponse> {
+  async appConfig(): Promise<EnvAppConfig> {
     return {
-      user: config.storage.user,
-      article: config.storage.article,
+      storage: {
+        user: config.storage.user,
+        article: config.storage.article,
+      },
     }
   }
 
@@ -46,4 +48,4 @@ class EnvServiceModule {}
 //
 //========================================================================
 
-export { EnvServiceDI, EnvServiceModule, AppConfigResponse }
+export { EnvServiceDI, EnvServiceModule }

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { DummyCORSGuardGQLModule } from '../../../../../mocks/app/gql/dummy'
-import { DummyCORSGuardRESTModule } from '../../../../../mocks/app/rest/dummy'
+import { MockCORSGuardGQLModule } from '../../../../../mocks/app/gql/gql.mock.module'
+import { MockCORSGuardRESTModule } from '../../../../../mocks/app/rest/rest.mock.module'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
 import { initApp } from '../../../../../../src/app/base'
@@ -20,7 +20,7 @@ describe('CORSGuard', () => {
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
-      imports: [DummyCORSGuardRESTModule, DummyCORSGuardGQLModule],
+      imports: [MockCORSGuardRESTModule, MockCORSGuardGQLModule],
     }).compile()
 
     app = testingModule.createNestApplication()

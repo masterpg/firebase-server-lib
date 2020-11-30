@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin'
+import { AuthRoleType, AuthStatus, IdToken } from '../types'
 import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { HTTPLoggingServiceDI } from './logging'
@@ -8,27 +9,6 @@ import { HTTPLoggingServiceDI } from './logging'
 //  Interfaces
 //
 //========================================================================
-
-interface UserClaims {
-  isAppAdmin?: boolean
-  authStatus?: AuthStatus
-}
-
-interface UserIdClaims extends UserClaims {
-  uid: string
-}
-
-interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
-
-enum AuthStatus {
-  WaitForEmailVerified = 'WaitForEmailVerified',
-  WaitForEntry = 'WaitForEntry',
-  Available = 'Available',
-}
-
-enum AuthRoleType {
-  AppAdmin = 'AppAdmin',
-}
 
 interface AuthValidateResult {
   result: boolean
@@ -230,4 +210,4 @@ class AuthServiceModule {}
 //========================================================================
 
 export { AuthServiceModule, AuthServiceDI }
-export { UserClaims, UserIdClaims, AuthStatus, AuthRoleType, AuthValidateResult, IdToken }
+export { AuthValidateResult }

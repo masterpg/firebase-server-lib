@@ -1,16 +1,16 @@
+import * as _path from 'path'
 import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../nest'
-import { CORSServiceModule, LoggingServiceModule } from '../services'
+import { DateTimeScalar, LongScalar, getCodeFirstGQLModuleOptions } from './base'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
-import CartGQLModule from './cart'
-import DevUtilsGQLModule from './dev'
-import EnvGQLModule from './env'
+import { CORSServiceModule } from '../services'
+import { DevUtilsGQLModule } from './dev'
+import { EnvGQLModule } from './env'
+import { ExampleShopGQLModule } from './example/shop'
 import { GraphQLModule } from '@nestjs/graphql'
-import KeepAliveGQLModule from './keepalive'
-import ProductGQLModule from './product'
-import StorageGQLModule from './storage'
-import UserGQLModule from './user'
-import { config } from '../../config'
-import { getGQLModuleOptions } from './base'
+import { KeepAliveGQLModule } from './keepalive'
+import { LoggingServiceModule } from '../services/base/logging'
+import { StorageGQLModule } from './storage'
+import { UserGQLModule } from './user'
 
 //========================================================================
 //
@@ -18,15 +18,17 @@ import { getGQLModuleOptions } from './base'
 //
 //========================================================================
 
-const gqlOptions = getGQLModuleOptions()
+const gqlOptions = getCodeFirstGQLModuleOptions({
+  autoSchemaFile: _path.join(process.cwd(), 'src/app/gql/schema.graphql'),
+})
 
-const gqlModules = [EnvGQLModule, StorageGQLModule, UserGQLModule, KeepAliveGQLModule, CartGQLModule, ProductGQLModule]
+const gqlModules = [EnvGQLModule, UserGQLModule, StorageGQLModule, KeepAliveGQLModule, ExampleShopGQLModule]
 if (process.env.NODE_ENV !== 'production') {
   gqlModules.push(DevUtilsGQLModule)
 }
 
 @Module({
-  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider, DateTimeScalar, LongScalar],
   imports: [LoggingServiceModule, CORSServiceModule, GraphQLModule.forRoot(gqlOptions), ...gqlModules],
 })
 class GQLContainerModule {

@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import { FirestoreEx, Transaction } from '../../../../../src/firestore-ex'
 import { Test, TestingModule } from '@nestjs/testing'
 import { WriteReadyObserver, initApp } from '../../../../../src/app/base'
-import DevUtilsGQLModule from '../../../../../src/app/gql/dev'
+import { DevUtilsGQLModule } from '../../../../../src/app/gql/dev'
 import { DevUtilsServiceDI } from '../../../../../src/app/services'
 import { findDuplicateItems } from 'web-base-lib'
 

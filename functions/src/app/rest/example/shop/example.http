@@ -1,0 +1,67 @@
+GET {{host}}/rest/example/shop/products
+
+###
+
+GET {{host}}/rest/example/shop/products?ids[]=product1&ids[]=product2
+
+###
+
+GET {{host}}/rest/example/shop/cartItems
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+###
+
+GET {{host}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+###
+
+POST {{host}}/rest/example/shop/cartItems
+Content-Type: application/json
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+[
+  {
+    "productId": "product1",
+    "title": "iPad 4 Mini",
+    "price": 500.01,
+    "quantity": 1
+  },
+  {
+    "productId": "product2",
+    "title": "Fire HD 8 Tablet",
+    "price": 80.99,
+    "quantity": 2
+  }
+]
+
+###
+
+PUT {{host}}/rest/example/shop/cartItems
+Content-Type: application/json
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+[
+  {
+    "id": "cartItem1",
+    "quantity": 1
+  },
+  {
+    "id": "cartItem2",
+    "quantity": 2
+  }
+]
+
+###
+
+DELETE {{host}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
+Content-Type: application/json
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+###
+
+PUT {{host}}/rest/example/shop/checkout
+Content-Type: application/json
+Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+
+###

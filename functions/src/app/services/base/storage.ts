@@ -1,12 +1,22 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { AuthServiceDI, AuthServiceModule } from './auth'
+import {
+  CreateStorageNodeInput,
+  SignedUploadUrlInput,
+  StorageNode,
+  StorageNodeShareSettings,
+  StorageNodeShareSettingsInput,
+  StorageNodeType,
+  StoragePaginationInput,
+  StoragePaginationResult,
+} from '../types'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, validateUID } from '../../base'
 import { Request, Response } from 'express'
 import { RequiredAre, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
-import { StorageNode, StorageNodeShareSettings, StorageNodeType, StoreServiceDI, StoreServiceModule } from './store'
+import { StoreServiceDI, StoreServiceModule } from './store'
 import { FieldValue } from '../../../firestore-ex'
 import dayjs = require('dayjs')
 
@@ -15,42 +25,6 @@ import dayjs = require('dayjs')
 //  Interfaces
 //
 //========================================================================
-
-//--------------------------------------------------
-//  For GraphQL
-//--------------------------------------------------
-
-interface StoragePaginationInput {
-  maxChunk?: number
-  pageToken?: string
-}
-
-interface StoragePaginationResult<T extends StorageNode = StorageNode> {
-  list: T[]
-  nextPageToken?: string
-}
-
-interface StorageNodeShareSettingsInput {
-  isPublic?: boolean | null
-  readUIds?: string[] | null
-  writeUIds?: string[] | null
-}
-
-interface StorageNodeKeyInput {
-  id?: string
-  path?: string
-}
-
-class SignedUploadUrlInput {
-  filePath!: string
-  contentType?: string
-}
-
-interface CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
-
-//--------------------------------------------------
-//  For inside of Storage
-//--------------------------------------------------
 
 interface StorageFileNode extends StorageNode {
   file: File
@@ -1705,16 +1679,4 @@ class StorageServiceModule {}
 //========================================================================
 
 export { StorageService, StorageServiceDI, StorageServiceModule }
-export {
-  CreateStorageNodeInput,
-  SignedUploadUrlInput,
-  StorageFileNode,
-  StorageNode,
-  StorageNodeKeyInput,
-  StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
-  StorageNodeType,
-  StoragePaginationInput,
-  StoragePaginationResult,
-  StorageUploadDataItem,
-}
+export { StorageFileNode, StorageUploadDataItem }

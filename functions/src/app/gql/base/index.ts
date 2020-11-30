@@ -1,13 +1,7 @@
-import * as path from 'path'
-import { Context, ContextFunction } from 'apollo-server-core'
-import { IResolverValidationOptions, IResolvers } from '@kamilkisiela/graphql-tools'
+import * as _path from 'path'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
-import { DateTimeScalar } from './scalars/date-time'
 import { GQLContext } from './base'
 import { GqlModuleOptions } from '@nestjs/graphql'
-import GraphQLJSON from 'graphql-type-json'
-import { LongScalar } from './scalars/long'
-import { Module } from '@nestjs/common'
 import { config } from '../../../config'
 import { isDevelopment } from '../../base'
 import { merge } from 'lodash'
@@ -27,46 +21,20 @@ import { print } from 'graphql/language/printer'
 function getTypeDefs(schemaFilesOrDirs: string[]): string {
   const typeDefs: string[] = []
   for (const schemaFileOrDir of schemaFilesOrDirs) {
-    const targetPath = path.resolve(process.cwd(), schemaFileOrDir)
+    const targetPath = _path.resolve(process.cwd(), schemaFileOrDir)
     typeDefs.push(...loadSchemaFiles(targetPath))
   }
   return print(mergeTypeDefs(typeDefs))
 }
 
-/**
- * `@nestjs/graphql`の`GqlModuleOptions`のベースを取得します。
- * @param schemaFilesOrDirs `.graphql`ファイルまたはファイルが配置されているディレクトリ
- */
-function getBaseGQLModuleOptions(
-  schemaFilesOrDirs: string[]
-): {
-  context: Context | ContextFunction
-  typeDefs: string
-  resolvers: IResolvers | Array<IResolvers>
-  resolverValidationOptions?: IResolverValidationOptions
-} {
-  return {
-    context: async (ctx: any) => {
-      const { req, res } = ctx
-      return { req, res } as GQLContext
-    },
-    typeDefs: getTypeDefs(schemaFilesOrDirs),
-    resolvers: { JSON: GraphQLJSON },
-    resolverValidationOptions: {
-      // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。
-      // この設定値について:
-      //   https://github.com/Urigo/graphql-tools/blob/master/docs/source/generate-schema.md
-      // リゾルバについて:
-      //   https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type
-      requireResolversForResolveType: false,
-    },
-  }
-}
-
-function getGQLModuleOptions(): GqlModuleOptions {
+function getCodeFirstGQLModuleOptions(params: { autoSchemaFile: string | boolean }): GqlModuleOptions {
   const result: GqlModuleOptions = {
-    ...getBaseGQLModuleOptions(config.gql.schemaFilesOrDirs),
     path: '/',
+    autoSchemaFile: params.autoSchemaFile,
+    context: async (ctx: any) => {
+      return ctx as GQLContext
+    },
+    sortSchema: false,
   }
   if (isDevelopment()) {
     merge(result, {
@@ -78,10 +46,28 @@ function getGQLModuleOptions(): GqlModuleOptions {
   return result
 }
 
-@Module({
-  providers: [DateTimeScalar, LongScalar],
-})
-export class BaseGQLModule {}
+function getSchemaFirstGQLModuleOptions(): GqlModuleOptions {
+  const result: GqlModuleOptions = {
+    typeDefs: getTypeDefs(config.gql.schemaFilesOrDirs),
+    path: '/',
+    resolverValidationOptions: {
+      // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。
+      // この設定値について:
+      //   https://github.com/Urigo/graphql-tools/blob/master/docs/source/generate-schema.md
+      // リゾルバについて:
+      //   https://www.apollographql.com/docs/apollo-server/schema/unions-interfaces/#interface-type
+      requireResolversForResolveType: false,
+    },
+  }
+  if (isDevelopment()) {
+    merge(result, {
+      debug: true,
+      playground: true,
+      introspection: true,
+    })
+  }
+  return result
+}
 
 //========================================================================
 //
@@ -89,7 +75,7 @@ export class BaseGQLModule {}
 //
 //========================================================================
 
-export { getBaseGQLModuleOptions, getGQLModuleOptions }
+export { getCodeFirstGQLModuleOptions, getSchemaFirstGQLModuleOptions }
 export * from './base'
 export * from './decorators/context'
 export * from './scalars/date-time'

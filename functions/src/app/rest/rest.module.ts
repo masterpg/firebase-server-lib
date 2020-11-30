@@ -1,9 +1,8 @@
 import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../nest'
 import { CORSServiceModule, LoggingServiceModule } from '../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
-import CartRESTModule from './cart'
+import { ExampleShopRESTModule } from './example'
 import KeepAliveRESTModule from './keepalive'
-import ProductRESTModule from './product'
 
 //========================================================================
 //
@@ -11,7 +10,7 @@ import ProductRESTModule from './product'
 //
 //========================================================================
 
-const restModules = [KeepAliveRESTModule, CartRESTModule, ProductRESTModule]
+const restModules = [KeepAliveRESTModule, ExampleShopRESTModule]
 
 @Module({
   providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],

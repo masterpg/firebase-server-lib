@@ -1,6 +1,5 @@
 import * as admin from 'firebase-admin'
 import {
-  AppStorageServiceDI,
   AuthStatus,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -26,7 +25,6 @@ initApp()
 
 let userService!: UserServiceDI.type
 let storeService!: StoreServiceDI.type
-let storageService!: AppStorageServiceDI.type
 let devUtilsService!: DevUtilsServiceDI.type
 
 const NOT_VERIFIED_USER: TestFirebaseUserInput = {
@@ -93,7 +91,6 @@ beforeAll(async () => {
   }).compile()
   userService = testingModule.get<UserServiceDI.type>(UserServiceDI.symbol)
   storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
-  storageService = testingModule.get<AppStorageServiceDI.type>(AppStorageServiceDI.symbol)
   devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
 })
 

@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin'
+import { CartItem, Product, PublicProfile, StorageNode } from '../types'
 import {
   Collection,
   CollectionFactory,
@@ -8,14 +9,12 @@ import {
   EncodedObject,
   FieldValue,
   FirestoreEx,
-  OmitEntityFields,
   Query,
   Timestamp,
   TimestampEntity,
   Transaction,
   WriteBatch,
 } from '../../../firestore-ex'
-import { CartItem as _CartItem, Product as _Product } from '../../gql.schema'
 import { firestoreExOptions, isFieldValue } from '../../base'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
@@ -42,65 +41,6 @@ interface BaseStore {
 interface StoreUser extends TimestampEntity {
   fullName: string
 }
-
-//--------------------------------------------------
-//  PublicProfile
-//--------------------------------------------------
-
-interface PublicProfile extends TimestampEntity {
-  displayName: string
-  photoURL?: string
-}
-
-//--------------------------------------------------
-//  Storage
-//--------------------------------------------------
-
-enum StorageNodeType {
-  File = 'File',
-  Dir = 'Dir',
-}
-
-interface StorageNodeShareSettings {
-  isPublic: boolean | null
-  readUIds: string[] | null
-  writeUIds: string[] | null
-}
-
-interface StorageNode extends TimestampEntity {
-  nodeType: StorageNodeType
-  name: string
-  dir: string
-  path: string
-  level: number
-  contentType: string
-  size: number
-  share: StorageNodeShareSettings
-  articleNodeName: string | null
-  articleNodeType: StorageArticleNodeType | null
-  articleSortOrder: number | null
-  isArticleFile: boolean | null
-  version: number
-}
-
-enum StorageArticleNodeType {
-  ListBundle = 'ListBundle',
-  CategoryBundle = 'CategoryBundle',
-  Category = 'Category',
-  Article = 'Article',
-}
-
-//--------------------------------------------------
-//  Product
-//--------------------------------------------------
-
-interface Product extends OmitEntityFields<_Product>, TimestampEntity {}
-
-//--------------------------------------------------
-//  CartItem
-//--------------------------------------------------
-
-interface CartItem extends OmitEntityFields<_CartItem>, TimestampEntity {}
 
 //========================================================================
 //
@@ -301,15 +241,4 @@ class StoreServiceModule {}
 //========================================================================
 
 export { StoreService, StoreServiceDI, StoreServiceModule }
-export {
-  CartItem,
-  Product,
-  PublicProfile,
-  StorageArticleNodeType,
-  StorageNode,
-  StorageNodeShareSettings,
-  StorageNodeType,
-  StoreUser,
-  storageDecode,
-  storageEncode,
-}
+export { storageDecode, storageEncode }

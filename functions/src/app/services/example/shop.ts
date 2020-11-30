@@ -1,38 +1,9 @@
-import { CartItem, Product, StoreServiceDI, StoreServiceModule } from './base/store'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../types'
 import { Inject, Module } from '@nestjs/common'
-import { InputValidationError, WriteReadyObserver, validate } from '../base'
-import {
-  CartItemAddInput as _CartItemAddInput,
-  CartItemEditResponse as _CartItemEditResponse,
-  CartItemUpdateInput as _CartItemUpdateInput,
-} from '../gql.schema'
+import { InputValidationError, WriteReadyObserver, validate } from '../../base'
+import { StoreServiceDI, StoreServiceModule } from '../base/store'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
-import { Dayjs } from 'dayjs'
-import { IsPositive } from 'class-validator'
-import { Transaction } from '../../firestore-ex'
-
-//========================================================================
-//
-//  Interfaces
-//
-//========================================================================
-
-class CartItemAddInput implements _CartItemAddInput {
-  productId!: string
-  title!: string
-  @IsPositive() price!: number
-  @IsPositive() quantity!: number
-}
-
-class CartItemUpdateInput implements _CartItemUpdateInput {
-  id!: string
-  @IsPositive() quantity!: number
-}
-
-interface CartItemEditResponse extends _CartItemEditResponse {
-  createdAt: Dayjs
-  updatedAt: Dayjs
-}
+import { Transaction } from '../../../firestore-ex'
 
 //========================================================================
 //
@@ -40,7 +11,7 @@ interface CartItemEditResponse extends _CartItemEditResponse {
 //
 //========================================================================
 
-class CartService {
+class ExampleShopService {
   constructor(@Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -49,7 +20,26 @@ class CartService {
   //
   //----------------------------------------------------------------------
 
-  async findList(user: { uid: string }, ids?: string[]): Promise<CartItem[]> {
+  async getProducts(ids?: string[]): Promise<Product[]> {
+    if (ids && ids.length) {
+      const dict: { [id: string]: Product } = {}
+      await Promise.all(
+        ids.map(async id => {
+          const product = await this.storeService.productDao.fetch(id)
+          if (product) dict[product.id] = product
+        })
+      )
+      return ids.reduce((result, id) => {
+        const product = dict[id]
+        product && result.push(product)
+        return result
+      }, [] as Product[])
+    } else {
+      return await this.storeService.productDao.fetchAll()
+    }
+  }
+
+  async getCartItems(user: { uid: string }, ids?: string[]): Promise<CartItem[]> {
     if (ids && ids.length) {
       const dict: { [id: string]: CartItem } = {}
       await Promise.all(
@@ -68,7 +58,7 @@ class CartService {
     }
   }
 
-  async addList(user: { uid: string }, inputs: CartItemAddInput[]): Promise<CartItemEditResponse[]> {
+  async addCartItems(user: { uid: string }, inputs: CartItemAddInput[]): Promise<CartItemEditResponse[]> {
     await validate(CartItemAddInput, inputs)
     this.m_validateAddInputDuplication(inputs)
 
@@ -83,7 +73,7 @@ class CartService {
     return await this.m_getCartItemEditResponses(addedCartItemIds)
   }
 
-  async updateList(user: { uid: string }, inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
+  async updateCartItems(user: { uid: string }, inputs: CartItemUpdateInput[]): Promise<CartItemEditResponse[]> {
     await validate(CartItemUpdateInput, inputs)
     this.m_validateUpdateInputDuplication(inputs)
 
@@ -98,7 +88,7 @@ class CartService {
     return await this.m_getCartItemEditResponses(updatedCartItemIds)
   }
 
-  async removeList(user: { uid: string }, ids: string[]): Promise<CartItemEditResponse[]> {
+  async removeCartItems(user: { uid: string }, ids: string[]): Promise<CartItemEditResponse[]> {
     this.m_validateRemoveInputDuplication(ids)
 
     let removedCartItems!: CartItem[]
@@ -117,7 +107,7 @@ class CartService {
     )
   }
 
-  async checkoutCart(user: { uid: string }): Promise<boolean> {
+  async checkout(user: { uid: string }): Promise<boolean> {
     const cartItems = await this.storeService.cartDao.where('uid', '==', user.uid).fetch()
     await this.storeService.runBatch(async batch => {
       for (const cartItem of cartItems) {
@@ -331,21 +321,21 @@ class CartService {
   }
 }
 
-namespace CartServiceDI {
-  export const symbol = Symbol(CartService.name)
+namespace ExampleShopServiceDI {
+  export const symbol = Symbol(ExampleShopService.name)
   export const provider = {
     provide: symbol,
-    useClass: CartService,
+    useClass: ExampleShopService,
   }
-  export type type = CartService
+  export type type = ExampleShopService
 }
 
 @Module({
-  providers: [CartServiceDI.provider],
-  exports: [CartServiceDI.provider],
+  providers: [ExampleShopServiceDI.provider],
+  exports: [ExampleShopServiceDI.provider],
   imports: [StoreServiceModule],
 })
-class CartServiceModule {}
+class ExampleShopServiceModule {}
 
 //========================================================================
 //
@@ -353,5 +343,4 @@ class CartServiceModule {}
 //
 //========================================================================
 
-export { CartServiceDI, CartServiceModule }
-export { CartItem, CartItemEditResponse, CartItemUpdateInput, CartItemAddInput }
+export { ExampleShopServiceDI, ExampleShopServiceModule }

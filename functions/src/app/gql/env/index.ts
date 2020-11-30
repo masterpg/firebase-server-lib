@@ -1,6 +1,5 @@
-import { AppConfigResponse, AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../services'
+import { AuthServiceModule, EnvAppConfig, EnvServiceDI, EnvServiceModule } from '../../services'
 import { Query, Resolver } from '@nestjs/graphql'
-import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
@@ -14,15 +13,15 @@ import { Module } from '@nestjs/common'
 export class EnvResolver {
   constructor(@Inject(EnvServiceDI.symbol) protected readonly envService: EnvServiceDI.type) {}
 
-  @Query()
-  async appConfig(): Promise<AppConfigResponse> {
+  @Query(returns => EnvAppConfig)
+  async appConfig(): Promise<EnvAppConfig> {
     return this.envService.appConfig()
   }
 }
 
 @Module({
   providers: [EnvResolver],
-  imports: [BaseGQLModule, EnvServiceModule, AuthServiceModule],
+  imports: [EnvServiceModule, AuthServiceModule],
 })
 class EnvGQLModule {}
 
@@ -32,4 +31,4 @@ class EnvGQLModule {}
 //
 //========================================================================
 
-export default EnvGQLModule
+export { EnvGQLModule }

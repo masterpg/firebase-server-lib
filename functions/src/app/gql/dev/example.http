@@ -154,7 +154,7 @@ Content-Type: application/json
   "operationName": "DeleteTestFirebaseUsers",
   "query": "mutation DeleteTestFirebaseUsers($uids: [String!]!) { deleteTestFirebaseUsers(uids: $uids) }",
   "variables": {
-    "uids": ["general"]
+    "uids": ["test.general"]
   }
 }
 
@@ -169,8 +169,8 @@ Content-Type: application/json
   "variables": {
     "users": [
       {
-        "uid": "general",
-        "email": "general@example.com",
+        "uid": "test.general",
+        "email": "test.general@example.com",
         "emailVerified": true,
         "password": "passpass",
         "displayName": "一般ユーザー",
@@ -190,7 +190,7 @@ Content-Type: application/json
   "operationName": "DeleteTestUsers",
   "query": "mutation DeleteTestUsers($uids: [String!]!) { deleteTestUsers(uids: $uids) }",
   "variables": {
-    "uids": ["general"]
+    "uids": ["test.general"]
   }
 }
 

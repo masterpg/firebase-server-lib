@@ -8,7 +8,6 @@ import {
   TestUserInput,
   UserInfo,
 } from '../../services'
-import { BaseGQLModule } from '../base'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
 
@@ -22,48 +21,48 @@ import { Module } from '@nestjs/common'
 export class DevUtilsResolver {
   constructor(@Inject(DevUtilsServiceDI.symbol) protected readonly devUtilsService: DevUtilsServiceDI.type) {}
 
-  @Mutation()
-  async putTestStoreData(@Args('inputs') inputs: PutTestStoreDataInput[]): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async putTestStoreData(@Args('inputs', { type: () => [PutTestStoreDataInput] }) inputs: PutTestStoreDataInput[]): Promise<boolean> {
     await this.devUtilsService.putTestStoreData(inputs)
     return true
   }
 
-  @Query()
-  async testSignedUploadUrls(@Args('inputs') inputs: TestSignedUploadUrlInput[]): Promise<string[]> {
+  @Query(returns => [String])
+  async testSignedUploadUrls(@Args('inputs', { type: () => [TestSignedUploadUrlInput] }) inputs: TestSignedUploadUrlInput[]): Promise<string[]> {
     return await this.devUtilsService.getTestSignedUploadUrls(inputs)
   }
 
-  @Mutation()
-  async removeTestStorageFiles(@Args('filePaths') filePaths: string[]): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async removeTestStorageFiles(@Args('filePaths', { type: () => [String] }) filePaths: string[]): Promise<boolean> {
     await this.devUtilsService.removeTestStorageFiles(filePaths)
     return true
   }
 
-  @Mutation()
-  async removeTestStorageDir(@Args('dirPath') dirPath: string): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async removeTestStorageDir(@Args('dirPath', { type: () => String }) dirPath: string): Promise<boolean> {
     await this.devUtilsService.removeTestStorageDir(dirPath)
     return true
   }
 
-  @Mutation()
-  async setTestFirebaseUsers(@Args('users') users: TestFirebaseUserInput[]): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async setTestFirebaseUsers(@Args('users', { type: () => [TestFirebaseUserInput] }) users: TestFirebaseUserInput[]): Promise<boolean> {
     await this.devUtilsService.setTestFirebaseUsers(...users)
     return true
   }
 
-  @Mutation()
-  async deleteTestFirebaseUsers(@Args('uids') uids: string[]): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async deleteTestFirebaseUsers(@Args('uids', { type: () => [String] }) uids: string[]): Promise<boolean> {
     await this.devUtilsService.deleteTestFirebaseUsers(...uids)
     return true
   }
 
-  @Mutation()
-  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<UserInfo[]> {
+  @Mutation(returns => [UserInfo])
+  async setTestUsers(@Args('users', { type: () => [TestUserInput] }) users: TestUserInput[]): Promise<UserInfo[]> {
     return await this.devUtilsService.setTestUsers(...users)
   }
 
-  @Mutation()
-  async deleteTestUsers(@Args('uids') uids: string[]): Promise<boolean> {
+  @Mutation(returns => Boolean)
+  async deleteTestUsers(@Args('uids', { type: () => [String] }) uids: string[]): Promise<boolean> {
     await this.devUtilsService.deleteTestUsers(...uids)
     return true
   }
@@ -71,7 +70,7 @@ export class DevUtilsResolver {
 
 @Module({
   providers: [DevUtilsResolver],
-  imports: [BaseGQLModule, DevUtilsServiceModule],
+  imports: [DevUtilsServiceModule],
 })
 class DevUtilsGQLModule {}
 
@@ -81,4 +80,4 @@ class DevUtilsGQLModule {}
 //
 //========================================================================
 
-export default DevUtilsGQLModule
+export { DevUtilsGQLModule }

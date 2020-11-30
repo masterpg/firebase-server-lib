@@ -2,18 +2,16 @@ import {
   CartItem,
   CartItemAddInput,
   CartItemUpdateInput,
-  CartServiceDI,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  ExampleShopServiceDI,
+  ExampleShopServiceModule,
   Product,
-  ProductServiceDI,
-} from '../../../../../src/app/services'
-import { InputValidationError, ValidationErrors, initApp } from '../../../../../src/app/base'
-import DevUtilsGQLModule from '../../../../../src/app/gql/dev'
-import { GENERAL_USER } from '../../../../helpers/app'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
-import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
-import { StoreServiceDI } from '../../../../../src/app/services/base/store'
+} from '../../../../../../src/app/services'
+import { InputValidationError, ValidationErrors, initApp } from '../../../../../../src/app/base'
+import { GENERAL_USER } from '../../../../../helpers/app'
+import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
+import { StoreServiceDI } from '../../../../../../src/app/services/base/store'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
 import dayjs = require('dayjs')
@@ -114,31 +112,82 @@ beforeAll(async () => {
   await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
 })
 
-describe('CartService', () => {
+describe('ExampleShop', () => {
   let devUtilsService: DevUtilsServiceDI.type
   let storeService: StoreServiceDI.type
-  let cartService: CartServiceDI.type
-  let productService: ProductServiceDI.type
+  let shopService: ExampleShopServiceDI.type
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [GQLContainerModule, DevUtilsGQLModule],
+      imports: [ExampleShopServiceModule, DevUtilsServiceModule],
     }).compile()
 
     devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
-    cartService = testingModule.get<CartServiceDI.type>(CartServiceDI.symbol)
-    productService = testingModule.get<ProductServiceDI.type>(ProductServiceDI.symbol)
+    shopService = testingModule.get<ExampleShopServiceDI.type>(ExampleShopServiceDI.symbol)
   })
 
-  describe('findList', () => {
+  describe('getProducts', () => {
+    it('商品IDを指定しない場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+
+      const actual = await shopService.getProducts()
+
+      expect(actual).toMatchObject(PRODUCTS)
+    })
+
+    it('商品IDを1つ指定した場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+      const product = PRODUCTS[0]
+
+      const actual = await shopService.getProducts([product.id])
+
+      expect(actual[0]).toMatchObject(product)
+    })
+
+    it('商品IDの配列を指定した場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+      const ids = [PRODUCTS[0].id, PRODUCTS[1].id]
+
+      const actual = await shopService.getProducts(ids)
+
+      expect(actual).toMatchObject([PRODUCTS[0], PRODUCTS[1]])
+    })
+
+    it('存在しない商品IDを指定した場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+      const actual = await shopService.getProducts(['productXXX'])
+
+      expect(actual.length).toBe(0)
+    })
+
+    it('一部存在しない商品IDを指定した場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+      const ids = ['productXXX', PRODUCTS[0].id]
+
+      const actual = await shopService.getProducts(ids)
+
+      expect(actual).toMatchObject([PRODUCTS[0]])
+    })
+
+    it('全て存在しない商品IDを指定した場合', async () => {
+      await devUtilsService.putTestStoreData([{ collectionName: 'products', collectionRecords: RAW_PRODUCTS }])
+      const ids = ['productXXX', 'productYYY']
+
+      const actual = await shopService.getProducts(ids)
+
+      expect(actual.length).toBe(0)
+    })
+  })
+
+  describe('getCartItems', () => {
     it('カートアイテムIDを指定しない場合', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
 
-      const actual = await cartService.findList(GENERAL_USER)
+      const actual = await shopService.getCartItems(GENERAL_USER)
 
       expect(actual).toEqual(CART_ITEMS)
     })
@@ -150,7 +199,7 @@ describe('CartService', () => {
       ])
       const cartItem = CART_ITEMS[0]
 
-      const actual = await cartService.findList(GENERAL_USER, [cartItem.id])
+      const actual = await shopService.getCartItems(GENERAL_USER, [cartItem.id])
 
       expect(actual).toMatchObject([cartItem])
     })
@@ -162,7 +211,7 @@ describe('CartService', () => {
       ])
       const ids = [CART_ITEMS[0].id, CART_ITEMS[1].id]
 
-      const actual = await cartService.findList(GENERAL_USER, ids)
+      const actual = await shopService.getCartItems(GENERAL_USER, ids)
 
       expect(actual).toMatchObject([CART_ITEMS[0], CART_ITEMS[1]])
     })
@@ -174,7 +223,7 @@ describe('CartService', () => {
       ])
       const ids = ['cartItemXXX', CART_ITEMS[0].id]
 
-      const actual = await cartService.findList(GENERAL_USER, ids)
+      const actual = await shopService.getCartItems(GENERAL_USER, ids)
 
       expect(actual).toMatchObject([CART_ITEMS[0]])
     })
@@ -186,7 +235,7 @@ describe('CartService', () => {
       ])
       const ids = ['cartItemXXX', 'cartItemYYY']
 
-      const actual = await cartService.findList(GENERAL_USER, ids)
+      const actual = await shopService.getCartItems(GENERAL_USER, ids)
 
       expect(actual.length).toBe(0)
     })
@@ -196,13 +245,13 @@ describe('CartService', () => {
         { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
-      const actual = await cartService.findList(GENERAL_USER, ['cartItemXXX'])
+      const actual = await shopService.getCartItems(GENERAL_USER, ['cartItemXXX'])
 
       expect(actual.length).toBe(0)
     })
   })
 
-  describe('addList', () => {
+  describe('addCartItems', () => {
     const ADD_INPUTS = cloneDeep(CART_ITEMS).map(item => {
       delete item.id
       delete item.uid
@@ -218,7 +267,7 @@ describe('CartService', () => {
       ])
       const inputs = cloneDeep(ADD_INPUTS)
 
-      const actual = await cartService.addList(GENERAL_USER, inputs)
+      const actual = await shopService.addCartItems(GENERAL_USER, inputs)
 
       expect(actual.length).toBe(inputs.length)
       for (let i = 0; i < actual.length; i++) {
@@ -246,7 +295,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [input])
+        await shopService.addCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -263,7 +312,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [input])
+        await shopService.addCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -281,7 +330,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, [input])
+        await shopService.addCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -299,7 +348,7 @@ describe('CartService', () => {
 
       let actual!: ValidationErrors
       try {
-        await cartService.addList(GENERAL_USER, [input])
+        await shopService.addCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -313,7 +362,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.addList(GENERAL_USER, inputs)
+        await shopService.addCartItems(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -331,7 +380,7 @@ describe('CartService', () => {
 
       let actual!: Error
       try {
-        await cartService.addList(GENERAL_USER, inputs)
+        await shopService.addCartItems(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -339,15 +388,15 @@ describe('CartService', () => {
       expect(actual).toBeInstanceOf(Error)
 
       // カートアイテムが追加されていないことを検証
-      const cartItems = await cartService.findList(GENERAL_USER)
+      const cartItems = await shopService.getCartItems(GENERAL_USER)
       expect(cartItems.length).toBe(0)
       // 商品の在庫数が更新されていないことを検証
-      const products = await productService.findList()
+      const products = await shopService.getProducts()
       expect(products).toMatchObject(PRODUCTS)
     })
   })
 
-  describe('updateList', () => {
+  describe('updateCartItems', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
@@ -357,7 +406,7 @@ describe('CartService', () => {
         return { id: item.id, quantity: item.quantity + 1 }
       })
 
-      const actual = await cartService.updateList(GENERAL_USER, inputs)
+      const actual = await shopService.updateCartItems(GENERAL_USER, inputs)
 
       expect(actual.length).toBe(inputs.length)
       for (let i = 0; i < actual.length; i++) {
@@ -396,7 +445,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.updateList(GENERAL_USER, updateItems)
+        await shopService.updateCartItems(GENERAL_USER, updateItems)
       } catch (err) {
         actual = err
       }
@@ -416,7 +465,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.updateList(GENERAL_USER, [input])
+        await shopService.updateCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -435,7 +484,7 @@ describe('CartService', () => {
 
       let actual!: ValidationErrors
       try {
-        await cartService.updateList(GENERAL_USER, [input])
+        await shopService.updateCartItems(GENERAL_USER, [input])
       } catch (err) {
         actual = err
       }
@@ -452,7 +501,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.updateList(GENERAL_USER, inputs)
+        await shopService.updateCartItems(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -474,7 +523,7 @@ describe('CartService', () => {
 
       let actual!: Error
       try {
-        await cartService.updateList(GENERAL_USER, inputs)
+        await shopService.updateCartItems(GENERAL_USER, inputs)
       } catch (err) {
         actual = err
       }
@@ -482,15 +531,15 @@ describe('CartService', () => {
       expect(actual).toBeInstanceOf(Error)
 
       // カートアイテムが更新されていないことを検証
-      const cartItems = await cartService.findList(GENERAL_USER)
+      const cartItems = await shopService.getCartItems(GENERAL_USER)
       expect(cartItems).toMatchObject(CART_ITEMS)
       // 商品の在庫数が更新されていないことを検証
-      const products = await productService.findList()
+      const products = await shopService.getProducts()
       expect(products).toMatchObject(PRODUCTS)
     })
   })
 
-  describe('removeList', () => {
+  describe('removeCartItems', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
@@ -498,7 +547,7 @@ describe('CartService', () => {
       ])
       const removeIds = CART_ITEMS.map(item => item.id)
 
-      const actual = await cartService.removeList(GENERAL_USER, removeIds)
+      const actual = await shopService.removeCartItems(GENERAL_USER, removeIds)
 
       expect(actual.length).toBe(removeIds.length)
       for (let i = 0; i < actual.length; i++) {
@@ -536,7 +585,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.removeList(GENERAL_USER, removeIds)
+        await shopService.removeCartItems(GENERAL_USER, removeIds)
       } catch (err) {
         actual = err
       }
@@ -549,7 +598,7 @@ describe('CartService', () => {
 
       let actual!: InputValidationError
       try {
-        await cartService.removeList(GENERAL_USER, removeIds)
+        await shopService.removeCartItems(GENERAL_USER, removeIds)
       } catch (err) {
         actual = err
       }
@@ -567,7 +616,7 @@ describe('CartService', () => {
 
       let actual!: Error
       try {
-        await cartService.removeList(GENERAL_USER, removeIds)
+        await shopService.removeCartItems(GENERAL_USER, removeIds)
       } catch (err) {
         actual = err
       }
@@ -575,10 +624,10 @@ describe('CartService', () => {
       expect(actual).toBeInstanceOf(Error)
 
       // カートアイテムが削除されていないことを検証
-      const cartItems = await cartService.findList(GENERAL_USER)
+      const cartItems = await shopService.getCartItems(GENERAL_USER)
       expect(cartItems).toEqual(CART_ITEMS)
       // 商品の在庫数が更新されていないことを検証
-      const products = await productService.findList()
+      const products = await shopService.getProducts()
       expect(products).toEqual(PRODUCTS)
     })
   })
@@ -590,11 +639,11 @@ describe('CartService', () => {
         { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
 
-      const actual = await cartService.checkoutCart(GENERAL_USER)
+      const actual = await shopService.checkout(GENERAL_USER)
 
       expect(actual).toBeTruthy()
       // カートアイテムが削除されてることを検証
-      const cartItems = await cartService.findList(GENERAL_USER)
+      const cartItems = await shopService.getCartItems(GENERAL_USER)
       expect(cartItems.length).toBe(0)
     })
   })

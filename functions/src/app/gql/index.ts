@@ -1,1 +1,1 @@
-export { GQLContext, getBaseGQLModuleOptions } from './base'
+export { GQLContext } from './base'

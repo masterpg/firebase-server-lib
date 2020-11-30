@@ -1,7 +1,0 @@
-GET {{host}}/rest/products
-
-###
-
-GET {{host}}/rest/products?ids[]=product1&ids[]=product2
-
-###

@@ -1,10 +1,9 @@
 import * as admin from 'firebase-admin'
 import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
+import { AuthDataResult, AuthStatus, UserInfo, UserInfoInput } from './types'
 import { Inject, Module } from '@nestjs/common'
-import { PublicProfile, StoreServiceDI, StoreServiceModule, StoreUser } from './base/store'
-import { AuthStatus } from './base/auth'
+import { StoreServiceDI, StoreServiceModule } from './base/store'
 import { EntityId } from '../../firestore-ex'
-import { IsNotEmpty } from 'class-validator'
 import UserRecord = admin.auth.UserRecord
 
 //========================================================================
@@ -13,32 +12,11 @@ import UserRecord = admin.auth.UserRecord
 //
 //========================================================================
 
-interface AuthDataResult {
-  status: AuthStatus
-  token: string
-  user?: UserInfo
-}
-
 enum AuthProviderType {
   Google = 'google.com',
   Facebook = 'facebook.com',
   Password = 'password',
   Anonymous = 'anonymous',
-}
-
-interface UserInfo extends StoreUser {
-  email: string
-  emailVerified: boolean
-  isAppAdmin: boolean
-  publicProfile: PublicProfile
-}
-
-class UserInfoInput {
-  @IsNotEmpty()
-  fullName!: string
-
-  @IsNotEmpty()
-  displayName!: string
 }
 
 //========================================================================
@@ -211,4 +189,3 @@ class UserServiceModule {}
 //========================================================================
 
 export { UserService, UserServiceDI, UserServiceModule }
-export { AuthDataResult, PublicProfile, UserInfo, UserInfoInput }

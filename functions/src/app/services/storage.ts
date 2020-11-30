@@ -1,13 +1,25 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
-import { AuthRoleType, AuthServiceDI, AuthServiceModule, IdToken } from './base/auth'
-import { CreateStorageNodeInput, StoragePaginationInput, StoragePaginationResult, StorageService } from './base/storage'
+import {
+  AuthRoleType,
+  CreateArticleTypeDirInput,
+  CreateStorageNodeInput,
+  IdToken,
+  SetArticleSortOrderInput,
+  StorageArticleNodeType,
+  StorageNode,
+  StorageNodeType,
+  StoragePaginationInput,
+  StoragePaginationResult,
+} from './types'
+import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { StorageArticleNodeType, StorageNode, StorageNodeType, StoreServiceDI, StoreServiceModule } from './base/store'
+import { StoreServiceDI, StoreServiceModule } from './base/store'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { FieldValue } from '../../firestore-ex'
 import { InputValidationError } from '../base'
+import { StorageService } from './base/storage'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 
@@ -16,17 +28,6 @@ import dayjs = require('dayjs')
 //  Interfaces
 //
 //========================================================================
-
-interface CreateArticleTypeDirInput {
-  dir: string
-  articleNodeName: string
-  articleNodeType: StorageArticleNodeType
-}
-
-interface SetArticleSortOrderInput {
-  insertBeforeNodePath?: string
-  insertAfterNodePath?: string
-}
 
 interface ValidateAccessibleTarget {
   nodeId?: string
@@ -1052,17 +1053,4 @@ class AppStorageServiceModule {}
 //========================================================================
 
 export { AppStorageService, AppStorageServiceDI, AppStorageServiceModule }
-export { CreateArticleTypeDirInput, SetArticleSortOrderInput, StorageArticleNodeType }
-export {
-  CreateStorageNodeInput,
-  SignedUploadUrlInput,
-  StorageFileNode,
-  StorageNode,
-  StorageNodeKeyInput,
-  StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
-  StorageNodeType,
-  StoragePaginationInput,
-  StoragePaginationResult,
-  StorageUploadDataItem,
-} from './base/storage'
+export { StorageFileNode, StorageUploadDataItem } from './base/storage'

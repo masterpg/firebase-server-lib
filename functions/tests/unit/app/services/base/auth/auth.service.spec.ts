@@ -1,8 +1,8 @@
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/app'
 import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims } from '../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
-import { DummyGQLModule } from '../../../../../mocks/app/gql/dummy'
-import { DummyRESTModule } from '../../../../../mocks/app/rest/dummy'
+import { MockGQLModule } from '../../../../../mocks/app/gql/gql.mock.module'
+import { MockRESTModule } from '../../../../../mocks/app/rest/rest.mock.module'
 import { Response } from 'supertest'
 import { initApp } from '../../../../../../src/app/base'
 import request = require('supertest')
@@ -30,7 +30,7 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({
-      imports: [DummyRESTModule, DummyGQLModule],
+      imports: [MockRESTModule, MockGQLModule],
     }).compile()
 
     app = testingModule.createNestApplication()

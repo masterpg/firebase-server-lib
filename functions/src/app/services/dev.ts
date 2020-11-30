@@ -3,45 +3,15 @@ import * as path from 'path'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule } from './base/firestore'
 import { Inject, Module } from '@nestjs/common'
-import { UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from './user'
+import { PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput, UserInfo } from './types'
+import { UserServiceDI, UserServiceModule } from './user'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
-import { JSONObject } from './base/types'
 import UserRecord = admin.auth.UserRecord
-import { UserClaims } from './base/auth'
 import dayjs = require('dayjs')
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
 const firebaseTools = require('firebase-tools')
-
-//========================================================================
-//
-//  Interfaces
-//
-//========================================================================
-
-interface PutTestStoreDataInput {
-  collectionName: string
-  collectionRecords: JSONObject[]
-}
-
-interface TestSignedUploadUrlInput {
-  filePath: string
-  contentType?: string
-}
-
-interface TestFirebaseUserInput {
-  uid: string
-  email?: string
-  emailVerified?: boolean
-  password?: string
-  displayName?: string
-  disabled?: boolean
-  photoURL?: string
-  customClaims?: UserClaims
-}
-
-type TestUserInput = TestFirebaseUserInput & UserInfoInput
 
 //========================================================================
 //
@@ -318,4 +288,3 @@ class DevUtilsServiceModule {}
 //========================================================================
 
 export { DevUtilsService, DevUtilsServiceDI, DevUtilsServiceModule }
-export { PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput }

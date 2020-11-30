@@ -1,6 +1,6 @@
-import { AuthGuard, CORSAppGuardDI, CORSMiddleware, Roles, TransformInterceptor, UserArg } from '../../../../../src/app/nest'
-import { AuthRoleType, AuthServiceModule, CORSServiceModule, IdToken } from '../../../../../src/app/services'
-import { Controller, Get, MiddlewareConsumer, Module, RequestMethod, UseGuards, UseInterceptors } from '@nestjs/common'
+import { AuthGuard, Roles, TransformInterceptor, UserArg } from '../../../../../src/app/nest'
+import { AuthRoleType, IdToken } from '../../../../../src/app/services'
+import { Controller, Get, UseGuards, UseInterceptors } from '@nestjs/common'
 
 //========================================================================
 //
@@ -30,37 +30,10 @@ class DummyController {
   }
 }
 
-@Module({
-  controllers: [DummyController],
-  imports: [AuthServiceModule],
-})
-class DummyRESTModule {}
-
-@Module({
-  controllers: [DummyController],
-  imports: [AuthServiceModule, CORSServiceModule],
-})
-class DummyCORSRESTModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
-  }
-}
-
-@Module({
-  controllers: [DummyController],
-  providers: [CORSAppGuardDI.provider],
-  imports: [AuthServiceModule, CORSServiceModule],
-})
-class DummyCORSGuardRESTModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
-  }
-}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { DummyRESTModule, DummyCORSRESTModule, DummyCORSGuardRESTModule }
+export { DummyController }

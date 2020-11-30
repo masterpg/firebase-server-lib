@@ -1,6 +1,5 @@
-import { AppConfigResponse, DevUtilsServiceDI, DevUtilsServiceModule, EnvServiceDI } from '../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, EnvAppConfig, EnvServiceDI, EnvServiceModule } from '../../../../../src/app/services'
 import { GENERAL_USER } from '../../../../helpers/app'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/app/base'
 
@@ -27,7 +26,7 @@ describe('EnvService', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [GQLContainerModule],
+      imports: [EnvServiceModule],
     }).compile()
 
     envService = testingModule.get<EnvServiceDI.type>(EnvServiceDI.symbol)
@@ -36,14 +35,18 @@ describe('EnvService', () => {
   describe('appConfig', () => {
     it('ベーシックケース', async () => {
       const actual = await envService.appConfig()
-      expect(actual.user).toEqual({
-        rootName: 'users',
-      } as AppConfigResponse['user'])
-      expect(actual.article).toEqual({
-        rootName: 'articles',
-        fileName: 'index.md',
-        assetsName: 'assets',
-      } as AppConfigResponse['article'])
+      expect(actual).toEqual({
+        storage: {
+          user: {
+            rootName: 'users',
+          },
+          article: {
+            rootName: 'articles',
+            fileName: 'index.md',
+            assetsName: 'assets',
+          },
+        },
+      } as EnvAppConfig)
     })
   })
 })
