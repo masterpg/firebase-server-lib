@@ -1,4 +1,4 @@
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -12,7 +12,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -27,7 +27,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -42,7 +42,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -57,7 +57,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -72,7 +72,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -86,7 +86,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -100,7 +100,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -114,7 +114,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -133,7 +133,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -148,7 +148,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -162,7 +162,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -178,7 +178,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -193,7 +193,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -209,7 +209,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -224,7 +224,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -239,7 +239,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -254,7 +254,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -268,7 +268,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -287,7 +287,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 

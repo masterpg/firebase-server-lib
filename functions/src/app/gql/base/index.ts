@@ -1,7 +1,13 @@
 import * as _path from 'path'
+import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
+import { CORSServiceModule } from '../../services'
+import { DateTimeScalar } from './scalars/date-time'
 import { GQLContext } from './base'
 import { GqlModuleOptions } from '@nestjs/graphql'
+import { LoggingServiceModule } from '../../services/base/logging'
+import { LongScalar } from './scalars/long'
 import { config } from '../../../config'
 import { isDevelopment } from '../../base'
 import { merge } from 'lodash'
@@ -27,6 +33,10 @@ function getTypeDefs(schemaFilesOrDirs: string[]): string {
   return print(mergeTypeDefs(typeDefs))
 }
 
+/**
+ * GraphQLのコーディングをベースにGraphQLの起動オプションを取得します。
+ * @param params
+ */
 function getCodeFirstGQLModuleOptions(params: { autoSchemaFile: string | boolean }): GqlModuleOptions {
   const result: GqlModuleOptions = {
     path: '/',
@@ -46,10 +56,19 @@ function getCodeFirstGQLModuleOptions(params: { autoSchemaFile: string | boolean
   return result
 }
 
-function getSchemaFirstGQLModuleOptions(): GqlModuleOptions {
+/**
+ * GraphQLのスキーマ定義をベースにGraphQLの起動オプションを取得します。
+ * @param schemaFilesOrDirs
+ *   GraphQLのスキーマが定義されているファイルまたはディレクトリを指定します。
+ *   例: ['dist/app/gql/standard', 'dist/app/gql/aaa.graphql']
+ */
+function getSchemaFirstGQLModuleOptions(schemaFilesOrDirs: string[] = []): GqlModuleOptions {
+  // GraphQLのベーススキーマ定義ファイルを追加
+  schemaFilesOrDirs.push(_path.join(config.functions.buildDir, 'app/gql/base.graphql'))
+
   const result: GqlModuleOptions = {
-    typeDefs: getTypeDefs(config.gql.schemaFilesOrDirs),
     path: '/',
+    typeDefs: getTypeDefs(schemaFilesOrDirs),
     context: async (ctx: any) => {
       return ctx as GQLContext
     },
@@ -72,14 +91,25 @@ function getSchemaFirstGQLModuleOptions(): GqlModuleOptions {
   return result
 }
 
+@Module({
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider, DateTimeScalar, LongScalar],
+  imports: [LoggingServiceModule, CORSServiceModule],
+})
+class BaseGQLContainerModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+  }
+}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { getCodeFirstGQLModuleOptions, getSchemaFirstGQLModuleOptions }
+export { getCodeFirstGQLModuleOptions, getSchemaFirstGQLModuleOptions, BaseGQLContainerModule }
 export * from './base'
 export * from './decorators/context'
 export * from './scalars/date-time'
 export * from './scalars/long'
+export * from './keepalive'

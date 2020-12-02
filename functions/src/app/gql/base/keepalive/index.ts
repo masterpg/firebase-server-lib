@@ -1,5 +1,5 @@
-import { AuthGuard, Roles } from '../../nest'
-import { AuthRoleType, AuthServiceModule } from '../../services'
+import { AuthGuard, Roles } from '../../../nest'
+import { AuthRoleType, AuthServiceModule } from '../../../services'
 import { Query, Resolver } from '@nestjs/graphql'
 import { Module } from '@nestjs/common'
 import { UseGuards } from '@nestjs/common'

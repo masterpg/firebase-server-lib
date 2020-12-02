@@ -1,6 +1,15 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthDataResult, AuthServiceDI, AuthServiceModule, IdToken, UserInfo, UserInfoInput, UserServiceDI, UserServiceModule } from '../../services'
-import { GQLContext, GQLContextArg } from '../base'
+import {
+  AuthDataResult,
+  AuthServiceDI,
+  AuthServiceModule,
+  IdToken,
+  UserInfo,
+  UserInfoInput,
+  UserServiceDI,
+  UserServiceModule,
+} from '../../../services'
+import { GQLContext, GQLContextArg } from '../../base'
 import { Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
 

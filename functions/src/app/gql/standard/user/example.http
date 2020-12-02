@@ -1,4 +1,4 @@
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "general"}
 
@@ -9,7 +9,7 @@ Authorization: Bearer {"uid": "general"}
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_standard
 Content-Type: application/json
 Authorization: Bearer {"uid": "test.storage"}
 

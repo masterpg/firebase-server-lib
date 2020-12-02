@@ -26,12 +26,12 @@ import {
   StoragePaginationResult,
 } from '../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
-import { StorageResolver } from '../../../../../src/app/gql/storage'
+import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
+import { StorageResolver } from '../../../../../src/app/gql/standard/storage'
 import { config } from '../../../../../src/config'
 import { initApp } from '../../../../../src/app/base'
 
-jest.setTimeout(25000)
+jest.setTimeout(5000)
 initApp()
 
 //========================================================================
@@ -67,7 +67,7 @@ describe('StorageResolver', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [GQLContainerModule],
+      imports: [StandardGQLContainerModule],
     }).compile()
 
     app = module.createNestApplication()

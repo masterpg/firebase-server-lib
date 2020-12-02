@@ -30,8 +30,8 @@ import {
 import { InputValidationError, initApp } from '../../../../../src/app/base'
 import { Test, TestingModule } from '@nestjs/testing'
 import { shuffleArray, sleep } from 'web-base-lib'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
 import { Response } from 'supertest'
+import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
 import StorageRESTModule from '../../../../../src/app/rest/storage'
 import { StoreServiceDI } from '../../../../../src/app/services/base/store'
 import { config } from '../../../../../src/config'
@@ -74,7 +74,7 @@ beforeAll(async () => {
 describe('AppStorageService', () => {
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [StorageRESTModule, GQLContainerModule],
+      imports: [StorageRESTModule, StandardGQLContainerModule],
     }).compile()
 
     storageService = testingModule.get<TestStorageService>(AppStorageServiceDI.symbol)

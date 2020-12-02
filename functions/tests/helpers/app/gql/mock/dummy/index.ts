@@ -1,5 +1,5 @@
-import { AuthGuard, Roles, UserArg } from '../../../../../src/app/nest'
-import { AuthRoleType, IdToken } from '../../../../../src/app/services'
+import { AuthGuard, Roles, UserArg } from '../../../../../../src/app/nest'
+import { AuthRoleType, IdToken } from '../../../../../../src/app/services'
 import { Field, ObjectType, Query, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 

@@ -1,6 +1,6 @@
-import { AuthServiceModule, CORSServiceModule } from '../../../../src/app/services'
-import { CORSAppGuardDI, CORSMiddleware } from '../../../../src/app/nest'
-import { DateTimeScalar, LongScalar, getSchemaFirstGQLModuleOptions } from '../../../../src/app/gql/base'
+import { AuthServiceModule, CORSServiceModule } from '../../../../../src/app/services'
+import { CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
+import { DateTimeScalar, LongScalar, getSchemaFirstGQLModuleOptions } from '../../../../../src/app/gql/base'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { DummyResolver } from './dummy'
 import { GraphQLModule } from '@nestjs/graphql'
@@ -11,7 +11,8 @@ import { GraphQLModule } from '@nestjs/graphql'
 //
 //========================================================================
 
-const gqlOptions = getSchemaFirstGQLModuleOptions()
+// `functions`ディレクトリからみたパスを指定
+const gqlOptions = getSchemaFirstGQLModuleOptions(['tests/helpers/app/gql/mock'])
 
 @Module({
   providers: [DummyResolver, DateTimeScalar, LongScalar],

@@ -1,7 +1,7 @@
-import { AuthGuard, Roles, UserArg } from '../../nest'
-import { AuthRoleType, AuthServiceModule, IdToken } from '../../services'
+import { AuthGuard, Roles, UserArg } from '../../../nest'
+import { AuthRoleType, AuthServiceModule, IdToken } from '../../../services'
 import { Controller, Get, Module, UseGuards } from '@nestjs/common'
-import { BaseRESTModule } from '../base'
+import { BaseRESTModule } from '../index'
 import { sleep } from 'web-base-lib'
 
 //========================================================================

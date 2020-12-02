@@ -1,14 +1,14 @@
 import * as td from 'testdouble'
 import { AuthDataResult, AuthStatus, PublicProfile, UserIdClaims, UserInfo, UserInfoInput, UserServiceDI } from '../../../../../src/app/services'
 import { getGQLErrorStatus, requestGQL } from '../../../../helpers/app'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
 import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
+import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/app/base'
 import { merge } from 'lodash'
 import dayjs = require('dayjs')
 
-jest.setTimeout(25000)
+jest.setTimeout(5000)
 initApp()
 
 //========================================================================
@@ -84,7 +84,7 @@ describe('UserResolver', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [GQLContainerModule],
+      imports: [StandardGQLContainerModule],
     }).compile()
 
     app = testingModule.createNestApplication()

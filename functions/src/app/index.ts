@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
-import { createNestHTTPApplication, initApp } from './base'
+import { createNestHTTPApplication, initApp, isDevelopment } from './base'
 import { config } from '../config'
 import { forEach } from 'lodash'
 
@@ -23,9 +23,13 @@ export function registryHTTPFunctions(functionMap: { [functionName: string]: str
   })
 }
 
-registryHTTPFunctions({ gql: './gql/gql.module' })
-registryHTTPFunctions({ rest: './rest/rest.module' })
-registryHTTPFunctions({ storage: './rest/storage.module' })
+registryHTTPFunctions({ gql_standard: './gql/standard' })
+registryHTTPFunctions({ gql_example: './gql/example' })
+registryHTTPFunctions({ rest_example: './rest/example' })
+registryHTTPFunctions({ storage: './rest/storage' })
+if (isDevelopment()) {
+  registryHTTPFunctions({ gql_dev: './gql/dev' })
+}
 
 //========================================================================
 //

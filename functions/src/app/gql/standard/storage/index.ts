@@ -13,11 +13,11 @@ import {
   StorageNodeShareSettingsInput,
   StoragePaginationInput,
   StoragePaginationResult,
-} from '../../services'
+} from '../../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { GQLContext, GQLContextArg } from '../base'
+import { GQLContext, GQLContextArg } from '../../base'
 import { Inject } from '@nestjs/common'
-import { InputValidationError } from '../../base'
+import { InputValidationError } from '../../../base'
 import { Module } from '@nestjs/common'
 
 //========================================================================
@@ -26,7 +26,7 @@ import { Module } from '@nestjs/common'
 //
 //========================================================================
 
-@Resolver('StorageNode')
+@Resolver()
 export class StorageResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,

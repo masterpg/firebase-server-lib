@@ -7,13 +7,10 @@ import { SUPPORTED_REGIONS } from 'firebase-functions'
 //
 //========================================================================
 
-interface LibConfig {
+interface AppConfig {
   readonly functions: FunctionsConfig
   readonly cors: CORSConfig
   readonly storage: StorageConfig
-}
-
-interface AppConfig extends LibConfig {
   readonly gql: GQLConfig
 }
 
@@ -23,6 +20,7 @@ interface AppConfig extends LibConfig {
 
 interface FunctionsConfig {
   readonly region: typeof SUPPORTED_REGIONS[number]
+  readonly buildDir: string
 }
 
 //--------------------------------------------------
@@ -93,6 +91,7 @@ class FunctionsConfigImpl implements FunctionsConfig {
   }
 
   readonly region: typeof SUPPORTED_REGIONS[number]
+  readonly buildDir = 'dist'
 }
 
 class CORSConfigImpl implements CORSConfig {
@@ -144,5 +143,5 @@ abstract class BaseAppConfig implements AppConfig {
 //
 //========================================================================
 
-export { FunctionsConfig, CORSConfig, StorageConfig, GQLConfig, LibConfig, AppConfig, BaseAppConfig }
+export { FunctionsConfig, CORSConfig, StorageConfig, GQLConfig, AppConfig, BaseAppConfig }
 export { FunctionsConfigImpl, CORSConfigImpl, StorageConfigImpl, GQLConfigImpl }

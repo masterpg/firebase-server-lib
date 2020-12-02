@@ -1,11 +1,11 @@
 import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/app/services'
 import { GENERAL_USER, requestGQL } from '../../../../helpers/app'
-import GQLContainerModule from '../../../../../src/app/gql/gql.module'
+import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
 import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import { initApp } from '../../../../../src/app/base'
 
-jest.setTimeout(25000)
+jest.setTimeout(5000)
 initApp()
 
 beforeAll(async () => {
@@ -22,7 +22,7 @@ describe('EnvResolver', () => {
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [GQLContainerModule],
+      imports: [StandardGQLContainerModule],
     }).compile()
 
     app = testingModule.createNestApplication()

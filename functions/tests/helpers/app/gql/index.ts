@@ -49,4 +49,5 @@ function getGQLErrorStatus(res: Response): number {
 //========================================================================
 
 export { getGQLErrorStatus, request, requestGQL }
+export * from './mock'
 export * from './storage'

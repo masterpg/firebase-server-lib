@@ -1,0 +1,145 @@
+#--------------------------------------------------
+#  Env
+#--------------------------------------------------
+
+type AppConfig {
+  storage: StorageConfig!
+}
+
+type StorageConfig {
+  user: StorageUsersConfig!
+  article: StorageArticlesConfig!
+}
+
+type StorageUsersConfig {
+  rootName: String!
+}
+
+type StorageArticlesConfig {
+  rootName: String!
+  fileName: String!
+  assetsName: String!
+}
+
+#--------------------------------------------------
+#  User
+#--------------------------------------------------
+
+enum AuthStatus {
+  WaitForEmailVerified
+  WaitForEntry
+  Available
+}
+
+type AuthDataResult {
+  status: AuthStatus!
+  token: String!
+  user: UserInfo
+}
+
+type UserInfo implements TimestampEntity {
+  id: ID!
+  fullName: String!
+  email: String!
+  emailVerified: Boolean!
+  isAppAdmin: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publicProfile: PublicProfile!
+}
+
+type PublicProfile implements TimestampEntity {
+  id: ID!
+  displayName: String!
+  photoURL: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input UserInfoInput {
+  fullName: String!
+  displayName: String!
+}
+
+#--------------------------------------------------
+#  Storage
+#--------------------------------------------------
+
+enum StorageNodeType {
+  File
+  Dir
+}
+
+enum StorageArticleNodeType {
+  ListBundle
+  CategoryBundle
+  Article
+  Category
+}
+
+type StorageNode implements TimestampEntity {
+  id: ID!
+  nodeType: StorageNodeType!
+  name: String!
+  dir: String!
+  path: String!
+  contentType: String!
+  size: Int!
+  share: StorageNodeShareSettings!
+  articleNodeName: String
+  articleNodeType: StorageArticleNodeType
+  articleSortOrder: Long
+  isArticleFile: Boolean
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input StoragePaginationInput {
+  maxChunk: Int
+  pageToken: String
+}
+
+type StoragePaginationResult {
+  list: [StorageNode!]!
+  nextPageToken: String
+}
+
+type StorageNodeShareSettings {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeShareSettingsInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeKeyInput {
+  id: String
+  path: String
+}
+
+input SignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+input CreateStorageNodeInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input CreateArticleTypeDirInput {
+  dir: String!
+  articleNodeName: String!
+  articleNodeType: StorageArticleNodeType
+}
+
+input SetArticleSortOrderInput {
+  insertBeforeNodePath: String
+  insertAfterNodePath: String
+}

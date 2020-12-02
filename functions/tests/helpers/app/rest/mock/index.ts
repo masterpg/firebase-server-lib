@@ -1,5 +1,5 @@
-import { AuthServiceModule, CORSServiceModule } from '../../../../src/app/services'
-import { CORSAppGuardDI, CORSMiddleware } from '../../../../src/app/nest'
+import { AuthServiceModule, CORSServiceModule } from '../../../../../src/app/services'
+import { CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { DummyController } from './dummy'
 

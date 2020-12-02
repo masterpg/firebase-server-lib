@@ -1,4 +1,6 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
+import * as _path from 'path'
+import { Args, GraphQLModule, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { BaseGQLContainerModule, getSchemaFirstGQLModuleOptions } from '../base'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -8,14 +10,18 @@ import {
   TestUserInput,
   UserInfo,
 } from '../../services'
-import { Inject } from '@nestjs/common'
-import { Module } from '@nestjs/common'
+import { Inject, Module } from '@nestjs/common'
+import { config } from '../../../config'
 
 //========================================================================
 //
 //  Implementation
 //
 //========================================================================
+
+//--------------------------------------------------
+//  GQL Module
+//--------------------------------------------------
 
 @Resolver()
 export class DevUtilsResolver {
@@ -74,10 +80,31 @@ export class DevUtilsResolver {
 })
 class DevUtilsGQLModule {}
 
+//--------------------------------------------------
+//  Container Module
+//--------------------------------------------------
+
+// `functions`ディレクトリからみたパスを指定
+const gqlOptions = getSchemaFirstGQLModuleOptions([
+  _path.join(config.functions.buildDir, 'app/gql/dto.graphql'),
+  _path.join(config.functions.buildDir, 'app/gql/dev'),
+])
+
+const gqlModules = [DevUtilsGQLModule]
+if (process.env.NODE_ENV !== 'production') {
+  gqlModules.push(DevUtilsGQLModule)
+}
+
+@Module({
+  imports: [BaseGQLContainerModule, GraphQLModule.forRoot(gqlOptions), ...gqlModules],
+})
+class DevGQLContainerModule {}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
+export default DevGQLContainerModule
 export { DevUtilsGQLModule }

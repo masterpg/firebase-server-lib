@@ -1,8 +1,8 @@
 import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/app'
 import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims } from '../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockGQLModule } from '../../../../../mocks/app/gql/gql.mock.module'
-import { MockRESTModule } from '../../../../../mocks/app/rest/rest.mock.module'
+import { MockGQLModule } from '../../../../../helpers/app/gql'
+import { MockRESTModule } from '../../../../../helpers/app/rest'
 import { Response } from 'supertest'
 import { initApp } from '../../../../../../src/app/base'
 import request = require('supertest')

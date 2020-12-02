@@ -1,4 +1,4 @@
-import { AppConfig, AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../services'
+import { AppConfig, AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../../services'
 import { Query, Resolver } from '@nestjs/graphql'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'

@@ -1,4 +1,4 @@
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -92,7 +92,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -103,7 +103,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -114,7 +114,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -125,7 +125,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -147,7 +147,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -160,7 +160,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
@@ -183,7 +183,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql
+POST {{host}}/gql_dev
 Content-Type: application/json
 
 {

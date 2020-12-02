@@ -1,13 +1,19 @@
-import { AppStorageServiceDI, AppStorageServiceModule } from '../../services'
-import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
+import { AppStorageServiceDI, AppStorageServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
+import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseRESTModule } from '../base'
+import KeepAliveRESTModule from '../base/keepalive'
 
 //========================================================================
 //
 //  Implementation
 //
 //========================================================================
+
+//--------------------------------------------------
+//  REST Module
+//--------------------------------------------------
 
 @Controller()
 class StorageController {
@@ -25,10 +31,24 @@ class StorageController {
 })
 class StorageRESTModule {}
 
+//--------------------------------------------------
+//  Container Module
+//--------------------------------------------------
+
+@Module({
+  providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
+  imports: [LoggingServiceModule, CORSServiceModule, KeepAliveRESTModule, StorageRESTModule],
+})
+class StorageContainerModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+  }
+}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export default StorageRESTModule
+export default StorageContainerModule

@@ -48,8 +48,9 @@ async function createNestApplication(module: any): Promise<INestApplication> {
 /**
  * 現在の環境が開発環境か否かを取得します。
  * 本アプリケーションでは環境が本番、開発かによって使用可能なモジュールを切り分けます。
- * ローカル環境では`process.env.NODE_ENV`には値が設定されないため(本番環境では'production'が設定される)、
+ * ローカル環境では`process.env.NODE_ENV`には値が設定されないため、
  * この関数では`process.env.NODE_ENV`を使用せずに開発環境か否かを判定しています。
+ * ※本番環境では`process.env.NODE_ENV`に'production'が設定されます。
  */
 const isDevelopment = () => (process.env.node || '').includes('nodenv')
 

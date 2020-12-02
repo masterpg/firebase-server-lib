@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockCORSGQLModule } from '../../../../../mocks/app/gql/gql.mock.module'
-import { MockCORSRESTModule } from '../../../../../mocks/app/rest/rest.mock.module'
+import { MockCORSGQLModule } from '../../../../../helpers/app/gql'
+import { MockCORSRESTModule } from '../../../../../helpers/app/rest'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
 import { initApp } from '../../../../../../src/app/base'
