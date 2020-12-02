@@ -1,0 +1,13 @@
+scalar DateTime
+
+scalar Long
+
+scalar JSON
+
+scalar JSONObject
+
+interface TimestampEntity {
+  id: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}

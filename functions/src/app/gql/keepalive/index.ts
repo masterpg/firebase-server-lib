@@ -13,7 +13,7 @@ import { sleep } from 'web-base-lib'
 
 @Resolver()
 export class KeepAliveResolver {
-  @Query(returns => Boolean)
+  @Query()
   @UseGuards(AuthGuard)
   @Roles(AuthRoleType.AppAdmin)
   async keepAlive(): Promise<boolean> {

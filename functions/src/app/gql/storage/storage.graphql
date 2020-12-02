@@ -1,0 +1,108 @@
+enum StorageNodeType {
+  File
+  Dir
+}
+
+enum StorageArticleNodeType {
+  ListBundle
+  CategoryBundle
+  Article
+  Category
+}
+
+type StorageNode implements TimestampEntity {
+  id: ID!
+  nodeType: StorageNodeType!
+  name: String!
+  dir: String!
+  path: String!
+  contentType: String!
+  size: Int!
+  share: StorageNodeShareSettings!
+  articleNodeName: String
+  articleNodeType: StorageArticleNodeType
+  articleSortOrder: Long
+  isArticleFile: Boolean
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input StoragePaginationInput {
+  maxChunk: Int
+  pageToken: String
+}
+
+type StoragePaginationResult {
+  list: [StorageNode!]!
+  nextPageToken: String
+}
+
+type StorageNodeShareSettings {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeShareSettingsInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeKeyInput {
+  id: String
+  path: String
+}
+
+input SignedUploadUrlInput {
+  filePath: String!
+  contentType: String
+}
+
+input CreateStorageNodeInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input CreateArticleTypeDirInput {
+  dir: String!
+  articleNodeName: String!
+  articleNodeType: StorageArticleNodeType
+}
+
+input SetArticleSortOrderInput {
+  insertBeforeNodePath: String
+  insertAfterNodePath: String
+}
+
+type Mutation {
+  createStorageDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
+  createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
+  removeStorageDir(dirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
+  removeStorageFile(filePath: String!): StorageNode
+  moveStorageDir(fromDirPath: String!, toDirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
+  moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
+  renameStorageDir(dirPath: String!, newName: String!, input: StoragePaginationInput): StoragePaginationResult!
+  renameStorageFile(filePath: String!, newName: String!): StorageNode!
+  setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
+  setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
+  handleUploadedFile(filePath: String!): StorageNode!
+  createArticleTypeDir(input: CreateArticleTypeDirInput!): StorageNode!
+  createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
+  renameArticleNode(nodePath: String!, newName: String!): StorageNode!
+  setArticleSortOrder(nodePath: String!, input: SetArticleSortOrderInput!): StorageNode!
+}
+
+type Query {
+  storageNode(input: StorageNodeKeyInput!): StorageNode
+  storageDirDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageDirChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
+  storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
+  storageAncestorDirs(nodePath: String!): [StorageNode!]!
+  signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+  articleChildren(dirPath: String!, articleTypes: [StorageArticleNodeType!]!, input: StoragePaginationInput): StoragePaginationResult!
+}

@@ -107,7 +107,7 @@ class ExampleShopService {
     )
   }
 
-  async checkout(user: { uid: string }): Promise<boolean> {
+  async checkoutCart(user: { uid: string }): Promise<boolean> {
     const cartItems = await this.storeService.cartDao.where('uid', '==', user.uid).fetch()
     await this.storeService.runBatch(async batch => {
       for (const cartItem of cartItems) {

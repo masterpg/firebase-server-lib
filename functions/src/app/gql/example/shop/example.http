@@ -99,7 +99,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 {
   "operationName": "Checkout",
-  "query": "mutation Checkout { checkout }",
+  "query": "mutation CheckoutCart { checkoutCart }",
   "variables": {}
 }
 

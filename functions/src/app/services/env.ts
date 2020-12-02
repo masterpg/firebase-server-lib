@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { EnvAppConfig } from './types'
+import { AppConfig } from './types'
 import { IdToken } from './types'
 import { Module } from '@nestjs/common'
 import { config } from '../../config'
@@ -11,7 +11,7 @@ import { config } from '../../config'
 //========================================================================
 
 class EnvService {
-  async appConfig(): Promise<EnvAppConfig> {
+  async appConfig(): Promise<AppConfig> {
     return {
       storage: {
         user: config.storage.user,

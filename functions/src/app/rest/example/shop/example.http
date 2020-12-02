@@ -60,7 +60,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-PUT {{host}}/rest/example/shop/checkout
+PUT {{host}}/rest/example/shop/checkoutCart
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 

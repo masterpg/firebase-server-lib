@@ -632,14 +632,14 @@ describe('ExampleShop', () => {
     })
   })
 
-  describe('checkout', () => {
+  describe('checkoutCart', () => {
     it('ベーシックケース', async () => {
       await devUtilsService.putTestStoreData([
         { collectionName: 'products', collectionRecords: RAW_PRODUCTS },
         { collectionName: 'cart', collectionRecords: RAW_CART_ITEMS },
       ])
 
-      const actual = await shopService.checkout(GENERAL_USER)
+      const actual = await shopService.checkoutCart(GENERAL_USER)
 
       expect(actual).toBeTruthy()
       // カートアイテムが削除されてることを検証

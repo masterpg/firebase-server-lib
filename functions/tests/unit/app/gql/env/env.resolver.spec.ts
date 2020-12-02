@@ -1,4 +1,4 @@
-import { DevUtilsServiceDI, DevUtilsServiceModule, EnvAppConfig } from '../../../../../src/app/services'
+import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/app/services'
 import { GENERAL_USER, requestGQL } from '../../../../helpers/app'
 import GQLContainerModule from '../../../../../src/app/gql/gql.module'
 import { Test } from '@nestjs/testing'
@@ -51,7 +51,7 @@ describe('EnvResolver', () => {
           user: config.storage.user,
           article: config.storage.article,
         },
-      } as EnvAppConfig)
+      } as AppConfig)
     })
   })
 })

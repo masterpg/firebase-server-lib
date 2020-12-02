@@ -1,6 +1,5 @@
-import * as _path from 'path'
 import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../nest'
-import { DateTimeScalar, LongScalar, getCodeFirstGQLModuleOptions } from './base'
+import { DateTimeScalar, LongScalar, getSchemaFirstGQLModuleOptions } from './base'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { CORSServiceModule } from '../services'
 import { DevUtilsGQLModule } from './dev'
@@ -18,9 +17,7 @@ import { UserGQLModule } from './user'
 //
 //========================================================================
 
-const gqlOptions = getCodeFirstGQLModuleOptions({
-  autoSchemaFile: _path.join(process.cwd(), 'src/app/gql/schema.graphql'),
-})
+const gqlOptions = getSchemaFirstGQLModuleOptions()
 
 const gqlModules = [EnvGQLModule, UserGQLModule, StorageGQLModule, KeepAliveGQLModule, ExampleShopGQLModule]
 if (process.env.NODE_ENV !== 'production') {

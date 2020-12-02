@@ -43,10 +43,10 @@ class ExampleShopController {
     return await this.shopService.removeCartItems(user, ids)
   }
 
-  @Put('checkout')
+  @Put('checkoutCart')
   @UseGuards(AuthGuard)
-  async checkout(@UserArg() user: IdToken): Promise<boolean> {
-    return await this.shopService.checkout(user)
+  async checkoutCart(@UserArg() user: IdToken): Promise<boolean> {
+    return await this.shopService.checkoutCart(user)
   }
 }
 

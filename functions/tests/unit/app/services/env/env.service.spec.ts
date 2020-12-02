@@ -1,4 +1,4 @@
-import { DevUtilsServiceDI, DevUtilsServiceModule, EnvAppConfig, EnvServiceDI, EnvServiceModule } from '../../../../../src/app/services'
+import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule, EnvServiceDI, EnvServiceModule } from '../../../../../src/app/services'
 import { GENERAL_USER } from '../../../../helpers/app'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/app/base'
@@ -46,7 +46,7 @@ describe('EnvService', () => {
             assetsName: 'assets',
           },
         },
-      } as EnvAppConfig)
+      } as AppConfig)
     })
   })
 })

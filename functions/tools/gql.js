@@ -36,16 +36,13 @@ function generateSchema(scanDir, outDir, watch) {
 
 /**
  * GraphQL定義ファイルの構築を行います。
- * このメソッドでは次の処理が行われます。
- * + `scanDir`配下にある`.graphql`ファイルを`copyDir`へコピー。
- * + `scanDir`配下にある`.graphql`ファイルをもとに、TypeScript用GraphQL定義ファイル`gql.schema.ts`を`outDir`に生成。
+ * このメソッドでは`scanDir`配下にある`.graphql`ファイルを`copyDir`へコピーします。
  *
  * @param scanDir .graphqlファイルが配置されているディレクトリを指定。
- * @param outDir TypeScript用GraphQL定義ファイルの出力ディレクトリを指定。
  * @param copyDir .graphqlファイルのコピー先ディレクトリを指定。
  * @param watch
  */
-function buildSchema(scanDir, outDir, copyDir, watch) {
+function buildSchema(scanDir, copyDir, watch) {
   scanDir = removeExtraPart(scanDir)
   copyDir = removeExtraPart(copyDir)
 
@@ -69,9 +66,6 @@ function buildSchema(scanDir, outDir, copyDir, watch) {
       fs.copyFileSync(graphqlFile, copyGraphqlFile)
     })
   }
-
-  // GraphQLの定義からTypeScriptの型定義を作成
-  generateSchema(scanDir, outDir, watch)
 }
 
 function removeExtraPart(path) {
@@ -94,11 +88,11 @@ program
   })
 
 program
-  .command('build <srcPath> <outPath> <copyDir>')
+  .command('build <srcPath> <copyDir>')
   .description(`build a GraphQL definition file`)
   .option('-w, --watch', `watch '.graphql' files changes`)
-  .action((srcPath, outPath, copyDir, cmdObj) => {
-    buildSchema(srcPath, outPath, copyDir, cmdObj.watch)
+  .action((srcPath, copyDir, cmdObj) => {
+    buildSchema(srcPath, copyDir, cmdObj.watch)
   })
 
 program.parse(process.argv)

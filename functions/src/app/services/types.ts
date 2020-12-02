@@ -1,8 +1,5 @@
 import * as admin from 'firebase-admin'
-import { DateTimeScalar, LongScalar } from '../gql/base'
-import { Field, Float, ID, InputType, Int, InterfaceType, ObjectType, registerEnumType } from '@nestjs/graphql'
 import { Dayjs } from 'dayjs'
-import { GraphQLJSONObject } from 'graphql-type-json'
 import { IsPositive } from 'class-validator'
 
 //========================================================================
@@ -14,16 +11,10 @@ import { IsPositive } from 'class-validator'
 type JSON = any
 type JSONObject = any
 
-@InterfaceType()
-class TimestampEntity {
-  @Field(type => ID)
-  id!: string
-
-  @Field(type => DateTimeScalar)
-  createdAt!: Dayjs
-
-  @Field(type => DateTimeScalar)
-  updatedAt!: Dayjs
+interface TimestampEntity {
+  id: string
+  createdAt: Dayjs
+  updatedAt: Dayjs
 }
 
 //--------------------------------------------------
@@ -35,10 +26,6 @@ enum AuthStatus {
   WaitForEntry = 'WaitForEntry',
   Available = 'Available',
 }
-
-registerEnumType(AuthStatus, {
-  name: 'AuthStatus',
-})
 
 enum AuthRoleType {
   AppAdmin = 'AppAdmin',
@@ -59,96 +46,50 @@ interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
 //  Env
 //--------------------------------------------------
 
-@ObjectType()
-class EnvStorageUsersConfig implements EnvStorageUsersConfig {
-  @Field(type => String)
-  rootName!: string
+interface AppConfig {
+  storage: StorageConfig
 }
 
-@ObjectType()
-class EnvStorageArticlesConfig implements EnvStorageArticlesConfig {
-  @Field(type => String)
-  rootName!: string
-
-  @Field(type => String)
-  fileName!: string
-
-  @Field(type => String)
-  assetsName!: string
+interface StorageConfig {
+  user: StorageUsersConfig
+  article: StorageArticlesConfig
 }
 
-@ObjectType()
-class EnvStorageConfig implements EnvStorageConfig {
-  @Field(type => EnvStorageUsersConfig)
-  user!: EnvStorageUsersConfig
-
-  @Field(type => EnvStorageArticlesConfig)
-  article!: EnvStorageArticlesConfig
+interface StorageUsersConfig {
+  rootName: string
 }
 
-@ObjectType()
-class EnvAppConfig implements EnvAppConfig {
-  @Field(type => EnvStorageConfig)
-  storage!: EnvStorageConfig
+interface StorageArticlesConfig {
+  rootName: string
+  fileName: string
+  assetsName: string
 }
 
 //--------------------------------------------------
 //  User
 //--------------------------------------------------
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class PublicProfile implements PublicProfile {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
-
-  @Field(type => String)
-  displayName!: string
-
-  @Field({ nullable: true })
+interface PublicProfile extends TimestampEntity {
+  displayName: string
   photoURL?: string
 }
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class UserInfo implements UserInfo {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
-
-  @Field(type => String)
-  fullName!: string
-
-  @Field(type => String)
-  email!: string
-
-  @Field(type => Boolean)
-  emailVerified!: boolean
-
-  @Field(type => Boolean)
-  isAppAdmin!: boolean
-
-  @Field(type => PublicProfile)
-  publicProfile!: PublicProfile
+interface UserInfo extends TimestampEntity {
+  fullName: string
+  email: string
+  emailVerified: boolean
+  isAppAdmin: boolean
+  publicProfile: PublicProfile
 }
 
-@InputType()
-class UserInfoInput implements UserInfoInput {
-  @Field(type => String)
-  fullName!: string
-
-  @Field(type => String)
-  displayName!: string
+interface UserInfoInput {
+  fullName: string
+  displayName: string
 }
 
-@ObjectType()
-class AuthDataResult implements AuthDataResult {
-  @Field(type => AuthStatus)
-  status!: AuthStatus
-
-  @Field(type => String)
-  token!: string
-
-  @Field(type => UserInfo, { nullable: true })
+interface AuthDataResult {
+  status: AuthStatus
+  token: string
   user?: UserInfo
 }
 
@@ -161,10 +102,6 @@ enum StorageNodeType {
   Dir = 'Dir',
 }
 
-registerEnumType(StorageNodeType, {
-  name: 'StorageNodeType',
-})
-
 enum StorageArticleNodeType {
   ListBundle = 'ListBundle',
   CategoryBundle = 'CategoryBundle',
@@ -172,137 +109,64 @@ enum StorageArticleNodeType {
   Article = 'Article',
 }
 
-registerEnumType(StorageArticleNodeType, {
-  name: 'StorageArticleNodeType',
-})
-
-@ObjectType()
-class StorageNodeShareSettings implements StorageNodeShareSettings {
-  @Field(type => Boolean, { nullable: true })
-  isPublic!: boolean | null
-
-  @Field(type => [String], { nullable: true })
-  readUIds!: string[] | null
-
-  @Field(type => [String], { nullable: true })
-  writeUIds!: string[] | null
+interface StorageNodeShareSettings {
+  isPublic: boolean | null
+  readUIds: string[] | null
+  writeUIds: string[] | null
 }
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class StorageNode implements StorageNode {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
-
-  @Field(type => StorageNodeType)
-  nodeType!: StorageNodeType
-
-  @Field(type => String)
-  name!: string
-
-  @Field(type => String)
-  dir!: string
-
-  @Field(type => String)
-  path!: string
-
-  @Field(type => Int)
-  level!: number
-
-  @Field(type => String)
-  contentType!: string
-
-  @Field(type => Int)
-  size!: number
-
-  @Field(type => StorageNodeShareSettings)
-  share!: StorageNodeShareSettings
-
-  @Field(type => String, { nullable: true })
-  articleNodeName!: string | null
-
-  @Field(type => StorageArticleNodeType, { nullable: true })
-  articleNodeType!: StorageArticleNodeType | null
-
-  @Field(type => LongScalar, { nullable: true })
-  articleSortOrder!: number | null
-
-  @Field(type => Boolean, { nullable: true })
-  isArticleFile!: boolean | null
-
-  @Field(type => Int)
-  version!: number
+interface StorageNode extends TimestampEntity {
+  nodeType: StorageNodeType
+  name: string
+  dir: string
+  path: string
+  level: number
+  contentType: string
+  size: number
+  share: StorageNodeShareSettings
+  articleNodeName: string | null
+  articleNodeType: StorageArticleNodeType | null
+  articleSortOrder: number | null
+  isArticleFile: boolean | null
+  version: number
 }
 
-@InputType()
-class StoragePaginationInput implements StoragePaginationInput {
-  @Field(type => Int, { nullable: true })
+interface StoragePaginationInput {
   maxChunk?: number
-
-  @Field(type => String, { nullable: true })
   pageToken?: string
 }
 
-@ObjectType()
-class StoragePaginationResult<T extends StorageNode = StorageNode> implements StoragePaginationResult {
-  @Field(type => [StorageNode])
-  list!: T[]
-
-  @Field(type => String, { nullable: true })
+interface StoragePaginationResult<T extends StorageNode = StorageNode> {
+  list: T[]
   nextPageToken?: string
 }
 
-@InputType()
-class StorageNodeShareSettingsInput implements StorageNodeShareSettingsInput {
-  @Field(type => Boolean, { nullable: true })
+interface StorageNodeShareSettingsInput {
   isPublic?: boolean | null
-
-  @Field(type => [String], { nullable: true })
   readUIds?: string[] | null
-
-  @Field(type => [String], { nullable: true })
   writeUIds?: string[] | null
 }
 
-@InputType()
-class StorageNodeKeyInput implements StorageNodeKeyInput {
-  @Field(type => String, { nullable: true })
+interface StorageNodeKeyInput {
   id?: string
-
-  @Field(type => String, { nullable: true })
   path?: string
 }
 
-@InputType()
-class SignedUploadUrlInput implements SignedUploadUrlInput {
-  @Field(type => String)
-  filePath!: string
-
-  @Field(type => String, { nullable: true })
+interface SignedUploadUrlInput {
+  filePath: string
   contentType?: string
 }
 
-@InputType()
-class CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
+interface CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
 
-@InputType()
-class CreateArticleTypeDirInput implements CreateArticleTypeDirInput {
-  @Field(type => String)
-  dir!: string
-
-  @Field(type => String)
-  articleNodeName!: string
-
-  @Field(type => StorageArticleNodeType)
-  articleNodeType!: StorageArticleNodeType
+interface CreateArticleTypeDirInput {
+  dir: string
+  articleNodeName: string
+  articleNodeType: StorageArticleNodeType
 }
 
-@InputType()
-class SetArticleSortOrderInput implements SetArticleSortOrderInput {
-  @Field(type => String, { nullable: true })
+interface SetArticleSortOrderInput {
   insertBeforeNodePath?: string
-
-  @Field(type => String, { nullable: true })
   insertAfterNodePath?: string
 }
 
@@ -310,173 +174,68 @@ class SetArticleSortOrderInput implements SetArticleSortOrderInput {
 //  Dev
 //--------------------------------------------------
 
-@InputType()
-class PutTestStoreDataInput implements PutTestStoreDataInput {
-  @Field(type => String)
-  collectionName!: string
-
-  @Field(type => [GraphQLJSONObject])
-  collectionRecords!: JSONObject[]
+interface PutTestStoreDataInput {
+  collectionName: string
+  collectionRecords: JSONObject[]
 }
 
-@InputType()
-class TestSignedUploadUrlInput implements TestSignedUploadUrlInput {
-  @Field(type => String)
-  filePath!: string
-
-  @Field(type => String, { nullable: true })
+interface TestSignedUploadUrlInput {
+  filePath: string
   contentType?: string
 }
 
-@InputType()
-class TestFirebaseUserInput implements TestFirebaseUserInput {
-  @Field(type => ID)
-  uid!: string
-
-  @Field(type => String, { nullable: true })
+interface TestFirebaseUserInput {
+  uid: string
   email?: string
-
-  @Field(type => Boolean, { nullable: true })
   emailVerified?: boolean
-
-  @Field(type => String, { nullable: true })
   password?: string
-
-  @Field(type => String, { nullable: true })
   displayName?: string
-
-  @Field(type => Boolean, { nullable: true })
   disabled?: boolean
-
-  @Field(type => String, { nullable: true })
   photoURL?: string
-
-  @Field(type => GraphQLJSONObject, { nullable: true })
   customClaims?: UserClaims
 }
 
-@InputType()
-class TestUserInput implements TestFirebaseUserInput, UserInfoInput {
-  @Field(type => ID)
-  uid!: string
-
-  @Field(type => String, { nullable: true })
-  email?: string
-
-  @Field(type => Boolean, { nullable: true })
-  emailVerified?: boolean
-
-  @Field(type => String, { nullable: true })
-  password?: string
-
-  @Field(type => Boolean, { nullable: true })
-  disabled?: boolean
-
-  @Field(type => String, { nullable: true })
-  photoURL?: string
-
-  @Field(type => GraphQLJSONObject, { nullable: true })
-  customClaims?: UserClaims
-
-  @Field(type => String)
-  fullName!: string
-
-  @Field(type => String)
-  displayName!: string
+interface TestUserInput extends TestFirebaseUserInput, UserInfoInput {
+  displayName: string
 }
 
 //--------------------------------------------------
 //  Example Shop
 //--------------------------------------------------
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class Product implements Product {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
-
-  @Field(type => String)
-  title!: string
-
-  @Field(type => Float)
-  price!: number
-
-  @Field(type => Int)
-  stock!: number
+interface Product extends TimestampEntity {
+  title: string
+  price: number
+  stock: number
 }
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class CartItem implements CartItem {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
+interface CartItem extends TimestampEntity {
+  uid: string
+  productId: string
+  title: string
+  price: number
+  quantity: number
+}
 
-  @Field(type => ID)
-  uid!: string
-
-  @Field(type => ID)
+class CartItemAddInput {
   productId!: string
-
-  @Field(type => String)
   title!: string
-
-  @Field(type => Float)
-  price!: number
-
-  @Field(type => Int)
-  quantity!: number
+  @IsPositive() price!: number
+  @IsPositive() quantity!: number
 }
 
-@InputType()
-class CartItemAddInput implements CartItemAddInput {
-  @Field(type => ID)
-  productId!: string
-
-  @Field(type => String)
-  title!: string
-
-  @Field(type => Float)
-  @IsPositive()
-  price!: number
-
-  @Field(type => Int)
-  @IsPositive()
-  quantity!: number
-}
-
-@InputType()
-class CartItemUpdateInput implements CartItemUpdateInput {
-  @Field(type => ID)
+class CartItemUpdateInput {
   id!: string
-
-  @Field(type => Int)
-  @IsPositive()
-  quantity!: number
+  @IsPositive() quantity!: number
 }
 
-@ObjectType({ implements: () => [TimestampEntity] })
-class CartItemEditResponse implements CartItemEditResponse {
-  id!: string
-  createdAt!: Dayjs
-  updatedAt!: Dayjs
-
-  @Field(type => ID)
-  uid!: string
-
-  @Field(type => ID)
-  productId!: string
-
-  @Field(type => String)
-  title!: string
-
-  @Field(type => Float)
-  price!: number
-
-  @Field(type => Int)
-  quantity!: number
-
-  @Field(type => Product)
-  product!: Product
+interface CartItemEditResponse extends TimestampEntity {
+  uid: string
+  productId: string
+  title: string
+  price: number
+  quantity: number
+  product: Product
 }
 
 //========================================================================
@@ -488,7 +247,7 @@ class CartItemEditResponse implements CartItemEditResponse {
 export { JSON, JSONObject }
 export { TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
-export { EnvAppConfig, EnvStorageConfig, EnvStorageUsersConfig, EnvStorageArticlesConfig }
+export { AppConfig, StorageConfig, StorageUsersConfig, StorageArticlesConfig }
 export {
   StorageNodeType,
   StorageArticleNodeType,

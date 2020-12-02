@@ -50,6 +50,9 @@ function getSchemaFirstGQLModuleOptions(): GqlModuleOptions {
   const result: GqlModuleOptions = {
     typeDefs: getTypeDefs(config.gql.schemaFilesOrDirs),
     path: '/',
+    context: async (ctx: any) => {
+      return ctx as GQLContext
+    },
     resolverValidationOptions: {
       // GraphQLの定義でインタフェースを使用した場合、プログラムでリゾルバを実装しないと警告がでる事象についての対応。
       // この設定値について:

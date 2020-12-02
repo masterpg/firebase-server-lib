@@ -1,7 +1,6 @@
-import * as _path from 'path'
 import { AuthServiceModule, CORSServiceModule } from '../../../../src/app/services'
 import { CORSAppGuardDI, CORSMiddleware } from '../../../../src/app/nest'
-import { DateTimeScalar, LongScalar, getCodeFirstGQLModuleOptions } from '../../../../src/app/gql/base'
+import { DateTimeScalar, LongScalar, getSchemaFirstGQLModuleOptions } from '../../../../src/app/gql/base'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { DummyResolver } from './dummy'
 import { GraphQLModule } from '@nestjs/graphql'
@@ -12,9 +11,7 @@ import { GraphQLModule } from '@nestjs/graphql'
 //
 //========================================================================
 
-const gqlOptions = getCodeFirstGQLModuleOptions({
-  autoSchemaFile: _path.join(process.cwd(), 'tests/mocks/app/gql/schema.mock.graphql'),
-})
+const gqlOptions = getSchemaFirstGQLModuleOptions()
 
 @Module({
   providers: [DummyResolver, DateTimeScalar, LongScalar],

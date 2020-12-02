@@ -12,10 +12,8 @@ serviceAccountKey.json
 functions/dist/
 
 functions/src**/*.js.map
-functions/src/app/gql/schema.graphql
 functions/src/tools/firebase.config.ts
 
 functions/tests/**/*.js.map
-functions/tests/mocks/app/gql/schema.*.graphql
 
 functions/tools/**/*.js.map

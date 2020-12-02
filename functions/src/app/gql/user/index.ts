@@ -23,19 +23,19 @@ export class UserResolver {
   //
   //----------------------------------------------------------------------
 
-  @Query(returns => AuthDataResult)
+  @Query()
   async authData(@GQLContextArg() context: GQLContext): Promise<AuthDataResult> {
     const user = await this.m_getIdToken(context.req)
     return this.userService.getAuthData(user.uid)
   }
 
-  @Mutation(returns => UserInfo)
-  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input', { type: () => UserInfoInput }) input: UserInfoInput): Promise<UserInfo> {
+  @Mutation()
+  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input') input: UserInfoInput): Promise<UserInfo> {
     const user = await this.m_getIdToken(context.req)
     return this.userService.setUserInfo(user.uid, input)
   }
 
-  @Mutation(returns => Boolean)
+  @Mutation()
   async deleteOwnUser(@GQLContextArg() context: GQLContext): Promise<boolean> {
     const user = await this.m_getIdToken(context.req)
     await this.userService.deleteUser(user.uid)

@@ -313,18 +313,18 @@ describe('ExampleShopResolver', () => {
     })
   })
 
-  describe('checkout', () => {
+  describe('checkoutCart', () => {
     const gql = {
       query: `
-        mutation Checkout {
-          checkout
+        mutation CheckoutCart {
+          checkoutCart
         }
       `,
     }
 
     it('疎通確認', async () => {
-      const checkout = td.replace(shopService, 'checkout')
-      td.when(checkout(GENERAL_USER_TOKEN)).thenResolve(true)
+      const checkoutCart = td.replace(shopService, 'checkoutCart')
+      td.when(checkoutCart(GENERAL_USER_TOKEN)).thenResolve(true)
 
       const response = await requestGQL(
         app,
@@ -334,7 +334,7 @@ describe('ExampleShopResolver', () => {
         { headers: GENERAL_USER_HEADER }
       )
 
-      expect(response.body.data.checkout).toEqual(true)
+      expect(response.body.data.checkoutCart).toEqual(true)
     })
 
     it('サインインしていない場合', async () => {
