@@ -1,10 +1,10 @@
 import * as td from 'testdouble'
-import { AuthDataResult, AuthStatus, PublicProfile, UserIdClaims, UserInfo, UserInfoInput, UserServiceDI } from '../../../../../src/app/services'
-import { getGQLErrorStatus, requestGQL } from '../../../../helpers/app'
-import { OmitEntityTimestamp } from '../../../../../src/firestore-ex'
-import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
+import { AuthDataResult, AuthStatus, PublicProfile, UserIdClaims, UserInfo, UserInfoInput, UserServiceDI } from '../../../../../../src/app/services'
+import { getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
+import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
+import StandardGQLContainerModule from '../../../../../../src/app/gql/standard'
 import { Test } from '@nestjs/testing'
-import { initApp } from '../../../../../src/app/base'
+import { initApp } from '../../../../../../src/app/base'
 import { merge } from 'lodash'
 import dayjs = require('dayjs')
 

@@ -1,11 +1,8 @@
 type Mutation {
   createStorageDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
   createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeStorageDir(dirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
   removeStorageFile(filePath: String!): StorageNode
-  moveStorageDir(fromDirPath: String!, toDirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
   moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
-  renameStorageDir(dirPath: String!, newName: String!, input: StoragePaginationInput): StoragePaginationResult!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
   setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!

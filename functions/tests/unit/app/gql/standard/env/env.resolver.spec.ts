@@ -1,9 +1,9 @@
-import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../src/app/services'
-import { GENERAL_USER, requestGQL } from '../../../../helpers/app'
-import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
+import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/app/services'
+import { GENERAL_USER, requestGQL } from '../../../../../helpers/app'
+import StandardGQLContainerModule from '../../../../../../src/app/gql/standard'
 import { Test } from '@nestjs/testing'
-import { config } from '../../../../../src/config'
-import { initApp } from '../../../../../src/app/base'
+import { config } from '../../../../../../src/config'
+import { initApp } from '../../../../../../src/app/base'
 
 jest.setTimeout(5000)
 initApp()

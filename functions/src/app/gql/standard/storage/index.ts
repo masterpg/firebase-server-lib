@@ -132,30 +132,9 @@ export class StorageResolver {
   }
 
   @Mutation()
-  async removeStorageDir(
-    @GQLContextArg() ctx: GQLContext,
-    @Args('dirPath') dirPath: string,
-    @Args('input') input: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return await this.storageService.removeDir(dirPath, input)
-  }
-
-  @Mutation()
   async removeStorageFile(@GQLContextArg() ctx: GQLContext, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { filePath })
     return await this.storageService.removeFile(filePath)
-  }
-
-  @Mutation()
-  async moveStorageDir(
-    @GQLContextArg() ctx: GQLContext,
-    @Args('fromDirPath') fromDirPath: string,
-    @Args('toDirPath') toDirPath: string,
-    @Args('input') input: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths: [fromDirPath, toDirPath] })
-    return await this.storageService.moveDir(fromDirPath, toDirPath, input)
   }
 
   @Mutation()
@@ -166,17 +145,6 @@ export class StorageResolver {
   ): Promise<StorageNode> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths: [fromFilePath, toFilePath] })
     return await this.storageService.moveFile(fromFilePath, toFilePath)
-  }
-
-  @Mutation()
-  async renameStorageDir(
-    @Args('dirPath') dirPath: string,
-    @Args('newName') newName: string,
-    @Args('input') input: StoragePaginationInput,
-    @GQLContextArg() ctx: GQLContext
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return await this.storageService.renameDir(dirPath, newName, input)
   }
 
   @Mutation()

@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import * as express from 'express'
 import * as functions from 'firebase-functions'
 import { createNestHTTPApplication, initApp, isDevelopment } from './base'
+import { RuntimeOptions } from 'firebase-functions'
 import { config } from '../config'
 import { forEach } from 'lodash'
 
@@ -13,17 +14,18 @@ initApp()
 //
 //========================================================================
 
-export function registryHTTPFunctions(functionMap: { [functionName: string]: string }): void {
+export function registryHTTPFunctions(functionMap: { [functionName: string]: string }, runtimeOptions: RuntimeOptions = {}): void {
   forEach(functionMap, (path, functionName) => {
     if (!process.env.FUNCTION_TARGET || process.env.FUNCTION_TARGET === functionName) {
       const server = express()
       createNestHTTPApplication(require(path).default, server)
-      module.exports[functionName] = functions.region(config.functions.region).https.onRequest(server)
+      module.exports[functionName] = functions.region(config.functions.region).runWith(runtimeOptions).https.onRequest(server)
     }
   })
 }
 
 registryHTTPFunctions({ gql_standard: './gql/standard' })
+registryHTTPFunctions({ gql_middle: './gql/middle' }, { timeoutSeconds: 180, memory: '512MB' })
 registryHTTPFunctions({ gql_example: './gql/example' })
 registryHTTPFunctions({ rest_example: './rest/example' })
 registryHTTPFunctions({ storage: './rest/storage' })
