@@ -1,4 +1,4 @@
-import { BaseAppConfig, CORSConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
+import { BaseAppConfig, CORSConfigImpl, EnvConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
 
 //========================================================================
 //
@@ -11,6 +11,8 @@ class TestAppConfig extends BaseAppConfig {
     super()
     process.env.FIRESTORE_EMULATOR_HOST = 'localhost:5012'
   }
+
+  readonly env = new EnvConfigImpl({ mode: 'test' })
 
   readonly functions = new FunctionsConfigImpl({
     region: 'asia-northeast1',

@@ -9,7 +9,6 @@ import { GqlModuleOptions } from '@nestjs/graphql'
 import { LoggingServiceModule } from '../../services/base/logging'
 import { LongScalar } from './scalars/long'
 import { config } from '../../../config'
-import { isDevelopment } from '../../base'
 import { merge } from 'lodash'
 import { print } from 'graphql/language/printer'
 
@@ -27,8 +26,7 @@ import { print } from 'graphql/language/printer'
 function getTypeDefs(schemaFilesOrDirs: string[]): string {
   const typeDefs: string[] = []
   for (const schemaFileOrDir of schemaFilesOrDirs) {
-    const targetPath = _path.resolve(process.cwd(), schemaFileOrDir)
-    typeDefs.push(...loadSchemaFiles(targetPath))
+    typeDefs.push(...loadSchemaFiles(schemaFileOrDir))
   }
   return print(mergeTypeDefs(typeDefs))
 }
@@ -46,7 +44,7 @@ function getCodeFirstGQLModuleOptions(params: { autoSchemaFile: string | boolean
     },
     sortSchema: false,
   }
-  if (isDevelopment()) {
+  if (config.env.mode !== 'prod') {
     merge(result, {
       debug: true,
       playground: true,
@@ -81,7 +79,7 @@ function getSchemaFirstGQLModuleOptions(schemaFilesOrDirs: string[] = []): GqlMo
       requireResolversForResolveType: false,
     },
   }
-  if (isDevelopment()) {
+  if (config.env.mode !== 'prod') {
     merge(result, {
       debug: true,
       playground: true,

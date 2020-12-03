@@ -3,6 +3,7 @@ import { AuthRoleType, AuthStatus, IdToken } from '../types'
 import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { HTTPLoggingServiceDI } from './logging'
+import { config } from '../../../config'
 
 //========================================================================
 //
@@ -192,7 +193,7 @@ namespace AuthServiceDI {
   export const symbol = Symbol(AuthService.name)
   export const provider = {
     provide: symbol,
-    useClass: process.env.NODE_ENV === 'production' ? ProdAuthService : DevAuthService,
+    useClass: config.env.mode === 'prod' ? ProdAuthService : DevAuthService,
   }
   export type type = AuthService
 }

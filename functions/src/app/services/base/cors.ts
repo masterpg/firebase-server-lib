@@ -338,9 +338,9 @@ namespace CORSServiceDI {
   export const provider = {
     provide: symbol,
     useClass: (() => {
-      if (process.env.NODE_ENV === 'production') {
+      if (config.env.mode === 'prod') {
         return ProdCORSService
-      } else if (process.env.NODE_ENV === 'test') {
+      } else if (config.env.mode === 'test') {
         return TestCORSService
       } else {
         return DevCORSService

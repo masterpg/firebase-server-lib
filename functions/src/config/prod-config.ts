@@ -1,4 +1,4 @@
-import { BaseAppConfig, CORSConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
+import { BaseAppConfig, CORSConfigImpl, EnvConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
 
 //========================================================================
 //
@@ -7,6 +7,8 @@ import { BaseAppConfig, CORSConfigImpl, FunctionsConfigImpl, GQLConfigImpl, Stor
 //========================================================================
 
 class ProdAppConfig extends BaseAppConfig {
+  readonly env = new EnvConfigImpl({ mode: 'prod' })
+
   readonly functions = new FunctionsConfigImpl({
     region: 'asia-northeast1',
   })

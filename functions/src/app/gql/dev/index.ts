@@ -91,9 +91,6 @@ const gqlOptions = getSchemaFirstGQLModuleOptions([
 ])
 
 const gqlModules = [DevUtilsGQLModule]
-if (process.env.NODE_ENV !== 'production') {
-  gqlModules.push(DevUtilsGQLModule)
-}
 
 @Module({
   imports: [BaseGQLContainerModule, GraphQLModule.forRoot(gqlOptions), ...gqlModules],

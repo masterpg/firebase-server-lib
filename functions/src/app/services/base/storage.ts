@@ -1255,12 +1255,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     res.setHeader('Last-Modified', lastModified)
     res.setHeader('Content-Type', fileNode.contentType)
-    // TODO
-    //  ローカル環境でContent-Lengthを指定するとなぜかタイムアウトエラーが発生する。
-    //  本番環境ではタイムアウトエラーは発生しないので、本番時のみContent-Lengthを設定している。
-    if (process.env.NODE_ENV === 'production') {
-      res.setHeader('Content-Length', fileNode.file.metadata.size)
-    }
+    res.setHeader('Content-Length', fileNode.file.metadata.size)
     const fileStream = fileNode.file.createReadStream()
 
     fileStream.pipe(res)

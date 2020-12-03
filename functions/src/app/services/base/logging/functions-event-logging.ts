@@ -2,6 +2,7 @@ import { InputValidationError, ValidationErrors } from '../../../base'
 import { clone, merge } from 'lodash'
 import { debug, error, info, warn } from 'firebase-functions/lib/logger'
 import { LoggingSeverity } from './base'
+import { config } from '../../../../config'
 
 //========================================================================
 //
@@ -118,9 +119,9 @@ namespace FunctionsEventLoggingServiceDI {
   export const provider = {
     provide: symbol,
     useClass: (() => {
-      if (process.env.NODE_ENV === 'production') {
+      if (config.env.mode === 'prod') {
         return ProdFunctionsEventLoggingService
-      } else if (process.env.NODE_ENV === 'test') {
+      } else if (config.env.mode === 'test') {
         return TestFunctionsEventLoggingService
       } else {
         return DevFunctionsEventLoggingService

@@ -42,6 +42,10 @@ class WriteReadyObserver {
   }
 }
 
+/**
+ * 指定されたオブジェクトが`FieldValue`型か否かを取得します。
+ * @param obj
+ */
 function isFieldValue(obj: any): boolean {
   return obj instanceof FieldValue
 }

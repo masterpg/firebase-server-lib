@@ -45,21 +45,12 @@ async function createNestApplication(module: any): Promise<INestApplication> {
   return nestApp.init()
 }
 
-/**
- * 現在の環境が開発環境か否かを取得します。
- * 本アプリケーションでは環境が本番、開発かによって使用可能なモジュールを切り分けます。
- * ローカル環境では`process.env.NODE_ENV`には値が設定されないため、
- * この関数では`process.env.NODE_ENV`を使用せずに開発環境か否かを判定しています。
- * ※本番環境では`process.env.NODE_ENV`に'production'が設定されます。
- */
-const isDevelopment = () => (process.env.node || '').includes('nodenv')
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { initApp, initFirebaseApp, createNestHTTPApplication, createNestApplication, isDevelopment }
+export { initApp, initFirebaseApp, createNestHTTPApplication, createNestApplication }
 export * from './firestore'
 export * from './validator'
