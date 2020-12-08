@@ -6,7 +6,8 @@
   },
   "main": "dist/app/index.js",
   "scripts": {
-    "build": "rm -rf dist && npm run gql:build && tsc --project ./tsconfig.build.json",
+    "build": "rm -rf ./dist && npm run gql:build && tsc --project ./tsconfig.build.json",
+    "build:tools": "rm -rf ./tools/bin && tsc --project ./tsconfig.tools.json",
     "serve": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --port=5010)",
     "shell": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase functions:shell --port=5010)",
     "test": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && jest --runInBand",
@@ -19,11 +20,13 @@
     "gql": "node ./tools/gql.js",
     "gql:build": "npm run gql build ./src ./dist",
     "gql:watch": "npm run gql build ./src ./dist -- -w",
+    "elastic": "node ./tools/bin/tools/elastic.js",
     "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/user.js",
     "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/storage.js",
     "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/keepalive.js"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^7.10.0",
     "@google-cloud/logging": "^8.1.1",
     "@nestjs/common": "^7.5.5",
     "@nestjs/core": "^7.5.5",

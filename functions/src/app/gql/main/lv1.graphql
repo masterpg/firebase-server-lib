@@ -1,3 +1,15 @@
+#--------------------------------------------------
+#  Env
+#--------------------------------------------------
+
+type Query {
+  appConfig: AppConfig!
+}
+
+#--------------------------------------------------
+#  Storage
+#--------------------------------------------------
+
 type Mutation {
   createStorageDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
   createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
@@ -15,6 +27,7 @@ type Mutation {
 
 type Query {
   storageNode(input: StorageNodeKeyInput!): StorageNode
+  storageNodes(input: StorageNodeKeysInput!): [StorageNode!]!
   storageDirDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
   storageDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
   storageDirChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
@@ -23,4 +36,17 @@ type Query {
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
   articleChildren(dirPath: String!, articleTypes: [StorageArticleNodeType!]!, input: StoragePaginationInput): StoragePaginationResult!
+}
+
+#--------------------------------------------------
+#  User
+#--------------------------------------------------
+
+type Mutation {
+  setOwnUserInfo(input: UserInfoInput!): UserInfo!
+  deleteOwnUser: Boolean!
+}
+
+type Query {
+  authData: AuthDataResult!
 }

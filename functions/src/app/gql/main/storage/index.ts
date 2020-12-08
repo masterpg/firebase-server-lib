@@ -10,6 +10,7 @@ import {
   StorageArticleNodeType,
   StorageNode,
   StorageNodeKeyInput,
+  StorageNodeKeysInput,
   StorageNodeShareSettingsInput,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -26,8 +27,22 @@ import { Module } from '@nestjs/common'
 //
 //========================================================================
 
+//--------------------------------------------------
+//  Base
+//--------------------------------------------------
+
+@Module({
+  imports: [AppStorageServiceModule, AuthServiceModule],
+  exports: [AppStorageServiceModule, AuthServiceModule],
+})
+class BaseStorageGQLModule {}
+
+//--------------------------------------------------
+//  Main
+//--------------------------------------------------
+
 @Resolver()
-export class StorageResolver {
+class StorageResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
     @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
@@ -35,32 +50,57 @@ export class StorageResolver {
 
   @Query()
   async storageNode(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode | undefined> {
-    // パス検索
-    if (input.path) {
-      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: input.path })
-      return this.storageService.getNodeByPath(input.path)
-    }
     // ID検索
-    else if (input.id) {
-      // サインインしていることを検証
-      const validated = await this.authService.validateIdToken(ctx.req, ctx.res)
-      if (!validated.result) {
-        throw validated.error
-      }
-      // IDでノードを検索
-      const node = await this.storageService.getNodeById(input.id)
+    if (input.id) {
+      // 引数IDでノードを検索
+      const node = await this.storageService.getNode({ id: input.id })
       if (node) {
         // 検索されたノードにアクセス可能な権限があるか検証
-        await this.storageService.validateAccessible(ctx.req, ctx.res, { nodeId: node.id })
+        await this.storageService.validateAccessible(ctx.req, ctx.res, { node })
         return node
       } else {
         return undefined
       }
     }
+    // パス検索
+    else if (input.path) {
+      // 引数パスのノードにアクセス可能か検証
+      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: input.path })
+      // 引数パスでノード検索
+      return this.storageService.getNode({ path: input.path })
+    }
     // 引数指定なしエラー
     else {
-      throw new InputValidationError(`Both 'path' and 'id' are not specified.`)
+      throw new InputValidationError(`Both 'id' and 'path' are not specified.`)
     }
+  }
+
+  @Query()
+  async storageNodes(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeysInput): Promise<StorageNode[]> {
+    // 引数指定なしエラー
+    if (!input.ids && !input.paths) {
+      throw new InputValidationError(`Both 'ids' and 'paths' are not specified.`)
+    }
+
+    const result: StorageNode[] = []
+
+    // ID検索
+    if (input.ids?.length) {
+      // 引数IDでノードを検索
+      result.push(...(await this.storageService.getNodes({ ids: input.ids })))
+      // 検索されたノードにアクセス可能か検証
+      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodes: result })
+    }
+
+    // パス検索
+    if (input.paths?.length) {
+      // 引数パスのノードにアクセス可能か検証
+      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths: input.paths })
+      // 引数パスでノード検索
+      result.push(...(await this.storageService.getNodes({ paths: input.paths })))
+    }
+
+    return result
   }
 
   @Query()
@@ -243,9 +283,88 @@ export class StorageResolver {
 
 @Module({
   providers: [StorageResolver],
-  imports: [AppStorageServiceModule, AuthServiceModule],
+  imports: [BaseStorageGQLModule],
 })
 class StorageGQLModule {}
+
+//--------------------------------------------------
+//  RemoveStorageDir
+//--------------------------------------------------
+
+@Resolver()
+class RemoveStorageDirResolver {
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+  ) {}
+
+  @Mutation()
+  async removeStorageDir(@GQLContextArg() ctx: GQLContext, @Args('dirPath') dirPath: string): Promise<boolean> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    await this.storageService.removeDir(dirPath)
+    return true
+  }
+}
+
+@Module({
+  providers: [RemoveStorageDirResolver],
+  imports: [BaseStorageGQLModule],
+})
+class RemoveStorageDirGQLModule {}
+
+//--------------------------------------------------
+//  MoveStorageDir
+//--------------------------------------------------
+
+@Resolver()
+class MoveStorageDirResolver {
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+  ) {}
+
+  @Mutation()
+  async moveStorageDir(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('fromDirPath') fromDirPath: string,
+    @Args('toDirPath') toDirPath: string
+  ): Promise<boolean> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths: [fromDirPath, toDirPath] })
+    await this.storageService.moveDir(fromDirPath, toDirPath)
+    return true
+  }
+}
+
+@Module({
+  providers: [MoveStorageDirResolver],
+  imports: [BaseStorageGQLModule],
+})
+class MoveStorageDirGQLModule {}
+
+//--------------------------------------------------
+//  RenameStorageDir
+//--------------------------------------------------
+
+@Resolver()
+class RenameStorageDirResolver {
+  constructor(
+    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
+    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+  ) {}
+
+  @Mutation()
+  async renameStorageDir(@Args('dirPath') dirPath: string, @Args('newName') newName: string, @GQLContextArg() ctx: GQLContext): Promise<boolean> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    await this.storageService.renameDir(dirPath, newName)
+    return true
+  }
+}
+
+@Module({
+  providers: [RenameStorageDirResolver],
+  imports: [BaseStorageGQLModule],
+})
+class RenameStorageDirGQLModule {}
 
 //========================================================================
 //
@@ -253,4 +372,4 @@ class StorageGQLModule {}
 //
 //========================================================================
 
-export { StorageGQLModule }
+export { StorageGQLModule, RemoveStorageDirGQLModule, MoveStorageDirGQLModule, RenameStorageDirGQLModule }

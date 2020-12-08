@@ -1,5 +1,0 @@
-type Mutation {
-  removeStorageDir(dirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
-  moveStorageDir(fromDirPath: String!, toDirPath: String!, input: StoragePaginationInput): StoragePaginationResult!
-  renameStorageDir(dirPath: String!, newName: String!, input: StoragePaginationInput): StoragePaginationResult!
-}

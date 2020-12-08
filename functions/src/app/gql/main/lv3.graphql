@@ -1,0 +1,9 @@
+#--------------------------------------------------
+#  Storage
+#--------------------------------------------------
+
+type Mutation {
+  removeStorageDir(dirPath: String!): Boolean!
+  moveStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
+  renameStorageDir(dirPath: String!, newName: String!): Boolean!
+}

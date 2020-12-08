@@ -31,9 +31,8 @@ import { InputValidationError, initApp } from '../../../../../src/app/base'
 import { Test, TestingModule } from '@nestjs/testing'
 import { shuffleArray, sleep } from 'web-base-lib'
 import { Response } from 'supertest'
-import StandardGQLContainerModule from '../../../../../src/app/gql/standard'
+import StandardGQLContainerModule from '../../../../../src/app/gql/main/lv1'
 import StorageRESTModule from '../../../../../src/app/rest/storage'
-import { StoreServiceDI } from '../../../../../src/app/services/base/store'
 import { config } from '../../../../../src/config'
 import request = require('supertest')
 
@@ -48,11 +47,10 @@ initApp()
 
 let testingModule!: TestingModule
 let storageService!: TestStorageService
-let storeService!: StoreServiceDI.type
 let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = AppStorageServiceDI.type & {
-  m_nodeIdsToNodePaths: AppStorageServiceDI.type['m_nodeIdsToNodePaths']
+  m_validateAccessibleTargetToNodePaths: AppStorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
   m_validateArticleRootDescendant: AppStorageServiceDI.type['m_validateArticleRootDescendant']
   m_getBelongToArticleBundle: AppStorageServiceDI.type['m_getBelongToArticleBundle']
 }
@@ -78,9 +76,8 @@ describe('AppStorageService', () => {
     }).compile()
 
     storageService = testingModule.get<TestStorageService>(AppStorageServiceDI.symbol)
-    storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
 
-    await removeAllStorageNodes(storeService)
+    await removeAllStorageNodes()
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     await sleep(1500)
@@ -641,13 +638,18 @@ describe('AppStorageService', () => {
           path: `${user3Dir}/fileD.txt`,
         },
       ])
+
+      // ユーザーノードを全て取得
       const user2Nodes = (await storageService.getDirDescendants(user2Dir)).list
+      // ユーザーノード以外を取得
       const otherNodes = [...(await storageService.getDirDescendants(user1Dir)).list, ...(await storageService.getDirDescendants(user3Dir)).list]
 
       // ユーザーディレクトリを削除
       await storageService.deleteUserDir('user2')
 
+      // ユーザーノードが全て削除されたことを検証
       await notExistsStorageNodes(user2Nodes, storageService)
+      // ユーザーノード以外がが削除されていないことを検証
       await existsStorageNodes(otherNodes, storageService)
     })
 
@@ -670,11 +672,14 @@ describe('AppStorageService', () => {
         })
       }
       await storageService.uploadDataItems(uploadItems)
+
+      // ユーザーノードを全て取得
       const user1Nodes = (await storageService.getDirDescendants(user1Dir)).list
 
       // ユーザーディレクトリを削除
       await storageService.deleteUserDir('user1', 3)
 
+      // ユーザーノードが全て削除されたことを検証
       await notExistsStorageNodes(user1Nodes, storageService)
     })
   })
@@ -937,7 +942,7 @@ describe('AppStorageService', () => {
 
         expect(actual.detail.message).toBe(`Categories cannot be created under the specified parent.`)
         expect(actual.detail.values).toEqual({
-          parentNode: { path: input.dir, articleNodeType: undefined },
+          parentNode: { path: input.dir, articleNodeType: null },
         })
       })
 
@@ -1100,7 +1105,7 @@ describe('AppStorageService', () => {
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
-        const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
+        const art1FileNode = await storageService.sgetNode({ path: art1FilePath })
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
         expect(art1FileNode.isArticleFile).toBeTruthy()
@@ -1142,7 +1147,7 @@ describe('AppStorageService', () => {
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
-        const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
+        const art1FileNode = await storageService.sgetNode({ path: art1FilePath })
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
         expect(art1FileNode.isArticleFile).toBeTruthy()
@@ -1180,7 +1185,7 @@ describe('AppStorageService', () => {
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
-        const art1FileNode = await storageService.sgetNodeByPath(art1FilePath)
+        const art1FileNode = await storageService.sgetNode({ path: art1FilePath })
         expect(art1FileNode.path).toBe(art1FilePath)
         expect(art1FileNode.contentType).toBe('text/markdown')
         expect(art1FileNode.isArticleFile).toBeTruthy()
@@ -1227,7 +1232,7 @@ describe('AppStorageService', () => {
 
         expect(actual.detail.message).toBe(`Articles cannot be created under the specified parent.`)
         expect(actual.detail.values).toEqual({
-          parentNode: { path: userRootPath, articleNodeType: undefined },
+          parentNode: { path: userRootPath, articleNodeType: null },
         })
       })
 
@@ -1314,8 +1319,10 @@ describe('AppStorageService', () => {
       const actual = await storageService.createArticleGeneralDir(assetsPath)
 
       expect(actual.path).toBe(assetsPath)
-      expect(actual.articleNodeType).toBeUndefined()
-      expect(actual.articleSortOrder).toBeUndefined()
+      expect(actual.articleNodeName).toBeNull()
+      expect(actual.articleNodeType).toBeNull()
+      expect(actual.articleSortOrder).toBeNull()
+      expect(actual.isArticleFile).toBeFalsy()
       await existsStorageNodes([actual], storageService)
     })
 
@@ -1331,8 +1338,10 @@ describe('AppStorageService', () => {
       const actual = await storageService.createArticleGeneralDir(d1Path)
 
       expect(actual.path).toBe(d1Path)
-      expect(actual.articleNodeType).toBeUndefined()
-      expect(actual.articleSortOrder).toBeUndefined()
+      expect(actual.articleNodeName).toBeNull()
+      expect(actual.articleNodeType).toBeNull()
+      expect(actual.articleSortOrder).toBeNull()
+      expect(actual.isArticleFile).toBeFalsy()
       await existsStorageNodes([actual], storageService)
     })
 
@@ -1358,8 +1367,10 @@ describe('AppStorageService', () => {
       const actual = await storageService.createArticleGeneralDir(d1Path)
 
       expect(actual.path).toBe(d1Path)
-      expect(actual.articleNodeType).toBeUndefined()
-      expect(actual.articleSortOrder).toBeUndefined()
+      expect(actual.articleNodeName).toBeNull()
+      expect(actual.articleNodeType).toBeNull()
+      expect(actual.articleSortOrder).toBeNull()
+      expect(actual.isArticleFile).toBeFalsy()
       await existsStorageNodes([actual], storageService)
     })
 
@@ -1504,22 +1515,13 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
 
-      // 期待値の作成
-      const expectArt1: StorageNode = {
-        ...art1,
-        articleNodeName: 'Article1',
-        version: art1.version + 1,
-      }
-
       // テスト対象実行
       const actual = await storageService.renameArticleNode(art1.path, 'Article1')
 
       // 戻り値の検証
-      expect(actual).toMatchObject(expectArt1)
-
-      // ストアから取得して検証
-      const updatedArt1 = await storageService.sgetNodeByPath(art1.path)
-      expect(updatedArt1).toMatchObject(expectArt1)
+      expect(actual.articleNodeName).toBe('Article1')
+      expect(actual.version).toBe(art1.version + 1)
+      await existsStorageNodes([actual], storageService)
     })
 
     it('記事ルート配下でないノードを名前変更しようとした場合', async () => {
@@ -1551,7 +1553,7 @@ describe('AppStorageService', () => {
         actual = err
       }
 
-      expect(actual.message).toBe(`There is no node in the specified path: '${articleRootPath}/xxx'`)
+      expect(actual.message).toBe(`There is no node in the specified key: {"path":"${articleRootPath}/xxx"}`)
     })
   })
 
@@ -1586,7 +1588,7 @@ describe('AppStorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(art1.path, { insertBeforeNodePath: art3.path })
 
-      const nodes = await storageService.getNodesByPaths([art1.path, art2.path, art3.path])
+      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, art3.path] })
       AppStorageService.sortArticleNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art1.path, art3.path, art2.path])
     })
@@ -1621,7 +1623,7 @@ describe('AppStorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(art1.path, { insertAfterNodePath: art3.path })
 
-      const nodes = await storageService.getNodesByPaths([art1.path, art2.path, art3.path])
+      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, art3.path] })
       AppStorageService.sortArticleNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art1.path, art2.path])
     })
@@ -1652,7 +1654,7 @@ describe('AppStorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(bundle1.path, { insertAfterNodePath: bundle3.path })
 
-      const nodes = await storageService.getNodesByPaths([bundle1.path, bundle2.path, bundle3.path])
+      const nodes = await storageService.getNodes({ paths: [bundle1.path, bundle2.path, bundle3.path] })
       AppStorageService.sortArticleNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle1.path, bundle2.path])
     })
@@ -1689,7 +1691,7 @@ describe('AppStorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(cat1.path, { insertAfterNodePath: art1.path })
 
-      const nodes = await storageService.getNodesByPaths([art1.path, art2.path, cat1.path])
+      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, cat1.path] })
       AppStorageService.sortArticleNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art2.path, art1.path, cat1.path])
     })
@@ -1800,7 +1802,7 @@ describe('AppStorageService', () => {
 
       expect(actual.detail.message).toBe(`Cannot set the sort order for the node.`)
       expect(actual.detail.values).toEqual({
-        node: { path: d1.path, articleNodeType: undefined },
+        node: { path: d1.path, articleNodeType: null },
       })
     })
 
@@ -1824,7 +1826,7 @@ describe('AppStorageService', () => {
 
       expect(actual.detail.message).toBe(`Cannot set the sort order for the node.`)
       expect(actual.detail.values).toEqual({
-        node: { path: d1.path, articleNodeType: undefined },
+        node: { path: d1.path, articleNodeType: null },
       })
     })
   })
@@ -1877,7 +1879,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // introduction/index.md
-      introductionIndex = await storageService.sgetNodeByPath(`${introduction.path}/${articleFileName}`)
+      introductionIndex = await storageService.sgetNode({ path: `${introduction.path}/${articleFileName}` })
       // js
       js = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -1892,7 +1894,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // js/variable/index.md
-      variableIndex = await storageService.sgetNodeByPath(`${variable.path}/${articleFileName}`)
+      variableIndex = await storageService.sgetNode({ path: `${variable.path}/${articleFileName}` })
       // ts
       ts = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -1907,7 +1909,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // ts/class/index.md
-      clazzIndex = await storageService.sgetNodeByPath(`${clazz.path}/${articleFileName}`)
+      clazzIndex = await storageService.sgetNode({ path: `${clazz.path}/${articleFileName}` })
       // py
       py = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -1932,7 +1934,7 @@ describe('AppStorageService', () => {
       await existsStorageNodes(actual.list, storageService)
     })
 
-    it('dirPathに存在しないノードを指定した場合', async () => {
+    it('対象ノードに存在しないノードを指定した場合', async () => {
       // パスに存在しないノードを指定
       const actual = await storageService.getArticleChildren(`${programing.path}/cobol`, [StorageArticleNodeType.Category])
 
@@ -2556,7 +2558,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // introduction/index.md
-      introductionIndex = await storageService.sgetNodeByPath(`${introduction.path}/${articleFileName}`)
+      introductionIndex = await storageService.sgetNode({ path: `${introduction.path}/${articleFileName}` })
       // js
       js = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -2571,7 +2573,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // js/variable/index.md
-      variableIndex = await storageService.sgetNodeByPath(`${variable.path}/${articleFileName}`)
+      variableIndex = await storageService.sgetNode({ path: `${variable.path}/${articleFileName}` })
       // ts
       ts = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -2586,7 +2588,7 @@ describe('AppStorageService', () => {
         articleNodeType: StorageArticleNodeType.Article,
       })
       // ts/class/index.md
-      clazzIndex = await storageService.sgetNodeByPath(`${clazz.path}/${articleFileName}`)
+      clazzIndex = await storageService.sgetNode({ path: `${clazz.path}/${articleFileName}` })
       // py
       py = await storageService.createArticleTypeDir({
         dir: `${programing.path}`,
@@ -2619,15 +2621,16 @@ describe('AppStorageService', () => {
       it('ベーシックケース', async () => {
         // カテゴリを別のカテゴリへ移動
         // 'programing/ts'を'programing/js/ts'へ移動
-        const actual = await storageService.moveDir(`${ts.path}`, `${js.path}/${ts.name}`)
+        const toNodePath = `${js.path}/${ts.name}`
+        const actual = await storageService.moveDir(`${ts.path}`, toNodePath)
 
-        // 戻り値の検証
-        AppStorageService.sortNodes(actual.list)
-        expect(actual.nextPageToken).toBeUndefined()
-        expect(actual.list.length).toBe(3)
-        expect(actual.list[0].path).toBe(`${js.path}/${ts.name}`)
-        expect(actual.list[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
-        expect(actual.list[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazzIndex.name}`)
+        // 移動後の'programing/js/ts'＋配下ノードを検証
+        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        AppStorageService.sortNodes(toNodes)
+        expect(toNodes.length).toBe(3)
+        expect(toNodes[0].path).toBe(`${js.path}/${ts.name}`)
+        expect(toNodes[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
+        expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazzIndex.name}`)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
@@ -2650,14 +2653,15 @@ describe('AppStorageService', () => {
       it('ベーシックケース', async () => {
         // 記事をカテゴリへ移動
         // 'programing/js/variable'を'programing/ts/variable'へ移動
-        const actual = await storageService.moveDir(`${variable.path}`, `${ts.path}/${variable.name}`)
+        const toNodePath = `${ts.path}/${variable.name}`
+        await storageService.moveDir(`${variable.path}`, toNodePath)
 
-        // 戻り値の検証
-        AppStorageService.sortNodes(actual.list)
-        expect(actual.nextPageToken).toBeUndefined()
-        expect(actual.list.length).toBe(2)
-        expect(actual.list[0].path).toBe(`${ts.path}/${variable.name}`)
-        expect(actual.list[1].path).toBe(`${ts.path}/${variable.name}/${variableIndex.name}`)
+        // 移動後の'programing/ts/variable'＋配下ノードを検証
+        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        AppStorageService.sortNodes(toNodes)
+        expect(toNodes.length).toBe(2)
+        expect(toNodes[0].path).toBe(`${ts.path}/${variable.name}`)
+        expect(toNodes[1].path).toBe(`${ts.path}/${variable.name}/${variableIndex.name}`)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
@@ -2680,25 +2684,27 @@ describe('AppStorageService', () => {
       it('ベーシックケース', async () => {
         // 一般ディレクトリを記事へ移動
         // 'tmp'を'programing/js/variable/tmp'へ移動
-        const actual = await storageService.moveDir(`${tmp.path}`, `${variable.path}/${tmp.name}`)
+        const toNodePath = `${variable.path}/${tmp.name}`
+        const actual = await storageService.moveDir(`${tmp.path}`, toNodePath)
 
-        // 戻り値の検証
-        AppStorageService.sortNodes(actual.list)
-        expect(actual.nextPageToken).toBeUndefined()
-        expect(actual.list.length).toBe(1)
-        expect(actual.list[0].path).toBe(`${variable.path}/${tmp.name}`)
+        // 移動後の'programing/js/variable/tmp'＋配下ノードを検証
+        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        AppStorageService.sortNodes(toNodes)
+        expect(toNodes.length).toBe(1)
+        expect(toNodes[0].path).toBe(`${variable.path}/${tmp.name}`)
       })
 
       it('ルートノードへ移動', async () => {
         // 一般ディレクトリをルートノードへ移動
         // 'tmp'をルートノードへ移動
-        const actual = await storageService.moveDir(`${tmp.path}`, `${tmp.name}`)
+        const toNodePath = `${tmp.name}`
+        const actual = await storageService.moveDir(`${tmp.path}`, toNodePath)
 
-        // 戻り値の検証
-        AppStorageService.sortNodes(actual.list)
-        expect(actual.nextPageToken).toBeUndefined()
-        expect(actual.list.length).toBe(1)
-        expect(actual.list[0].path).toBe(`${tmp.name}`)
+        // 移動後の'tmp'＋配下ノードを検証
+        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        AppStorageService.sortNodes(toNodes)
+        expect(toNodes.length).toBe(1)
+        expect(toNodes[0].path).toBe(`${tmp.name}`)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
@@ -2740,126 +2746,80 @@ describe('AppStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
+      const fromNodes = (await storageService.getDirDescendants(`d1`)).list
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
-      const actual = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3 })
-      while (actual.nextPageToken) {
-        const pagination = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3, pageToken: actual.nextPageToken })
-        actual.nextPageToken = pagination.nextPageToken
-        actual.list.push(...pagination.list)
-      }
+      const toNodePath = `dA/d1`
+      await storageService.moveDir(`d1`, toNodePath, { maxChunk: 3 })
 
-      // 戻り値の検証
-      AppStorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(14)
-      expect(actual.list[0].path).toBe(`dA/d1`)
-      expect(actual.list[1].path).toBe(`dA/d1/d11`)
-      expect(actual.list[2].path).toBe(`dA/d1/d11/d111`)
-      expect(actual.list[3].path).toBe(`dA/d1/d11/d111/file01.txt`)
-      expect(actual.list[4].path).toBe(`dA/d1/d11/d111/file02.txt`)
-      expect(actual.list[5].path).toBe(`dA/d1/d11/d111/file03.txt`)
-      expect(actual.list[6].path).toBe(`dA/d1/d11/d111/file04.txt`)
-      expect(actual.list[7].path).toBe(`dA/d1/d11/d111/file05.txt`)
-      expect(actual.list[8].path).toBe(`dA/d1/d12`)
-      expect(actual.list[9].path).toBe(`dA/d1/d12/file06.txt`)
-      expect(actual.list[10].path).toBe(`dA/d1/d12/file07.txt`)
-      expect(actual.list[11].path).toBe(`dA/d1/d12/file08.txt`)
-      expect(actual.list[12].path).toBe(`dA/d1/d12/file09.txt`)
-      expect(actual.list[13].path).toBe(`dA/d1/d12/file10.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
-      // 移動後の'dA'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`dA`)).list
-      AppStorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(15)
-      expect(movedNodes[0].path).toBe(`dA`)
-      expect(movedNodes[1].path).toBe(`dA/d1`)
-      expect(movedNodes[2].path).toBe(`dA/d1/d11`)
-      expect(movedNodes[3].path).toBe(`dA/d1/d11/d111`)
-      expect(movedNodes[4].path).toBe(`dA/d1/d11/d111/file01.txt`)
-      expect(movedNodes[5].path).toBe(`dA/d1/d11/d111/file02.txt`)
-      expect(movedNodes[6].path).toBe(`dA/d1/d11/d111/file03.txt`)
-      expect(movedNodes[7].path).toBe(`dA/d1/d11/d111/file04.txt`)
-      expect(movedNodes[8].path).toBe(`dA/d1/d11/d111/file05.txt`)
-      expect(movedNodes[9].path).toBe(`dA/d1/d12`)
-      expect(movedNodes[10].path).toBe(`dA/d1/d12/file06.txt`)
-      expect(movedNodes[11].path).toBe(`dA/d1/d12/file07.txt`)
-      expect(movedNodes[12].path).toBe(`dA/d1/d12/file08.txt`)
-      expect(movedNodes[13].path).toBe(`dA/d1/d12/file09.txt`)
-      expect(movedNodes[14].path).toBe(`dA/d1/d12/file10.txt`)
+      // 移動後の'dA/d1'＋配下ノードを検証
+      const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+      AppStorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(14)
+      expect(toNodes[0].path).toBe(`dA/d1`)
+      expect(toNodes[1].path).toBe(`dA/d1/d11`)
+      expect(toNodes[2].path).toBe(`dA/d1/d11/d111`)
+      expect(toNodes[3].path).toBe(`dA/d1/d11/d111/file01.txt`)
+      expect(toNodes[4].path).toBe(`dA/d1/d11/d111/file02.txt`)
+      expect(toNodes[5].path).toBe(`dA/d1/d11/d111/file03.txt`)
+      expect(toNodes[6].path).toBe(`dA/d1/d11/d111/file04.txt`)
+      expect(toNodes[7].path).toBe(`dA/d1/d11/d111/file05.txt`)
+      expect(toNodes[8].path).toBe(`dA/d1/d12`)
+      expect(toNodes[9].path).toBe(`dA/d1/d12/file06.txt`)
+      expect(toNodes[10].path).toBe(`dA/d1/d12/file07.txt`)
+      expect(toNodes[11].path).toBe(`dA/d1/d12/file08.txt`)
+      expect(toNodes[12].path).toBe(`dA/d1/d12/file09.txt`)
+      expect(toNodes[13].path).toBe(`dA/d1/d12/file10.txt`)
+      await verifyMoveStorageNodes(fromNodes, toNodePath, storageService)
     })
   })
 
-  describe('m_nodeIdsToNodePaths', () => {
+  describe('m_validateAccessibleTargetToNodePaths', () => {
     it('ベーシックケース', async () => {
-      const [dir1, dir2, dir3, dir4] = await storageService.createHierarchicalDirs(['dir1', 'dir2', 'dir3', 'dir4', 'dir5'])
-      const [file1, file2, file3, file4, file5, file6, file7, file8] = await storageService.uploadDataItems([
+      const [dir1, dir2] = await storageService.createHierarchicalDirs(['dir1', 'dir2'])
+      const [file1, file2, file3, file4, file5, file6] = await storageService.uploadDataItems([
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file1.txt` },
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file2.txt` },
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file3.txt` },
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file4.txt` },
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file5.txt` },
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file6.txt` },
-        { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file7.txt` },
-        { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file8.txt` },
       ])
 
-      const actual = await storageService.m_nodeIdsToNodePaths({
-        nodeId: file1.id,
-        nodeIds: [file2.id],
-        fileId: file3.id,
-        fileIds: [file4.id],
-        dirId: dir1.id,
-        dirIds: [dir2.id],
-        nodePath: file5.path,
-        nodePaths: [file6.path],
-        filePath: file7.path,
-        filePaths: [file8.path],
-        dirPath: dir3.path,
-        dirPaths: [dir4.path],
+      const actual = await storageService.m_validateAccessibleTargetToNodePaths({
+        nodePath: file1.path,
+        nodePaths: [file2.path],
+        filePath: file3.path,
+        filePaths: [file4.path],
+        dirPath: dir1.path,
+        dirPaths: [dir2.path],
+        node: file5,
+        nodes: [file6],
       })
       actual.sort()
 
-      const expected = [
-        'dir1',
-        'dir2',
-        'dir3',
-        'dir4',
-        'file1.txt',
-        'file2.txt',
-        'file3.txt',
-        'file4.txt',
-        'file5.txt',
-        'file6.txt',
-        'file7.txt',
-        'file8.txt',
-      ]
+      const expected = ['dir1', 'dir2', 'file1.txt', 'file2.txt', 'file3.txt', 'file4.txt', 'file5.txt', 'file6.txt']
       expect(actual).toEqual(expected)
     })
 
     it('空文字またはundefinedを指定した場合', async () => {
-      const actual = await storageService.m_nodeIdsToNodePaths({
-        nodeId: '',
-        nodeIds: [''],
-        fileId: undefined,
-        fileIds: [''],
-        dirId: '',
-        dirIds: [''],
+      const actual = await storageService.m_validateAccessibleTargetToNodePaths({
         nodePath: '',
         nodePaths: [''],
         filePath: undefined,
         filePaths: [''],
         dirPath: '',
         dirPaths: [''],
+        node: undefined,
+        nodes: [],
       })
 
       expect(actual.length).toBe(0)
     })
 
     it('何も指定しなかった場合', async () => {
-      const actual = await storageService.m_nodeIdsToNodePaths({})
+      const actual = await storageService.m_validateAccessibleTargetToNodePaths({})
 
       expect(actual.length).toBe(0)
     })

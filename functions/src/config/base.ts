@@ -1,5 +1,6 @@
 import { PartialAre } from 'web-base-lib'
 import { SUPPORTED_REGIONS } from 'firebase-functions'
+import secret from './secret-config'
 
 //========================================================================
 //
@@ -13,6 +14,7 @@ interface AppConfig {
   readonly cors: CORSConfig
   readonly storage: StorageConfig
   readonly gql: GQLConfig
+  readonly elastic: ElasticConfig
 }
 
 //--------------------------------------------------
@@ -88,6 +90,31 @@ interface GQLConfig {
   schemaFilesOrDirs: string[]
 }
 
+//--------------------------------------------------
+//  Elastic
+//--------------------------------------------------
+
+interface ElasticConfig {
+  cloud: {
+    id: string
+  }
+  auth: ElasticBasicAuth | ElasticApiKeyAuth
+}
+
+interface ElasticBasicAuth {
+  username: string
+  password: string
+}
+
+interface ElasticApiKeyAuth {
+  apiKey:
+    | string
+    | {
+        id: string
+        api_key: string
+      }
+}
+
 //========================================================================
 //
 //  Implementation
@@ -153,6 +180,7 @@ abstract class BaseAppConfig implements AppConfig {
   abstract readonly cors: CORSConfig
   abstract readonly storage: StorageConfig
   abstract readonly gql: GQLConfig
+  elastic: ElasticConfig = secret.elastic
 }
 
 //========================================================================

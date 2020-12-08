@@ -2,5 +2,4 @@
 dist/
 node_module/
 
-src/app/gql.schema.ts
-tests/mocks/app/gql.schema.ts
+tools/bin/

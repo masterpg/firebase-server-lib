@@ -1,18 +1,18 @@
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($nodePath: String!) { storageNode(nodePath: $nodePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
+  "query": "query GetStorageNode($input: StorageNodeKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
-    "nodePath": "test-files/d1"
+    "input": { "path": "test-files/d1" }
   }
 }
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -27,7 +27,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -42,7 +42,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -57,7 +57,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -72,7 +72,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -86,7 +86,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -100,7 +100,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -114,7 +114,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -133,22 +133,21 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv3
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
   "operationName": "RemoveStorageDir",
-  "query": "mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) { removeStorageDir(dirPath: $dirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation RemoveStorageDir($dirPath: String!) { removeStorageDir(dirPath: $dirPath) }",
   "variables": {
-    "dirPath": "test-files/d1",
-    "input": { "maxChunk": 3 }
+    "dirPath": "test-files/d1"
   }
 }
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -162,23 +161,22 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv3
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
   "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) }",
   "variables": {
     "fromDirPath": "test-files/d1/d11",
-    "toDirPath": "test-files/d1/d1X",
-    "input": { "maxChunk": 3 }
+    "toDirPath": "test-files/d1/d1X"
   }
 }
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -193,23 +191,22 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv3
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
   "operationName": "RenameStorageDir",
-  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) { renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) { list { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } nextPageToken } }",
+  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!) { renameStorageDir(dirPath: $dirPath, newName: $newName) }",
   "variables": {
     "dirPath": "test-files/d1/d11",
-    "newName": "d1X",
-    "input": { "maxChunk": 3 }
+    "newName": "d1X"
   }
 }
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -224,7 +221,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -239,7 +236,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -254,7 +251,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -268,7 +265,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
@@ -287,7 +284,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 ###
 
-POST {{host}}/gql_standard
+POST {{host}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 

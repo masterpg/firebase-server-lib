@@ -2,7 +2,14 @@ import * as admin from 'firebase-admin'
 import * as express from 'express'
 import * as fs from 'fs'
 import * as td from 'testdouble'
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER } from '../../../../../helpers/app'
+import {
+  APP_ADMIN_USER,
+  APP_ADMIN_USER_HEADER,
+  existsStorageNodes,
+  notExistsStorageNodes,
+  removeAllStorageNodes,
+  verifyMoveStorageNodes,
+} from '../../../../../helpers/app'
 import { Controller, Get, Inject, Module, Param, Req, Res } from '@nestjs/common'
 import {
   CreateStorageNodeInput,
@@ -12,24 +19,18 @@ import {
   StorageFileNode,
   StorageNode,
   StorageNodeShareSettings,
+  StorageNodeType,
   StorageUploadDataItem,
 } from '../../../../../../src/app/services'
 import { InputValidationError, initApp } from '../../../../../../src/app/base'
 import { StorageService, StorageServiceDI, StorageServiceModule } from '../../../../../../src/app/services/base/storage'
 import { Test, TestingModule } from '@nestjs/testing'
-import {
-  existsStorageNodes,
-  newStorageDirNode,
-  newStorageFileNode,
-  notExistsStorageNodes,
-  removeAllStorageNodes,
-  verifyMoveStorageNodes,
-} from '../../../../../helpers/app'
+import { removeBothEndsSlash, sleep } from 'web-base-lib'
 import { Response } from 'supertest'
-import { StoreServiceDI } from '../../../../../../src/app/services/base/store'
 import { config } from '../../../../../../src/config'
+import { newElasticClient } from '../../../../../../src/app/base/elastic'
 import request = require('supertest')
-import { sleep } from 'web-base-lib'
+const performance = require('perf_hooks').performance
 
 jest.setTimeout(25000)
 initApp()
@@ -50,11 +51,9 @@ const TEST_FILES_DIR = 'test-files'
 
 let testingModule!: TestingModule
 let storageService!: TestStorageService
-let storeService!: StoreServiceDI.type
 let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = StorageService & {
-  extractMetaData: StorageService['extractMetaData']
   saveMetadata: StorageService['saveMetadata']
 }
 
@@ -89,36 +88,200 @@ beforeAll(async () => {
   devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
 })
 
-beforeEach(async () => {
-  testingModule = await Test.createTestingModule({
-    imports: [MockStorageRESTModule],
-  }).compile()
-
-  storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
-  storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
-
-  await removeAllStorageNodes(storeService)
-
-  // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-  await sleep(1500)
-})
-
 afterEach(() => {
   td.reset()
 })
 
 describe('StorageService', () => {
-  describe('getNodeById', () => {
-    it('ベーシックケース - ディレクトリ', async () => {
-      const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
+  beforeEach(async () => {
+    testingModule = await Test.createTestingModule({
+      imports: [MockStorageRESTModule],
+    }).compile()
 
-      const actual = (await storageService.getNodeById(d11.id))!
+    storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
 
-      expect(actual.path).toBe(`d1/d11`)
-      await existsStorageNodes([actual], storageService)
+    await removeAllStorageNodes()
+
+    // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
+    await sleep(1500)
+  })
+
+  describe('getNode', () => {
+    describe('ID検索', () => {
+      it('ベーシックケース - ディレクトリ', async () => {
+        const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
+
+        const actual = (await storageService.getNode({ id: d11.id }))!
+
+        expect(actual.id).toBe(d11.id)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('ベーシックケース - ファイル', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
+        const [fileA] = await storageService.uploadDataItems([
+          {
+            data: 'testA',
+            contentType: 'text/plain; charset=utf-8',
+            path: `d1/fileA.txt`,
+          },
+        ])
+
+        const actual = (await storageService.getNode({ id: fileA.id }))!
+
+        expect(actual.id).toBe(fileA.id)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('空文字を指定した場合', async () => {
+        const actual = await storageService.getNode({ id: '' })
+
+        expect(actual).toBeUndefined()
+      })
     })
 
-    it('ベーシックケース - ファイル', async () => {
+    describe('パス検索', () => {
+      it('ベーシックケース - ディレクトリ', async () => {
+        const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
+
+        const actual = (await storageService.getNode({ path: d11.path }))!
+
+        expect(actual.path).toBe(d11.path)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('ベーシックケース - ファイル', async () => {
+        await storageService.createHierarchicalDirs([`d1`])
+        const [fileA] = await storageService.uploadDataItems([
+          {
+            data: 'testA',
+            contentType: 'text/plain; charset=utf-8',
+            path: `d1/fileA.txt`,
+          },
+        ])
+
+        const actual = (await storageService.getNode({ path: fileA.path }))!
+
+        expect(actual.path).toBe(fileA.path)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('空文字を指定した場合', async () => {
+        const actual = await storageService.getNode({ path: '' })
+
+        expect(actual).toBeUndefined()
+      })
+    })
+  })
+
+  describe('sgetNode', () => {
+    describe('ID検索', () => {
+      it('ベーシックケース', async () => {
+        const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
+
+        const actual = await storageService.sgetNode({ id: d11.id })
+
+        expect(actual.id).toBe(actual.id)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('引数ノードが存在しない場合', async () => {
+        let actual!: Error
+        try {
+          await storageService.sgetNode({ id: '12345678901234567890' })
+        } catch (err) {
+          actual = err
+        }
+        expect(actual.message).toBe(`There is no node in the specified key: {"id":"12345678901234567890"}`)
+      })
+    })
+
+    describe('パス検索', () => {
+      it('ベーシックケース', async () => {
+        const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
+
+        const actual = await storageService.sgetNode({ path: d11.path })
+
+        expect(actual.path).toBe(d11.path)
+        await existsStorageNodes([actual], storageService)
+      })
+
+      it('引数ノードが存在しない場合', async () => {
+        let actual!: Error
+        try {
+          await storageService.sgetNode({ path: 'aaa/bbb/ccc' })
+        } catch (err) {
+          actual = err
+        }
+        expect(actual.message).toBe(`There is no node in the specified key: {"path":"aaa/bbb/ccc"}`)
+      })
+    })
+  })
+
+  describe('getNodes', () => {
+    it('ベーシックケース', async () => {
+      const [d1, d2, d3] = await storageService.createHierarchicalDirs([`d1`, `d2`, `d3`])
+      const [fileA, fileB, fileC] = await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileB.txt`,
+        },
+        {
+          data: 'testC',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileC.txt`,
+        },
+      ])
+
+      const actual = await storageService.getNodes({
+        ids: [d1.id, d3.id, '12345678901234567890'],
+        paths: [fileA.path, fileC.path, 'aaa/bbb/ccc'],
+      })
+
+      expect(actual.length).toBe(4)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d3`)
+      expect(actual[2].path).toBe(`d1/fileA.txt`)
+      expect(actual[3].path).toBe(`d1/fileC.txt`)
+      await existsStorageNodes(actual, storageService)
+    })
+
+    it('IDまたはパスを0件指定した場合', async () => {
+      const actual = await storageService.getNodes({ ids: [], paths: [] })
+
+      expect(actual.length).toBe(0)
+    })
+
+    it('IDまたはパスに空文字を指定した場合', async () => {
+      const [d1] = await storageService.createHierarchicalDirs([`d1`])
+      const [fileA, fileB, fileC] = await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+
+      const actual = await storageService.getNodes({
+        ids: [d1.id, ''],
+        paths: [fileA.path, ''],
+      })
+
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      await existsStorageNodes(actual, storageService)
+    })
+  })
+
+  describe('getFileNode', () => {
+    it('ベーシックケース - ID検索', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       const [fileNodeA] = await storageService.uploadDataItems([
         {
@@ -128,36 +291,16 @@ describe('StorageService', () => {
         },
       ])
 
-      const actual = (await storageService.getNodeById(fileNodeA.id))!
+      const actual = (await storageService.getFileNode({ id: fileNodeA.id }))!
 
-      expect(actual.path).toBe(`d1/fileA.txt`)
+      expect(actual.id).toBe(actual.id)
+      expect(actual.file.name).toBe(actual.path)
       await existsStorageNodes([actual], storageService)
     })
 
-    it('空文字を指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.getNodeById(``)
-      } catch (err) {
-        actual = err
-      }
-      expect(actual.message).toBe(`'nodeId' is not specified.`)
-    })
-  })
-
-  describe('getNodeByPath', () => {
-    it('ベーシックケース - ディレクトリ', async () => {
-      const [, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
-
-      const actual = (await storageService.getNodeByPath(`d1/d11`))!
-
-      expect(actual.path).toBe(`d1/d11`)
-      await existsStorageNodes([actual], storageService)
-    })
-
-    it('ベーシックケース - ファイル', async () => {
+    it('ベーシックケース - パス検索', async () => {
       await storageService.createHierarchicalDirs([`d1`])
-      await storageService.uploadDataItems([
+      const [fileNodeA] = await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -165,80 +308,17 @@ describe('StorageService', () => {
         },
       ])
 
-      const actual = (await storageService.getNodeByPath(`d1/fileA.txt`))!
+      const actual = (await storageService.getFileNode({ path: fileNodeA.path }))!
 
-      expect(actual.path).toBe(`d1/fileA.txt`)
+      expect(actual.path).toBe(actual.path)
+      expect(actual.file.name).toBe(actual.path)
       await existsStorageNodes([actual], storageService)
     })
 
-    it('空文字を指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.getNodeByPath(``)
-      } catch (err) {
-        actual = err
-      }
-      expect(actual.message).toBe(`'nodePath' is not specified.`)
-    })
-  })
+    it('引数ノードが存在しない場合', async () => {
+      const actual = await storageService.getFileNode({ id: '12345678901234567890' })
 
-  describe('getNodesByPaths', () => {
-    it('ベーシックケース - ディレクトリ', async () => {
-      await storageService.createHierarchicalDirs([`d1/d11`])
-
-      const actual = await storageService.getNodesByPaths([`d1`, `dXXX`, `d1/d11`])
-
-      expect(actual.length).toBe(2)
-      expect(actual.map(node => node.path)).toEqual([`d1`, `d1/d11`])
-      await existsStorageNodes(actual, storageService)
-    })
-
-    it('ベーシックケース - ファイル', async () => {
-      await storageService.createHierarchicalDirs([`d1/d11`])
-      await storageService.uploadDataItems([
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
-        },
-        {
-          data: 'testB',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/d11/fileB.txt`,
-        },
-      ])
-
-      const actual = await storageService.getNodesByPaths([`d1/fileA.txt`, `dXXX`, `d1/d11/fileB.txt`])
-
-      expect(actual.length).toBe(2)
-      expect(actual.map(node => node.path)).toEqual([`d1/fileA.txt`, `d1/d11/fileB.txt`])
-      await existsStorageNodes(actual, storageService)
-    })
-
-    it('ノードパスを0件指定した場合', async () => {
-      const actual = await storageService.getNodesByPaths([])
-
-      expect(actual.length).toBe(0)
-    })
-
-    it('ノードパスを10件より多く指定した場合', async () => {
-      await storageService.createHierarchicalDirs([`d1`, `d2`, `d3`])
-
-      const actual = await storageService.getNodesByPaths([`d1`, `d2`, `d3`, `d4`, `d5`, `d6`, `d7`, `d8`, `d9`, `d10`, `d11`])
-
-      expect(actual.length).toBe(3)
-      expect(actual.map(node => node.path)).toEqual([`d1`, `d2`, `d3`])
-      await existsStorageNodes(actual, storageService)
-    })
-
-    it('空文字を指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.getNodesByPaths([``])
-      } catch (err) {
-        actual = err
-      }
-      expect(actual.message).toBe(`'nodePath' is not specified.`)
+      expect(actual).toBeUndefined()
     })
   })
 
@@ -328,7 +408,7 @@ describe('StorageService', () => {
       await existsStorageNodes(actual.list, storageService)
     })
 
-    it('dirPathにファイルパスを指定した場合', async () => {
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
@@ -371,11 +451,11 @@ describe('StorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getDirDescendants(`d1`, { maxChunk: 3 })
-      actual.push(...fetched.list)
-      while (fetched.nextPageToken) {
-        fetched = await storageService.getDirDescendants(`d1`, { maxChunk: 3, pageToken: fetched.nextPageToken })
-        actual.push(...fetched.list)
+      let pagination = await storageService.getDirDescendants(`d1`, { maxChunk: 3 })
+      actual.push(...pagination.list)
+      while (pagination.nextPageToken) {
+        pagination = await storageService.getDirDescendants(`d1`, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        actual.push(...pagination.list)
       }
 
       StorageService.sortNodes(actual)
@@ -482,7 +562,7 @@ describe('StorageService', () => {
       await existsStorageNodes(actual.list, storageService)
     })
 
-    it('dirPathにファイルパスを指定した場合', async () => {
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
@@ -525,11 +605,11 @@ describe('StorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getDescendants(`d1`, { maxChunk: 3 })
-      actual.push(...fetched.list)
-      while (fetched.nextPageToken) {
-        fetched = await storageService.getDescendants(`d1`, { maxChunk: 3, pageToken: fetched.nextPageToken })
-        actual.push(...fetched.list)
+      let pagination = await storageService.getDescendants(`d1`, { maxChunk: 3 })
+      actual.push(...pagination.list)
+      while (pagination.nextPageToken) {
+        pagination = await storageService.getDescendants(`d1`, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        actual.push(...pagination.list)
       }
 
       StorageService.sortNodes(actual)
@@ -635,7 +715,7 @@ describe('StorageService', () => {
       await existsStorageNodes(actual.list, storageService)
     })
 
-    it('dirPathにファイルパスを指定した場合', async () => {
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
@@ -676,11 +756,11 @@ describe('StorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getDirChildren(`d1`, { maxChunk: 3 })
-      actual.push(...fetched.list)
-      while (fetched.nextPageToken) {
-        fetched = await storageService.getDirChildren(`d1`, { maxChunk: 3, pageToken: fetched.nextPageToken })
-        actual.push(...fetched.list)
+      let pagination = await storageService.getDirChildren(`d1`, { maxChunk: 3 })
+      actual.push(...pagination.list)
+      while (pagination.nextPageToken) {
+        pagination = await storageService.getDirChildren(`d1`, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        actual.push(...pagination.list)
       }
 
       StorageService.sortNodes(actual)
@@ -783,7 +863,7 @@ describe('StorageService', () => {
       await existsStorageNodes(actual.list, storageService)
     })
 
-    it('dirPathにファイルパスを指定した場合', async () => {
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
         {
@@ -824,11 +904,11 @@ describe('StorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getChildren(`d1`, { maxChunk: 3 })
-      actual.push(...fetched.list)
-      while (fetched.nextPageToken) {
-        fetched = await storageService.getChildren(`d1`, { maxChunk: 3, pageToken: fetched.nextPageToken })
-        actual.push(...fetched.list)
+      let pagination = await storageService.getChildren(`d1`, { maxChunk: 3 })
+      actual.push(...pagination.list)
+      while (pagination.nextPageToken) {
+        pagination = await storageService.getChildren(`d1`, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        actual.push(...pagination.list)
       }
 
       StorageService.sortNodes(actual)
@@ -918,8 +998,13 @@ describe('StorageService', () => {
       ])
 
       // 階層を形成するディレクトリの一部を削除
-      const d11 = (await storageService.getNodeByPath(`d1/d11`))!
-      await storeService.storageDao.delete(d11.id)
+      const d11 = await storageService.sgetNode({ path: `d1/d11` })
+      const client = newElasticClient()
+      await client.delete({
+        index: StorageService.IndexName,
+        id: d11.id,
+        refresh: true,
+      })
 
       // 削除されたディレクトリが穴埋めされることを検証
       const actual = await storageService.getHierarchicalNodes(`d1/d11/d111/fileA.txt`)
@@ -986,11 +1071,17 @@ describe('StorageService', () => {
       const actual = await storageService.createDir(`d1`)
 
       expect(actual.path).toBe(`d1`)
+      expect(actual.contentType).toBe('')
+      expect(actual.size).toBe(0)
       expect(actual.share).toEqual<StorageNodeShareSettings>({
         isPublic: null,
         readUIds: null,
         writeUIds: null,
       })
+      expect(actual.articleNodeName).toBe(null)
+      expect(actual.articleNodeType).toBe(null)
+      expect(actual.articleSortOrder).toBe(null)
+      expect(actual.isArticleFile).toBeFalsy()
 
       await existsStorageNodes([actual], storageService)
     })
@@ -1038,6 +1129,7 @@ describe('StorageService', () => {
         readUIds: ['ichiro'],
         writeUIds: ['jiro'],
       })
+      expect(actual.updatedAt.isAfter(before.updatedAt))
       expect(actual.version).toBe(before.version + 1)
 
       await existsStorageNodes([actual], storageService)
@@ -1093,16 +1185,31 @@ describe('StorageService', () => {
       expect(actual[4].path).toBe(`d2/d21`)
       expect(actual[5].path).toBe(`d3`)
       await existsStorageNodes(actual, storageService)
+
+      for (const node of actual) {
+        expect(node.contentType).toBe('')
+        expect(node.size).toBe(0)
+        expect(node.share).toEqual<StorageNodeShareSettings>({
+          isPublic: null,
+          readUIds: null,
+          writeUIds: null,
+        })
+        expect(node.articleNodeName).toBe(null)
+        expect(node.articleNodeType).toBe(null)
+        expect(node.articleSortOrder).toBe(null)
+        expect(node.isArticleFile).toBeFalsy()
+      }
     })
 
     it('既に存在するディレクトリを作成しようとした場合', async () => {
-      const [d1_a] = await storageService.createHierarchicalDirs([`d1`])
+      const [d1] = await storageService.createHierarchicalDirs([`d1`])
 
+      // 既に存在するディレクトリを作成
       const actual = await storageService.createHierarchicalDirs([`d1`])
 
       expect(actual.length).toBe(0)
-      const d1_b = await storageService.getNodeById(d1_a.id)
-      expect(d1_a).toEqual(d1_b)
+      const _d1 = await storageService.getNode({ id: d1.id })
+      expect(_d1).toEqual(d1)
     })
 
     it('作成ディレクトリパスへのバリデーション実行確認', async () => {
@@ -1137,25 +1244,18 @@ describe('StorageService', () => {
           path: `d2/fileC.txt`,
         },
       ])
+      const { list: beforeNodes } = await storageService.getDirDescendants(`d1`)
 
-      const actual = await storageService.removeDir(`d1`)
+      await storageService.removeDir(`d1`)
 
-      StorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(4)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/d11`)
-      expect(actual.list[2].path).toBe(`d1/d11/fileA.txt`)
-      expect(actual.list[3].path).toBe(`d1/fileB.txt`)
-      await notExistsStorageNodes(actual.list, storageService)
+      const removedNodes = await storageService.getDirDescendants(`d1`)
+      expect(removedNodes.list.length).toBe(0)
+      await notExistsStorageNodes(beforeNodes, storageService)
     })
 
     it('存在しないディレクトリを指定した場合', async () => {
       // 何も行われない(エラーも発生しない)
-      const actual = await storageService.removeDir(`d1`)
-
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(0)
+      await storageService.removeDir(`d1`)
     })
 
     it('dirPathに空文字を指定した場合', async () => {
@@ -1193,32 +1293,34 @@ describe('StorageService', () => {
       })
       await storageService.uploadDataItems(uploadItems)
 
-      // 大量データを想定して分割で削除を行う
-      const actual: StorageNode[] = []
-      let removed = await storageService.removeDir(`d1`, { maxChunk: 3 })
-      actual.push(...removed.list)
-      while (removed.nextPageToken) {
-        removed = await storageService.removeDir(`d1`, { maxChunk: 3 })
-        actual.push(...removed.list)
-      }
+      // 削除前の対象ノードを検証
+      const { list: beforeNodes } = await storageService.getDirDescendants(`d1`)
+      StorageService.sortNodes(beforeNodes)
+      expect(beforeNodes.map(node => node.path)).toEqual([
+        `d1`,
+        `d1/d11`,
+        `d1/d11/d111`,
+        `d1/d11/d111/file01.txt`,
+        `d1/d11/d111/file02.txt`,
+        `d1/d11/d111/file03.txt`,
+        `d1/d11/d111/file04.txt`,
+        `d1/d11/d111/file05.txt`,
+        `d1/d12`,
+        `d1/d12/file06.txt`,
+        `d1/d12/file07.txt`,
+        `d1/d12/file08.txt`,
+        `d1/d12/file09.txt`,
+        `d1/d12/file10.txt`,
+      ])
 
-      StorageService.sortNodes(actual)
-      expect(actual.length).toBe(14)
-      expect(actual[0].path).toBe(`d1`)
-      expect(actual[1].path).toBe(`d1/d11`)
-      expect(actual[2].path).toBe(`d1/d11/d111`)
-      expect(actual[3].path).toBe(`d1/d11/d111/file01.txt`)
-      expect(actual[4].path).toBe(`d1/d11/d111/file02.txt`)
-      expect(actual[5].path).toBe(`d1/d11/d111/file03.txt`)
-      expect(actual[6].path).toBe(`d1/d11/d111/file04.txt`)
-      expect(actual[7].path).toBe(`d1/d11/d111/file05.txt`)
-      expect(actual[8].path).toBe(`d1/d12`)
-      expect(actual[9].path).toBe(`d1/d12/file06.txt`)
-      expect(actual[10].path).toBe(`d1/d12/file07.txt`)
-      expect(actual[11].path).toBe(`d1/d12/file08.txt`)
-      expect(actual[12].path).toBe(`d1/d12/file09.txt`)
-      expect(actual[13].path).toBe(`d1/d12/file10.txt`)
-      await notExistsStorageNodes(actual, storageService)
+      // テスト対象実行
+      // 大量データを想定して分割で削除を行う
+      await storageService.removeDir(`d1`, { maxChunk: 3 })
+
+      // 削除後の対象ノードを検証
+      const removedNodes = await storageService.getDirDescendants(`d1`)
+      expect(removedNodes.list.length).toBe(0)
+      await notExistsStorageNodes(beforeNodes, storageService)
     })
   })
 
@@ -1270,28 +1372,20 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
-      expect(fmNodes.length).toBe(3)
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1`)
+      expect(fromNodes.length).toBe(3)
 
       // 'd1'を'd2/d1'へ移動
-      const actual = await storageService.moveDir(`d1`, `d2/d1`)
-
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`d2/d1`)
-      expect(actual.list[1].path).toBe(`d2/d1/d11`)
-      expect(actual.list[2].path).toBe(`d2/d1/d11/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.moveDir(`d1`, `d2/d1`)
 
       // 移動後の'd2/d1'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`d2/d1`)).list
-      StorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(3)
-      expect(movedNodes[0].path).toBe(`d2/d1`)
-      expect(movedNodes[1].path).toBe(`d2/d1/d11`)
-      expect(movedNodes[2].path).toBe(`d2/d1/d11/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d2/d1`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(3)
+      expect(toNodes[0].path).toBe(`d2/d1`)
+      expect(toNodes[1].path).toBe(`d2/d1/d11`)
+      expect(toNodes[2].path).toBe(`d2/d1/d11/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `d2/d1`, storageService)
     })
 
     it('バケット直下へ移動する場合', async () => {
@@ -1305,26 +1399,18 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1/docs`)).list
-      expect(fmNodes.length).toBe(2)
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1/docs`)
+      expect(fromNodes.length).toBe(2)
 
       // 'd1/d11'をバケット直下へ移動
       const actual = await storageService.moveDir(`d1/docs`, `docs`)
 
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`docs`)
-      expect(actual.list[1].path).toBe(`docs/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
       // 移動後の'docs'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`docs`)).list
-      StorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(2)
-      expect(movedNodes[0].path).toBe(`docs`)
-      expect(movedNodes[1].path).toBe(`docs/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`docs`)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`docs`)
+      expect(toNodes[1].path).toBe(`docs/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `docs`, storageService)
     })
 
     it('移動先に同名のディレクトリが存在する場合', async () => {
@@ -1347,26 +1433,20 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1/docs`)).list
-      expect(fmNodes.length).toBe(2)
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1/docs`)
+      expect(fromNodes.length).toBe(2)
 
       // 'd1/docs'を'd2/docs'へ移動
       const actual = await storageService.moveDir(`d1/docs`, `d2/docs`)
 
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d2/docs`)
-      expect(actual.list[1].path).toBe(`d2/docs/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
       // 移動後の'd2/docs'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`d2/docs`)).list
-      StorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(3)
-      expect(movedNodes[0].path).toBe(`d2/docs`)
-      expect(movedNodes[1].path).toBe(`d2/docs/fileA.txt`)
-      expect(movedNodes[2].path).toBe(`d2/docs/fileB.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d2/docs`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(3)
+      expect(toNodes[0].path).toBe(`d2/docs`)
+      expect(toNodes[1].path).toBe(`d2/docs/fileA.txt`)
+      expect(toNodes[2].path).toBe(`d2/docs/fileB.txt`)
+      await verifyMoveStorageNodes(fromNodes, `d2/docs`, storageService)
     })
 
     it('移動先に同名のファイルが存在する場合', async () => {
@@ -1387,27 +1467,21 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1/docs`)).list
-      expect(fmNodes.length).toBe(2)
-      const existsToNodes = (await storageService.getDirDescendants(`d2/docs`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1/docs`)
+      expect(fromNodes.length).toBe(2)
+      const { list: existsToNodes } = await storageService.getDirDescendants(`d2/docs`)
       expect(existsToNodes.length).toBe(2)
 
       // 'd1/docs'を'd2/docs'へ移動
       const actual = await storageService.moveDir(`d1/docs`, `d2/docs`)
 
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d2/docs`)
-      expect(actual.list[1].path).toBe(`d2/docs/file.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
       // 移動後の'd2/docs'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`d2/docs`)).list
-      StorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(2)
-      expect(movedNodes[0].path).toBe(`d2/docs`)
-      expect(movedNodes[1].path).toBe(`d2/docs/file.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d2/docs`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`d2/docs`)
+      expect(toNodes[1].path).toBe(`d2/docs/file.txt`)
+      await verifyMoveStorageNodes(fromNodes, `d2/docs`, storageService)
 
       // 移動元の'd1/docs/file.txt'の内容が移動先の'd2/docs/file.txt'に上書きされたことを検証
       const { file } = await storageService.getStorageFile(`d2/docs/file.txt`)
@@ -1421,8 +1495,8 @@ describe('StorageService', () => {
 
       let actual: Error
       try {
-        const fmNode = (await storageService.getNodeByPath(`d1`))!
-        await storageService.moveDir(fmNode.path, fmNode.path + '/') // 移動先に'/'を付けて試す
+        const fromNode = await storageService.sgetNode({ path: `d1` })
+        await storageService.moveDir(fromNode.path, fromNode.path + '/') // 移動先に'/'を付けて試す
       } catch (err) {
         actual = err
       }
@@ -1482,8 +1556,16 @@ describe('StorageService', () => {
       ])
 
       // 共有設定
-      await storageService.setDirShareSettings(`dX/dA`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
-      await storageService.setDirShareSettings(`dX/dA/dB`, { isPublic: true, readUIds: ['jiro'], writeUIds: ['jiro'] })
+      await storageService.setDirShareSettings(`dX/dA`, {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['ichiro'],
+      })
+      await storageService.setDirShareSettings(`dX/dA/dB`, {
+        isPublic: true,
+        readUIds: ['jiro'],
+        writeUIds: ['jiro'],
+      })
       await storageService.setFileShareSettings(`dX/dA/dB/fileA.txt`, {
         isPublic: true,
         readUIds: ['saburo'],
@@ -1491,59 +1573,31 @@ describe('StorageService', () => {
       })
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`dX/dA`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`dX/dA`)
 
       // 'dX/dA'を'dY/dA'へ移動
-      const actual = await storageService.moveDir(`dX/dA`, `dY/dA`)
+      await storageService.moveDir(`dX/dA`, `dY/dA`)
 
-      //
-      // 戻り値の検証
-      //
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`dY/dA`)
-      expect(actual.list[1].path).toBe(`dY/dA/dB`)
-      expect(actual.list[2].path).toBe(`dY/dA/dB/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
-      // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(actual.list[0].share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
-      expect(actual.list[1].share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['jiro'],
-        writeUIds: ['jiro'],
-      })
-      expect(actual.list[2].share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['saburo'],
-        writeUIds: ['saburo'],
-      })
-
-      //
       // 移動後の'dY/dA'＋配下ノードを検証
-      //
-      const movedNodes = (await storageService.getDirDescendants(`dY/dA`)).list
-      expect(movedNodes.length).toBe(3)
-      expect(movedNodes[0].path).toBe(`dY/dA`)
-      expect(movedNodes[1].path).toBe(`dY/dA/dB`)
-      expect(movedNodes[2].path).toBe(`dY/dA/dB/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`dY/dA`)
+      expect(toNodes.length).toBe(3)
+      expect(toNodes[0].path).toBe(`dY/dA`)
+      expect(toNodes[1].path).toBe(`dY/dA/dB`)
+      expect(toNodes[2].path).toBe(`dY/dA/dB/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `dY/dA`, storageService)
 
       // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(movedNodes[0].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[0].share).toEqual<StorageNodeShareSettings>({
         isPublic: true,
         readUIds: ['ichiro'],
         writeUIds: ['ichiro'],
       })
-      expect(movedNodes[1].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[1].share).toEqual<StorageNodeShareSettings>({
         isPublic: true,
         readUIds: ['jiro'],
         writeUIds: ['jiro'],
       })
-      expect(movedNodes[2].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[2].share).toEqual<StorageNodeShareSettings>({
         isPublic: true,
         readUIds: ['saburo'],
         writeUIds: ['saburo'],
@@ -1587,47 +1641,25 @@ describe('StorageService', () => {
       })
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`dX/dA`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`dX/dA`)
 
       // 'dX/dA'を'dY/dA'へ移動
       const actual = await storageService.moveDir(`dX/dA`, `dY/dA`)
 
-      //
-      // 戻り値の検証
-      //
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`dY/dA`)
-      expect(actual.list[1].path).toBe(`dY/dA/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
-
-      // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(actual.list[0].share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['ichiro-X'],
-        writeUIds: ['ichiro-X'],
-      })
-      expect(actual.list[1].share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['jiro-X'],
-        writeUIds: ['jiro-X'],
-      })
-
-      //
       // 移動後の'dY/dA'＋配下ノードを検証
-      //
-      const movedNodes = (await storageService.getDirDescendants(`dY/dA`)).list
-      expect(movedNodes.length).toBe(2)
-      expect(movedNodes[0].path).toBe(`dY/dA`)
-      expect(movedNodes[1].path).toBe(`dY/dA/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`dY/dA`)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`dY/dA`)
+      expect(toNodes[1].path).toBe(`dY/dA/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `dY/dA`, storageService)
 
       // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(movedNodes[0].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[0].share).toEqual<StorageNodeShareSettings>({
         isPublic: true,
         readUIds: ['ichiro-X'],
         writeUIds: ['ichiro-X'],
       })
-      expect(movedNodes[1].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[1].share).toEqual<StorageNodeShareSettings>({
         isPublic: true,
         readUIds: ['jiro-X'],
         writeUIds: ['jiro-X'],
@@ -1677,55 +1709,31 @@ describe('StorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 移動前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1`)
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
-      const actual = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3 })
-      while (actual.nextPageToken) {
-        const pagination = await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3, pageToken: actual.nextPageToken })
-        actual.nextPageToken = pagination.nextPageToken
-        actual.list.push(...pagination.list)
-      }
-
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(14)
-      expect(actual.list[0].path).toBe(`dA/d1`)
-      expect(actual.list[1].path).toBe(`dA/d1/d11`)
-      expect(actual.list[2].path).toBe(`dA/d1/d11/d111`)
-      expect(actual.list[3].path).toBe(`dA/d1/d11/d111/file01.txt`)
-      expect(actual.list[4].path).toBe(`dA/d1/d11/d111/file02.txt`)
-      expect(actual.list[5].path).toBe(`dA/d1/d11/d111/file03.txt`)
-      expect(actual.list[6].path).toBe(`dA/d1/d11/d111/file04.txt`)
-      expect(actual.list[7].path).toBe(`dA/d1/d11/d111/file05.txt`)
-      expect(actual.list[8].path).toBe(`dA/d1/d12`)
-      expect(actual.list[9].path).toBe(`dA/d1/d12/file06.txt`)
-      expect(actual.list[10].path).toBe(`dA/d1/d12/file07.txt`)
-      expect(actual.list[11].path).toBe(`dA/d1/d12/file08.txt`)
-      expect(actual.list[12].path).toBe(`dA/d1/d12/file09.txt`)
-      expect(actual.list[13].path).toBe(`dA/d1/d12/file10.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3 })
 
       // 移動後の'dA'＋配下ノードを検証
-      const movedNodes = (await storageService.getDirDescendants(`dA`)).list
-      StorageService.sortNodes(movedNodes)
-      expect(movedNodes.length).toBe(15)
-      expect(movedNodes[0].path).toBe(`dA`)
-      expect(movedNodes[1].path).toBe(`dA/d1`)
-      expect(movedNodes[2].path).toBe(`dA/d1/d11`)
-      expect(movedNodes[3].path).toBe(`dA/d1/d11/d111`)
-      expect(movedNodes[4].path).toBe(`dA/d1/d11/d111/file01.txt`)
-      expect(movedNodes[5].path).toBe(`dA/d1/d11/d111/file02.txt`)
-      expect(movedNodes[6].path).toBe(`dA/d1/d11/d111/file03.txt`)
-      expect(movedNodes[7].path).toBe(`dA/d1/d11/d111/file04.txt`)
-      expect(movedNodes[8].path).toBe(`dA/d1/d11/d111/file05.txt`)
-      expect(movedNodes[9].path).toBe(`dA/d1/d12`)
-      expect(movedNodes[10].path).toBe(`dA/d1/d12/file06.txt`)
-      expect(movedNodes[11].path).toBe(`dA/d1/d12/file07.txt`)
-      expect(movedNodes[12].path).toBe(`dA/d1/d12/file08.txt`)
-      expect(movedNodes[13].path).toBe(`dA/d1/d12/file09.txt`)
-      expect(movedNodes[14].path).toBe(`dA/d1/d12/file10.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`dA/d1`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(14)
+      expect(toNodes[0].path).toBe(`dA/d1`)
+      expect(toNodes[1].path).toBe(`dA/d1/d11`)
+      expect(toNodes[2].path).toBe(`dA/d1/d11/d111`)
+      expect(toNodes[3].path).toBe(`dA/d1/d11/d111/file01.txt`)
+      expect(toNodes[4].path).toBe(`dA/d1/d11/d111/file02.txt`)
+      expect(toNodes[5].path).toBe(`dA/d1/d11/d111/file03.txt`)
+      expect(toNodes[6].path).toBe(`dA/d1/d11/d111/file04.txt`)
+      expect(toNodes[7].path).toBe(`dA/d1/d11/d111/file05.txt`)
+      expect(toNodes[8].path).toBe(`dA/d1/d12`)
+      expect(toNodes[9].path).toBe(`dA/d1/d12/file06.txt`)
+      expect(toNodes[10].path).toBe(`dA/d1/d12/file07.txt`)
+      expect(toNodes[11].path).toBe(`dA/d1/d12/file08.txt`)
+      expect(toNodes[12].path).toBe(`dA/d1/d12/file09.txt`)
+      expect(toNodes[13].path).toBe(`dA/d1/d12/file10.txt`)
+      await verifyMoveStorageNodes(fromNodes, `dA/d1`, storageService)
     })
   })
 
@@ -1744,13 +1752,13 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNode = (await storageService.getFileNodeByPath(`d1/fileA.txt`))!
+      const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'を'd2'へ移動
-      const actual = await storageService.moveFile(fmNode.path, `d2/fileA.txt`)
+      const actual = await storageService.moveFile(fromNode.path, `d2/fileA.txt`)
 
       expect(actual.path).toBe(`d2/fileA.txt`)
-      await verifyMoveStorageNodes([fmNode], [actual], storageService, storeService)
+      await verifyMoveStorageNodes([fromNode], `d2/fileA.txt`, storageService)
     })
 
     it('バケット直下へ移動する場合', async () => {
@@ -1764,13 +1772,13 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNode = (await storageService.getFileNodeByPath(`d1/fileA.txt`))!
+      const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'をバケット直下へ移動
-      const actual = await storageService.moveFile(fmNode.path, `fileA.txt`)
+      const actual = await storageService.moveFile(fromNode.path, `fileA.txt`)
 
       expect(actual.path).toBe(`fileA.txt`)
-      await verifyMoveStorageNodes([fmNode], [actual], storageService, storeService)
+      await verifyMoveStorageNodes([fromNode], `fileA.txt`, storageService)
     })
 
     it('移動先に同名のファイルが存在する場合', async () => {
@@ -1791,15 +1799,15 @@ describe('StorageService', () => {
       ])
 
       // 移動前のノードを取得
-      const fmNode = (await storageService.getFileNodeByPath(`d1/file.txt`))!
-      const existsToFile = (await storageService.getFileNodeByPath(`d2/file.txt`))!
+      const fromNode = await storageService.sgetFileNode({ path: `d1/file.txt` })
+      const existsToFile = await storageService.sgetFileNode({ path: `d2/file.txt` })
       expect(existsToFile).toBeDefined()
 
       // 'd1/file.txt'を'd2'へ移動
-      const actual = await storageService.moveFile(fmNode.path, `d2/file.txt`)
+      const actual = await storageService.moveFile(fromNode.path, `d2/file.txt`)
 
       expect(actual.path).toBe(`d2/file.txt`)
-      await verifyMoveStorageNodes([fmNode], [actual], storageService, storeService)
+      await verifyMoveStorageNodes([fromNode], `d2/file.txt`, storageService)
 
       // 移動元の'd1/file.txt'の内容が移動先の'd2/file.txt'に上書きされたことを検証
       const { file } = await storageService.getStorageFile(`d2/file.txt`)
@@ -1830,8 +1838,8 @@ describe('StorageService', () => {
 
       let actual!: Error
       try {
-        const fmNode = (await storageService.getFileNodeByPath(`d1/fileA.txt`))!
-        await storageService.moveFile(fmNode.path, `d2/fileA.txt`)
+        const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
+        await storageService.moveFile(fromNode.path, `d2/fileA.txt`)
       } catch (err) {
         actual = err
       }
@@ -1875,26 +1883,19 @@ describe('StorageService', () => {
       ])
 
       // リネーム前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`d1`)
 
       // 'd1'を'd2'へリネーム
-      const actual = await storageService.renameDir(`d1`, `d2`)
-
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`d2`)
-      expect(actual.list[1].path).toBe(`d2/d11`)
-      expect(actual.list[2].path).toBe(`d2/d11/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.renameDir(`d1`, `d2`)
 
       // リネーム後の'd2'＋配下ノードを検証
-      const renamedNodes = (await storageService.getDirDescendants(`d2`)).list
-      StorageService.sortNodes(renamedNodes)
-      expect(renamedNodes.length).toBe(3)
-      expect(renamedNodes[0].path).toBe(`d2`)
-      expect(renamedNodes[1].path).toBe(`d2/d11`)
-      expect(renamedNodes[2].path).toBe(`d2/d11/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d2`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(3)
+      expect(toNodes[0].path).toBe(`d2`)
+      expect(toNodes[1].path).toBe(`d2/d11`)
+      expect(toNodes[2].path).toBe(`d2/d11/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `d2`, storageService)
     })
 
     it('リネームしようとする名前のディレクトリが既に存在する場合', async () => {
@@ -1903,7 +1904,7 @@ describe('StorageService', () => {
       let actual: Error
       try {
         // 'd1/docs'を'd1/files'へリネーム
-        const dirNode = (await storageService.getNodeByPath(`d1/docs`))!
+        const dirNode = await storageService.sgetNode({ path: `d1/docs` })
         await storageService.renameDir(dirNode.path, `files`)
       } catch (err) {
         actual = err
@@ -1928,24 +1929,18 @@ describe('StorageService', () => {
       ])
 
       // リネーム前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1/d1`)).list
+      const fromNodes = (await storageService.getDirDescendants(`d1/d1`)).list
 
       // 'd1/d1'を'd1/d2'へリネーム
-      const actual = await storageService.renameDir(`d1/d1`, `d2`)
-
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1/d2`)
-      expect(actual.list[1].path).toBe(`d1/d2/fileA.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.renameDir(`d1/d1`, `d2`)
 
       // リネーム後の'd2'＋配下ノードを検証
-      const renamedNodes = (await storageService.getDirDescendants(`d1/d2`)).list
-      StorageService.sortNodes(renamedNodes)
-      expect(renamedNodes.length).toBe(2)
-      expect(renamedNodes[0].path).toBe(`d1/d2`)
-      expect(renamedNodes[1].path).toBe(`d1/d2/fileA.txt`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d1/d2`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`d1/d2`)
+      expect(toNodes[1].path).toBe(`d1/d2/fileA.txt`)
+      await verifyMoveStorageNodes(fromNodes, `d1/d2`, storageService)
     })
 
     it('既存のディレクトリ名に文字を付け加える形でリネームをした場合', async () => {
@@ -1953,22 +1948,17 @@ describe('StorageService', () => {
       await storageService.createHierarchicalDirs([`d1`])
 
       // リネーム前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`d1`)).list
+      const fromNodes = (await storageService.getDirDescendants(`d1`)).list
 
       // 'd1'を'd1XXX'へリネーム
-      const actual = await storageService.renameDir(`d1`, `d1XXX`)
-
-      // 戻り値の検証
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(1)
-      expect(actual.list[0].path).toBe(`d1XXX`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.renameDir(`d1`, `d1XXX`)
 
       // リネーム後の'd1'＋配下ノードを検証
-      const renamedNodes = (await storageService.getDirDescendants(`d1XXX`)).list
-      StorageService.sortNodes(renamedNodes)
-      expect(renamedNodes.length).toBe(1)
-      expect(renamedNodes[0].path).toBe(`d1XXX`)
+      const { list: toNodes } = await storageService.getDirDescendants(`d1XXX`)
+      StorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(1)
+      expect(toNodes[0].path).toBe(`d1XXX`)
+      await verifyMoveStorageNodes(fromNodes, `d1XXX`, storageService)
     })
 
     it('リネームディレクトリパスへのバリデーション実行確認', async () => {
@@ -2006,35 +1996,11 @@ describe('StorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // リネーム前のノードを取得
-      const fmNodes = (await storageService.getDirDescendants(`dA`)).list
+      const { list: fromNodes } = await storageService.getDirDescendants(`dA`)
 
       // 大量データを想定して分割でリネームを行う
       // 'dA'を'dB'へリネーム
-      const actual = await storageService.renameDir(`dA`, `dB`, { maxChunk: 3 })
-      while (actual.nextPageToken) {
-        const nodeData = await storageService.renameDir(`dA`, `dB`, { maxChunk: 3, pageToken: actual.nextPageToken })
-        actual.nextPageToken = nodeData.nextPageToken
-        actual.list.push(...nodeData.list)
-      }
-
-      StorageService.sortNodes(actual.list)
-      expect(actual.list.length).toBe(15)
-      expect(actual.list[0].path).toBe(`dB`)
-      expect(actual.list[1].path).toBe(`dB/d1`)
-      expect(actual.list[2].path).toBe(`dB/d1/d11`)
-      expect(actual.list[3].path).toBe(`dB/d1/d11/d111`)
-      expect(actual.list[4].path).toBe(`dB/d1/d11/d111/file01.txt`)
-      expect(actual.list[5].path).toBe(`dB/d1/d11/d111/file02.txt`)
-      expect(actual.list[6].path).toBe(`dB/d1/d11/d111/file03.txt`)
-      expect(actual.list[7].path).toBe(`dB/d1/d11/d111/file04.txt`)
-      expect(actual.list[8].path).toBe(`dB/d1/d11/d111/file05.txt`)
-      expect(actual.list[9].path).toBe(`dB/d1/d12`)
-      expect(actual.list[10].path).toBe(`dB/d1/d12/file06.txt`)
-      expect(actual.list[11].path).toBe(`dB/d1/d12/file07.txt`)
-      expect(actual.list[12].path).toBe(`dB/d1/d12/file08.txt`)
-      expect(actual.list[13].path).toBe(`dB/d1/d12/file09.txt`)
-      expect(actual.list[14].path).toBe(`dB/d1/d12/file10.txt`)
-      await verifyMoveStorageNodes(fmNodes, actual.list, storageService, storeService)
+      await storageService.renameDir(`dA`, `dB`, { maxChunk: 3 })
 
       // 移動後の'dB'＋配下ノードを検証
       const renamedNodes = (await storageService.getDirDescendants(`dB`)).list
@@ -2055,6 +2021,7 @@ describe('StorageService', () => {
       expect(renamedNodes[12].path).toBe(`dB/d1/d12/file08.txt`)
       expect(renamedNodes[13].path).toBe(`dB/d1/d12/file09.txt`)
       expect(renamedNodes[14].path).toBe(`dB/d1/d12/file10.txt`)
+      await verifyMoveStorageNodes(fromNodes, `dB`, storageService)
     })
   })
 
@@ -2070,13 +2037,13 @@ describe('StorageService', () => {
       ])
 
       // リネーム前のノードを取得
-      const fmNode = (await storageService.getFileNodeByPath(`d1/fileA.txt`))!
+      const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'を'd1/fileB.txt'へリネーム
       const actual = await storageService.renameFile(`d1/fileA.txt`, `fileB.txt`)
 
       expect(actual.path).toBe(`d1/fileB.txt`)
-      await verifyMoveStorageNodes([fmNode], [actual], storageService, storeService)
+      await verifyMoveStorageNodes([fromNode], `d1/fileB.txt`, storageService)
     })
 
     it('リネームしようとする名前のファイルが既に存在する場合', async () => {
@@ -2121,7 +2088,7 @@ describe('StorageService', () => {
       ])
 
       // リネーム前のノードを取得
-      const fmNode = (await storageService.getFileNodeByPath(`d1/fileA.txt/fileA.txt`))!
+      const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt/fileA.txt` })
 
       // 'd1/fileA.txt/fileA.txt'を'd1/fileA.txt/fileB.txt'へリネーム
       const actual = await storageService.renameFile('d1/fileA.txt/fileA.txt', 'fileB.txt')
@@ -2129,7 +2096,7 @@ describe('StorageService', () => {
       // 'fileA.txt'というディレクトリ名は変わらず、
       // 'fileA.txt'が'fileB.txt'に名前変更されたことを確認
       expect(actual!.path).toBe(`d1/fileA.txt/fileB.txt`)
-      await verifyMoveStorageNodes([fmNode], [actual], storageService, storeService)
+      await verifyMoveStorageNodes([fromNode], 'd1/fileA.txt/fileB.txt', storageService)
     })
 
     it('リネームディレクトリパスへのバリデーション実行確認', async () => {
@@ -2173,7 +2140,7 @@ describe('StorageService', () => {
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
@@ -2188,7 +2155,7 @@ describe('StorageService', () => {
         })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
@@ -2203,7 +2170,7 @@ describe('StorageService', () => {
         })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
@@ -2222,7 +2189,7 @@ describe('StorageService', () => {
         })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('共有設定 - 読み込み・書き込み権限が設定されている状態から空を設定', async () => {
@@ -2237,7 +2204,7 @@ describe('StorageService', () => {
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('共有設定 - 読み込み・書き込み権限が設定されている状態からnullを設定', async () => {
@@ -2252,7 +2219,7 @@ describe('StorageService', () => {
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('存在しないファイルを指定した場合', async () => {
@@ -2278,12 +2245,12 @@ describe('StorageService', () => {
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
       }
       verify(actual)
-      verify((await storageService.getNodeById(actual.id))!)
+      verify(await storageService.sgetNode({ id: actual.id }))
     })
 
     it('作成日時＋更新日時の検証', async () => {
       // 共有設定前のノードを取得
-      const fm_d1 = (await storageService.getNodeByPath(`d1`))!
+      const fm_d1 = await storageService.sgetNode({ path: `d1` })
 
       // 共有設定を実行
       const to_d1 = await storageService.setDirShareSettings(`d1`, { isPublic: true })
@@ -2317,188 +2284,188 @@ describe('StorageService', () => {
 
       expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
-  })
 
-  describe('setFileShareSettings', () => {
-    beforeEach(async () => {
-      await storageService.createHierarchicalDirs([`d1`])
-      await storageService.uploadDataItems([
-        {
-          data: 'testA',
-          contentType: 'text/plain; charset=utf-8',
-          path: `d1/fileA.txt`,
-        },
-      ])
-    })
-
-    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
-
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
-
-    it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
+    describe('setFileShareSettings', () => {
+      beforeEach(async () => {
+        await storageService.createHierarchicalDirs([`d1`])
+        await storageService.uploadDataItems([
+          {
+            data: 'testA',
+            contentType: 'text/plain; charset=utf-8',
+            path: `d1/fileA.txt`,
+          },
+        ])
       })
 
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
-          isPublic: null,
+      it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
+      })
+
+      it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, {
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
 
-    it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
-      // 公開フラグをオンに設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({
+            isPublic: null,
+            readUIds: ['ichiro'],
+            writeUIds: ['ichiro'],
+          })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
       })
 
-      // 公開フラグをオフに設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: false })
-
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
-          isPublic: false,
+      it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
+        // 公開フラグをオンに設定しておく
+        await storageService.setFileShareSettings(`d1/fileA.txt`, {
+          isPublic: true,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
 
-    it('共有設定 - 読み込み・書き込み権限が設定されている状態から空を設定', async () => {
-      // 読み込み・書き込み権限を設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
+        // 公開フラグをオフに設定
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: false })
+
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({
+            isPublic: false,
+            readUIds: ['ichiro'],
+            writeUIds: ['ichiro'],
+          })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
       })
 
-      // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: [], writeUIds: [] })
+      it('共有設定 - 読み込み・書き込み権限が設定されている状態から空を設定', async () => {
+        // 読み込み・書き込み権限を設定しておく
+        await storageService.setFileShareSettings(`d1/fileA.txt`, {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        })
 
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
+        // 読み込み・書き込み権限を空に設定
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: [], writeUIds: [] })
 
-    it('共有設定 - 読み込み・書き込み権限が設定されている状態からnullを設定', async () => {
-      // 読み込み・書き込み権限を設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
       })
 
-      // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: null, writeUIds: null })
+      it('共有設定 - 読み込み・書き込み権限が設定されている状態からnullを設定', async () => {
+        // 読み込み・書き込み権限を設定しておく
+        await storageService.setFileShareSettings(`d1/fileA.txt`, {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        })
 
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
+        // 読み込み・書き込み権限を空に設定
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: null, writeUIds: null })
 
-    it('存在しないファイルを指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
-      } catch (err) {
-        actual = err
-      }
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
+      })
 
-      expect(actual.message).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
-    })
+      it('存在しないファイルを指定した場合', async () => {
+        let actual!: Error
+        try {
+          await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
 
-    it('inputにnullを指定した場合', async () => {
-      // 共有設定をしておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+        expect(actual.message).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
+      })
 
-      // nullを指定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, null)
+      it('inputにnullを指定した場合', async () => {
+        // 共有設定をしておく
+        await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
-      const verify = (node: StorageFileNode) => {
-        expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.version).toBe(node.version)
-      }
-      verify(actual)
-      verify((await storageService.getFileNodeById(actual.id))!)
-    })
+        // nullを指定
+        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, null)
 
-    it('作成日時＋更新日時の検証', async () => {
-      // 共有設定前のノードを取得
-      const fm_fileA = (await storageService.getFileNodeByPath(`d1/fileA.txt`))!
+        const verify = (node: StorageFileNode) => {
+          expect(node.path).toBe(`d1/fileA.txt`)
+          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
+          const metadata = StorageService.extractMetaData(node.file)
+          expect(metadata.version).toBe(node.version)
+        }
+        verify(actual)
+        verify(await storageService.sgetFileNode({ id: actual.id }))
+      })
 
-      // 共有設定を実行
-      const to_fileA = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+      it('作成日時＋更新日時の検証', async () => {
+        // 共有設定前のノードを取得
+        const fm_fileA = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
-      // 作成日時の検証
-      expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
-      // 更新日時の検証
-      expect(to_fileA.updatedAt).toEqual(fm_fileA.updatedAt)
-    })
+        // 共有設定を実行
+        const to_fileA = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
 
-    it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
-      } catch (err) {
-        actual = err
-      }
+        // 作成日時の検証
+        expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
+        // 更新日時の検証
+        expect(to_fileA.updatedAt).toEqual(fm_fileA.updatedAt)
+      })
 
-      expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
-    })
+      it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
+        let actual!: Error
+        try {
+          await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
+        } catch (err) {
+          actual = err
+        }
 
-    it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
-      try {
-        await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
-      } catch (err) {
-        actual = err
-      }
+        expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
+      })
 
-      expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
+      it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
+        let actual!: Error
+        try {
+          await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
+      })
     })
   })
 
   describe('handleUploadedFile', () => {
     it('ベーシックケース', async () => {
       await storageService.createHierarchicalDirs([`d1/d11`])
-      await storageService.uploadDataItems([
+      const [fileA] = await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2506,23 +2473,27 @@ describe('StorageService', () => {
         },
       ])
 
-      // テストのためストアからファイルノードを削除しておく
-      await storeService.storageDao.delete((await storageService.getNodeByPath(`d1/d11/fileA.txt`))!.id)
+      // テストのためデータベースからファイルノードを削除しておく
+      const client = newElasticClient()
+      await client.delete({
+        index: StorageService.IndexName,
+        id: fileA.id,
+        refresh: true,
+      })
 
       // ファイルアップロードの後処理を実行
       const actual = (await storageService.handleUploadedFile(`d1/d11/fileA.txt`))!
 
       // 戻り値の検証
-      const { file, ...fileNode } = actual
-      await existsStorageNodes([fileNode], storageService)
+      await existsStorageNodes([actual], storageService)
 
       // 祖先ディレクトリが作成されたことを検証
-      const ancestors = await storageService.getAncestorDirs(fileNode.path)
+      const ancestors = await storageService.getAncestorDirs(actual.path)
       expect(ancestors[0].path).toBe(`d1`)
       expect(ancestors[1].path).toBe(`d1/d11`)
     })
 
-    it('アップロードによるファイル更新後の実行', async () => {
+    it('アップロードによるファイル｢更新｣後の実行', async () => {
       await storageService.createHierarchicalDirs([`d1/d11`])
       const [fileNodeA_1] = await storageService.uploadDataItems([
         {
@@ -2533,7 +2504,7 @@ describe('StorageService', () => {
         },
       ])
 
-      // アップロードによってファイルが更新された状態を作成する
+      // アップロードによってファイルが｢更新｣された状態を作成する
       {
         const bucket = admin.storage().bucket()
         const file = bucket.file(fileNodeA_1.path)
@@ -2560,18 +2531,23 @@ describe('StorageService', () => {
         },
       ])
 
-      // テストのためストアからファイルノードを削除しておく
-      await storeService.storageDao.delete((await storageService.getNodeByPath(`d1/d11/fileA.txt`))!.id)
+      // テストのためデータベースからファイルノードを削除しておく
+      const client = newElasticClient()
+      await client.delete({
+        index: StorageService.IndexName,
+        id: fileNodeA.id,
+        refresh: true,
+      })
 
       // ファイルアップロードの後処理を実行 - 1
       await storageService.handleUploadedFile(fileNodeA.path)
-      const fileNodeA_1 = (await storageService.getNodeByPath(`d1/d11/fileA.txt`))!
-      const fileA_1 = (await storageService.getStorageFile(`d1/d11/fileA.txt`))!
+      const fileNodeA_1 = await storageService.sgetNode({ path: `d1/d11/fileA.txt` })
+      const fileA_1 = await storageService.getStorageFile(`d1/d11/fileA.txt`)
 
       // ファイルアップロードの後処理を実行 - 2
       await storageService.handleUploadedFile(fileNodeA.path)
-      const fileNodeA_2 = (await storageService.getNodeByPath(`d1/d11/fileA.txt`))!
-      const fileA_2 = (await storageService.getStorageFile(`d1/d11/fileA.txt`))!
+      const fileNodeA_2 = await storageService.sgetNode({ path: `d1/d11/fileA.txt` })
+      const fileA_2 = await storageService.getStorageFile(`d1/d11/fileA.txt`)
 
       // 1回目と2回目で内容が同じことを検証
       expect(fileNodeA_1).toEqual(fileNodeA_2)
@@ -2717,31 +2693,104 @@ describe('StorageService', () => {
         .expect(404)
     })
   })
+})
 
-  describe('sortNodes', () => {
-    it('ベーシックケース', async () => {
-      const d1 = newStorageDirNode(`d1`)
-      const d11 = newStorageDirNode(`d1/d11`)
-      const fileA = newStorageFileNode(`d1/d11/fileA.txt`)
-      const d12 = newStorageDirNode(`d1/d12`)
-      const fileB = newStorageFileNode(`d1/d12/fileB.txt`)
-      const d2 = newStorageDirNode(`d2`)
-      const fileC = newStorageFileNode(`d2/fileC.txt`)
-      const fileD = newStorageFileNode(`a.txt`)
-      const fileE = newStorageFileNode(`b.txt`)
+describe('大量データのテスト', () => {
+  jest.setTimeout(66000)
 
-      const nodes = [fileA, fileB, fileC, fileE, fileD, d1, d2, d11, d12]
-      StorageService.sortNodes(nodes)
+  beforeEach(async () => {
+    testingModule = await Test.createTestingModule({
+      imports: [MockStorageRESTModule],
+    }).compile()
 
-      expect(nodes[0]).toBe(d1)
-      expect(nodes[1]).toBe(d11)
-      expect(nodes[2]).toBe(fileA)
-      expect(nodes[3]).toBe(d12)
-      expect(nodes[4]).toBe(fileB)
-      expect(nodes[5]).toBe(d2)
-      expect(nodes[6]).toBe(fileC)
-      expect(nodes[7]).toBe(fileD)
-      expect(nodes[8]).toBe(fileE)
+    storageService = testingModule.get<TestStorageService>(StorageServiceDI.symbol)
+  })
+
+  /**
+   * 指定されたディレクトリにテスト用のファイルを作成します。
+   * @param dirPath
+   * @param startFileNumber
+   * @param endFileNumber
+   */
+  async function createTestData(dirPath: string, startFileNumber: number, endFileNumber: number): Promise<void> {
+    const start = performance.now()
+
+    dirPath = removeBothEndsSlash(dirPath)
+
+    // 現在存在するノードを全て削除
+    await removeAllStorageNodes()
+
+    // ファイルを格納するディレクトリを作成
+    await storageService.createHierarchicalDirs([dirPath])
+
+    // ファイルを作成
+    const uploadItems: StorageUploadDataItem[] = []
+    for (let i = startFileNumber; i <= endFileNumber; i++) {
+      uploadItems.push({
+        data: `test${i}`,
+        contentType: 'text/plain; charset=utf-8',
+        path: `${dirPath}/${i.toString().padStart(6, '0')}.txt`,
+      })
+    }
+    await storageService.uploadDataItems(uploadItems)
+
+    const end = performance.now()
+    console.log(`createTestData: ${(end - start) / 1000}s`)
+  }
+
+  /**
+   * 指定されたディレクトリとその配下ノードの数を取得します。
+   * @param dirPath
+   */
+  async function getFileCount(dirPath: string): Promise<number> {
+    const client = newElasticClient()
+    const response = await client.count({
+      index: StorageService.IndexName,
+      body: {
+        query: {
+          bool: {
+            must: [{ wildcard: { path: `${dirPath}/*` } }, { term: { nodeType: StorageNodeType.File } }],
+          },
+        },
+      },
+    })
+    return response.body.count as number
+  }
+
+  describe('removeDir', () => {
+    const FileNum = 10
+    const DirPath = `d1/files`
+
+    it('テストデータ作成', async () => createTestData(`d1/files`, 1, FileNum))
+
+    it('テスト実行', async () => {
+      const start = performance.now()
+      await storageService.removeDir(DirPath)
+      const end = performance.now()
+      console.log(`removeDir: ${(end - start) / 1000}s`)
+
+      expect(await getFileCount(DirPath)).toBe(0)
+    })
+  })
+
+  describe('moveDir', () => {
+    const FileNum = 10
+    const FromDirPath = `d1/files`
+    const ToDirPath = `d2/files`
+
+    it('テストデータ作成', async () => createTestData(FromDirPath, 1, FileNum))
+
+    it('テスト実行', async () => {
+      // 移動先のディレクトリを作成
+      await storageService.createHierarchicalDirs([ToDirPath])
+
+      const start = performance.now()
+      await storageService.moveDir(FromDirPath, ToDirPath, { maxChunk: 100 })
+      const end = performance.now()
+      console.log(`removeDir: ${(end - start) / 1000}s`)
+
+      expect(await getFileCount(FromDirPath)).toBe(0)
+      expect(await getFileCount(ToDirPath)).toBe(FileNum)
     })
   })
 })

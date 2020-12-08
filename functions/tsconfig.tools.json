@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "tools/bin"
+  },
+  "include": [
+    "tools"
+  ],
+  "exclude": [
+    "src",
+    "tests"
+  ]
+}

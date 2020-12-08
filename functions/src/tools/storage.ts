@@ -108,6 +108,7 @@ function toNodeObject(node: StorageNode) {
     articleNodeName: node.articleNodeName,
     articleNodeType: node.articleNodeType,
     articleSortOrder: node.articleSortOrder,
+    isArticleFile: node.isArticleFile,
     version: node.share,
     createdAt: formatDate(node.createdAt),
     updatedAt: formatDate(node.updatedAt),
@@ -194,11 +195,11 @@ program
     const userService = nestApp.get(UserServiceDI.symbol) as UserServiceDI.type
 
     // まずはパスで検索
-    let node = await storageService.getNodeByPath(id_or_path)
+    let node = await storageService.getNode({ path: id_or_path })
 
     // パスで検索されなかったらノードIDで検索
     if (isId(id_or_path) && !node && id_or_path) {
-      node = await storageService.getNodeById(id_or_path)
+      node = await storageService.getNode({ id: id_or_path })
     }
 
     // ノードが見つからなかったら終了
@@ -243,7 +244,7 @@ program
 
     // パスで検索されなかったらノードIDで検索
     if (isId(id_or_path) && !pagination.list.length && id_or_path) {
-      const node = await storageService.getNodeById(id_or_path)
+      const node = await storageService.getNode({ id: id_or_path })
       if (node) {
         nodePath = node.path
         pagination = await storageService.getDirChildren(nodePath, { maxChunk })
@@ -281,11 +282,11 @@ program
     const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     // まずはパスで検索
-    let node = await storageService.getNodeByPath(id_or_path)
+    let node = await storageService.getNode({ path: id_or_path })
 
     // パスで検索されなかったらノードIDで検索
     if (isId(id_or_path) && !node) {
-      node = await storageService.getNodeById(id_or_path)
+      node = await storageService.getNode({ id: id_or_path })
     }
 
     // ノードが見つからなかったら終了
@@ -326,7 +327,7 @@ program
   .action(async (dirPath: string, cmdObj: { num: number }) => {
     const { num } = cmdObj
 
-    if (!(await confirm(`Are you sure you want to upload test files?`))) return
+    if (!(await confirm(`Are you sure you want to upload ${num} test files?`))) return
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
@@ -354,7 +355,7 @@ program
   .action(async (dirPath: string, cmdObj: { num: number }) => {
     const { num } = cmdObj
 
-    if (!(await confirm(`Are you sure you want to create test directories?`))) return
+    if (!(await confirm(`Are you sure you want to create ${num} test directories?`))) return
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)

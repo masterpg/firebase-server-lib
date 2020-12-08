@@ -11,8 +11,7 @@ import { GraphQLModule } from '@nestjs/graphql'
 //
 //========================================================================
 
-// `functions`ディレクトリからみたパスを指定
-const gqlOptions = getSchemaFirstGQLModuleOptions(['tests/helpers/app/gql/mock'])
+const gqlOptions = getSchemaFirstGQLModuleOptions(['tests/helpers/app/gql/mock/index.graphql'])
 
 @Module({
   providers: [DummyResolver, DateTimeScalar, LongScalar],

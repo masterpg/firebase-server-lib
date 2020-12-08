@@ -1,9 +1,9 @@
-import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/app/services'
-import { GENERAL_USER, requestGQL } from '../../../../../helpers/app'
-import StandardGQLContainerModule from '../../../../../../src/app/gql/standard'
+import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../../src/app/services'
+import { GENERAL_USER, requestGQL } from '../../../../../../helpers/app'
+import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
 import { Test } from '@nestjs/testing'
-import { config } from '../../../../../../src/config'
-import { initApp } from '../../../../../../src/app/base'
+import { config } from '../../../../../../../src/config'
+import { initApp } from '../../../../../../../src/app/base'
 
 jest.setTimeout(5000)
 initApp()
@@ -17,12 +17,12 @@ beforeAll(async () => {
   await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
 })
 
-describe('EnvResolver', () => {
+describe('Lv1 Env Resolver', () => {
   let app: any
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
-      imports: [StandardGQLContainerModule],
+      imports: [Lv1GQLContainerModule],
     }).compile()
 
     app = testingModule.createNestApplication()

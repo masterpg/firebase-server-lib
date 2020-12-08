@@ -1,5 +1,5 @@
+import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import * as path from 'path'
 import {
   AuthRoleType,
   CreateArticleTypeDirInput,
@@ -14,12 +14,11 @@ import {
 } from './types'
 import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
+import { RawStorageNode, StorageService } from './base/storage'
 import { Request, Response } from 'express'
-import { StoreServiceDI, StoreServiceModule } from './base/store'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
-import { FieldValue } from '../../firestore-ex'
 import { InputValidationError } from '../base'
-import { StorageService } from './base/storage'
+import { SearchResponse } from '../base/elastic'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 
@@ -30,18 +29,14 @@ import dayjs = require('dayjs')
 //========================================================================
 
 interface ValidateAccessibleTarget {
-  nodeId?: string
-  nodeIds?: string[]
-  dirId?: string
-  dirIds?: string[]
-  fileId?: string
-  fileIds?: string[]
   nodePath?: string
   nodePaths?: (string | undefined)[]
   dirPath?: string
   dirPaths?: (string | undefined)[]
   filePath?: string
   filePaths?: (string | undefined)[]
+  node?: StorageNode
+  nodes?: StorageNode[]
 }
 
 interface TreeStorageNode {
@@ -57,11 +52,8 @@ interface TreeStorageNode {
 //========================================================================
 
 class AppStorageService extends StorageService {
-  constructor(
-    @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(StoreServiceDI.symbol) protected readonly storeService: StoreServiceDI.type
-  ) {
-    super(authService, storeService)
+  constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {
+    super(authService)
   }
 
   //----------------------------------------------------------------------
@@ -75,7 +67,7 @@ class AppStorageService extends StorageService {
    * @param user
    */
   getUserRootPath(user: { uid: string }): string {
-    return path.join(config.storage.user.rootName, user.uid)
+    return _path.join(config.storage.user.rootName, user.uid)
   }
 
   /**
@@ -85,7 +77,7 @@ class AppStorageService extends StorageService {
    * @param target
    */
   async validateAccessible(req: Request, res: Response, target: ValidateAccessibleTarget): Promise<IdToken> {
-    const nodePaths = await this.m_nodeIdsToNodePaths(target)
+    const nodePaths = await this.m_validateAccessibleTargetToNodePaths(target)
     const roles: AuthRoleType[] = []
 
     // IDトークンを取得
@@ -138,7 +130,7 @@ class AppStorageService extends StorageService {
    */
   async serveFile(req: Request, res: Response, nodeId: string): Promise<Response> {
     // 引数のファイルノードを取得
-    const fileNode = await this.getFileNodeById(nodeId)
+    const fileNode = await this.getFileNode({ id: nodeId })
     if (!fileNode) {
       return res.sendStatus(404)
     }
@@ -165,7 +157,7 @@ class AppStorageService extends StorageService {
     if (this.m_isUserNode(fileNode.path)) {
       // 指定ファイルが自ユーザーの所有物である場合
       const userRootPath = this.getUserRootPath(user)
-      if (fileNode.path.startsWith(path.join(userRootPath, '/'))) {
+      if (fileNode.path.startsWith(_path.join(userRootPath, '/'))) {
         return this.streamFile(req, res, fileNode)
       }
     }
@@ -193,7 +185,7 @@ class AppStorageService extends StorageService {
    * @param uid
    * @param maxChunk
    */
-  async deleteUserDir(uid: string, maxChunk = AppStorageService.MAX_CHUNK): Promise<void> {
+  async deleteUserDir(uid: string, maxChunk = AppStorageService.MaxChunk): Promise<void> {
     /**
      * 指定されたディレクトリのストレージファイルを削除します。
      * @param userRootPath
@@ -218,24 +210,18 @@ class AppStorageService extends StorageService {
      * @param userRootPath
      */
     const deleteFileNodes = async (userRootPath: string) => {
-      // ユーザーディレクトリと配下ノードを検索
-      const nodes = await this.storeService.storageDao.where('path', '>=', userRootPath).limit(maxChunk).fetch()
-      // 余分に検索されてしまったノードを除去
-      for (let i = 0; i < nodes.length; i++) {
-        const storeNode = nodes[i]
-        // ノードが「ユーザーディレクトリまたはユーザーディレクトリ配下」以外の場合は除去
-        if (!(storeNode.path === userRootPath || storeNode.path.startsWith(`${userRootPath}/`))) {
-          nodes.splice(i--, 1)
-        }
-      }
-      // 検索されたノードを削除
-      await Promise.all(
-        nodes.map(async node => {
-          await this.storeService.storageDao.delete(node.id)
-        })
-      )
-      // まだ残りノードがある場合、続けて削除
-      if (nodes.length > 0) await deleteFileNodes(userRootPath)
+      // データベースからユーザーディレクトリと配下ノードを全て削除
+      await this.client.deleteByQuery({
+        index: StorageService.IndexName,
+        body: {
+          query: {
+            bool: {
+              should: [{ term: { path: userRootPath } }, { wildcard: { path: `${userRootPath}/*` } }],
+            },
+          },
+        },
+        refresh: true,
+      })
     }
 
     const userRootPath = this.getUserRootPath({ uid })
@@ -252,7 +238,7 @@ class AppStorageService extends StorageService {
    * @param user
    */
   getArticleRootPath(user: { uid: string }): string {
-    return path.join(this.getUserRootPath(user), config.storage.article.rootName)
+    return _path.join(this.getUserRootPath(user), config.storage.article.rootName)
   }
 
   /**
@@ -305,12 +291,12 @@ class AppStorageService extends StorageService {
       }
     }
 
-    // 引数パスがアセット配下以外の場合
+    // 引数パスがアセットとその配下以外の場合
     // ※アセットとその配下はディレクトリ作成が可能なので、このブロック内の検証を行う必要はない
     const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/(?:${assetsName}$|${assetsName}/)`)
     if (!reg.test(dirPath)) {
       // 祖先に｢記事｣が存在することを確認
-      const parentPath = removeStartDirChars(path.dirname(dirPath))
+      const parentPath = removeStartDirChars(_path.dirname(dirPath))
       let nearestArticleNodeType: StorageArticleNodeType | undefined = undefined
       for (let i = ancestorDirNodes.length - 1; i >= 0; i--) {
         const ancestorNode = ancestorDirNodes[i]
@@ -328,21 +314,32 @@ class AppStorageService extends StorageService {
     // 引数ディレクトリがまだ存在しない場合
     if (!dirNode.exists) {
       // ディレクトリを作成
-      const nodeId = await this.storeService.storageDao.add({
-        ...dirNode,
-        version: FieldValue.increment(1),
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+      const id = AppStorageService.generateNodeId()
+      const now = dayjs().toISOString()
+      await this.client.update({
+        index: StorageService.IndexName,
+        id,
+        body: {
+          doc: {
+            ...AppStorageService.toDBNode(dirNode),
+            id,
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+          },
+          doc_as_upsert: true,
+        },
+        refresh: true,
       })
-      // ストアに追加された最新ディレクトリを取得
-      return (await this.getNodeById(nodeId))!
+      // データベースに追加された最新ディレクトリを取得
+      return await this.sgetNode({ id })
     }
     // 引数ディレクトリが既に存在する場合
     else {
       if (input) {
         return await this.setDirShareSettings(dirPath, input)
       } else {
-        return (await this.getNodeByPath(dirPath))!
+        return await this.sgetNode({ path: dirPath })
       }
     }
   }
@@ -358,7 +355,7 @@ class AppStorageService extends StorageService {
     // 引数ディレクトリのパスが記事ルート配下のものか検証
     this.m_validateArticleRootDescendant(nodePath)
 
-    const node = await this.sgetNodeByPath(nodePath)
+    const node = await this.sgetNode({ path: nodePath })
     switch (node.nodeType) {
       case StorageNodeType.Dir:
         AppStorageService.validateDirName(newName)
@@ -369,13 +366,19 @@ class AppStorageService extends StorageService {
         break
     }
 
-    await this.storeService.storageDao.update({
+    await this.client.update({
+      index: StorageService.IndexName,
       id: node.id,
-      articleNodeName: newName,
-      version: FieldValue.increment(1),
+      body: {
+        doc: {
+          articleNodeName: newName,
+          version: node.version + 1,
+        },
+      },
+      refresh: true,
     })
 
-    return this.sgetNodeByPath(nodePath)
+    return this.sgetNode({ path: nodePath })
   }
 
   /**
@@ -412,7 +415,7 @@ class AppStorageService extends StorageService {
         if (reg.test(node.dir)) return
 
         // 親ディレクトリが｢リストバンドル、カテゴリバンドル、カテゴリ｣であればOK
-        const parentNode = await this.sgetNodeByPath(node.dir)
+        const parentNode = await this.sgetNode({ path: node.dir })
         if (
           parentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
           parentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
@@ -440,8 +443,8 @@ class AppStorageService extends StorageService {
      * @param siblingNodePath
      */
     const sgetSiblingNode = async (nodeArgName: string, siblingNodePath: string) => {
-      const siblingNode = await this.sgetNodeByPath(siblingNodePath)
-      if (siblingNode.dir !== removeStartDirChars(path.dirname(nodePath))) {
+      const siblingNode = await this.sgetNode({ path: siblingNodePath })
+      if (siblingNode.dir !== removeStartDirChars(_path.dirname(nodePath))) {
         throw new InputValidationError(`The two nodes are not siblings.`, { nodePath, [nodeArgName]: siblingNodePath })
       }
       return siblingNode
@@ -454,7 +457,7 @@ class AppStorageService extends StorageService {
     }
 
     // ターゲットノードを取得
-    const targetNode = await this.sgetNodeByPath(nodePath)
+    const targetNode = await this.sgetNode({ path: nodePath })
 
     // ターゲットノードがソート順を設定できるノードなのか検証
     await validateNode(targetNode)
@@ -470,13 +473,19 @@ class AppStorageService extends StorageService {
     }
 
     // 上記で取得したソート順をターゲットノードに設定
-    await this.storeService.storageDao.update({
+    await this.client.update({
+      index: StorageService.IndexName,
       id: targetNode.id,
-      articleSortOrder: newSortOrder,
-      version: FieldValue.increment(1),
+      body: {
+        doc: {
+          articleSortOrder: newSortOrder,
+          version: targetNode.version + 1,
+        },
+      },
+      refresh: true,
     })
 
-    return await this.sgetNodeById(targetNode.id)
+    return await this.sgetNode({ id: targetNode.id })
   }
 
   /**
@@ -499,31 +508,32 @@ class AppStorageService extends StorageService {
     options?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     dirPath = removeBothEndsSlash(dirPath)
+    const maxChunk = options?.maxChunk || AppStorageService.MaxChunk
+    const from = options?.pageToken ? Number(options.pageToken) : 0
 
-    const maxChunk = options?.maxChunk || AppStorageService.MAX_CHUNK
-    const offset = options?.pageToken ? Number(options.pageToken) : 0
-
-    let storeNodes: StorageNode[] = []
-
-    const query = this.storeService.storageDao
-      .where('dir', '==', dirPath)
-      .where('articleNodeType', 'in', articleTypes)
-      .orderBy('articleSortOrder', 'desc')
-      .limit(maxChunk)
-    if (offset) {
-      storeNodes = (await query.offset(offset).fetch()) as StorageNode[]
-    } else {
-      storeNodes = (await query.fetch()) as StorageNode[]
-    }
+    const response = await this.client.search<SearchResponse<RawStorageNode>>({
+      index: StorageService.IndexName,
+      size: maxChunk,
+      from,
+      body: {
+        query: {
+          bool: {
+            must: [{ term: { dir: dirPath } }, { terms: { articleNodeType: articleTypes } }],
+          },
+        },
+        sort: [{ articleSortOrder: 'desc' }],
+      },
+    })
+    const nodes = this.responseToNodes(response)
 
     let nextPageToken: string | undefined
-    if (storeNodes.length === 0 || storeNodes.length < maxChunk) {
+    if (nodes.length === 0 || nodes.length < maxChunk) {
       nextPageToken = undefined
     } else {
-      nextPageToken = String(offset + storeNodes.length)
+      nextPageToken = String(from + nodes.length)
     }
 
-    return { nextPageToken, list: storeNodes }
+    return { nextPageToken, list: nodes }
   }
 
   //--------------------------------------------------
@@ -552,81 +562,76 @@ class AppStorageService extends StorageService {
     return super.createHierarchicalDirs(dirPaths)
   }
 
-  async moveDir(fromDirPath: string, toDirPath: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<StorageNode>> {
+  async moveDir(fromDirPath: string, toDirPath: string, input?: { maxChunk?: number }): Promise<void> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
 
     AppStorageService.validatePath(toDirPath)
 
-    if (!input?.pageToken) {
-      const fromDirNode = await this.sgetNodeByPath(fromDirPath)
-      switch (fromDirNode.articleNodeType) {
-        // 移動ノードが｢リストバンドル、カテゴリバンドル｣の場合
-        // ※リストバンドル、カテゴリバンドルは移動不可
-        case StorageArticleNodeType.ListBundle:
-        case StorageArticleNodeType.CategoryBundle: {
-          throw new InputValidationError('Article bundles cannot be moved.', {
-            movingNode: { path: fromDirPath, articleNodeType: fromDirNode.articleNodeType },
+    const fromDirNode = await this.sgetNode({ path: fromDirPath })
+    switch (fromDirNode.articleNodeType) {
+      // 移動ノードが｢リストバンドル、カテゴリバンドル｣の場合
+      // ※リストバンドル、カテゴリバンドルは移動不可
+      case StorageArticleNodeType.ListBundle:
+      case StorageArticleNodeType.CategoryBundle: {
+        throw new InputValidationError('Article bundles cannot be moved.', {
+          movingNode: { path: fromDirPath, articleNodeType: fromDirNode.articleNodeType },
+        })
+      }
+      // 移動ノードが｢カテゴリ｣の場合
+      // ※カテゴリは｢カテゴリバンドル、カテゴリ｣へのみ移動可能
+      case StorageArticleNodeType.Category: {
+        const toParentNode = await this.sgetNode({ path: _path.dirname(toDirPath) })
+        // カテゴリは｢カテゴリバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
+        if (
+          !(
+            toParentNode.articleNodeType === StorageArticleNodeType.CategoryBundle || toParentNode.articleNodeType === StorageArticleNodeType.Category
+          )
+        ) {
+          throw new InputValidationError('Categories can only be moved to category bundles or categories.', {
+            movingNode: { path: fromDirNode.path, articleNodeType: fromDirNode.articleNodeType },
+            toParentNode: { path: toParentNode.path, articleNodeType: toParentNode.articleNodeType },
           })
         }
-        // 移動ノードが｢カテゴリ｣の場合
-        // ※カテゴリは｢カテゴリバンドル、カテゴリ｣へのみ移動可能
-        case StorageArticleNodeType.Category: {
-          const toParentNode = await this.sgetNodeByPath(path.dirname(toDirPath))
-          // カテゴリは｢カテゴリバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
-          if (
-            !(
-              toParentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
-              toParentNode.articleNodeType === StorageArticleNodeType.Category
-            )
-          ) {
-            throw new InputValidationError('Categories can only be moved to category bundles or categories.', {
+        break
+      }
+      // 移動ノードが｢記事｣の場合
+      // ※記事は｢リストバンドル、カテゴリバンドル、カテゴリ｣へのみ移動可能
+      case StorageArticleNodeType.Article: {
+        const toParentNode = await this.sgetNode({ path: _path.dirname(toDirPath) })
+        if (
+          !(
+            toParentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
+            toParentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
+            toParentNode.articleNodeType === StorageArticleNodeType.Category
+          )
+        ) {
+          throw new InputValidationError('Articles can only be moved to list bundles or category bundles or categories.', {
+            movingNode: { path: fromDirNode.path, articleNodeType: fromDirNode.articleNodeType },
+            toParentNode: { path: toParentNode.path, articleNodeType: toParentNode.articleNodeType },
+          })
+        }
+        break
+      }
+      // 移動ノードが｢一般ディレクトリ｣の場合
+      // ※一般ディレクトリは｢一般ディレクトリ、記事｣へのみ移動可能
+      default: {
+        const toParentPath = removeStartDirChars(_path.dirname(toDirPath))
+        // 移動先がルートノード以外の場合
+        if (toParentPath) {
+          const toParentNode = await this.sgetNode({ path: toParentPath })
+          if (!(!toParentNode.articleNodeType || toParentNode.articleNodeType === StorageArticleNodeType.Article)) {
+            throw new InputValidationError('The general directory can only be moved to the general directory or articles.', {
               movingNode: { path: fromDirNode.path, articleNodeType: fromDirNode.articleNodeType },
               toParentNode: { path: toParentNode.path, articleNodeType: toParentNode.articleNodeType },
             })
           }
-          break
         }
-        // 移動ノードが｢記事｣の場合
-        // ※記事は｢リストバンドル、カテゴリバンドル、カテゴリ｣へのみ移動可能
-        case StorageArticleNodeType.Article: {
-          const toParentNode = await this.sgetNodeByPath(path.dirname(toDirPath))
-          // 記事は｢リストバンドル、カテゴリバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
-          if (
-            !(
-              toParentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
-              toParentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
-              toParentNode.articleNodeType === StorageArticleNodeType.Category
-            )
-          ) {
-            throw new InputValidationError('Articles can only be moved to list bundles or category bundles or categories.', {
-              movingNode: { path: fromDirNode.path, articleNodeType: fromDirNode.articleNodeType },
-              toParentNode: { path: toParentNode.path, articleNodeType: toParentNode.articleNodeType },
-            })
-          }
-          break
-        }
-        // 移動ノードが｢一般ディレクトリ｣の場合
-        // ※一般ディレクトリは｢一般ディレクトリ、記事｣へのみ移動可能
-        default: {
-          const toParentPath = removeStartDirChars(path.dirname(toDirPath))
-          // 移動先がルートノード以外の場合
-          if (toParentPath) {
-            const toParentNode = await this.sgetNodeByPath(toParentPath)
-            // 一般ディレクトリは｢一般ディレクトリ、記事｣へのみ移動可能。それ以外へは移動不可
-            if (!(!toParentNode.articleNodeType || toParentNode.articleNodeType === StorageArticleNodeType.Article)) {
-              throw new InputValidationError('The general directory can only be moved to the general directory or articles.', {
-                movingNode: { path: fromDirNode.path, articleNodeType: fromDirNode.articleNodeType },
-                toParentNode: { path: toParentNode.path, articleNodeType: toParentNode.articleNodeType },
-              })
-            }
-          }
-          break
-        }
+        break
       }
     }
 
-    return await super.moveDir(fromDirPath, toDirPath, input)
+    await super.moveDir(fromDirPath, toDirPath, input)
   }
 
   //----------------------------------------------------------------------
@@ -636,17 +641,17 @@ class AppStorageService extends StorageService {
   //----------------------------------------------------------------------
 
   /**
-   * `validateAccessible()`の引数で指定される`target`にはノードIDとノードパスが含まれます。
-   * このノードIDをノードパスに変換し、全てをノードパスとして返します。
+   * `validateAccessible()`の引数で指定される`target`にはノードパス、ノード、ノードリストが含まれます。
+   * targetがノードまたはノードリストの場合はこれらをノードパスに変換し、全てをノードパスとして返します。
    * @param target
    */
-  protected async m_nodeIdsToNodePaths(target: ValidateAccessibleTarget): Promise<string[]> {
+  protected async m_validateAccessibleTargetToNodePaths(target: ValidateAccessibleTarget): Promise<string[]> {
     const nodePaths: string[] = []
 
     // ノードパスの取得
     for (const key of Object.keys(target)) {
-      const value = (target as any)[key] as string | undefined | (string | undefined)[]
       if (/Path$|Paths$/.test(key)) {
+        const value = (target as any)[key] as string | undefined | (string | undefined)[]
         if (Array.isArray(value)) {
           const values = value.filter(value => Boolean(value)) as string[]
           nodePaths.push(...values)
@@ -656,21 +661,18 @@ class AppStorageService extends StorageService {
       }
     }
 
-    // ノードIDをノードパスに変換
-    const nodeIds: string[] = []
+    // ノードリストをノードパスに変換
     for (const key of Object.keys(target)) {
-      const value = (target as any)[key] as string | undefined | (string | undefined)[]
-      if (/Id$|Ids$/.test(key)) {
+      if (/node$|nodes$/.test(key)) {
+        const value = (target as any)[key] as StorageNode | StorageNode[]
         if (Array.isArray(value)) {
-          const values = value.filter(value => Boolean(value)) as string[]
-          nodeIds.push(...values)
+          const values = value.map(node => node.path)
+          nodePaths.push(...values)
         } else if (value) {
-          nodeIds.push(value)
+          nodePaths.push(value.path)
         }
       }
     }
-    const nodes = await this.getNodesByIds(nodeIds)
-    nodePaths.push(...nodes.map(node => node.path))
 
     return nodePaths
   }
@@ -705,7 +707,7 @@ class AppStorageService extends StorageService {
     }
 
     // 記事バンドルを作成
-    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
+    const dirPath = _path.join(input.dir, AppStorageService.generateNodeId())
     return this.m_createArticleTypeDir(dirPath, {
       articleNodeName: input.articleNodeName,
       articleNodeType: input.articleNodeType,
@@ -724,7 +726,7 @@ class AppStorageService extends StorageService {
 
     // 親ディレクトリが｢カテゴリバンドル、カテゴリ｣以外の場合、
     // カテゴリの作成はできないためエラー
-    const parentNode = await this.getNodeByPath(parentPath)
+    const parentNode = await this.getNode({ path: parentPath })
     if (!parentNode) {
       throw new InputValidationError(`There is no parent directory for the category to be created.`, { parentPath })
     }
@@ -735,7 +737,7 @@ class AppStorageService extends StorageService {
     }
 
     // カテゴリを作成
-    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
+    const dirPath = _path.join(input.dir, AppStorageService.generateNodeId())
     return this.m_createArticleTypeDir(dirPath, {
       articleNodeName: input.articleNodeName,
       articleNodeType: StorageArticleNodeType.Category,
@@ -750,7 +752,7 @@ class AppStorageService extends StorageService {
    */
   private async m_createArticle(input: CreateArticleTypeDirInput): Promise<StorageNode> {
     AppStorageService.validateArticleNodeName(input.articleNodeName)
-    const dirPath = path.join(input.dir, this.storeService.storageDao.docRef().id)
+    const dirPath = _path.join(input.dir, AppStorageService.generateNodeId())
     const parentPath = removeBothEndsSlash(input.dir)
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
@@ -793,7 +795,7 @@ class AppStorageService extends StorageService {
     })
 
     // 記事用ディレクトリに記事のもととなるMarkdownファイルを配置
-    const articleFilePath = path.join(dirPath, config.storage.article.fileName)
+    const articleFilePath = _path.join(dirPath, config.storage.article.fileName)
     await this.saveStorageFileNode({
       filePath: articleFilePath,
       isArticleFile: true,
@@ -842,6 +844,7 @@ class AppStorageService extends StorageService {
       articleSortOrder: number
     }
   ): Promise<StorageNode> {
+    // 作成するディレクトリのパスと、その階層構造を形成するのに必要なノードを取得
     let dirPath: string
     let hierarchicalDirNodes: (StorageNode & { exists: boolean })[]
     if (typeof dirPath_or_hierarchicalDirNodes === 'string') {
@@ -863,14 +866,14 @@ class AppStorageService extends StorageService {
     const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
     const ancestorDirNodes = hierarchicalDirNodes.filter(node => node.path !== dirPath)
 
-    // 引数ディレクトリがまだ存在しないことを検証
+    // 作成しようとするディレクトリが存在しないことを検証
     const dirNode = hierarchicalDirNodeDict[dirPath]
     if (dirNode.exists) {
       throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
     }
 
     for (const iDirNode of ancestorDirNodes) {
-      // 祖先ディレクトリが存在することを検証
+      // 作成しようとするディレクトリの祖先が存在することを検証
       if (!iDirNode.exists) {
         throw new InputValidationError(`The ancestor of the specified path does not exist.`, {
           specifiedPath: dirPath,
@@ -880,17 +883,27 @@ class AppStorageService extends StorageService {
     }
 
     // ディレクトリを作成
-    const nodeId = await this.storeService.storageDao.set({
-      ...dirNode,
-      id: dirNode.name,
-      version: FieldValue.increment(1),
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      ...input,
+    const id = dirNode.name
+    const now = dayjs().toISOString()
+    await this.client.update({
+      index: StorageService.IndexName,
+      id,
+      body: {
+        doc: {
+          ...AppStorageService.toDBNode(dirNode),
+          id,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
+          ...input,
+        },
+        doc_as_upsert: true,
+      },
+      refresh: true,
     })
 
-    // ストアに追加された最新ディレクトリを取得
-    return (await this.getNodeById(nodeId))!
+    // 追加された最新ディレクトリを取得
+    return await this.sgetNode({ id })
   }
 
   /**
@@ -950,7 +963,7 @@ class AppStorageService extends StorageService {
     }
 
     // 上記で取得したパスから記事バンドルを取得
-    const bundle = await this.getNodeByPath(bundlePath)
+    const bundle = await this.getNode({ path: bundlePath })
     if (!bundle) return undefined
     if (!(bundle.articleNodeType === StorageArticleNodeType.ListBundle || bundle.articleNodeType === StorageArticleNodeType.CategoryBundle)) {
       return undefined
@@ -1042,7 +1055,7 @@ namespace AppStorageServiceDI {
 @Module({
   providers: [AppStorageServiceDI.provider],
   exports: [AppStorageServiceDI.provider],
-  imports: [AuthServiceModule, StoreServiceModule],
+  imports: [AuthServiceModule],
 })
 class AppStorageServiceModule {}
 

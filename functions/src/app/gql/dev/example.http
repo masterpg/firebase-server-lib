@@ -96,6 +96,41 @@ POST {{host}}/gql_dev
 Content-Type: application/json
 
 {
+  "operationName": "PutTestIndexData",
+  "query": "mutation PutTestIndexData($input: PutTestIndexDataInput!) { putTestIndexData(input: $input) }",
+  "variables": {
+    "input": {
+      "index": "storage-nodes-test",
+      "data": [
+        {
+          "id" : "cMyStK4BBHy0VLD1BdMz",
+          "nodeType" : "Dir",
+          "name" : "d1",
+          "dir" : "",
+          "path" : "d1",
+          "level" : 1,
+          "contentType" : "",
+          "size" : 0,
+          "share" : {
+            "isPublic" : null,
+            "readUIds" : null,
+            "writeUIds" : null
+          },
+          "version" : 1,
+          "createdAt" : "2020-12-08T13:51:00.225Z",
+          "updatedAt" : "2020-12-08T13:51:00.225Z"
+        }
+      ]
+    }
+  }
+}
+
+###
+
+POST {{host}}/gql_dev
+Content-Type: application/json
+
+{
   "operationName": "GetTestSignedUploadUrls",
   "query": "query GetTestSignedUploadUrls { testSignedUploadUrls(inputs: [{filePath: \"images/family.png\", contentType: \"image/png\"}]) }",
   "variables": {}

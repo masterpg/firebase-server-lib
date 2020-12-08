@@ -4,6 +4,7 @@ import { BaseGQLContainerModule, getSchemaFirstGQLModuleOptions } from '../base'
 import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  PutTestIndexDataInput,
   PutTestStoreDataInput,
   TestFirebaseUserInput,
   TestSignedUploadUrlInput,
@@ -30,6 +31,12 @@ export class DevUtilsResolver {
   @Mutation()
   async putTestStoreData(@Args('inputs') inputs: PutTestStoreDataInput[]): Promise<boolean> {
     await this.devUtilsService.putTestStoreData(inputs)
+    return true
+  }
+
+  @Mutation()
+  async putTestIndexData(@Args('input') input: PutTestIndexDataInput): Promise<boolean> {
+    await this.devUtilsService.putTestIndexData(input)
     return true
   }
 
@@ -87,7 +94,7 @@ class DevUtilsGQLModule {}
 // `functions`ディレクトリからみたパスを指定
 const gqlOptions = getSchemaFirstGQLModuleOptions([
   _path.join(config.functions.buildDir, 'app/gql/dto.graphql'),
-  _path.join(config.functions.buildDir, 'app/gql/dev'),
+  _path.join(config.functions.buildDir, 'app/gql/dev/index.graphql'),
 ])
 
 const gqlModules = [DevUtilsGQLModule]

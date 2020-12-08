@@ -39,8 +39,8 @@ export function registryHTTPFunctions(functionMap: { [functionName: string]: str
   })
 }
 
-registryHTTPFunctions({ gql_standard: './gql/standard' })
-registryHTTPFunctions({ gql_middle: './gql/middle' }, { timeoutSeconds: 180, memory: '512MB' })
+registryHTTPFunctions({ gql_lv1: './gql/main/lv1' })
+registryHTTPFunctions({ gql_lv3: './gql/main/lv3' }, { timeoutSeconds: 360, memory: '1GB' })
 registryHTTPFunctions({ gql_example: './gql/example' })
 registryHTTPFunctions({ rest_example: './rest/example' })
 registryHTTPFunctions({ storage: './rest/storage' })

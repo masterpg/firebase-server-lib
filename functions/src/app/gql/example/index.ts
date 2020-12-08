@@ -12,7 +12,7 @@ import { config } from '../../../config'
 //========================================================================
 
 // `functions`ディレクトリからみたパスを指定
-const gqlOptions = getSchemaFirstGQLModuleOptions([_path.join(config.functions.buildDir, 'app/gql/example')])
+const gqlOptions = getSchemaFirstGQLModuleOptions([_path.join(config.functions.buildDir, 'app/gql/example/index.graphql')])
 
 const gqlModules = [ExampleShopGQLModule]
 

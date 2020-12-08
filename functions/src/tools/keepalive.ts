@@ -5,7 +5,7 @@ import { AppStorageServiceDI, AppStorageServiceModule, DevUtilsServiceDI, DevUti
 import axios, { AxiosRequestConfig } from 'axios'
 import { createNestApplication, initFirebaseApp } from '../app/base'
 import { Module } from '@nestjs/common'
-import firebaseConfig from './firebase.config'
+import secret from '../config/secret-config'
 
 //========================================================================
 //
@@ -35,7 +35,7 @@ async function getIdToken(): Promise<string> {
 
   try {
     const response = await axios.request<{ idToken: string }>({
-      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseConfig.apiKey}`,
+      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${secret.firebase.apiKey}`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ async function getIdToken(): Promise<string> {
  */
 async function keepAliveOfGQL(idToken?: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: firebaseConfig.apiBaseURL,
+    baseURL: secret.firebase.apiBaseURL,
     url: 'gql',
     method: 'post',
     data: {
@@ -89,7 +89,7 @@ async function keepAliveOfGQL(idToken?: string): Promise<void> {
  */
 async function keepAliveOfREST(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: firebaseConfig.apiBaseURL,
+    baseURL: secret.firebase.apiBaseURL,
     url: 'rest/keepalive',
     method: 'get',
   }
@@ -116,7 +116,7 @@ async function keepAliveOfREST(idToken: string): Promise<void> {
  */
 async function keepAliveOfStorage(idToken: string): Promise<void> {
   const config: AxiosRequestConfig = {
-    baseURL: firebaseConfig.apiBaseURL,
+    baseURL: secret.firebase.apiBaseURL,
     url: 'storage/keepalive',
     method: 'get',
   }

@@ -8,15 +8,12 @@ import {
   STORAGE_USER_TOKEN,
   getGQLErrorStatus,
   newAppStorageDirNode,
-  newAppStorageFileNode,
   requestGQL,
-  toGQLResponseStorageNodes,
-} from '../../../../../helpers/app'
-import { AppStorageServiceDI, DevUtilsServiceDI, DevUtilsServiceModule, StoragePaginationResult } from '../../../../../../src/app/services'
+} from '../../../../../../helpers/app'
+import { AppStorageServiceDI, DevUtilsServiceDI, DevUtilsServiceModule, StoragePaginationResult } from '../../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
-import MiddleGQLContainerModule from '../../../../../../src/app/gql/middle'
-import { StorageResolver } from '../../../../../../src/app/gql/standard/storage'
-import { initApp } from '../../../../../../src/app/base'
+import Lv3GQLContainerModule from '../../../../../../../src/app/gql/main/lv3'
+import { initApp } from '../../../../../../../src/app/base'
 
 jest.setTimeout(5000)
 initApp()
@@ -36,13 +33,13 @@ beforeAll(async () => {
   await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER, GENERAL_USER)
 })
 
-describe('StorageResolver', () => {
+describe('Lv3 Storage Resolver', () => {
   let app: any
   let storageService: AppStorageServiceDI.type
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [MiddleGQLContainerModule],
+      imports: [Lv3GQLContainerModule],
     }).compile()
 
     app = module.createNestApplication()
@@ -53,60 +50,51 @@ describe('StorageResolver', () => {
   describe('removeStorageDir', () => {
     const gql = {
       query: `
-        mutation RemoveStorageDir($dirPath: String!, $input: StoragePaginationInput) {
-          removeStorageDir(dirPath: $dirPath, input: $input) {
-            list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-            }
-            nextPageToken
-          }
+        mutation RemoveStorageDir($dirPath: String!) {
+          removeStorageDir(dirPath: $dirPath)
         }
       `,
     }
 
     it('疎通確認 - アプリケーションノード', async () => {
       const d1 = newAppStorageDirNode(`d1`)
-      const fileA = newAppStorageFileNode(`d1/fileA.txt`)
       const removeDir = td.replace(storageService, 'removeDir')
-      td.when(removeDir(d1.path, { maxChunk: 3 })).thenResolve({
-        list: [d1, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
 
-      expect(response.body.data.removeStorageDir.list).toEqual(toGQLResponseStorageNodes([d1, fileA]))
-      expect(response.body.data.removeStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.removeStorageDir).toBeTruthy()
+
+      const exp = td.explain(removeDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([d1.path])
     })
 
     it('疎通確認 - ユーザーノード', async () => {
       const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
       const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-      const fileA = newAppStorageFileNode(`${userRootPath}/d1/fileA.txt`)
       const removeDir = td.replace(storageService, 'removeDir')
-      td.when(removeDir(d1.path, { maxChunk: 3 })).thenResolve({
-        list: [d1, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.removeStorageDir.list).toEqual(toGQLResponseStorageNodes([d1, fileA]))
-      expect(response.body.data.removeStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.removeStorageDir).toBeTruthy()
+
+      const exp = td.explain(removeDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([d1.path])
     })
 
     it('サインインしていない場合', async () => {
@@ -114,7 +102,7 @@ describe('StorageResolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+        variables: { dirPath: d1.path },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -127,7 +115,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -143,7 +131,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -155,66 +143,55 @@ describe('StorageResolver', () => {
   describe('moveStorageDir', () => {
     const gql = {
       query: `
-        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!, $input: StoragePaginationInput) {
-          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath, input: $input) {
-            list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-            }
-            nextPageToken
-          }
+        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
+          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath)
         }
       `,
     }
 
     it('疎通確認 - アプリケーションノード', async () => {
-      const docs = newAppStorageDirNode(`docs`)
-      const fileA = newAppStorageFileNode(`archive/docs/fileA.txt`)
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(`docs`, `archive/docs`, { maxChunk: 3 })).thenResolve({
-        list: [docs, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `docs`, toDirPath: `archive/docs` },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
 
-      expect(response.body.data.moveStorageDir.list).toEqual(toGQLResponseStorageNodes([docs, fileA]))
-      expect(response.body.data.moveStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.moveStorageDir).toBeTruthy()
+
+      const exp = td.explain(moveDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([`docs`, `archive/docs`])
     })
 
     it('疎通確認 - ユーザーノード', async () => {
       const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
-      const docs = newAppStorageDirNode(`${userRootPath}/docs`)
-      const fileA = newAppStorageFileNode(`${userRootPath}/archive/docs/fileA.txt`)
       const moveDir = td.replace(storageService, 'moveDir')
-      td.when(moveDir(`${userRootPath}/docs`, `${userRootPath}/archive/docs`, { maxChunk: 3 })).thenResolve({
-        list: [docs, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs` },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.moveStorageDir.list).toEqual(toGQLResponseStorageNodes([docs, fileA]))
-      expect(response.body.data.moveStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.moveStorageDir).toBeTruthy()
+
+      const exp = td.explain(moveDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([`${userRootPath}/docs`, `${userRootPath}/archive/docs`])
     })
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
+        variables: { fromDirPath: `docs`, toDirPath: `archive/docs` },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -225,7 +202,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `docs`, toDirPath: `archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `docs`, toDirPath: `archive/docs` },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -240,7 +217,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs`, input: { maxChunk: 3 } },
+          variables: { fromDirPath: `${userRootPath}/docs`, toDirPath: `${userRootPath}/archive/docs` },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -252,66 +229,55 @@ describe('StorageResolver', () => {
   describe('renameStorageDir', () => {
     const gql = {
       query: `
-        mutation RenameStorageDir($dirPath: String!, $newName: String!, $input: StoragePaginationInput) {
-          renameStorageDir(dirPath: $dirPath, newName: $newName, input: $input) {
-            list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-            }
-            nextPageToken
-          }
+        mutation RenameStorageDir($dirPath: String!, $newName: String!) {
+          renameStorageDir(dirPath: $dirPath, newName: $newName)
         }
       `,
     }
 
     it('疎通確認 - アプリケーションノード', async () => {
-      const docs = newAppStorageDirNode(`docs`)
-      const fileA = newAppStorageFileNode(`docs/fileA.txt`)
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(`documents`, `docs`, { maxChunk: 3 })).thenResolve({
-        list: [docs, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `documents`, newName: `docs` },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
 
-      expect(response.body.data.renameStorageDir.list).toEqual(toGQLResponseStorageNodes([docs, fileA]))
-      expect(response.body.data.renameStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.renameStorageDir).toBeTruthy()
+
+      const exp = td.explain(renameDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([`documents`, `docs`])
     })
 
     it('疎通確認 - ユーザーノード', async () => {
       const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
-      const docs = newAppStorageDirNode(`${userRootPath}/docs`)
-      const fileA = newAppStorageFileNode(`${userRootPath}/docs/fileA.txt`)
       const renameDir = td.replace(storageService, 'renameDir')
-      td.when(renameDir(`${userRootPath}/documents`, `${userRootPath}/docs`, { maxChunk: 3 })).thenResolve({
-        list: [docs, fileA],
-        nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs` },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.renameStorageDir.list).toEqual(toGQLResponseStorageNodes([docs, fileA]))
-      expect(response.body.data.renameStorageDir.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.renameStorageDir).toBeTruthy()
+
+      const exp = td.explain(renameDir)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([`${userRootPath}/documents`, `${userRootPath}/docs`])
     })
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
+        variables: { dirPath: `documents`, newName: `docs` },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -322,7 +288,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `documents`, newName: `docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `documents`, newName: `docs` },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -337,7 +303,7 @@ describe('StorageResolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs`, input: { maxChunk: 3 } },
+          variables: { dirPath: `${userRootPath}/documents`, newName: `${userRootPath}/docs` },
         },
         { headers: GENERAL_USER_HEADER }
       )

@@ -97,6 +97,22 @@ interface AuthDataResult {
 //  Storage
 //--------------------------------------------------
 
+interface StorageNode extends TimestampEntity {
+  nodeType: StorageNodeType
+  name: string
+  dir: string
+  path: string
+  level: number
+  contentType: string
+  size: number
+  share: StorageNodeShareSettings
+  articleNodeName: string | null
+  articleNodeType: StorageArticleNodeType | null
+  articleSortOrder: number | null
+  isArticleFile: boolean
+  version: number
+}
+
 enum StorageNodeType {
   File = 'File',
   Dir = 'Dir',
@@ -113,22 +129,6 @@ interface StorageNodeShareSettings {
   isPublic: boolean | null
   readUIds: string[] | null
   writeUIds: string[] | null
-}
-
-interface StorageNode extends TimestampEntity {
-  nodeType: StorageNodeType
-  name: string
-  dir: string
-  path: string
-  level: number
-  contentType: string
-  size: number
-  share: StorageNodeShareSettings
-  articleNodeName: string | null
-  articleNodeType: StorageArticleNodeType | null
-  articleSortOrder: number | null
-  isArticleFile: boolean | null
-  version: number
 }
 
 interface StoragePaginationInput {
@@ -150,6 +150,11 @@ interface StorageNodeShareSettingsInput {
 interface StorageNodeKeyInput {
   id?: string
   path?: string
+}
+
+interface StorageNodeKeysInput {
+  ids?: string[]
+  paths?: string[]
 }
 
 interface SignedUploadUrlInput {
@@ -177,6 +182,11 @@ interface SetArticleSortOrderInput {
 interface PutTestStoreDataInput {
   collectionName: string
   collectionRecords: JSONObject[]
+}
+
+interface PutTestIndexDataInput {
+  index: string
+  data: JSONObject[]
 }
 
 interface TestSignedUploadUrlInput {
@@ -257,11 +267,12 @@ export {
   StoragePaginationResult,
   StorageNodeShareSettingsInput,
   StorageNodeKeyInput,
+  StorageNodeKeysInput,
   SignedUploadUrlInput,
   CreateStorageNodeInput,
   CreateArticleTypeDirInput,
   SetArticleSortOrderInput,
 }
 export { PublicProfile, UserInfo, UserInfoInput, AuthDataResult }
-export { PutTestStoreDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }
+export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }
 export { Product, CartItem, CartItemAddInput, CartItemUpdateInput, CartItemEditResponse }

@@ -3,6 +3,11 @@ input PutTestStoreDataInput {
   collectionRecords: [JSONObject!]!
 }
 
+input PutTestIndexDataInput {
+  index: String!
+  data: [JSONObject!]!
+}
+
 input TestSignedUploadUrlInput {
   filePath: String!
   contentType: String
@@ -33,6 +38,7 @@ input TestUserInput {
 
 type Mutation {
   putTestStoreData(inputs: [PutTestStoreDataInput!]!): Boolean!
+  putTestIndexData(input: PutTestIndexDataInput!): Boolean!
   removeTestStorageDir(dirPath: String!): Boolean!
   removeTestStorageFiles(filePaths: [String!]!): Boolean!
   setTestFirebaseUsers(users: [TestFirebaseUserInput!]!): Boolean!

@@ -3,7 +3,8 @@ import * as path from 'path'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule } from './base/firestore'
 import { Inject, Module } from '@nestjs/common'
-import { PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput, UserInfo } from './types'
+import { InputValidationError, generateId } from '../base'
+import { PutTestIndexDataInput, PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput, UserInfo } from './types'
 import { UserServiceDI, UserServiceModule } from './user'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
@@ -11,6 +12,7 @@ import UserRecord = admin.auth.UserRecord
 import dayjs = require('dayjs')
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
+import { newElasticClient } from '../base/elastic'
 const firebaseTools = require('firebase-tools')
 
 //========================================================================
@@ -24,6 +26,8 @@ class DevUtilsService {
     @Inject(FirestoreServiceDI.symbol) protected readonly firestoreService: FirestoreServiceDI.type,
     @Inject(UserServiceDI.symbol) protected readonly userService: UserServiceDI.type
   ) {}
+
+  readonly client = newElasticClient()
 
   //----------------------------------------------------------------------
   //
@@ -43,6 +47,41 @@ class DevUtilsService {
         await this.m_buildCollection(input.collectionName, input.collectionRecords, tx)
       })
     )
+  }
+
+  async putTestIndexData({ index, data }: PutTestIndexDataInput): Promise<void> {
+    await this.client.deleteByQuery({
+      index,
+      body: {
+        query: {
+          match_all: {},
+        },
+      },
+      refresh: true,
+    })
+
+    const body = data.flatMap(doc => {
+      doc.id = doc.id ?? generateId(index)
+      doc = { id: doc.id, ...doc } // idをプロパティ群の先頭にしている
+      return [{ index: { _index: index, _id: doc.id } }, doc]
+    })
+
+    const { body: bulkResponse } = await this.client.bulk({ refresh: true, body })
+    if (bulkResponse.errors) {
+      const erroredDocuments: any[] = []
+      bulkResponse.items.forEach((action: any, i: number) => {
+        const operation = Object.keys(action)[0]
+        if (action[operation].error) {
+          erroredDocuments.push({
+            status: action[operation].status,
+            error: action[operation].error,
+            operation: body[i * 2],
+            document: body[i * 2 + 1],
+          })
+        }
+      })
+      throw new InputValidationError('Test data put in failed.', { erroredDocuments })
+    }
   }
 
   async getTestSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): Promise<string[]> {

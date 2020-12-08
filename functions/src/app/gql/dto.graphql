@@ -89,7 +89,7 @@ type StorageNode implements TimestampEntity {
   articleNodeName: String
   articleNodeType: StorageArticleNodeType
   articleSortOrder: Long
-  isArticleFile: Boolean
+  isArticleFile: Boolean!
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -120,6 +120,11 @@ input StorageNodeShareSettingsInput {
 input StorageNodeKeyInput {
   id: String
   path: String
+}
+
+input StorageNodeKeysInput {
+  ids: [String!]
+  paths: [String!]
 }
 
 input SignedUploadUrlInput {

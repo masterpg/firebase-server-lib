@@ -1,11 +1,11 @@
 import * as td from 'testdouble'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../../../../../../../src/app/services'
-import { GENERAL_USER, GENERAL_USER_HEADER, GENERAL_USER_TOKEN, getGQLErrorStatus, requestGQL } from '../../../../../../helpers/app'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../../../../../../src/app/services'
+import { GENERAL_USER, GENERAL_USER_HEADER, GENERAL_USER_TOKEN, getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
-import ExampleGQLContainerModule from '../../../../../../../src/app/gql/example'
-import { ExampleShopServiceDI } from '../../../../../../../src/app/services/example'
-import { OmitEntityTimestamp } from '../../../../../../../src/firestore-ex'
-import { initApp } from '../../../../../../../src/app/base'
+import ExampleGQLContainerModule from '../../../../../../src/app/gql/example'
+import { ExampleShopServiceDI } from '../../../../../../src/app/services/example'
+import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
+import { initApp } from '../../../../../../src/app/base'
 import dayjs = require('dayjs')
 
 jest.setTimeout(5000)
