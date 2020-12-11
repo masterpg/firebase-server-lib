@@ -1,7 +1,7 @@
 import * as chalk from 'chalk'
 import * as program from 'commander'
-import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../app/services'
-import { createNestApplication, initFirebaseApp } from '../app/base'
+import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../src/app/services'
+import { createNestApplication, initFirebaseApp } from '../src/app/base'
 
 const users: TestUserInput[] = [
   {

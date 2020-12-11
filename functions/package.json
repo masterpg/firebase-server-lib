@@ -6,7 +6,7 @@
   },
   "main": "dist/app/index.js",
   "scripts": {
-    "build": "rm -rf ./dist && npm run gql:build && tsc --project ./tsconfig.build.json",
+    "build": "rm -rf ./dist && (tsc --project ./tsconfig.build.json & npm run build:tools) && npm run gql:build",
     "build:tools": "rm -rf ./tools/bin && tsc --project ./tsconfig.tools.json",
     "serve": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --port=5010)",
     "shell": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase functions:shell --port=5010)",
@@ -17,13 +17,13 @@
     "lint": "./node_modules/web-base-lib/tools/lint.sh",
     "deploy": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && firebase deploy --only functions,firestore",
     "firebase": "firebase emulators:start",
-    "gql": "node ./tools/gql.js",
+    "gql": "node ./tools/bin/tools/gql.js",
     "gql:build": "npm run gql build ./src ./dist",
     "gql:watch": "npm run gql build ./src ./dist -- -w",
     "elastic": "node ./tools/bin/tools/elastic.js",
-    "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/user.js",
-    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/storage.js",
-    "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./dist/tools/keepalive.js"
+    "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/user.js",
+    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/storage.js",
+    "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/keepalive.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.10.0",

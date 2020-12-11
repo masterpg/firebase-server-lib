@@ -1,10 +1,10 @@
-const { GraphQLDefinitionsFactory } = require('@nestjs/graphql')
-const chokidar = require('chokidar')
-const fs = require('fs')
-const glob = require('glob')
-const _path = require('path')
-const { program } = require('commander')
-const { removeBothEndsSlash } = require('web-base-lib')
+import * as _path from 'path'
+import * as chokidar from 'chokidar'
+import * as fs from 'fs'
+import * as program from 'commander'
+import { GraphQLDefinitionsFactory } from '@nestjs/graphql'
+import { glob } from 'glob'
+import { removeBothEndsSlash } from 'web-base-lib'
 
 //========================================================================
 //
@@ -21,9 +21,9 @@ const { removeBothEndsSlash } = require('web-base-lib')
  * @param outDir TypeScript用GraphQL定義ファイルの出力ディレクトリを指定。
  * @param watch
  */
-function generateSchema(scanDir, outDir, watch) {
-  scanDir = removeExtraPart(scanDir)
-  outDir = removeExtraPart(outDir)
+function generateSchema(scanDir: string, outDir: string, watch: string): void {
+  scanDir = _path.resolve(removeBothEndsSlash(scanDir))
+  outDir = _path.resolve(removeBothEndsSlash(outDir))
 
   const definitionsFactory = new GraphQLDefinitionsFactory()
   definitionsFactory.generate({
@@ -42,19 +42,23 @@ function generateSchema(scanDir, outDir, watch) {
  * @param copyDir .graphqlファイルのコピー先ディレクトリを指定。
  * @param watch
  */
-function buildSchema(scanDir, copyDir, watch) {
-  scanDir = removeExtraPart(scanDir)
-  copyDir = removeExtraPart(copyDir)
+function buildSchema(scanDir: string, copyDir: string, watch?: boolean) {
+  scanDir = _path.resolve(removeBothEndsSlash(scanDir))
+  copyDir = _path.resolve(removeBothEndsSlash(copyDir))
+  const scanBaseName = _path.basename(scanDir)
 
   // `scanDir`配下の`*.graphql`ファイルの一覧を取得
-  const graphqlFiles = glob.sync(_path.resolve(process.cwd(), `${scanDir}/**/*.graphql`))
+  const graphqlFiles = glob.sync(_path.join(scanDir, `**/*.graphql`))
   for (const graphqlFile of graphqlFiles) {
     // `scanDir`ベースのパスを`copyDir`ベースへ置き換え
-    // 例: src/gql/modules/product/product.graphql → dist/gql/modules/product/product.graphql
-    const srcReg = new RegExp(`/?(${scanDir})/`)
-    const copyGraphqlFile = graphqlFile.replace(srcReg, (match, $1, offset) => {
-      return match.replace($1, copyDir)
-    })
+    // 例: src/gql/main/lv1.graphql → dist/gql/main/lv1.graphql
+    const srcReg = new RegExp(`/?(${scanBaseName})/`)
+    const srcRegExecArray = srcReg.exec(graphqlFile)!
+    const match = srcRegExecArray[0] // 例: '/src/'
+    const index = srcRegExecArray.index
+    const relativeFile = graphqlFile.substr(index + match.length) // 例: 'gql/main/lv1.graphql'
+    const copyGraphqlFile = _path.join(copyDir, relativeFile)
+
     // `scanDir`から`copyDir`へ`.graphql`ファイルをコピー
     fs.mkdirSync(_path.dirname(copyGraphqlFile), { recursive: true })
     fs.copyFileSync(graphqlFile, copyGraphqlFile)
@@ -66,11 +70,6 @@ function buildSchema(scanDir, copyDir, watch) {
       fs.copyFileSync(graphqlFile, copyGraphqlFile)
     })
   }
-}
-
-function removeExtraPart(path) {
-  path = path.replace(/^\./, '')
-  return removeBothEndsSlash(path)
 }
 
 //========================================================================

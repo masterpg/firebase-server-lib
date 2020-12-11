@@ -1,11 +1,11 @@
 import * as admin from 'firebase-admin'
 import * as chalk from 'chalk'
 import * as program from 'commander'
-import { AppStorageServiceDI, AppStorageServiceModule, DevUtilsServiceDI, DevUtilsServiceModule } from '../app/services'
+import { AppStorageServiceDI, AppStorageServiceModule, DevUtilsServiceDI, DevUtilsServiceModule } from '../src/app/services'
 import axios, { AxiosRequestConfig } from 'axios'
-import { createNestApplication, initFirebaseApp } from '../app/base'
+import { createNestApplication, initFirebaseApp } from '../src/app/base'
 import { Module } from '@nestjs/common'
-import secret from '../config/secret-config'
+import secret from '../src/config/secret-config'
 
 //========================================================================
 //

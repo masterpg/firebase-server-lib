@@ -11,9 +11,9 @@ import {
   StorageUploadDataItem,
   UserServiceDI,
   UserServiceModule,
-} from '../app/services'
+} from '../src/app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
-import { createNestApplication, initFirebaseApp } from '../app/base'
+import { createNestApplication, initFirebaseApp } from '../src/app/base'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import dayjs = require('dayjs')
