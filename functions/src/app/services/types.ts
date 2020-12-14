@@ -168,11 +168,7 @@ interface CreateArticleTypeDirInput {
   dir: string
   articleNodeName: string
   articleNodeType: StorageArticleNodeType
-}
-
-interface SetArticleSortOrderInput {
-  insertBeforeNodePath?: string
-  insertAfterNodePath?: string
+  articleSortOrder?: number
 }
 
 //--------------------------------------------------
@@ -271,7 +267,6 @@ export {
   SignedUploadUrlInput,
   CreateStorageNodeInput,
   CreateArticleTypeDirInput,
-  SetArticleSortOrderInput,
 }
 export { PublicProfile, UserInfo, UserInfoInput, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }

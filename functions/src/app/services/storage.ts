@@ -5,9 +5,9 @@ import {
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
   IdToken,
-  SetArticleSortOrderInput,
   StorageArticleNodeType,
   StorageNode,
+  StorageNodeKeyInput,
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -246,17 +246,29 @@ class AppStorageService extends StorageService {
    * @param input
    */
   async createArticleTypeDir(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+    // 作成するノードのソート順を取得
+    let articleSortOrder: number
+    if (typeof input.articleSortOrder === 'number') {
+      articleSortOrder = input.articleSortOrder
+    } else {
+      articleSortOrder =
+        (await this.m_getMaxArticleSortOrder({
+          path: input.dir,
+        })) + 1
+    }
+
+    // ディレクトリ作成
     let result!: StorageNode
     switch (input.articleNodeType) {
       case StorageArticleNodeType.ListBundle:
       case StorageArticleNodeType.CategoryBundle:
-        result = await this.m_createArticleBundle(input)
+        result = await this.m_createArticleBundle({ ...input, articleSortOrder })
         break
       case StorageArticleNodeType.Category:
-        result = await this.m_createArticleCategory(input)
+        result = await this.m_createArticleCategory({ ...input, articleSortOrder })
         break
       case StorageArticleNodeType.Article:
-        result = await this.m_createArticle(input)
+        result = await this.m_createArticle({ ...input, articleSortOrder })
         break
     }
     return result
@@ -382,110 +394,87 @@ class AppStorageService extends StorageService {
   }
 
   /**
-   * 指定されたターゲットノードにソート順を設定します。
-   * `input.insertBeforeNodePath`か`input.insertAfterNodePath`どちらかに値を設定する必要があります。
-   * `input.insertBeforeNodePath`を指定すると、このノードより前にターゲットノードを挿入します。
-   * `input.insertAfterNodePath`を指定すると、このノードより後にターゲットノードを挿入します。
-   *
-   * @param nodePath
-   * @param input
+   * 指定されたノードパスのノードにソート順を設定します。
+   * @param user
+   * @param orderNodePaths
+   *   ソート順を設定するノードパスを順番に指定します。指定するノードはみな同じ親の子でなければ
+   *   なりません。指定された配列の最後尾ノードのソート順には「1」が設定され、ここから先頭に向か
+   *   ってソート順の値がインクリメントされます。
    */
-  async setArticleSortOrder(nodePath: string, input: SetArticleSortOrderInput): Promise<StorageNode> {
-    nodePath = removeBothEndsSlash(nodePath)
+  async setArticleSortOrder(user: { uid: string }, orderNodePaths: string[]): Promise<void> {
+    if (!orderNodePaths.length) return
 
-    /**
-     * 指定ノードがソート順を設定できるノードなのか検証します。
-     * 以下2つの条件を満たす場合、ソート順の設定が可能です。
-     * - 指定ノードが「リストバンドル、カテゴリバンドル、カテゴリ、記事」のいずれか
-     * - 指定ノードの親が「記事ルート、リストバンドル、カテゴリバンドル、カテゴリ」のいずれか
-     * @param node
-     */
-    const validateNode = async (node: StorageNode) => {
-      // 指定ノードが「リストバンドル、カテゴリバンドル、カテゴリ、記事」の場合
-      if (
-        node.articleNodeType === StorageArticleNodeType.ListBundle ||
-        node.articleNodeType === StorageArticleNodeType.CategoryBundle ||
-        node.articleNodeType === StorageArticleNodeType.Category ||
-        node.articleNodeType === StorageArticleNodeType.Article
-      ) {
-        // 親ディレクトリが記事ルートであればOK
-        const userRootName = config.storage.user.rootName
-        const articleRootName = config.storage.article.rootName
-        const reg = new RegExp(`${userRootName}/[^/]+/${articleRootName}$`)
-        if (reg.test(node.dir)) return
+    // 指定されたパスのバリデーションチェック
+    orderNodePaths.forEach(nodePath => StorageService.validatePath(nodePath))
+    orderNodePaths = orderNodePaths.map(nodePath => removeBothEndsSlash(nodePath))
 
-        // 親ディレクトリが｢リストバンドル、カテゴリバンドル、カテゴリ｣であればOK
-        const parentNode = await this.sgetNode({ path: node.dir })
-        if (
-          parentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
-          parentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
-          parentNode.articleNodeType === StorageArticleNodeType.Category
-        ) {
-          return
-        }
-
-        throw new InputValidationError(`The sort order cannot be set because the parent is incorrect.`, {
-          node: { path: node.path, articleNodeType: node.articleNodeType },
-          parentNode: { path: parentNode.path, articleNodeType: parentNode.articleNodeType },
-        })
+    // 引数ノードリストの親がみな一緒か検証
+    const parentPath = _path.dirname(orderNodePaths[0])
+    orderNodePaths.forEach(nodePath => {
+      if (parentPath !== _path.dirname(nodePath)) {
+        throw new InputValidationError(`There are multiple parents in 'orderNodePaths'.`, { orderNodePaths })
       }
-      // 指定ノードが上記以外の場合
-      else {
-        throw new InputValidationError(`Cannot set the sort order for the node.`, {
-          node: { path: node.path, articleNodeType: node.articleNodeType },
-        })
-      }
+    })
+
+    // 親ディレクトリを取得
+    const parentNode = await this.sgetNode({ path: parentPath })
+
+    // 親ディレクトリが「記事ルート、リストバンドル、カテゴリバンドル、カテゴリ」以外の場合、
+    // 子ノードにソート順を設定することはできない。
+    if (
+      !(
+        parentNode.path === this.getArticleRootPath(user) ||
+        parentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
+        parentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
+        parentNode.articleNodeType === StorageArticleNodeType.Category
+      )
+    ) {
+      throw new InputValidationError(`It is not possible to set the sort order for child nodes.`, {
+        parent: { id: parentNode.id, path: parentNode.path, articleNodeType: parentNode.articleNodeType },
+      })
     }
 
-    /**
-     * ターゲットノードの兄弟ノードを取得します。
-     * @param nodeArgName
-     * @param siblingNodePath
-     */
-    const sgetSiblingNode = async (nodeArgName: string, siblingNodePath: string) => {
-      const siblingNode = await this.sgetNode({ path: siblingNodePath })
-      if (siblingNode.dir !== removeStartDirChars(_path.dirname(nodePath))) {
-        throw new InputValidationError(`The two nodes are not siblings.`, { nodePath, [nodeArgName]: siblingNodePath })
-      }
-      return siblingNode
-    }
-
-    // 挿入前ノードパス、挿入後ノードパスのどちらかが指定されていることを検証
-    const { insertBeforeNodePath, insertAfterNodePath } = input
-    if (!insertBeforeNodePath && !insertAfterNodePath) {
-      throw new InputValidationError(`Both 'insertBeforeNodePath' and 'insertAfterNodePath' are not specified.`)
-    }
-
-    // ターゲットノードを取得
-    const targetNode = await this.sgetNode({ path: nodePath })
-
-    // ターゲットノードがソート順を設定できるノードなのか検証
-    await validateNode(targetNode)
-
-    // ターゲットノードに設定するソート順を取得
-    let newSortOrder!: number
-    if (insertBeforeNodePath) {
-      const baseDirNode = await sgetSiblingNode('insertBeforeNodePath', insertBeforeNodePath)
-      newSortOrder = baseDirNode.articleSortOrder! + 1
-    } else if (insertAfterNodePath) {
-      const baseDirNode = await sgetSiblingNode('insertAfterNodePath', insertAfterNodePath)
-      newSortOrder = baseDirNode.articleSortOrder! - 1
-    }
-
-    // 上記で取得したソート順をターゲットノードに設定
-    await this.client.update({
+    // 引数ノードリストの親が持つ子ノードの数と引数ノードリストが一致するか検証
+    const countResponse = await this.client.count({
       index: StorageService.IndexName,
-      id: targetNode.id,
       body: {
-        doc: {
-          articleSortOrder: newSortOrder,
-          version: targetNode.version + 1,
+        query: {
+          bool: {
+            must: [{ term: { dir: parentPath } }],
+            // ソート順を設定できるのは記事系ノードのみなのでフィルターする
+            filter: [{ exists: { field: 'articleNodeType' } }],
+          },
+        },
+      },
+    })
+    const childCount = countResponse.body.count
+    if (orderNodePaths.length !== childCount) {
+      throw new InputValidationError(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`, {
+        orderNodePaths,
+      })
+    }
+
+    //
+    // 引数ノードリストにソート順を設定
+    //
+    let currentSortOrder = orderNodePaths.length
+    const params = orderNodePaths.reduce((result, nodePath, index) => {
+      result[nodePath] = currentSortOrder--
+      return result
+    }, {} as { [nodePath: string]: number })
+
+    await this.client.updateByQuery({
+      index: StorageService.IndexName,
+      body: {
+        query: { term: { dir: parentNode.path } },
+        script: {
+          lang: 'painless',
+          source: 'ctx._source.articleSortOrder = params[ctx._source.path]',
+          params,
         },
       },
       refresh: true,
     })
-
-    return await this.sgetNode({ id: targetNode.id })
   }
 
   /**
@@ -631,7 +620,30 @@ class AppStorageService extends StorageService {
       }
     }
 
+    //
+    // ディレクトリの移動を実行
+    //
     await super.moveDir(fromDirPath, toDirPath, input)
+
+    //
+    // 移動ディレクトリにソート順を設定
+    //
+    // 移動ディレクトリが｢カテゴリ、記事｣の場合
+    // ※1 リストバンドル、カテゴリバンドルは移動できないので対象外
+    // ※2 記事系ディレクトリ以外のディレクトリにソート順は設定されないので対象外
+    if (fromDirNode.articleNodeType === StorageArticleNodeType.Category || fromDirNode.articleNodeType === StorageArticleNodeType.Article) {
+      const articleSortOrder = await this.m_getNewArticleSortOrder({ path: toDirPath })
+      await this.client.update({
+        index: StorageService.IndexName,
+        id: fromDirNode.id,
+        body: {
+          doc: {
+            articleSortOrder,
+          },
+        },
+        refresh: true,
+      })
+    }
   }
 
   //----------------------------------------------------------------------
@@ -693,7 +705,7 @@ class AppStorageService extends StorageService {
    * 記事バンドルを作成します。
    * @param input
    */
-  private async m_createArticleBundle(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+  private async m_createArticleBundle(input: CreateArticleTypeDirInput & { articleSortOrder: number }): Promise<StorageNode> {
     AppStorageService.validatePath(input.dir)
     AppStorageService.validateArticleNodeName(input.articleNodeName)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -703,7 +715,10 @@ class AppStorageService extends StorageService {
     const articleRootName = config.storage.article.rootName
     const reg = new RegExp(`${userRootName}/[^/]+/${articleRootName}$`)
     if (!reg.test(parentPath)) {
-      throw new InputValidationError(`The article bundle must be created directly under the article root.`, { input })
+      const { dir, articleNodeType, articleNodeName } = input
+      throw new InputValidationError(`The article bundle must be created directly under the article root.`, {
+        input: { dir, articleNodeType, articleNodeName },
+      })
     }
 
     // 記事バンドルを作成
@@ -711,7 +726,7 @@ class AppStorageService extends StorageService {
     return this.m_createArticleTypeDir(dirPath, {
       articleNodeName: input.articleNodeName,
       articleNodeType: input.articleNodeType,
-      articleSortOrder: AppStorageService.generateArticleSortOrder(),
+      articleSortOrder: input.articleSortOrder,
     })
   }
 
@@ -719,7 +734,7 @@ class AppStorageService extends StorageService {
    * 記事カテゴリを作成します。
    * @param input
    */
-  private async m_createArticleCategory(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+  private async m_createArticleCategory(input: CreateArticleTypeDirInput & { articleSortOrder: number }): Promise<StorageNode> {
     AppStorageService.validatePath(input.dir)
     AppStorageService.validateArticleNodeName(input.articleNodeName)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -741,7 +756,7 @@ class AppStorageService extends StorageService {
     return this.m_createArticleTypeDir(dirPath, {
       articleNodeName: input.articleNodeName,
       articleNodeType: StorageArticleNodeType.Category,
-      articleSortOrder: AppStorageService.generateArticleSortOrder(),
+      articleSortOrder: input.articleSortOrder,
     })
   }
 
@@ -750,7 +765,7 @@ class AppStorageService extends StorageService {
    * 作成される記事とはディレクトリであり、記事に必要なファイルが格納されることになります。
    * @param input
    */
-  private async m_createArticle(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+  private async m_createArticle(input: CreateArticleTypeDirInput & { articleSortOrder: number }): Promise<StorageNode> {
     AppStorageService.validateArticleNodeName(input.articleNodeName)
     const dirPath = _path.join(input.dir, AppStorageService.generateNodeId())
     const parentPath = removeBothEndsSlash(input.dir)
@@ -791,7 +806,7 @@ class AppStorageService extends StorageService {
     const result = await this.m_createArticleTypeDir(hierarchicalDirNodes, {
       articleNodeName: input.articleNodeName,
       articleNodeType: StorageArticleNodeType.Article,
-      articleSortOrder: AppStorageService.generateArticleSortOrder(),
+      articleSortOrder: input.articleSortOrder,
     })
 
     // 記事用ディレクトリに記事のもととなるMarkdownファイルを配置
@@ -972,6 +987,89 @@ class AppStorageService extends StorageService {
     return bundle
   }
 
+  /**
+   * 指定されたノードの親ディレクトリ直下ノードの中で最大のソート順を取得し、「+1」した値を返します。
+   * @param input
+   */
+  async m_getNewArticleSortOrder(input: StorageNodeKeyInput): Promise<number> {
+    if (!input.id && !input.path) {
+      throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
+    }
+
+    let nodePath: string
+    let parentPath: string
+    if (input.id) {
+      const node = await this.sgetNode({ id: input.id })
+      nodePath = node.path
+      parentPath = node.dir
+    } else {
+      nodePath = removeBothEndsSlash(input.path)
+      parentPath = _path.dirname(nodePath)
+    }
+
+    const res = await this.client.search({
+      index: StorageService.IndexName,
+      size: 0,
+      body: {
+        query: {
+          bool: {
+            must: [
+              { term: { dir: parentPath } },
+              {
+                bool: { must_not: [{ term: { path: nodePath } }] },
+              },
+            ],
+          },
+        },
+        aggs: {
+          maxArticleSortOrder: {
+            max: { field: 'articleSortOrder' },
+          },
+        },
+      },
+      _source: false as any,
+    })
+    return parseInt(res.body.aggregations.maxArticleSortOrder.value + 1)
+  }
+
+  /**
+   * 指定されたディレクトリ直下のノードの中で、最大のソート順を取得します。
+   * @param dirKey
+   */
+  async m_getMaxArticleSortOrder(dirKey: StorageNodeKeyInput): Promise<number> {
+    if (!dirKey.id && !dirKey.path) {
+      throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
+    }
+
+    let dirPath: string
+    if (dirKey.id) {
+      const dirNode = await this.sgetNode({ id: dirKey.id })
+      if (dirNode.nodeType !== StorageNodeType.Dir) {
+        throw new InputValidationError(`The specified node is not a directory.`, { input: dirKey })
+      }
+      dirPath = dirNode.path
+    } else {
+      dirPath = removeBothEndsSlash(dirKey.path)
+    }
+
+    const res = await this.client.search({
+      index: StorageService.IndexName,
+      size: 0,
+      body: {
+        query: {
+          term: { dir: dirPath },
+        },
+        aggs: {
+          maxArticleSortOrder: {
+            max: { field: 'articleSortOrder' },
+          },
+        },
+      },
+      _source: false as any,
+    })
+    return parseInt(res.body.aggregations.maxArticleSortOrder.value + 0)
+  }
+
   //----------------------------------------------------------------------
   //
   //  Static
@@ -1026,14 +1124,6 @@ class AppStorageService extends StorageService {
     sort(topTreeNodes)
 
     return nodes
-  }
-
-  /**
-   * 記事ソート順を生成します。
-   */
-  static generateArticleSortOrder(): number {
-    const str = String(dayjs().valueOf()).padEnd(16, '0')
-    return parseInt(str)
   }
 
   /**

@@ -2696,8 +2696,6 @@ describe('StorageService', () => {
 })
 
 describe('大量データのテスト', () => {
-  jest.setTimeout(66000)
-
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
       imports: [MockStorageRESTModule],

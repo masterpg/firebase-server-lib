@@ -19,7 +19,6 @@ import {
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
-  SetArticleSortOrderInput,
   StorageArticleNodeType,
   StorageNodeKeyInput,
   StorageNodeKeysInput,
@@ -2005,7 +2004,7 @@ describe('Lv1 Storage Resolver', () => {
       const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
-        articleSortOrder: 999,
+        articleSortOrder: 1,
       })
 
       const renameArticleNode = td.replace(storageService, 'renameArticleNode')
@@ -2029,7 +2028,7 @@ describe('Lv1 Storage Resolver', () => {
       const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
-        articleSortOrder: 999,
+        articleSortOrder: 1,
       })
 
       const response = await requestGQL(app, {
@@ -2046,7 +2045,7 @@ describe('Lv1 Storage Resolver', () => {
       const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
-        articleSortOrder: 999,
+        articleSortOrder: 1,
       })
 
       const response = await requestGQL(
@@ -2065,10 +2064,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('setArticleSortOrder', () => {
     const gql = {
       query: `
-        mutation SetArticleSortOrder($nodePath: String!, $input: SetArticleSortOrderInput!) {
-          setArticleSortOrder(nodePath: $nodePath, input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-          }
+        mutation SetArticleSortOrder($orderNodePaths: [String!]!) {
+          setArticleSortOrder(orderNodePaths: $orderNodePaths)
         }
       `,
     }
@@ -2086,21 +2083,24 @@ describe('Lv1 Storage Resolver', () => {
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
       })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
+      const orderNodePaths = [cat1.path, cat2.path]
 
       const setArticleSortOrder = td.replace(storageService, 'setArticleSortOrder')
-      td.when(setArticleSortOrder(cat1.path, input)).thenResolve(cat1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { nodePath: cat1.path, input },
+          variables: { orderNodePaths },
         },
         { headers: STORAGE_USER_HEADER }
       )
 
-      expect(response.body.data.setArticleSortOrder).toEqual(toGQLResponseStorageNode(cat1))
+      expect(response.body.data.setArticleSortOrder).toEqual(true)
+
+      const exp = td.explain(setArticleSortOrder)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args).toEqual([STORAGE_USER_TOKEN, orderNodePaths])
     })
 
     it('サインインしていない場合', async () => {
@@ -2116,11 +2116,11 @@ describe('Lv1 Storage Resolver', () => {
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
       })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
+      const orderNodePaths = [cat1.path, cat2.path]
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { nodePath: cat1.path, input },
+        variables: { orderNodePaths },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2139,13 +2139,13 @@ describe('Lv1 Storage Resolver', () => {
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
       })
-      const input: SetArticleSortOrderInput = { insertBeforeNodePath: `${cat2.path}` }
+      const orderNodePaths = [cat1.path, cat2.path]
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { nodePath: cat1.path, input },
+          variables: { orderNodePaths },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -2174,7 +2174,7 @@ describe('Lv1 Storage Resolver', () => {
       const art1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 999,
+        articleSortOrder: 1,
       })
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
       td.when(getArticleChildren(bundlePath, [StorageArticleNodeType.Article], { maxChunk: 3 })).thenResolve({

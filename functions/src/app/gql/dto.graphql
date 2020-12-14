@@ -143,8 +143,3 @@ input CreateArticleTypeDirInput {
   articleNodeName: String!
   articleNodeType: StorageArticleNodeType
 }
-
-input SetArticleSortOrderInput {
-  insertBeforeNodePath: String
-  insertAfterNodePath: String
-}

@@ -687,8 +687,6 @@ describe('AppStorageService', () => {
   describe('createArticleTypeDir', () => {
     describe('バンドル作成', () => {
       it('ベーシックケース', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -705,13 +703,33 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(1)
         await existsStorageNodes([actual], storageService)
       })
 
-      it('同じ記事ノード名のバンドルを作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
+      it('ソート順の検証', async () => {
+        // 記事ルートの作成
+        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([articleRootPath])
 
+        // バンドル1の作成
+        const bundle1 = await storageService.createArticleTypeDir({
+          dir: `${articleRootPath}`,
+          articleNodeName: 'バンドル1',
+          articleNodeType: StorageArticleNodeType.ListBundle,
+        })
+        // バンドル2の作成
+        const bundle2 = await storageService.createArticleTypeDir({
+          dir: `${articleRootPath}`,
+          articleNodeName: 'バンドル2',
+          articleNodeType: StorageArticleNodeType.ListBundle,
+        })
+
+        expect(bundle1.articleSortOrder).toBe(1)
+        expect(bundle2.articleSortOrder).toBe(2)
+      })
+
+      it('同じ記事ノード名のバンドルを作成', async () => {
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -724,13 +742,14 @@ describe('AppStorageService', () => {
         await storageService.createArticleTypeDir(input)
 
         // テスト対象実行
+        // ※同じ記事ノード名を再度作成
         const actual = await storageService.createArticleTypeDir(input)
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(2)
         await existsStorageNodes([actual], storageService)
       })
 
@@ -805,8 +824,6 @@ describe('AppStorageService', () => {
 
     describe('カテゴリ作成', () => {
       it('ベーシックケース - カテゴリバンドル直下に作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -830,13 +847,11 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(1)
         await existsStorageNodes([actual], storageService)
       })
 
       it('ベーシックケース - カテゴリ直下に作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -866,13 +881,11 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(1)
         await existsStorageNodes([actual], storageService)
       })
 
-      it('同じ記事ノード名のカテゴリを作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
+      it('ソート順の検証', async () => {
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -882,7 +895,35 @@ describe('AppStorageService', () => {
           articleNodeName: 'バンドル',
           articleNodeType: StorageArticleNodeType.CategoryBundle,
         })
-        // カテゴリを作成
+
+        // カテゴリ1を作成
+        const cat1 = await storageService.createArticleTypeDir({
+          dir: `${bundle.path}`,
+          articleNodeName: 'カテゴリ1',
+          articleNodeType: StorageArticleNodeType.Category,
+        })
+        // カテゴリ2を作成
+        const cat2 = await storageService.createArticleTypeDir({
+          dir: `${bundle.path}`,
+          articleNodeName: 'カテゴリ2',
+          articleNodeType: StorageArticleNodeType.Category,
+        })
+
+        expect(cat1.articleSortOrder).toBe(1)
+        expect(cat2.articleSortOrder).toBe(2)
+      })
+
+      it('同じ記事ノード名のカテゴリを作成', async () => {
+        // 記事ルートの作成
+        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([articleRootPath])
+        // バンドルを作成
+        const bundle = await storageService.createArticleTypeDir({
+          dir: `${articleRootPath}`,
+          articleNodeName: 'バンドル',
+          articleNodeType: StorageArticleNodeType.CategoryBundle,
+        })
+        // カテゴリ1を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
           articleNodeName: 'カテゴリ1',
@@ -897,7 +938,7 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(2)
         await existsStorageNodes([actual], storageService)
       })
 
@@ -1076,8 +1117,6 @@ describe('AppStorageService', () => {
 
     describe('記事作成', () => {
       it('ベーシックケース - バンドル直下に作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -1101,7 +1140,7 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(1)
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
@@ -1112,8 +1151,6 @@ describe('AppStorageService', () => {
       })
 
       it('ベーシックケース - カテゴリ直下に記事を作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
-
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -1143,7 +1180,7 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(1)
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
@@ -1153,9 +1190,35 @@ describe('AppStorageService', () => {
         expect(art1FileNode.isArticleFile).toBeTruthy()
       })
 
-      it('同じ記事ノード名の記事を作成', async () => {
-        const baseSortOrder = AppStorageService.generateArticleSortOrder()
+      it('ソート順の検証', async () => {
+        // 記事ルートの作成
+        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        await storageService.createHierarchicalDirs([articleRootPath])
+        // バンドルを作成
+        const bundle = await storageService.createArticleTypeDir({
+          dir: `${articleRootPath}`,
+          articleNodeName: 'バンドル',
+          articleNodeType: StorageArticleNodeType.ListBundle,
+        })
 
+        // 記事1の作成
+        const art1 = await storageService.createArticleTypeDir({
+          dir: `${bundle.path}`,
+          articleNodeName: '記事1',
+          articleNodeType: StorageArticleNodeType.Article,
+        })
+        // 記事2の作成
+        const art2 = await storageService.createArticleTypeDir({
+          dir: `${bundle.path}`,
+          articleNodeName: '記事2',
+          articleNodeType: StorageArticleNodeType.Article,
+        })
+
+        expect(art1.articleSortOrder).toBe(1)
+        expect(art2.articleSortOrder).toBe(2)
+      })
+
+      it('同じ記事ノード名の記事を作成', async () => {
         // 記事ルートの作成
         const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
@@ -1181,7 +1244,7 @@ describe('AppStorageService', () => {
         expect(actual.id === actual.name).toBeTruthy()
         expect(actual.articleNodeName).toBe(input.articleNodeName)
         expect(actual.articleNodeType).toBe(input.articleNodeType)
-        expect(actual.articleSortOrder! >= baseSortOrder).toBeTruthy()
+        expect(actual.articleSortOrder).toBe(2)
         await existsStorageNodes([actual], storageService)
 
         const art1FilePath = `${actual.path}/${config.storage.article.fileName}`
@@ -1558,7 +1621,7 @@ describe('AppStorageService', () => {
   })
 
   describe('setArticleSortOrder', () => {
-    it('ベーシックケース - insertBeforeNodePath', async () => {
+    it('ベーシックケース - バンドル直下のノードにソート順を設定', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
@@ -1573,27 +1636,31 @@ describe('AppStorageService', () => {
         dir: `${bundle.path}`,
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 1,
       })
       const art2 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
         articleNodeName: '記事2',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 2,
       })
       const art3 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
         articleNodeName: '記事3',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 3,
       })
 
       // テスト対象実行
-      await storageService.setArticleSortOrder(art1.path, { insertBeforeNodePath: art3.path })
+      await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [art3.path, art2.path, art1.path])
 
-      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, art3.path] })
+      const nodes = (await storageService.getChildren(bundle.path)).list
       AppStorageService.sortArticleNodes(nodes)
-      expect(nodes.map(node => node.path)).toEqual([art1.path, art3.path, art2.path])
+      expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
+      expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
-    it('ベーシックケース - insertAfterNodePath', async () => {
+    it('ベーシックケース - カテゴリ直下のノードにソート順を設定', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
@@ -1601,31 +1668,41 @@ describe('AppStorageService', () => {
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
         articleNodeName: 'バンドル',
-        articleNodeType: StorageArticleNodeType.ListBundle,
+        articleNodeType: StorageArticleNodeType.CategoryBundle,
+      })
+      // カテゴリを作成
+      const cat1 = await storageService.createArticleTypeDir({
+        dir: `${bundle.path}`,
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
       })
 
       const art1 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
+        dir: `${cat1.path}`,
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 1,
       })
       const art2 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
+        dir: `${cat1.path}`,
         articleNodeName: '記事2',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 2,
       })
       const art3 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
+        dir: `${cat1.path}`,
         articleNodeName: '記事3',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 3,
       })
 
       // テスト対象実行
-      await storageService.setArticleSortOrder(art1.path, { insertAfterNodePath: art3.path })
+      await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [art3.path, art2.path, art1.path])
 
-      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, art3.path] })
+      const nodes = (await storageService.getChildren(cat1.path)).list
       AppStorageService.sortArticleNodes(nodes)
-      expect(nodes.map(node => node.path)).toEqual([art3.path, art1.path, art2.path])
+      expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
+      expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - 記事ルート直下のノードにソート順を設定', async () => {
@@ -1637,26 +1714,30 @@ describe('AppStorageService', () => {
         dir: `${articleRootPath}`,
         articleNodeName: 'バンドル1',
         articleNodeType: StorageArticleNodeType.ListBundle,
+        articleSortOrder: 1,
       })
       // バンドル2を作成
       const bundle2 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
         articleNodeName: 'バンドル2',
         articleNodeType: StorageArticleNodeType.ListBundle,
+        articleSortOrder: 2,
       })
       // バンドル3を作成
       const bundle3 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
         articleNodeName: 'バンドル3',
         articleNodeType: StorageArticleNodeType.ListBundle,
+        articleSortOrder: 3,
       })
 
       // テスト対象実行
-      await storageService.setArticleSortOrder(bundle1.path, { insertAfterNodePath: bundle3.path })
+      await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [bundle3.path, bundle2.path, bundle1.path])
 
-      const nodes = await storageService.getNodes({ paths: [bundle1.path, bundle2.path, bundle3.path] })
+      const nodes = (await storageService.getChildren(`${articleRootPath}`)).list
       AppStorageService.sortArticleNodes(nodes)
-      expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle1.path, bundle2.path])
+      expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle2.path, bundle1.path])
+      expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - カテゴリと記事の混在したディレクトリでソート順を設定', async () => {
@@ -1674,46 +1755,59 @@ describe('AppStorageService', () => {
         dir: `${bundle.path}`,
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 1,
       })
       // 記事2を作成
       const art2 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
         articleNodeName: '記事2',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 2,
       })
       // カテゴリ1を作成
       const cat1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        articleNodeName: '記事3',
-        articleNodeType: StorageArticleNodeType.Article,
+        articleNodeName: 'カテゴリ1',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 3,
       })
 
       // テスト対象実行
-      await storageService.setArticleSortOrder(cat1.path, { insertAfterNodePath: art1.path })
+      await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [cat1.path, art2.path, art1.path])
 
-      const nodes = await storageService.getNodes({ paths: [art1.path, art2.path, cat1.path] })
+      const nodes = (await storageService.getChildren(`${bundle.path}`)).list
       AppStorageService.sortArticleNodes(nodes)
-      expect(nodes.map(node => node.path)).toEqual([art2.path, art1.path, cat1.path])
+      expect(nodes.map(node => node.path)).toEqual([cat1.path, art2.path, art1.path])
+      expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
-    it('前後の挿入位置指定を両方ともしなかった場合', async () => {
+    it('親が違うノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
-      // バンドルを作成
-      const bundle = await storageService.createArticleTypeDir({
+
+      // バンドル1を作成
+      const bundle1 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        articleNodeName: 'バンドル',
+        articleNodeName: 'バンドル1',
         articleNodeType: StorageArticleNodeType.ListBundle,
       })
-
+      // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
+        dir: `${bundle1.path}`,
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
       })
+
+      // バンドル2を作成
+      const bundle2 = await storageService.createArticleTypeDir({
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル2',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+      })
+      // 記事2を作成
       const art2 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
+        dir: `${bundle2.path}`,
         articleNodeName: '記事2',
         articleNodeType: StorageArticleNodeType.Article,
       })
@@ -1721,58 +1815,48 @@ describe('AppStorageService', () => {
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.setArticleSortOrder(art1.path, {})
+        await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [art1.path, art2.path])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`Both 'insertBeforeNodePath' and 'insertAfterNodePath' are not specified.`)
+      expect(actual.detail.message).toBe(`There are multiple parents in 'orderNodePaths'.`)
+      expect(actual.detail.values).toEqual({ orderNodePaths: [art1.path, art2.path] })
     })
 
-    it('ターゲットノードと指定された前後のノードが兄弟でない場合', async () => {
+    it('ソート順を設定するノードが足りなかった場合', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
-      // バンドルを作成
-      const bundle = await storageService.createArticleTypeDir({
+      // バンドル1を作成
+      const bundle1 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        articleNodeName: 'バンドル',
-        articleNodeType: StorageArticleNodeType.CategoryBundle,
+        articleNodeName: 'バンドル1',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+        articleSortOrder: 1,
       })
-
-      const art1 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
-        articleNodeName: '記事1',
-        articleNodeType: StorageArticleNodeType.Article,
-      })
-      const cat1 = await storageService.createArticleTypeDir({
-        dir: `${bundle.path}`,
-        articleNodeName: 'カテゴリ1',
-        articleNodeType: StorageArticleNodeType.Category,
-      })
-      const art2 = await storageService.createArticleTypeDir({
-        dir: `${cat1.path}`,
-        articleNodeName: '記事2',
-        articleNodeType: StorageArticleNodeType.Article,
+      // バンドル2を作成
+      const bundle2 = await storageService.createArticleTypeDir({
+        dir: `${articleRootPath}`,
+        articleNodeName: 'バンドル2',
+        articleNodeType: StorageArticleNodeType.ListBundle,
+        articleSortOrder: 2,
       })
 
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        // ※'art2'は'art1'とは兄弟ノードでない
-        await storageService.setArticleSortOrder(art1.path, { insertBeforeNodePath: art2.path })
+        // ※本来は'bundle1'と'bundle2'を設定する必要があるが、ここでは'bundle1'のみを設定
+        await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [bundle1.path])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The two nodes are not siblings.`)
-      expect(actual.detail.values).toEqual({
-        nodePath: art1.path,
-        insertBeforeNodePath: art2.path,
-      })
+      expect(actual.detail.message).toBe(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`)
+      expect(actual.detail.values).toEqual({ orderNodePaths: [bundle1.path] })
     })
 
-    it('記事配下のノードをターゲットノードに指定した場合', async () => {
+    it('記事配下のノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
@@ -1795,18 +1879,18 @@ describe('AppStorageService', () => {
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.setArticleSortOrder(d1.path, { insertAfterNodePath: d2.path })
+        await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [d1.path, d2.path])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`Cannot set the sort order for the node.`)
+      expect(actual.detail.message).toBe(`It is not possible to set the sort order for child nodes.`)
       expect(actual.detail.values).toEqual({
-        node: { path: d1.path, articleNodeType: null },
+        parent: { id: art1.id, path: art1.path, articleNodeType: art1.articleNodeType },
       })
     })
 
-    it('アセット配下のノードをターゲットノードに指定した場合', async () => {
+    it('アセット配下のノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
@@ -1819,21 +1903,21 @@ describe('AppStorageService', () => {
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.setArticleSortOrder(d1.path, { insertAfterNodePath: d2.path })
+        await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [d1.path, d2.path])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`Cannot set the sort order for the node.`)
+      expect(actual.detail.message).toBe(`It is not possible to set the sort order for child nodes.`)
       expect(actual.detail.values).toEqual({
-        node: { path: d1.path, articleNodeType: null },
+        parent: { id: assets.id, path: assets.path, articleNodeType: assets.articleNodeType },
       })
     })
   })
 
   describe('getArticleChildren', () => {
     let articleRoot: StorageNode
-    let programing: StorageNode
+    let programming: StorageNode
     let introduction: StorageNode
     let introductionIndex: StorageNode
     let js: StorageNode
@@ -1851,7 +1935,7 @@ describe('AppStorageService', () => {
       // users
       // └test.storage
       //   ├articles
-      //   │└programing
+      //   │└programming
       //   │  ├introduction
       //   │  │└index.md
       //   │  ├js
@@ -1866,64 +1950,74 @@ describe('AppStorageService', () => {
       // users/test.storage
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
-      // programing
-      programing = await storageService.createArticleTypeDir({
+
+      // programming
+      programming = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        articleNodeName: 'programing',
+        articleNodeName: 'programming',
         articleNodeType: StorageArticleNodeType.CategoryBundle,
+        articleSortOrder: 1,
       })
+
       // introduction
       introduction = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'introduction',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 4,
       })
       // introduction/index.md
       introductionIndex = await storageService.sgetNode({ path: `${introduction.path}/${articleFileName}` })
+
       // js
       js = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'js',
         articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 3,
       })
-      await storageService.setArticleSortOrder(js.path, { insertAfterNodePath: introduction.path })
       // js/variable
       variable = await storageService.createArticleTypeDir({
         dir: `${js.path}`,
         articleNodeName: 'variable',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 1,
       })
       // js/variable/index.md
       variableIndex = await storageService.sgetNode({ path: `${variable.path}/${articleFileName}` })
+
       // ts
       ts = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'ts',
         articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 2,
       })
-      await storageService.setArticleSortOrder(ts.path, { insertAfterNodePath: js.path })
       // ts/class
       clazz = await storageService.createArticleTypeDir({
         dir: `${ts.path}`,
         articleNodeName: 'class',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 1,
       })
       // ts/class/index.md
       clazzIndex = await storageService.sgetNode({ path: `${clazz.path}/${articleFileName}` })
+
       // py
       py = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'py',
         articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 1,
       })
-      await storageService.setArticleSortOrder(py.path, { insertAfterNodePath: ts.path })
+
       // tmp
       const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
       tmp = await storageService.createDir(`${uerRootPath}/tmp`)
     })
 
     it('ベーシックケース', async () => {
-      const actual = await storageService.getArticleChildren(`${programing.path}`, [StorageArticleNodeType.Category, StorageArticleNodeType.Article])
+      const actual = await storageService.getArticleChildren(`${programming.path}`, [StorageArticleNodeType.Category, StorageArticleNodeType.Article])
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(4)
@@ -1936,7 +2030,7 @@ describe('AppStorageService', () => {
 
     it('対象ノードに存在しないノードを指定した場合', async () => {
       // パスに存在しないノードを指定
-      const actual = await storageService.getArticleChildren(`${programing.path}/cobol`, [StorageArticleNodeType.Category])
+      const actual = await storageService.getArticleChildren(`${programming.path}/cobol`, [StorageArticleNodeType.Category])
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(0)
@@ -2001,51 +2095,54 @@ describe('AppStorageService', () => {
       //       ︙
       const blog = newAppStorageDirNode(`blog`, {
         articleNodeType: StorageArticleNodeType.ListBundle,
-        articleSortOrder: 9,
+        articleSortOrder: 2,
       })
       const blog_art1 = newAppStorageDirNode(`blog/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 99,
+        articleSortOrder: 2,
       })
       const blog_art1_index = newAppStorageFileNode(`blog/art1/index.md`)
       const blog_art2 = newAppStorageDirNode(`blog/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 98,
+        articleSortOrder: 1,
       })
       const blog_art2_index = newAppStorageFileNode(`blog/art2/index.md`)
+
       const category = newAppStorageDirNode(`category`, {
         articleNodeType: StorageArticleNodeType.CategoryBundle,
-        articleSortOrder: 8,
+        articleSortOrder: 1,
       })
       const category_art1 = newAppStorageDirNode(`category/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 99,
+        articleSortOrder: 4,
       })
       const category_art2 = newAppStorageDirNode(`category/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 98,
+        articleSortOrder: 3,
       })
       const category_ts = newAppStorageDirNode(`category/TypeScript`, {
-        articleSortOrder: 97,
+        articleSortOrder: 2,
       })
       const category_ts_art1 = newAppStorageDirNode(`category/TypeScript/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 999,
+        articleSortOrder: 2,
       })
       const category_ts_art1_index = newAppStorageFileNode(`category/TypeScript/art1/index.md`)
       const category_ts_art2 = newAppStorageDirNode(`category/TypeScript/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 998,
+        articleSortOrder: 1,
       })
       const category_ts_art2_index = newAppStorageFileNode(`category/TypeScript/art2/index.md`)
-      const category_js = newAppStorageDirNode(`category/JavaScript`)
+      const category_js = newAppStorageDirNode(`category/JavaScript`, {
+        articleSortOrder: 1,
+      })
       const category_js_art1 = newAppStorageDirNode(`category/JavaScript/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 999,
+        articleSortOrder: 2,
       })
       const category_js_art2 = newAppStorageDirNode(`category/JavaScript/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 998,
+        articleSortOrder: 1,
       })
 
       const nodes = shuffleArray([
@@ -2512,7 +2609,7 @@ describe('AppStorageService', () => {
 
   describe('moveDir', () => {
     let articleRoot: StorageNode
-    let programing: StorageNode
+    let programming: StorageNode
     let introduction: StorageNode
     let introductionIndex: StorageNode
     let js: StorageNode
@@ -2530,13 +2627,13 @@ describe('AppStorageService', () => {
       // users
       // └test.storage
       //   ├articles
-      //   │└programing
+      //   │└programming
       //   │  ├introduction
       //   │  │└index.md
       //   │  ├js
       //   │  │└variable
       //   │  │  └index.md
-      //   │  └ts
+      //   │  ├ts
       //   │  │└class
       //   │  │  └index.md
       //   │  └py
@@ -2545,42 +2642,32 @@ describe('AppStorageService', () => {
       // users/test.storage
       const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
       articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
-      // programing
-      programing = await storageService.createArticleTypeDir({
+
+      // programming
+      programming = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        articleNodeName: 'programing',
+        articleNodeName: 'programming',
         articleNodeType: StorageArticleNodeType.CategoryBundle,
+        articleSortOrder: 1,
       })
+
       // introduction
       introduction = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'introduction',
         articleNodeType: StorageArticleNodeType.Article,
+        articleSortOrder: 4,
       })
       // introduction/index.md
       introductionIndex = await storageService.sgetNode({ path: `${introduction.path}/${articleFileName}` })
-      // js
-      js = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
-        articleNodeName: 'js',
-        articleNodeType: StorageArticleNodeType.Category,
-      })
-      await storageService.setArticleSortOrder(js.path, { insertAfterNodePath: introduction.path })
-      // js/variable
-      variable = await storageService.createArticleTypeDir({
-        dir: `${js.path}`,
-        articleNodeName: 'variable',
-        articleNodeType: StorageArticleNodeType.Article,
-      })
-      // js/variable/index.md
-      variableIndex = await storageService.sgetNode({ path: `${variable.path}/${articleFileName}` })
+
       // ts
       ts = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'ts',
         articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 3,
       })
-      await storageService.setArticleSortOrder(ts.path, { insertAfterNodePath: js.path })
       // ts/class
       clazz = await storageService.createArticleTypeDir({
         dir: `${ts.path}`,
@@ -2589,13 +2676,31 @@ describe('AppStorageService', () => {
       })
       // ts/class/index.md
       clazzIndex = await storageService.sgetNode({ path: `${clazz.path}/${articleFileName}` })
+
+      // js
+      js = await storageService.createArticleTypeDir({
+        dir: `${programming.path}`,
+        articleNodeName: 'js',
+        articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 2,
+      })
+      // js/variable
+      variable = await storageService.createArticleTypeDir({
+        dir: `${js.path}`,
+        articleNodeName: 'variable',
+        articleNodeType: StorageArticleNodeType.Article,
+      })
+      // js/variable/index.md
+      variableIndex = await storageService.sgetNode({ path: `${variable.path}/${articleFileName}` })
+
       // py
       py = await storageService.createArticleTypeDir({
-        dir: `${programing.path}`,
+        dir: `${programming.path}`,
         articleNodeName: 'py',
         articleNodeType: StorageArticleNodeType.Category,
+        articleSortOrder: 1,
       })
-      await storageService.setArticleSortOrder(py.path, { insertAfterNodePath: ts.path })
+
       // tmp
       const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
       tmp = await storageService.createDir(`${uerRootPath}/tmp`)
@@ -2606,38 +2711,45 @@ describe('AppStorageService', () => {
         let actual!: InputValidationError
         try {
           // バンドルを移動しようとした場合
-          // 'programing'を'tmp/programing'へ移動
-          await storageService.moveDir(`${programing.path}`, `${tmp.path}/${programing.name}`)
+          // 'programming'を'tmp/programming'へ移動
+          await storageService.moveDir(`${programming.path}`, `${tmp.path}/${programming.name}`)
         } catch (err) {
           actual = err
         }
 
         expect(actual.detail.message).toBe(`Article bundles cannot be moved.`)
-        expect(actual.detail.values!['movingNode']).toEqual({ path: programing.path, articleNodeType: programing.articleNodeType })
+        expect(actual.detail.values!['movingNode']).toEqual({ path: programming.path, articleNodeType: programming.articleNodeType })
       })
     })
 
     describe('カテゴリの移動', () => {
       it('ベーシックケース', async () => {
-        // カテゴリを別のカテゴリへ移動
-        // 'programing/ts'を'programing/js/ts'へ移動
-        const toNodePath = `${js.path}/${ts.name}`
-        const actual = await storageService.moveDir(`${ts.path}`, toNodePath)
+        // 移動前の'programming/ts'のソート順を検証
+        expect(ts.articleSortOrder).toBe(3)
 
-        // 移動後の'programing/js/ts'＋配下ノードを検証
+        // カテゴリを別のカテゴリへ移動
+        // 'programming/ts'を'programming/js/ts'へ移動
+        const toNodePath = `${js.path}/${ts.name}`
+        await storageService.moveDir(`${ts.path}`, toNodePath)
+
+        // 移動後の'programming/js/ts'＋配下ノードを検証
         const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
         AppStorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(3)
         expect(toNodes[0].path).toBe(`${js.path}/${ts.name}`)
         expect(toNodes[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
         expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazzIndex.name}`)
+
+        // 移動後の'programming/js/ts'のソート順を検証
+        const _ts = toNodes[0]
+        expect(_ts.articleSortOrder).toBe(2)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
         let actual!: InputValidationError
         try {
           // カテゴリを記事へ移動しようとした場合
-          // 'programing/ts'を'programing/js/variable/ts'へ移動
+          // 'programming/ts'を'programming/js/variable/ts'へ移動
           await storageService.moveDir(`${ts.path}`, `${variable.path}/${ts.name}`)
         } catch (err) {
           actual = err
@@ -2651,24 +2763,31 @@ describe('AppStorageService', () => {
 
     describe('記事の移動', () => {
       it('ベーシックケース', async () => {
+        // 移動前の'programming/js/variable'のソート順を検証
+        expect(variable.articleSortOrder).toBe(1)
+
         // 記事をカテゴリへ移動
-        // 'programing/js/variable'を'programing/ts/variable'へ移動
+        // 'programming/js/variable'を'programming/ts/variable'へ移動
         const toNodePath = `${ts.path}/${variable.name}`
         await storageService.moveDir(`${variable.path}`, toNodePath)
 
-        // 移動後の'programing/ts/variable'＋配下ノードを検証
+        // 移動後の'programming/ts/variable'＋配下ノードを検証
         const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
         AppStorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(2)
         expect(toNodes[0].path).toBe(`${ts.path}/${variable.name}`)
         expect(toNodes[1].path).toBe(`${ts.path}/${variable.name}/${variableIndex.name}`)
+
+        // 移動後の'programming/ts/variable'のソート順を検証
+        const _variable = toNodes[0]
+        expect(_variable.articleSortOrder).toBe(2)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
         let actual!: InputValidationError
         try {
           //  記事を記事へ移動しようとした場合
-          // 'programing/ts/class'を'programing/js/variable/class'へ移動
+          // 'programming/ts/class'を'programming/js/variable/class'へ移動
           await storageService.moveDir(`${clazz.path}`, `${variable.path}/${clazz.name}`)
         } catch (err) {
           actual = err
@@ -2683,11 +2802,11 @@ describe('AppStorageService', () => {
     describe('一般ディレクトリの移動', () => {
       it('ベーシックケース', async () => {
         // 一般ディレクトリを記事へ移動
-        // 'tmp'を'programing/js/variable/tmp'へ移動
+        // 'tmp'を'programming/js/variable/tmp'へ移動
         const toNodePath = `${variable.path}/${tmp.name}`
         const actual = await storageService.moveDir(`${tmp.path}`, toNodePath)
 
-        // 移動後の'programing/js/variable/tmp'＋配下ノードを検証
+        // 移動後の'programming/js/variable/tmp'＋配下ノードを検証
         const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
         AppStorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(1)
@@ -2711,15 +2830,15 @@ describe('AppStorageService', () => {
         let actual!: InputValidationError
         try {
           //  一般ディレクトリをカテゴリバンドルへ移動しようとした場合
-          // 'tmp'を'programing/tmp'へ移動
-          await storageService.moveDir(`${tmp.path}`, `${programing.path}/${tmp.name}`)
+          // 'tmp'を'programming/tmp'へ移動
+          await storageService.moveDir(`${tmp.path}`, `${programming.path}/${tmp.name}`)
         } catch (err) {
           actual = err
         }
 
         expect(actual.detail.message).toBe(`The general directory can only be moved to the general directory or articles.`)
         expect(actual.detail.values!['movingNode']).toEqual({ path: tmp.path, articleNodeType: tmp.articleNodeType })
-        expect(actual.detail.values!['toParentNode']).toEqual({ path: programing.path, articleNodeType: programing.articleNodeType })
+        expect(actual.detail.values!['toParentNode']).toEqual({ path: programming.path, articleNodeType: programming.articleNodeType })
       })
     })
 

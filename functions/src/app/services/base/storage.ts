@@ -1544,6 +1544,11 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     if (!rawNode) return undefined
     return {
       ...rawNode,
+      share: rawNode.share || { isPublic: null, readUIds: null, writeUIds: null },
+      articleNodeName: rawNode.articleNodeName ?? null,
+      articleNodeType: rawNode.articleNodeType ?? null,
+      articleSortOrder: rawNode.articleSortOrder ?? null,
+      isArticleFile: rawNode.isArticleFile ?? false,
       createdAt: dayjs(rawNode.createdAt),
       updatedAt: dayjs(rawNode.updatedAt),
     } as NODE
