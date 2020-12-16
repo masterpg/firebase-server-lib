@@ -1,5 +1,5 @@
+import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
 import { AuthServiceModule, CORSServiceModule } from '../../../../../src/app/services'
-import { CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
 import { DateTimeScalar, LongScalar, getSchemaFirstGQLModuleOptions } from '../../../../../src/app/gql/base'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { DummyResolver } from './dummy'
@@ -16,12 +16,17 @@ const gqlOptions = getSchemaFirstGQLModuleOptions(['tests/helpers/app/gql/mock/i
 @Module({
   providers: [DummyResolver, DateTimeScalar, LongScalar],
   imports: [GraphQLModule.forRoot(gqlOptions), AuthServiceModule],
+  exports: [AuthServiceModule],
 })
-class MockGQLModule {}
+class MockGQLModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+  }
+}
 
 @Module({
-  providers: [DummyResolver, DateTimeScalar, LongScalar],
-  imports: [GraphQLModule.forRoot(gqlOptions), AuthServiceModule, CORSServiceModule],
+  imports: [MockGQLModule, CORSServiceModule],
+  exports: [CORSServiceModule],
 })
 class MockCORSGQLModule {
   configure(consumer: MiddlewareConsumer) {
@@ -30,14 +35,10 @@ class MockCORSGQLModule {
 }
 
 @Module({
-  providers: [DummyResolver, CORSAppGuardDI.provider, DateTimeScalar, LongScalar],
-  imports: [GraphQLModule.forRoot(gqlOptions), AuthServiceModule, CORSServiceModule],
+  providers: [CORSAppGuardDI.provider],
+  imports: [MockCORSGQLModule],
 })
-class MockCORSGuardGQLModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
-  }
-}
+class MockCORSGuardGQLModule {}
 
 //========================================================================
 //

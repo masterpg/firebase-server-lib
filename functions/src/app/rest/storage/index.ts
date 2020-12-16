@@ -1,5 +1,5 @@
-import { AppStorageServiceDI, AppStorageServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
-import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { AppStorageServiceDI, AppStorageServiceModule, AuthServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
+import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
 import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseRESTModule } from '../base'
@@ -37,11 +37,12 @@ class StorageRESTModule {}
 
 @Module({
   providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider],
-  imports: [LoggingServiceModule, CORSServiceModule, KeepAliveRESTModule, StorageRESTModule],
+  imports: [LoggingServiceModule, CORSServiceModule, AuthServiceModule, KeepAliveRESTModule, StorageRESTModule],
 })
 class StorageContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+    consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
 

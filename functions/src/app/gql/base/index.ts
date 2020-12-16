@@ -1,13 +1,10 @@
 import * as _path from 'path'
-import { CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, DateTimeScalar, GQLContext, HTTPLoggingAppInterceptorDI, LongScalar } from '../../nest'
+import { AuthServiceModule, CORSServiceModule } from '../../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
-import { CORSServiceModule } from '../../services'
-import { DateTimeScalar } from './scalars/date-time'
-import { GQLContext } from './base'
 import { GqlModuleOptions } from '@nestjs/graphql'
 import { LoggingServiceModule } from '../../services/base/logging'
-import { LongScalar } from './scalars/long'
 import { config } from '../../../config'
 import { merge } from 'lodash'
 import { print } from 'graphql/language/printer'
@@ -91,11 +88,12 @@ function getSchemaFirstGQLModuleOptions(schemaFilesOrDirs: string[] = []): GqlMo
 
 @Module({
   providers: [HTTPLoggingAppInterceptorDI.provider, CORSAppGuardDI.provider, DateTimeScalar, LongScalar],
-  imports: [LoggingServiceModule, CORSServiceModule],
+  imports: [LoggingServiceModule, CORSServiceModule, AuthServiceModule],
 })
 class BaseGQLContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+    consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
 
@@ -106,8 +104,7 @@ class BaseGQLContainerModule {
 //========================================================================
 
 export { getCodeFirstGQLModuleOptions, getSchemaFirstGQLModuleOptions, BaseGQLContainerModule }
-export * from './base'
-export * from './decorators/context'
-export * from './scalars/date-time'
-export * from './scalars/long'
+export * from '../../nest/decorators/gql-context-arg'
+export * from '../../nest/scalars/date-time'
+export * from '../../nest/scalars/long'
 export * from './keepalive'

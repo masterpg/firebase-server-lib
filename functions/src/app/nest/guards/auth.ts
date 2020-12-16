@@ -26,7 +26,6 @@ class AuthGuard implements CanActivate {
 
     const validated = await this.authService.validate(req, res, roles)
     if (validated.result) {
-      ;(req as any).__idToken = validated.idToken
       return true
     } else {
       const error = validated.error

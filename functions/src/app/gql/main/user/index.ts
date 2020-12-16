@@ -9,7 +9,7 @@ import {
   UserServiceDI,
   UserServiceModule,
 } from '../../../services'
-import { GQLContext, GQLContextArg } from '../../base'
+import { GQLContext, GQLContextArg } from '../../../nest'
 import { Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
 

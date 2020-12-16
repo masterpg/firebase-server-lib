@@ -16,9 +16,8 @@ import {
   StoragePaginationResult,
 } from '../../../services'
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthGuard, UserArg } from '../../../nest'
-import { GQLContext, GQLContextArg } from '../../base'
-import { Inject, UseGuards } from '@nestjs/common'
+import { GQLContext, GQLContextArg, UserArg } from '../../../nest'
+import { Inject } from '@nestjs/common'
 import { InputValidationError } from '../../../base'
 import { Module } from '@nestjs/common'
 
@@ -259,7 +258,6 @@ class StorageResolver {
   }
 
   @Mutation()
-  @UseGuards(AuthGuard)
   async setArticleSortOrder(
     @GQLContextArg() ctx: GQLContext,
     @UserArg() user: IdToken,

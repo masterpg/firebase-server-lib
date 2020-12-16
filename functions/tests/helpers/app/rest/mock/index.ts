@@ -1,5 +1,5 @@
+import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
 import { AuthServiceModule, CORSServiceModule } from '../../../../../src/app/services'
-import { CORSAppGuardDI, CORSMiddleware } from '../../../../../src/app/nest'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { DummyController } from './dummy'
 
@@ -12,12 +12,17 @@ import { DummyController } from './dummy'
 @Module({
   controllers: [DummyController],
   imports: [AuthServiceModule],
+  exports: [AuthServiceModule],
 })
-class MockRESTModule {}
+class MockRESTModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+  }
+}
 
 @Module({
-  controllers: [DummyController],
-  imports: [AuthServiceModule, CORSServiceModule],
+  imports: [MockRESTModule, CORSServiceModule],
+  exports: [CORSServiceModule],
 })
 class MockCORSRESTModule {
   configure(consumer: MiddlewareConsumer) {
@@ -26,15 +31,10 @@ class MockCORSRESTModule {
 }
 
 @Module({
-  controllers: [DummyController],
   providers: [CORSAppGuardDI.provider],
-  imports: [AuthServiceModule, CORSServiceModule],
+  imports: [MockCORSRESTModule],
 })
-class MockCORSGuardRESTModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
-  }
-}
+class MockCORSGuardRESTModule {}
 
 //========================================================================
 //
