@@ -10,7 +10,7 @@ import {
   newAppStorageDirNode,
   requestGQL,
 } from '../../../../../../helpers/app'
-import { AppStorageServiceDI, DevUtilsServiceDI, DevUtilsServiceModule, StoragePaginationResult } from '../../../../../../../src/app/services'
+import { AppStorageService, AppStorageServiceDI, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv3GQLContainerModule from '../../../../../../../src/app/gql/main/lv3'
 import { initApp } from '../../../../../../../src/app/base'
@@ -77,7 +77,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
       const removeDir = td.replace(storageService, 'removeDir')
 
@@ -124,7 +124,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
 
       const response = await requestGQL(
@@ -169,7 +169,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const moveDir = td.replace(storageService, 'moveDir')
 
       const response = await requestGQL(
@@ -211,7 +211,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,
@@ -255,7 +255,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('疎通確認 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const renameDir = td.replace(storageService, 'renameDir')
 
       const response = await requestGQL(
@@ -297,7 +297,7 @@ describe('Lv3 Storage Resolver', () => {
     })
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
 
       const response = await requestGQL(
         app,

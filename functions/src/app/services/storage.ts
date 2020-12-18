@@ -39,10 +39,10 @@ interface ValidateAccessibleTarget {
   nodes?: StorageNode[]
 }
 
-interface TreeStorageNode {
-  item: StorageNode
-  parent?: TreeStorageNode
-  children: TreeStorageNode[]
+interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
+  item: NODE
+  parent?: TreeStorageNode<NODE>
+  children: TreeStorageNode<NODE>[]
 }
 
 //========================================================================
@@ -61,14 +61,6 @@ class AppStorageService extends StorageService {
   //  Methods
   //
   //----------------------------------------------------------------------
-
-  /**
-   * ユーザーディレクトリパスを取得します。
-   * @param user
-   */
-  getUserRootPath(user: { uid: string }): string {
-    return _path.join(config.storage.user.rootName, user.uid)
-  }
 
   /**
    * 指定されたノードパスへリクエストユーザーがアクセス可能か検証します。
@@ -105,7 +97,7 @@ class AppStorageService extends StorageService {
       for (const nodePath of nodePaths) {
         if (!this.m_isUserNode(nodePath)) continue
         // 指定ノードが自ユーザーの所有物でない場合
-        const userRootPath = this.getUserRootPath({ uid: idToken.uid })
+        const userRootPath = AppStorageService.getUserRootPath({ uid: idToken.uid })
         const isOwnUserNode = nodePath == userRootPath || nodePath.startsWith(`${userRootPath}/`)
         if (!isOwnUserNode) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
@@ -156,7 +148,7 @@ class AppStorageService extends StorageService {
     //
     if (this.m_isUserNode(fileNode.path)) {
       // 指定ファイルが自ユーザーの所有物である場合
-      const userRootPath = this.getUserRootPath(user)
+      const userRootPath = AppStorageService.getUserRootPath(user)
       if (fileNode.path.startsWith(_path.join(userRootPath, '/'))) {
         return this.streamFile(req, res, fileNode)
       }
@@ -224,7 +216,7 @@ class AppStorageService extends StorageService {
       })
     }
 
-    const userRootPath = this.getUserRootPath({ uid })
+    const userRootPath = AppStorageService.getUserRootPath({ uid })
     await deleteFiles(userRootPath)
     await deleteFileNodes(userRootPath)
   }
@@ -232,14 +224,6 @@ class AppStorageService extends StorageService {
   //--------------------------------------------------
   //  Article
   //--------------------------------------------------
-
-  /**
-   * ユーザーの記事ルートのパスを取得します。
-   * @param user
-   */
-  getArticleRootPath(user: { uid: string }): string {
-    return _path.join(this.getUserRootPath(user), config.storage.article.rootName)
-  }
 
   /**
    * 記事系ディレクトリを作成します。
@@ -283,7 +267,7 @@ class AppStorageService extends StorageService {
     AppStorageService.validatePath(dirPath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
-    this.m_validateArticleRootDescendant(dirPath)
+    this.m_validateArticleRootUnder(dirPath)
 
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
@@ -365,7 +349,7 @@ class AppStorageService extends StorageService {
     nodePath = removeBothEndsSlash(nodePath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
-    this.m_validateArticleRootDescendant(nodePath)
+    this.m_validateArticleRootUnder(nodePath)
 
     const node = await this.sgetNode({ path: nodePath })
     switch (node.nodeType) {
@@ -423,7 +407,7 @@ class AppStorageService extends StorageService {
     // 子ノードにソート順を設定することはできない。
     if (
       !(
-        parentNode.path === this.getArticleRootPath(user) ||
+        parentNode.path === AppStorageService.getArticleRootPath(user) ||
         parentNode.articleNodeType === StorageArticleNodeType.ListBundle ||
         parentNode.articleNodeType === StorageArticleNodeType.CategoryBundle ||
         parentNode.articleNodeType === StorageArticleNodeType.Category
@@ -532,7 +516,7 @@ class AppStorageService extends StorageService {
   async createDir(dirPath: string, input?: CreateStorageNodeInput): Promise<StorageNode> {
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
-    if (this.m_isArticleRootDescendants(dirPath)) {
+    if (AppStorageService.isArticleRootUnder(dirPath)) {
       throw new InputValidationError(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
     }
 
@@ -543,7 +527,7 @@ class AppStorageService extends StorageService {
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     for (const dirPath of splitHierarchicalPaths(...dirPaths)) {
-      if (this.m_isArticleRootDescendants(dirPath)) {
+      if (AppStorageService.isArticleRootUnder(dirPath)) {
         throw new InputValidationError(`This method 'createHierarchicalDirs()' cannot create an article under directory '${dirPath}'.`)
       }
     }
@@ -868,14 +852,14 @@ class AppStorageService extends StorageService {
       AppStorageService.validatePath(dirPath)
       dirPath = removeBothEndsSlash(dirPath)
       // 引数パスが記事ルート配下のものか検証
-      this.m_validateArticleRootDescendant(dirPath)
+      this.m_validateArticleRootUnder(dirPath)
       // 引数パスの階層構造形成に必要なノードを取得
       hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
     } else {
       hierarchicalDirNodes = dirPath_or_hierarchicalDirNodes
       dirPath = hierarchicalDirNodes[hierarchicalDirNodes.length - 1].path
       // 引数パスが記事ルート配下のものか検証
-      this.m_validateArticleRootDescendant(dirPath)
+      this.m_validateArticleRootUnder(dirPath)
     }
 
     const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
@@ -925,7 +909,7 @@ class AppStorageService extends StorageService {
    * 指定されたパスが記事ルート配下のノードであることを検証します。
    * @param nodePath
    */
-  protected m_validateArticleRootDescendant(nodePath: string): void {
+  protected m_validateArticleRootUnder(nodePath: string): void {
     nodePath = removeBothEndsSlash(nodePath)
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
@@ -935,29 +919,6 @@ class AppStorageService extends StorageService {
     if (!reg.test(nodePath)) {
       throw new InputValidationError(`The specified path is not under article root: '${nodePath}'`)
     }
-  }
-
-  /**
-   * 指定されたパスが記事ルートの配下ノードか否かを取得します。
-   * @param nodePath
-   */
-  protected m_isArticleRootDescendants(nodePath: string): boolean {
-    const userRootName = config.storage.user.rootName
-    const articleRootName = config.storage.article.rootName
-    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/`)
-    return reg.test(nodePath)
-  }
-
-  /**
-   * 指定されたパスがアセットディレクトリを含めファミリーノードか否かを取得します。
-   * @param nodePath
-   */
-  protected m_isArticleAssetsFamily(nodePath: string): boolean {
-    const userRootName = config.storage.user.rootName
-    const articleRootName = config.storage.article.rootName
-    const assetsName = config.storage.article.assetsName
-    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/(?:${assetsName}$|${assetsName}/)`)
-    return reg.test(nodePath)
   }
 
   /**
@@ -1077,17 +1038,106 @@ class AppStorageService extends StorageService {
   //----------------------------------------------------------------------
 
   /**
+   * ユーザーディレクトリパスを取得します。
+   * @param user
+   */
+  static getUserRootPath(user: { uid: string }): string {
+    return _path.join(config.storage.user.rootName, user.uid)
+  }
+
+  /**
+   * ユーザーの記事ルートのパスを取得します。
+   * @param user
+   */
+  static getArticleRootPath(user: { uid: string }): string {
+    return _path.join(this.getUserRootPath(user), config.storage.article.rootName)
+  }
+
+  /**
+   * 記事用のアッセトディレクトリのパスを取得します。
+   * @param user
+   */
+  static getArticleAssetPath(user: { uid: string }): string {
+    return _path.join(this.getArticleRootPath(user), config.storage.article.assetsName)
+  }
+
+  /**
+   * 指定されたパスが記事ルートの配下ノードか否かを取得します。
+   * @param nodePath
+   */
+  static isArticleRootUnder(nodePath: string): boolean {
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/`)
+    return reg.test(nodePath)
+  }
+
+  /**
+   * 指定されたパスが記事ルートを含めたファミリーノードか否かを取得します。
+   * @param nodePath
+   */
+  static isArticleRootFamily(nodePath: string): boolean {
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const reg = new RegExp(`^${userRootName}/[^/]+/(?:${articleRootName}$|${articleRootName}/)`)
+    return reg.test(nodePath)
+  }
+
+  /**
+   * 指定されたパスがアセットディレクトリを含めたファミリーノードか否かを取得します。
+   * @param nodePath
+   */
+  static isArticleAssetFamily(nodePath: string): boolean {
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+    const assetsName = config.storage.article.assetsName
+    const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/(?:${assetsName}$|${assetsName}/)`)
+    return reg.test(nodePath)
+  }
+
+  /**
    * 記事ノード配列をディレクトリ階層に従ってソートします。
    * @param nodes
    */
-  static sortArticleNodes(nodes: StorageNode[]): StorageNode[] {
-    AppStorageService.sortNodes(nodes)
+  static sortNodes<NODE extends StorageNode>(nodes: NODE[]): NODE[] {
+    const sortChildren = (children: TreeStorageNode<NODE>[]) => {
+      children.sort((treeNodeA, treeNodeB) => {
+        const a = treeNodeA.item
+        const b = treeNodeB.item
+        if (a.nodeType === b.nodeType) {
+          const orderA = a.articleSortOrder ?? 0
+          const orderB = b.articleSortOrder ?? 0
+          if (orderA === orderB) {
+            const nameA = a.articleNodeName || a.name
+            const nameB = b.articleNodeName || b.name
+            return nameA < nameB ? -1 : nameA > nameB ? 1 : 0
+          } else {
+            return orderB - orderA
+          }
+        } else {
+          return a.nodeType === StorageNodeType.Dir ? -1 : 1
+        }
+      })
+    }
 
-    const topTreeNodes: TreeStorageNode[] = []
-    const treeNodeDict: { [path: string]: TreeStorageNode } = {}
+    const sort = (treeNodes: TreeStorageNode<NODE>[]) => {
+      for (const treeNode of treeNodes) {
+        nodes.push(treeNode.item)
+        this.isArticleRootFamily(treeNode.item.path) && sortChildren(treeNode.children)
+        sort(treeNode.children)
+      }
+    }
+
+    // 一旦通常のディレクトリ階層用のソートを行う
+    StorageService.sortNodes(nodes)
+
+    // ノード配列をツリー構造に変換し、トップレベルのノードのみ配列に抽出する
+    // ※トップレベルノード = 親が存在しないノード
+    const topTreeNodes: TreeStorageNode<NODE>[] = []
+    const treeNodeDict: { [path: string]: TreeStorageNode<NODE> } = {}
     for (const node of nodes) {
       const parent = treeNodeDict[node.dir]
-      const treeNode: TreeStorageNode = { item: node, parent, children: [] }
+      const treeNode: TreeStorageNode<NODE> = { item: node, parent, children: [] }
       treeNodeDict[node.path] = treeNode
       if (parent) {
         parent.children.push(treeNode)
@@ -1096,31 +1146,14 @@ class AppStorageService extends StorageService {
       }
     }
 
+    // 引数ノード配列を一旦クリアする
+    // この後のソートで並べ替えられたノードがこの配列に設定される
     nodes.splice(0)
 
-    const sort = (treeNodes: TreeStorageNode[]) => {
-      treeNodes.sort((treeNodeA, treeNodeB) => {
-        const a = treeNodeA.item
-        const b = treeNodeB.item
-        if (a.nodeType === b.nodeType) {
-          const orderA = a.articleSortOrder ?? 0
-          const orderB = b.articleSortOrder ?? 0
-          if (orderA === orderB) {
-            return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
-          } else {
-            return orderB - orderA
-          }
-        } else {
-          return a.nodeType === StorageNodeType.Dir ? -1 : 1
-        }
-      })
+    // トップレベルノードが記事ルート配下のものである場合、記事系ソートを行う
+    this.isArticleRootUnder(topTreeNodes[0].item.path) && sortChildren(topTreeNodes)
 
-      for (const treeNode of treeNodes) {
-        nodes.push(treeNode.item)
-        sort(treeNode.children)
-      }
-    }
-
+    // トップレベルノードの配下にあるノードのソートを行う
     sort(topTreeNodes)
 
     return nodes

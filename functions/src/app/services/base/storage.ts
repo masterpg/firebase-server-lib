@@ -308,6 +308,130 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     return this.m_getDescendants(dirPath, { ...input, includeSpecifiedDir: false })
   }
 
+  private async m_getDescendants(
+    dirPath?: string,
+    input?: StoragePaginationInput & { includeSpecifiedDir: boolean }
+  ): Promise<StoragePaginationResult<NODE>> {
+    dirPath = removeBothEndsSlash(dirPath)
+    const maxChunk = input?.maxChunk || StorageService.MaxChunk
+    const from = input?.pageToken ? Number(input.pageToken) : 0
+    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+
+    let query: any
+    // 引数ディレクトリが指定された場合
+    if (dirPath) {
+      if (includeSpecifiedDir) {
+        query = {
+          bool: {
+            should: [
+              {
+                bool: {
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                },
+              },
+              { wildcard: { path: `${dirPath}/*` } },
+            ],
+          },
+        }
+      } else {
+        query = { wildcard: { path: `${dirPath}/*` } }
+      }
+    }
+    // 引数ディレクトリが指定されなかった場合
+    else {
+      // バケット配下を検索 (全ノード検索)
+      query = { match_all: {} }
+    }
+
+    // データベースからノードを取得
+    const response = await this.client.search<SearchResponse<RawStorageNode>>({
+      index: StorageService.IndexName,
+      size: maxChunk,
+      from,
+      body: {
+        query,
+        sort: [{ path: 'asc' }],
+      },
+    })
+    const nodes = this.responseToNodes(response) as NODE[]
+
+    // 引数ディレクトリを含む検索の初回検索だった場合
+    if (includeSpecifiedDir && dirPath && !input?.pageToken) {
+      // 引数で指定されたパスのノードが存在しない場合
+      if (!nodes.some(node => node.path === dirPath)) {
+        // 検索結果なしで終了
+        return { list: [] }
+      }
+    }
+
+    // 次ページの検索開始位置を取得
+    let nextPageToken: string | undefined
+    if (nodes.length === 0 || nodes.length < maxChunk) {
+      nextPageToken = undefined
+    } else {
+      nextPageToken = String(from + nodes.length)
+    }
+
+    return { nextPageToken, list: nodes }
+  }
+
+  /**
+   * 指定されたディレクトリ＋配下のノードの数を取得します。
+   *
+   * @param dirPath
+   */
+  async getDirDescendantCount(dirPath?: string): Promise<number> {
+    return this.m_getDescendantCount(dirPath, { includeSpecifiedDir: true })
+  }
+
+  /**
+   * 指定されたディレクトリ配下のノードの数を取得します。
+   *
+   * @param dirPath
+   * @param input
+   */
+  async getDescendantCount(dirPath?: string, input?: StoragePaginationInput): Promise<number> {
+    return this.m_getDescendantCount(dirPath, { includeSpecifiedDir: false })
+  }
+
+  private async m_getDescendantCount(dirPath?: string, input?: { includeSpecifiedDir: boolean }): Promise<number> {
+    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+
+    let query: any
+    // 引数ディレクトリが指定された場合
+    if (dirPath) {
+      if (includeSpecifiedDir) {
+        query = {
+          bool: {
+            should: [
+              {
+                bool: {
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                },
+              },
+              { wildcard: { path: `${dirPath}/*` } },
+            ],
+          },
+        }
+      } else {
+        query = { wildcard: { path: `${dirPath}/*` } }
+      }
+    }
+    // 引数ディレクトリが指定されなかった場合
+    else {
+      // バケット配下を検索 (全ノード検索)
+      query = { match_all: {} }
+    }
+
+    // データベースからカウントを取得
+    const response = await this.client.count({
+      index: StorageService.IndexName,
+      body: { query },
+    })
+
+    return response.body.count
+  }
+
   /**
    * 指定されたディレクトリ＋直下のノードを取得します。
    *
@@ -324,71 +448,6 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    */
   async getDirChildren(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
     return this.m_getChildren(dirPath, { ...input, includeSpecifiedDir: true })
-  }
-
-  private async m_getDescendants(
-    dirPath?: string,
-    input?: StoragePaginationInput & { includeSpecifiedDir: boolean }
-  ): Promise<StoragePaginationResult<NODE>> {
-    dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = input?.maxChunk || StorageService.MaxChunk
-    const from = input?.pageToken ? Number(input.pageToken) : 0
-    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
-
-    let query: any
-    // 引数ディレクトリが指定された場合
-    if (dirPath) {
-      if (includeSpecifiedDir) {
-        query = {
-          bool: {
-            should: [{ term: { path: dirPath } }, { wildcard: { path: `${dirPath}/*` } }],
-          },
-        }
-      } else {
-        query = {
-          wildcard: { path: `${dirPath}/*` },
-        }
-      }
-    }
-    // 引数ディレクトリが指定されなかった場合
-    else {
-      // バケット配下を検索 (全ノード検索)
-      query = {
-        match_all: {},
-      }
-    }
-
-    // データベースからノードを取得
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
-      size: maxChunk,
-      from,
-      body: {
-        query,
-        sort: [{ path: 'asc' }],
-      },
-    })
-    const nodes = this.responseToNodes(response) as NODE[]
-
-    // 初回検索の場合
-    if (!input?.pageToken) {
-      // 引数で指定されたパスのノードがディレクトリでない場合
-      const dirNode = nodes.find(node => node.path === dirPath)
-      if (dirNode && dirNode.nodeType !== StorageNodeType.Dir) {
-        // 検索結果なしで終了
-        return { list: [] }
-      }
-    }
-
-    // 次ページの検索開始位置を取得
-    let nextPageToken: string | undefined
-    if (nodes.length === 0 || nodes.length < maxChunk) {
-      nextPageToken = undefined
-    } else {
-      nextPageToken = String(from + nodes.length)
-    }
-
-    return { nextPageToken, list: nodes }
   }
 
   /**
@@ -422,7 +481,14 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       if (includeSpecifiedDir) {
         query = {
           bool: {
-            should: [{ term: { path: dirPath } }, { term: { dir: dirPath } }],
+            should: [
+              {
+                bool: {
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                },
+              },
+              { term: { dir: dirPath } },
+            ],
           },
         }
       } else {
@@ -451,11 +517,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     })
     const nodes = this.responseToNodes(response) as NODE[]
 
-    // 初回検索の場合
-    if (!input?.pageToken) {
-      // 引数で指定されたパスのノードがディレクトリでない場合
-      const dirNode = nodes.find(node => node.path === dirPath)
-      if (dirNode && dirNode.nodeType !== StorageNodeType.Dir) {
+    // 引数ディレクトリを含む検索の初回検索だった場合
+    if (includeSpecifiedDir && dirPath && !input?.pageToken) {
+      // 引数で指定されたパスのノードが存在しない場合
+      if (!nodes.some(node => node.path === dirPath)) {
         // 検索結果なしで終了
         return { list: [] }
       }
@@ -470,6 +535,67 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     return { nextPageToken, list: nodes }
+  }
+
+  /**
+   * 指定されたディレクトリ＋直下のノードの数を取得します。
+   *
+   * @param dirPath
+   */
+  async getDirChildCount(dirPath?: string): Promise<number> {
+    return this.m_getChildCount(dirPath, { includeSpecifiedDir: true })
+  }
+
+  /**
+   * 指定されたディレクトリ直下のノードの数を取得します。
+   *
+   * @param dirPath
+   * @param input
+   */
+  async getChildCount(dirPath?: string, input?: StoragePaginationInput): Promise<number> {
+    return this.m_getChildCount(dirPath, { includeSpecifiedDir: false })
+  }
+
+  private async m_getChildCount(dirPath?: string, input?: { includeSpecifiedDir: boolean }): Promise<number> {
+    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+
+    let query: any
+    // 引数ディレクトリが指定された場合
+    if (dirPath) {
+      if (includeSpecifiedDir) {
+        query = {
+          bool: {
+            should: [
+              {
+                bool: {
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                },
+              },
+              { term: { dir: dirPath } },
+            ],
+          },
+        }
+      } else {
+        query = {
+          term: { dir: dirPath },
+        }
+      }
+    }
+    // 引数ディレクトリが指定されなかった場合
+    else {
+      // バケット直下を検索
+      query = {
+        term: { dir: '' },
+      }
+    }
+
+    // データベースからカウントを取得
+    const response = await this.client.count({
+      index: StorageService.IndexName,
+      body: { query },
+    })
+
+    return response.body.count
   }
 
   /**

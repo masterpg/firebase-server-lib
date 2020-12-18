@@ -631,6 +631,176 @@ describe('StorageService', () => {
     })
   })
 
+  describe('getDirDescendantCount', () => {
+    it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/d111/fileB.txt`,
+        },
+        {
+          data: 'testC',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d12/fileC.txt`,
+        },
+      ])
+
+      const actual = await storageService.getDirDescendantCount(`d1/d11`)
+
+      expect(actual).toBe(4)
+    })
+
+    it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1-bk/fileA.txt`,
+        },
+      ])
+
+      // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
+      const actual = await storageService.getDirDescendantCount(`d1`)
+
+      expect(actual).toBe(2)
+    })
+
+    it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileB.txt`,
+        },
+      ])
+
+      // バケット直下の検索
+      const actual = await storageService.getDirDescendantCount()
+
+      expect(actual).toBe(3)
+    })
+
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+
+      // dirPathにファイルパスを指定
+      const actual = await storageService.getDirDescendantCount('d1/fileA.txt')
+
+      expect(actual).toBe(0)
+    })
+  })
+
+  describe('getDescendantCount', () => {
+    it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/d111/fileB.txt`,
+        },
+        {
+          data: 'testC',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d12/fileC.txt`,
+        },
+      ])
+
+      const actual = await storageService.getDescendantCount(`d1/d11`)
+
+      expect(actual).toBe(3)
+    })
+
+    it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1-bk/fileA.txt`,
+        },
+      ])
+
+      // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
+      const actual = await storageService.getDescendantCount(`d1`)
+
+      expect(actual).toBe(1)
+    })
+
+    it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileB.txt`,
+        },
+      ])
+
+      // バケット直下の検索
+      const actual = await storageService.getDescendantCount()
+
+      expect(actual).toBe(3)
+    })
+
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+
+      // dirPathにファイルパスを指定
+      const actual = await storageService.getDescendantCount('d1/fileA.txt')
+
+      expect(actual).toBe(0)
+    })
+  })
+
   describe('getDirChildren', () => {
     it('ベーシックケース', async () => {
       await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
@@ -925,6 +1095,176 @@ describe('StorageService', () => {
       expect(actual[9].path).toBe(`d1/file09.txt`)
       expect(actual[10].path).toBe(`d1/file10.txt`)
       await existsStorageNodes(actual, storageService)
+    })
+  })
+
+  describe('getDirChildCount', () => {
+    it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/fileB.txt`,
+        },
+        {
+          data: 'testC',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d2/fileC.txt`,
+        },
+      ])
+
+      const actual = await storageService.getDirChildCount(`d1`)
+
+      expect(actual).toBe(3)
+    })
+
+    it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1-bk/fileA.txt`,
+        },
+      ])
+
+      // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
+      const actual = await storageService.getDirChildCount(`d1`)
+
+      expect(actual).toBe(2)
+    })
+
+    it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileB.txt`,
+        },
+      ])
+
+      // バケット直下の検索
+      const actual = await storageService.getDirChildCount()
+
+      expect(actual).toBe(2)
+    })
+
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+
+      // dirPathにファイルパスを指定
+      const actual = await storageService.getDirChildCount('d1/fileA.txt')
+
+      expect(actual).toBe(0)
+    })
+  })
+
+  describe('getChildCount', () => {
+    it('ベーシックケース', async () => {
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/d11/fileB.txt`,
+        },
+        {
+          data: 'testC',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d2/fileC.txt`,
+        },
+      ])
+
+      const actual = await storageService.getChildCount(`d1`)
+
+      expect(actual).toBe(2)
+    })
+
+    it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`, `d1-bk`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1-bk/fileA.txt`,
+        },
+      ])
+
+      // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
+      const actual = await storageService.getChildCount(`d1`)
+
+      expect(actual).toBe(1)
+    })
+
+    it('バケット直下の検索', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileB.txt`,
+        },
+      ])
+
+      // バケット直下の検索
+      const actual = await storageService.getChildCount()
+
+      expect(actual).toBe(2)
+    })
+
+    it('対象ディレクトリにファイルパスを指定した場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+
+      // dirPathにファイルパスを指定
+      const actual = await storageService.getChildCount('d1/fileA.txt')
+
+      expect(actual).toBe(0)
     })
   })
 

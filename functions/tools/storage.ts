@@ -4,12 +4,12 @@ import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import * as program from 'commander'
 import {
+  AppStorageService,
   AppStorageServiceDI,
   AppStorageServiceModule,
   StorageNode,
   StorageNodeType,
   StorageUploadDataItem,
-  UserServiceDI,
   UserServiceModule,
 } from '../src/app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
@@ -34,8 +34,6 @@ interface Padding {
   size: number
 }
 
-const maxChunk = 10000
-
 //========================================================================
 //
 //  Implementation
@@ -47,12 +45,12 @@ const maxChunk = 10000
 })
 class StorageToolModule {}
 
-function print(nodes: StorageNode[], ancestors: StorageNode[], format: OutputFormat) {
+function print(nodes: StorageNode[], format: OutputFormat, specifiedPath?: string) {
   if (nodes.length === 0) return
 
   switch (format) {
     case 'oneline':
-      printInOneLine(nodes, ancestors)
+      printInOneLine(nodes, specifiedPath)
       return
     case 'json':
       printInJSON(nodes)
@@ -67,8 +65,8 @@ function print(nodes: StorageNode[], ancestors: StorageNode[], format: OutputFor
   throw new Error(`An incorrect format was specified: ${format}`)
 }
 
-function printInOneLine(nodes: StorageNode[], ancestors: StorageNode[]): void {
-  const nodeDict = arrayToDict([...nodes, ...ancestors], 'path')
+function printInOneLine(nodes: StorageNode[], specifiedPath?: string): void {
+  const nodeDict = arrayToDict(nodes, 'path')
   const toDisplayPath = (node: StorageNode) => {
     return splitHierarchicalPaths(node.path).reduce((result, nodePath) => {
       const node = nodeDict[nodePath]
@@ -80,7 +78,12 @@ function printInOneLine(nodes: StorageNode[], ancestors: StorageNode[]): void {
   const padding = getPadding(nodes)
   for (const node of nodes) {
     const nodePath = toDisplayPath(node)
-    console.log(`${formatDate(node.updatedAt)} ${formatSize(node, padding.size)} ${formatId(node.id, padding.id)} ${nodePath}`)
+    const content = `${formatDate(node.updatedAt)} ${formatSize(node, padding.size)} ${formatId(node.id, padding.id)} ${nodePath}`
+    if (node.path === specifiedPath) {
+      console.log(chalk.bold(content))
+    } else {
+      console.log(content)
+    }
   }
 }
 
@@ -109,7 +112,7 @@ function toNodeObject(node: StorageNode) {
     articleNodeType: node.articleNodeType,
     articleSortOrder: node.articleSortOrder,
     isArticleFile: node.isArticleFile,
-    version: node.share,
+    version: node.version,
     createdAt: formatDate(node.createdAt),
     updatedAt: formatDate(node.updatedAt),
   }
@@ -181,18 +184,9 @@ program
   .command('node <id_or_path>')
   .option('-f, --format <type>', `select a format (default: 'oneline')`, 'oneline')
   .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean; object?: boolean }) => {
-    id_or_path = id_or_path ?? ''
-
-    // ノードID/パスが指定されなかった場合
-    if (!id_or_path) {
-      console.log(chalk.red(`\nThere is no nodeId/nodePath specification.\n`))
-      return
-    }
-
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
     const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
-    const userService = nestApp.get(UserServiceDI.symbol) as UserServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNode({ path: id_or_path })
@@ -207,29 +201,69 @@ program
       console.log(chalk.yellow(`\nThe specified node was not found: '${id_or_path}'\n`))
       return
     }
+
     console.log() // 改行
 
     // 祖先ノードの取得
     const ancestors = await storageService.getAncestorDirs(node.path)
 
-    // 取得されたノードがファイルの場合
-    if (node.nodeType === StorageNodeType.File) {
-      print([node], ancestors, cmdObj.format)
+    // 結果を出力
+    print([...ancestors, node], cmdObj.format, node.path)
+
+    console.log() // 改行
+  })
+
+program
+  .command('descendants <id_or_path>')
+  .option('-f, --format <type>', `select a format (default: 'oneline')`, 'oneline')
+  .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean; object?: boolean }) => {
+    initFirebaseApp()
+    const nestApp = await createNestApplication(StorageToolModule)
+    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+
+    // まずはパスで検索
+    let node = await storageService.getNode({ path: id_or_path })
+
+    // パスで検索されなかったらノードIDで検索
+    if (isId(id_or_path) && !node && id_or_path) {
+      node = await storageService.getNode({ id: id_or_path })
     }
+
+    // ノードが見つからなかったら終了
+    if (!node) {
+      console.log(chalk.yellow(`\nThe specified node was not found: '${id_or_path}'\n`))
+      return
+    }
+
+    // 指定されたノードのパスとタイプを取得
+    const nodePath = node?.path ?? ''
+    const nodeType = node?.nodeType ?? StorageNodeType.Dir
+
+    // 祖先ノードの取得
+    const ancestors = await storageService.getAncestorDirs(nodePath)
+
+    console.log() // 改行
+
     // 取得されたノードがディレクトリの場合
-    else if (node.nodeType === StorageNodeType.Dir) {
-      const pagination = await storageService.getDirDescendants(node.path, { maxChunk })
-      print(pagination.list, ancestors, cmdObj.format)
-      if (pagination.nextPageToken) {
-        console.log(chalk.yellow(`\nThe specified directory has reached the display limit: '${id_or_path}'`))
+    if (nodeType === StorageNodeType.Dir) {
+      const count = (await storageService.getDirDescendantCount(nodePath)) + ancestors.length
+      if (count > 1000) {
+        if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
+      const { list } = await storageService.getDirDescendants(nodePath, { maxChunk: count })
+      AppStorageService.sortNodes(list)
+      print([...ancestors, ...list], cmdObj.format, nodePath)
+    }
+    // 取得されたノードがファイルの場合
+    else if (nodeType === StorageNodeType.File) {
+      print([...ancestors, node!], cmdObj.format, nodePath)
     }
 
     console.log() // 改行
   })
 
 program
-  .command('dir [id_or_path]')
+  .command('children [id_or_path]')
   .option('-f, --format <type>', `select a format (default: 'oneline')`, 'oneline')
   .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean }) => {
     id_or_path = id_or_path ?? ''
@@ -239,33 +273,40 @@ program
     const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
 
     // まずはパスで検索
-    let nodePath = id_or_path
-    let pagination = await storageService.getDirChildren(nodePath, { maxChunk })
+    let node = await storageService.getNode({ path: id_or_path })
 
     // パスで検索されなかったらノードIDで検索
-    if (isId(id_or_path) && !pagination.list.length && id_or_path) {
-      const node = await storageService.getNode({ id: id_or_path })
-      if (node) {
-        nodePath = node.path
-        pagination = await storageService.getDirChildren(nodePath, { maxChunk })
-      }
+    if (isId(id_or_path) && !node && id_or_path) {
+      node = await storageService.getNode({ id: id_or_path })
     }
 
-    console.log() // 改行
+    // パスで検索されなかったらノードIDで検索
+    if (isId(id_or_path) && !node && id_or_path) {
+      node = await storageService.getNode({ id: id_or_path })
+    }
+
+    // 指定されたノードのパスとタイプを取得
+    const nodePath = node?.path ?? ''
+    const nodeType = node?.nodeType ?? StorageNodeType.Dir
 
     // 祖先ノードの取得
     const ancestors = await storageService.getAncestorDirs(nodePath)
 
-    // 検索結果をコンソール出力
-    print(pagination.list, ancestors, cmdObj.format)
+    console.log() // 改行
 
-    // ディレクトリが見つからなかった場合
-    if (!pagination.list.length) {
-      console.log(chalk.yellow(`The specified directory was not found: '${id_or_path}'`))
+    // 取得されたノードがディレクトリの場合
+    if (nodeType === StorageNodeType.Dir) {
+      const count = (await storageService.getDirChildCount(nodePath)) + ancestors.length
+      if (count > 1000) {
+        if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
+      }
+      const { list } = await storageService.getDirChildren(nodePath, { maxChunk: count })
+      AppStorageService.sortNodes(list)
+      print([...ancestors, ...list], cmdObj.format, nodePath)
     }
-    // ディレクトリ直下の子ノードの数が表示上限に達した場合
-    else if (pagination.nextPageToken) {
-      console.log(chalk.yellow(`\nThe specified directory has reached the display limit: '${id_or_path}'`))
+    // 取得されたノードがファイルの場合
+    else if (nodeType === StorageNodeType.File) {
+      print([...ancestors, node!], cmdObj.format, nodePath)
     }
 
     console.log() // 改行

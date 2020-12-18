@@ -51,7 +51,7 @@ let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = AppStorageServiceDI.type & {
   m_validateAccessibleTargetToNodePaths: AppStorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
-  m_validateArticleRootDescendant: AppStorageServiceDI.type['m_validateArticleRootDescendant']
+  m_validateArticleRootUnder: AppStorageServiceDI.type['m_validateArticleRootUnder']
   m_getBelongToArticleBundle: AppStorageServiceDI.type['m_getBelongToArticleBundle']
 }
 
@@ -97,7 +97,7 @@ describe('AppStorageService', () => {
 
     describe('ユーザーファイル', () => {
       it('ファイルは公開設定 -> 誰でもアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -121,7 +121,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 -> 自ユーザーはアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -148,7 +148,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -172,7 +172,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 -> 自ユーザーはアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -199,7 +199,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -223,7 +223,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -250,7 +250,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -277,7 +277,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -303,7 +303,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -330,7 +330,7 @@ describe('AppStorageService', () => {
       })
 
       it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -612,9 +612,9 @@ describe('AppStorageService', () => {
 
   describe('deleteUserDir', () => {
     it('ベーシックケース', async () => {
-      const user1Dir = storageService.getUserRootPath({ uid: 'user1' })
-      const user2Dir = storageService.getUserRootPath({ uid: 'user2' })
-      const user3Dir = storageService.getUserRootPath({ uid: 'user3' })
+      const user1Dir = AppStorageService.getUserRootPath({ uid: 'user1' })
+      const user2Dir = AppStorageService.getUserRootPath({ uid: 'user2' })
+      const user3Dir = AppStorageService.getUserRootPath({ uid: 'user3' })
       await storageService.createHierarchicalDirs([`${user1Dir}`, `${user2Dir}/d1`, `${user3Dir}`])
       await storageService.uploadDataItems([
         {
@@ -654,7 +654,7 @@ describe('AppStorageService', () => {
     })
 
     it('大量データの場合', async () => {
-      const user1Dir = storageService.getUserRootPath({ uid: 'user1' })
+      const user1Dir = AppStorageService.getUserRootPath({ uid: 'user1' })
       await storageService.createHierarchicalDirs([`${user1Dir}/d1/d11/d111`, `${user1Dir}/d1/d12`])
       const uploadItems: StorageUploadDataItem[] = []
       for (let i = 1; i <= 5; i++) {
@@ -688,7 +688,7 @@ describe('AppStorageService', () => {
     describe('バンドル作成', () => {
       it('ベーシックケース', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
 
         // テスト対象実行
@@ -709,7 +709,7 @@ describe('AppStorageService', () => {
 
       it('ソート順の検証', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
 
         // バンドル1の作成
@@ -731,7 +731,7 @@ describe('AppStorageService', () => {
 
       it('同じ記事ノード名のバンドルを作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const input: CreateArticleTypeDirInput = {
@@ -774,7 +774,7 @@ describe('AppStorageService', () => {
 
       it('バンドルを記事ルート直下ではなくさらに下の階層に作成しようとした場合', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドル作成の引数
         const input: CreateArticleTypeDirInput = {
@@ -797,11 +797,11 @@ describe('AppStorageService', () => {
 
       it('バンドルの祖先が存在しない場合', async () => {
         // ユーザーディレクトリの作成
-        const usersPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const usersPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([usersPath])
         // バンドル作成の引数
         // ※記事ルートが存在しない状態でバンドル作成を試みる
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}`,
           articleNodeName: 'バンドル',
@@ -825,7 +825,7 @@ describe('AppStorageService', () => {
     describe('カテゴリ作成', () => {
       it('ベーシックケース - カテゴリバンドル直下に作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -853,7 +853,7 @@ describe('AppStorageService', () => {
 
       it('ベーシックケース - カテゴリ直下に作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -887,7 +887,7 @@ describe('AppStorageService', () => {
 
       it('ソート順の検証', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -915,7 +915,7 @@ describe('AppStorageService', () => {
 
       it('同じ記事ノード名のカテゴリを作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -964,7 +964,7 @@ describe('AppStorageService', () => {
 
       it('ユーザールート直下にカテゴリを作成しようとした場合', async () => {
         // ユーザールートの作成
-        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([userRootPath])
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
@@ -989,7 +989,7 @@ describe('AppStorageService', () => {
 
       it('リストバンドル直下にカテゴリを作成しようとした作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // リストバンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1020,7 +1020,7 @@ describe('AppStorageService', () => {
 
       it('記事配下にカテゴリを作成しようとした作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1057,7 +1057,7 @@ describe('AppStorageService', () => {
 
       it('アセットディレクトリにカテゴリを作成しようとした作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // アセットディレクトリの作成
         const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1084,7 +1084,7 @@ describe('AppStorageService', () => {
 
       it('カテゴリの祖先が存在しない場合', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1118,7 +1118,7 @@ describe('AppStorageService', () => {
     describe('記事作成', () => {
       it('ベーシックケース - バンドル直下に作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1152,7 +1152,7 @@ describe('AppStorageService', () => {
 
       it('ベーシックケース - カテゴリ直下に記事を作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1192,7 +1192,7 @@ describe('AppStorageService', () => {
 
       it('ソート順の検証', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1220,7 +1220,7 @@ describe('AppStorageService', () => {
 
       it('同じ記事ノード名の記事を作成', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1276,7 +1276,7 @@ describe('AppStorageService', () => {
 
       it('ユーザールート直下に記事を作成しようとした場合', async () => {
         // ユーザールートの作成
-        const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([userRootPath])
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
@@ -1301,7 +1301,7 @@ describe('AppStorageService', () => {
 
       it('記事の祖先が存在しない場合', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1333,7 +1333,7 @@ describe('AppStorageService', () => {
 
       it('記事の祖先に記事が存在する場合', async () => {
         // 記事ルートの作成
-        const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+        const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([articleRootPath])
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
@@ -1374,7 +1374,7 @@ describe('AppStorageService', () => {
   describe('createArticleGeneralDir', () => {
     it('ベーシックケース - アセットディレクトリの作成', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
 
       // アセットディレクトリの作成
@@ -1391,7 +1391,7 @@ describe('AppStorageService', () => {
 
     it('ベーシックケース - アセットディレクトリ配下にディレクトリを作成', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // アセットディレクトリの作成
       const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1410,7 +1410,7 @@ describe('AppStorageService', () => {
 
     it('ベーシックケース - 記事配下にディレクトリを作成', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1439,7 +1439,7 @@ describe('AppStorageService', () => {
 
     it('既に存在するディレクトリを作成しようとした場合 - 共有設定なし', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // アセットディレクトリの作成
       const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1455,7 +1455,7 @@ describe('AppStorageService', () => {
 
     it('既に存在するディレクトリを作成しようとした場合 - 共有設定あり', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // アセットディレクトリの作成
       const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1481,7 +1481,7 @@ describe('AppStorageService', () => {
 
     it('バンドル配下にディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1505,7 +1505,7 @@ describe('AppStorageService', () => {
 
     it('カテゴリ配下にディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1535,7 +1535,7 @@ describe('AppStorageService', () => {
 
     it('親ディレクトリが存在しない場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // アセットディレクトリの作成
       const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1563,7 +1563,7 @@ describe('AppStorageService', () => {
   describe('renameArticleNode', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1589,7 +1589,7 @@ describe('AppStorageService', () => {
 
     it('記事ルート配下でないノードを名前変更しようとした場合', async () => {
       // ユーザールート配下にノードを作成
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const [users, user, d1] = await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
 
       let actual!: InputValidationError
@@ -1605,7 +1605,7 @@ describe('AppStorageService', () => {
 
     it('存在しないノードを名前変更しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
 
       let actual!: Error
@@ -1623,7 +1623,7 @@ describe('AppStorageService', () => {
   describe('setArticleSortOrder', () => {
     it('ベーシックケース - バンドル直下のノードにソート順を設定', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1655,14 +1655,14 @@ describe('AppStorageService', () => {
       await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [art3.path, art2.path, art1.path])
 
       const nodes = (await storageService.getChildren(bundle.path)).list
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
       expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - カテゴリ直下のノードにソート順を設定', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1700,14 +1700,14 @@ describe('AppStorageService', () => {
       await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [art3.path, art2.path, art1.path])
 
       const nodes = (await storageService.getChildren(cat1.path)).list
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
       expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - 記事ルート直下のノードにソート順を設定', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドル1を作成
       const bundle1 = await storageService.createArticleTypeDir({
@@ -1735,14 +1735,14 @@ describe('AppStorageService', () => {
       await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [bundle3.path, bundle2.path, bundle1.path])
 
       const nodes = (await storageService.getChildren(`${articleRootPath}`)).list
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle2.path, bundle1.path])
       expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - カテゴリと記事の混在したディレクトリでソート順を設定', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1776,14 +1776,14 @@ describe('AppStorageService', () => {
       await storageService.setArticleSortOrder(STORAGE_USER_TOKEN, [cat1.path, art2.path, art1.path])
 
       const nodes = (await storageService.getChildren(`${bundle.path}`)).list
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([cat1.path, art2.path, art1.path])
       expect(nodes.map(node => node.articleSortOrder)).toEqual([3, 2, 1])
     })
 
     it('親が違うノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
 
       // バンドル1を作成
@@ -1826,7 +1826,7 @@ describe('AppStorageService', () => {
 
     it('ソート順を設定するノードが足りなかった場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドル1を作成
       const bundle1 = await storageService.createArticleTypeDir({
@@ -1858,7 +1858,7 @@ describe('AppStorageService', () => {
 
     it('記事配下のノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -1892,7 +1892,7 @@ describe('AppStorageService', () => {
 
     it('アセット配下のノードにソート順を設定しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // アセットを作成
       const assets = await storageService.createArticleGeneralDir(`${articleRootPath}/${config.storage.article.assetsName}`)
@@ -1948,7 +1948,7 @@ describe('AppStorageService', () => {
       //   └tmp
 
       // users/test.storage
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
 
       // programming
@@ -2012,7 +2012,7 @@ describe('AppStorageService', () => {
       })
 
       // tmp
-      const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const uerRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       tmp = await storageService.createDir(`${uerRootPath}/tmp`)
     })
 
@@ -2072,80 +2072,100 @@ describe('AppStorageService', () => {
     })
   })
 
-  describe('sortArticleNodes', () => {
+  describe('sortNodes', () => {
     it('パターン①', async () => {
-      // root
-      // ├blog
-      // │├art1
-      // ││└index.md
-      // │└art2
-      // │  └index.md
-      // └category
-      //   ├art1
-      //   ├art2
-      //   ├TypeScript
-      //   │├art1
-      //   ││└index.md
-      //   │└art2
-      //   │  └index.md
-      //   └JavaScript
-      //     ├art1
-      //     │︙
-      //     └art2
-      //       ︙
-      const blog = newAppStorageDirNode(`blog`, {
+      // users
+      // └test.storage
+      //   ├articles
+      //   │├blog
+      //   ││├art1
+      //   │││└index.md
+      //   ││└art2
+      //   ││  └index.md
+      //   │├category
+      //   ││├art1
+      //   ││├art2
+      //   ││├TypeScript
+      //   │││├art1
+      //   ││││└index.md
+      //   │││└art2
+      //   │││  └index.md
+      //   ││└JavaScript
+      //   │└assets
+      //   │  ├pic1.png
+      //   │  └pic2.png
+      //   └tmp
+      //     ├d1
+      //     │├f11.txt
+      //     │└f12.txt
+      //     ├d2
+      //     └f1.txt
+
+      const users = newAppStorageDirNode(config.storage.user.rootName)
+
+      const userRoot = newAppStorageDirNode(AppStorageService.getUserRootPath(STORAGE_USER_TOKEN))
+
+      const articleRoot = newAppStorageDirNode(AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN))
+
+      const blog = newAppStorageDirNode(`${articleRoot.path}/blog`, {
         articleNodeType: StorageArticleNodeType.ListBundle,
         articleSortOrder: 2,
       })
-      const blog_art1 = newAppStorageDirNode(`blog/art1`, {
+      const blog_art1 = newAppStorageDirNode(`${articleRoot.path}/blog/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 2,
       })
-      const blog_art1_index = newAppStorageFileNode(`blog/art1/index.md`)
-      const blog_art2 = newAppStorageDirNode(`blog/art2`, {
+      const blog_art1_index = newAppStorageFileNode(`${articleRoot.path}/blog/art1/index.md`)
+      const blog_art2 = newAppStorageDirNode(`${articleRoot.path}/blog/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 1,
       })
-      const blog_art2_index = newAppStorageFileNode(`blog/art2/index.md`)
+      const blog_art2_index = newAppStorageFileNode(`${articleRoot.path}/blog/art2/index.md`)
 
-      const category = newAppStorageDirNode(`category`, {
+      const category = newAppStorageDirNode(`${articleRoot.path}/category`, {
         articleNodeType: StorageArticleNodeType.CategoryBundle,
         articleSortOrder: 1,
       })
-      const category_art1 = newAppStorageDirNode(`category/art1`, {
+      const category_art1 = newAppStorageDirNode(`${articleRoot.path}/category/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 4,
       })
-      const category_art2 = newAppStorageDirNode(`category/art2`, {
+      const category_art2 = newAppStorageDirNode(`${articleRoot.path}/category/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 3,
       })
-      const category_ts = newAppStorageDirNode(`category/TypeScript`, {
+      const category_ts = newAppStorageDirNode(`${articleRoot.path}/category/TypeScript`, {
         articleSortOrder: 2,
       })
-      const category_ts_art1 = newAppStorageDirNode(`category/TypeScript/art1`, {
+      const category_ts_art1 = newAppStorageDirNode(`${articleRoot.path}/category/TypeScript/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 2,
       })
-      const category_ts_art1_index = newAppStorageFileNode(`category/TypeScript/art1/index.md`)
-      const category_ts_art2 = newAppStorageDirNode(`category/TypeScript/art2`, {
+      const category_ts_art1_index = newAppStorageFileNode(`${articleRoot.path}/category/TypeScript/art1/index.md`)
+      const category_ts_art2 = newAppStorageDirNode(`${articleRoot.path}/category/TypeScript/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 1,
       })
-      const category_ts_art2_index = newAppStorageFileNode(`category/TypeScript/art2/index.md`)
-      const category_js = newAppStorageDirNode(`category/JavaScript`, {
-        articleSortOrder: 1,
-      })
-      const category_js_art1 = newAppStorageDirNode(`category/JavaScript/art1`, {
-        articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 2,
-      })
-      const category_js_art2 = newAppStorageDirNode(`category/JavaScript/art2`, {
-        articleNodeType: StorageArticleNodeType.Article,
+      const category_ts_art2_index = newAppStorageFileNode(`${articleRoot.path}/category/TypeScript/art2/index.md`)
+      const category_js = newAppStorageDirNode(`${articleRoot.path}/category/JavaScript`, {
         articleSortOrder: 1,
       })
 
+      const assets = newAppStorageDirNode(AppStorageService.getArticleAssetPath(STORAGE_USER_TOKEN))
+      const assets_pic1 = newAppStorageFileNode(`${assets.path}/pic1.png`)
+      const assets_pic2 = newAppStorageFileNode(`${assets.path}/pic2.png`)
+
+      const tmp = newAppStorageDirNode(`${userRoot.path}/tmp`)
+      const d1 = newAppStorageDirNode(`${tmp.path}/d1`)
+      const f11 = newAppStorageFileNode(`${tmp.path}/d1/f11.txt`)
+      const f12 = newAppStorageFileNode(`${tmp.path}/d1/f12.txt`)
+      const d2 = newAppStorageDirNode(`${tmp.path}/d2`)
+      const f1 = newAppStorageFileNode(`${tmp.path}/f1.txt`)
+
       const nodes = shuffleArray([
+        users,
+        userRoot,
+        articleRoot,
         blog,
         blog_art1,
         blog_art1_index,
@@ -2160,29 +2180,46 @@ describe('AppStorageService', () => {
         category_ts_art2,
         category_ts_art2_index,
         category_js,
-        category_js_art1,
-        category_js_art2,
+        assets,
+        assets_pic1,
+        assets_pic2,
+        tmp,
+        d1,
+        f11,
+        f12,
+        d2,
+        f1,
       ])
 
       // テスト対象実行
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
 
-      expect(nodes[0]).toBe(blog)
-      expect(nodes[1]).toBe(blog_art1)
-      expect(nodes[2]).toBe(blog_art1_index)
-      expect(nodes[3]).toBe(blog_art2)
-      expect(nodes[4]).toBe(blog_art2_index)
-      expect(nodes[5]).toBe(category)
-      expect(nodes[6]).toBe(category_art1)
-      expect(nodes[7]).toBe(category_art2)
-      expect(nodes[8]).toBe(category_ts)
-      expect(nodes[9]).toBe(category_ts_art1)
-      expect(nodes[10]).toBe(category_ts_art1_index)
-      expect(nodes[11]).toBe(category_ts_art2)
-      expect(nodes[12]).toBe(category_ts_art2_index)
-      expect(nodes[13]).toBe(category_js)
-      expect(nodes[14]).toBe(category_js_art1)
-      expect(nodes[15]).toBe(category_js_art2)
+      expect(nodes[0]).toBe(users)
+      expect(nodes[1]).toBe(userRoot)
+      expect(nodes[2]).toBe(articleRoot)
+      expect(nodes[3]).toBe(blog)
+      expect(nodes[4]).toBe(blog_art1)
+      expect(nodes[5]).toBe(blog_art1_index)
+      expect(nodes[6]).toBe(blog_art2)
+      expect(nodes[7]).toBe(blog_art2_index)
+      expect(nodes[8]).toBe(category)
+      expect(nodes[9]).toBe(category_art1)
+      expect(nodes[10]).toBe(category_art2)
+      expect(nodes[11]).toBe(category_ts)
+      expect(nodes[12]).toBe(category_ts_art1)
+      expect(nodes[13]).toBe(category_ts_art1_index)
+      expect(nodes[14]).toBe(category_ts_art2)
+      expect(nodes[15]).toBe(category_ts_art2_index)
+      expect(nodes[16]).toBe(category_js)
+      expect(nodes[17]).toBe(assets)
+      expect(nodes[18]).toBe(assets_pic1)
+      expect(nodes[19]).toBe(assets_pic2)
+      expect(nodes[20]).toBe(tmp)
+      expect(nodes[21]).toBe(d1)
+      expect(nodes[22]).toBe(f11)
+      expect(nodes[23]).toBe(f12)
+      expect(nodes[24]).toBe(d2)
+      expect(nodes[25]).toBe(f1)
     })
 
     it('パターン②', async () => {
@@ -2195,38 +2232,42 @@ describe('AppStorageService', () => {
       //   └JavaScript
       //     ├art1
       //     └art2
-      const category_art1 = newAppStorageDirNode(`category/art1`, {
+
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
+
+      const category_art1 = newAppStorageDirNode(`${articleRootPath}/category/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 99,
+        articleSortOrder: 4,
       })
-      const category_art2 = newAppStorageDirNode(`category/art2`, {
+      const category_art2 = newAppStorageDirNode(`${articleRootPath}/category/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 98,
+        articleSortOrder: 3,
       })
-      const category_ts = newAppStorageDirNode(`category/TypeScript`, {
-        articleSortOrder: 97,
+      const category_ts = newAppStorageDirNode(`${articleRootPath}/category/TypeScript`, {
+        articleSortOrder: 2,
       })
-      const category_ts_art1 = newAppStorageDirNode(`category/TypeScript/art1`, {
+      const category_ts_art1 = newAppStorageDirNode(`${articleRootPath}/category/TypeScript/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 999,
+        articleSortOrder: 2,
       })
-      const category_ts_art2 = newAppStorageDirNode(`category/TypeScript/art2`, {
+      const category_ts_art2 = newAppStorageDirNode(`${articleRootPath}/category/TypeScript/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 998,
+        articleSortOrder: 1,
       })
-      const category_js = newAppStorageDirNode(`category/JavaScript`, {
-        articleSortOrder: 96,
+      const category_js = newAppStorageDirNode(`${articleRootPath}/category/JavaScript`, {
+        articleSortOrder: 1,
       })
-      const category_js_art1 = newAppStorageDirNode(`category/JavaScript/art1`, {
+      const category_js_art1 = newAppStorageDirNode(`${articleRootPath}/category/JavaScript/art1`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 999,
+        articleSortOrder: 2,
       })
-      const category_js_art2 = newAppStorageDirNode(`category/JavaScript/art2`, {
+      const category_js_art2 = newAppStorageDirNode(`${articleRootPath}/category/JavaScript/art2`, {
         articleNodeType: StorageArticleNodeType.Article,
-        articleSortOrder: 998,
+        articleSortOrder: 1,
       })
 
-      // 実際は上位ディレクトリ(category)は存在するが、配列には追加されないパターン
+      // 配列に上位ディレクトリがなくてもソートできるか検証するために、
+      // 上位ディレクトリは配列に追加しない
       const nodes = shuffleArray([
         category_art1,
         category_art2,
@@ -2239,7 +2280,7 @@ describe('AppStorageService', () => {
       ])
 
       // テスト対象実行
-      AppStorageService.sortArticleNodes(nodes)
+      AppStorageService.sortNodes(nodes)
 
       expect(nodes[0]).toBe(category_art1)
       expect(nodes[1]).toBe(category_art2)
@@ -2365,7 +2406,7 @@ describe('AppStorageService', () => {
 
     describe('ユーザーファイル', () => {
       it('自ユーザーのファイルにアクセス', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -2392,7 +2433,7 @@ describe('AppStorageService', () => {
       })
 
       it('自ユーザーのルートディレクトリにアクセス', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const [, userDirNode] = await storageService.createHierarchicalDirs([`${userDirPath}`])
 
         const response = await requestGQL(
@@ -2411,7 +2452,7 @@ describe('AppStorageService', () => {
       })
 
       it('アプリケーション管理者でアクセス', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -2438,7 +2479,7 @@ describe('AppStorageService', () => {
       })
 
       it('自ユーザー以外でアクセス', async () => {
-        const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+        const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -2471,7 +2512,7 @@ describe('AppStorageService', () => {
 
     beforeEach(async () => {
       // ユーザールートの作成
-      userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([userRootPath])
     })
 
@@ -2493,7 +2534,7 @@ describe('AppStorageService', () => {
 
     it('記事ルートの作成', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const actual = await storageService.createDir(articleRootPath)
 
       expect(actual.path).toBe(articleRootPath)
@@ -2501,7 +2542,7 @@ describe('AppStorageService', () => {
 
     it('アセットディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createDir(articleRootPath)
       // アセットディレクトリのパスを作成
       const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
@@ -2519,7 +2560,7 @@ describe('AppStorageService', () => {
 
     it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createDir(articleRootPath)
 
       const dirPath = `${articleRootPath}/blog`
@@ -2540,7 +2581,7 @@ describe('AppStorageService', () => {
 
     beforeEach(async () => {
       // ユーザールートの作成
-      userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([userRootPath])
     })
 
@@ -2564,7 +2605,7 @@ describe('AppStorageService', () => {
 
     it('記事ルートの作成', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       const actual = await storageService.createHierarchicalDirs([articleRootPath])
 
       expect(actual.length).toBe(1)
@@ -2573,7 +2614,7 @@ describe('AppStorageService', () => {
 
     it('アセットディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createDir(articleRootPath)
       // アセットディレクトリのパスを作成
       const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
@@ -2591,7 +2632,7 @@ describe('AppStorageService', () => {
 
     it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
 
       const dirPath = `${articleRootPath}/blog`
@@ -2640,7 +2681,7 @@ describe('AppStorageService', () => {
       //   └tmp
 
       // users/test.storage
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
 
       // programming
@@ -2702,7 +2743,7 @@ describe('AppStorageService', () => {
       })
 
       // tmp
-      const uerRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const uerRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       tmp = await storageService.createDir(`${uerRootPath}/tmp`)
     })
 
@@ -2944,17 +2985,17 @@ describe('AppStorageService', () => {
     })
   })
 
-  describe('m_validateArticleRootDescendant', () => {
+  describe('m_validateArticleRootUnder', () => {
     it('ベーシックケース - 記事ルート直下', async () => {
       // 記事ルートのパスを作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       // バンドルのパスを作成
       const bundlePath = `${articleRootPath}/blog`
 
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootDescendant(bundlePath)
+        await storageService.m_validateArticleRootUnder(bundlePath)
       } catch (err) {
         actual = err
       }
@@ -2965,7 +3006,7 @@ describe('AppStorageService', () => {
 
     it('ベーシックケース - バンドル配下', async () => {
       // 記事ルートのパスを作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       // バンドルのパスを作成
       const bundlePath = `${articleRootPath}/blog`
       // 記事のパスを作成
@@ -2974,7 +3015,7 @@ describe('AppStorageService', () => {
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootDescendant(art1Path)
+        await storageService.m_validateArticleRootUnder(art1Path)
       } catch (err) {
         actual = err
       }
@@ -2984,14 +3025,14 @@ describe('AppStorageService', () => {
     })
 
     it('引数ノードが記事ルート配下でない場合', async () => {
-      const userDirPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userDirPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       // バンドルを記事ルート以外に指定
       const bundlePath = `${userDirPath}/blog`
 
       let actual!: InputValidationError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootDescendant(bundlePath)
+        await storageService.m_validateArticleRootUnder(bundlePath)
       } catch (err) {
         actual = err
       }
@@ -3004,7 +3045,7 @@ describe('AppStorageService', () => {
   describe('m_getBelongToArticleBundle', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
-      const articleRootPath = storageService.getArticleRootPath(STORAGE_USER_TOKEN)
+      const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
@@ -3034,7 +3075,7 @@ describe('AppStorageService', () => {
 
     it('記事系ノード以外を指定した場合', async () => {
       // ユーザールートの作成
-      const userRootPath = storageService.getUserRootPath(STORAGE_USER_TOKEN)
+      const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       await storageService.createHierarchicalDirs([userRootPath])
       // ユーザールート配下のパスを指定
 
