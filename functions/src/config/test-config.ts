@@ -1,4 +1,5 @@
 import { BaseAppConfig, CORSConfigImpl, EnvConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
+import { test as privateConfig } from './private'
 
 //========================================================================
 //
@@ -14,22 +15,30 @@ class TestAppConfig extends BaseAppConfig {
 
   readonly env = new EnvConfigImpl({ mode: 'test' })
 
+  readonly firebase = {
+    ...privateConfig.firebase,
+  }
+
   readonly functions = new FunctionsConfigImpl({
-    region: 'asia-northeast1',
+    ...privateConfig.functions,
   })
 
   readonly cors = new CORSConfigImpl({
-    whitelist: ['http://localhost'],
+    ...privateConfig.cors,
     excludes: [{ method: 'GET', pattern: '^dummyRESTService/partner/' }],
   })
 
   readonly storage = new StorageConfigImpl({
-    bucket: 'gs://staging.lived-web-app-b9f08.appspot.com/',
+    ...privateConfig.storage,
   })
 
   readonly gql = new GQLConfigImpl({
     schemaFilesOrDirs: ['dist/app/gql', 'tests/mocks/app/gql'],
   })
+
+  readonly elastic = {
+    ...privateConfig.elastic,
+  }
 }
 
 //========================================================================

@@ -93,8 +93,8 @@ class DevUtilsGQLModule {}
 
 // `functions`ディレクトリからみたパスを指定
 const gqlOptions = getSchemaFirstGQLModuleOptions([
-  _path.join(config.functions.buildDir, 'app/gql/dto.graphql'),
-  _path.join(config.functions.buildDir, 'app/gql/dev/index.graphql'),
+  _path.join(config.env.buildDir, 'app/gql/dto.graphql'),
+  _path.join(config.env.buildDir, 'app/gql/dev/index.graphql'),
 ])
 
 const gqlModules = [DevUtilsGQLModule]

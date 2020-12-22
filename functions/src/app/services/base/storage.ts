@@ -68,63 +68,110 @@ interface WriteBaseStorageNode {
 
 interface RawStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'>, ElasticTimestamp {}
 
-const IndexMappings = {
-  properties: {
-    id: {
-      type: 'keyword',
-    },
-    nodeType: {
-      type: 'keyword',
-    },
-    name: {
-      type: 'keyword',
-      fields: { text: { type: 'text' } },
-    },
-    dir: {
-      type: 'keyword',
-      fields: { text: { type: 'text' } },
-    },
-    path: {
-      type: 'keyword',
-      fields: { text: { type: 'text' } },
-    },
-    contentType: {
-      type: 'keyword',
-    },
-    size: {
-      type: 'float',
-    },
-    share: {
-      properties: {
-        isPublic: {
-          type: 'boolean',
+const IndexDefinition = {
+  settings: {
+    analysis: {
+      analyzer: {
+        kuromoji_analyzer: {
+          type: 'custom',
+          char_filter: ['kuromoji_iteration_mark'],
+          tokenizer: 'kuromoji_tokenizer',
+          filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
         },
-        readUIds: {
-          type: 'keyword',
-        },
-        writeUIds: {
-          type: 'keyword',
+        kuromoji_html_analyzer: {
+          type: 'custom',
+          char_filter: ['html_strip', 'kuromoji_iteration_mark'],
+          tokenizer: 'kuromoji_tokenizer',
+          filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
         },
       },
     },
-    articleNodeName: {
-      type: 'keyword',
-      fields: { text: { type: 'text' } },
-    },
-    articleNodeType: {
-      type: 'keyword',
-    },
-    articleSortOrder: {
-      type: 'long',
-    },
-    version: {
-      type: 'long',
-    },
-    createdAt: {
-      type: 'date',
-    },
-    updatedAt: {
-      type: 'date',
+  },
+  mappings: {
+    properties: {
+      id: {
+        type: 'keyword',
+      },
+      nodeType: {
+        type: 'keyword',
+      },
+      name: {
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'kuromoji_analyzer',
+          },
+        },
+      },
+      dir: {
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'kuromoji_analyzer',
+          },
+        },
+      },
+      path: {
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'kuromoji_analyzer',
+          },
+        },
+      },
+      contentType: {
+        type: 'keyword',
+      },
+      size: {
+        type: 'float',
+      },
+      share: {
+        properties: {
+          isPublic: {
+            type: 'boolean',
+          },
+          readUIds: {
+            type: 'keyword',
+          },
+          writeUIds: {
+            type: 'keyword',
+          },
+        },
+      },
+      articleNodeName: {
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'kuromoji_analyzer',
+          },
+        },
+      },
+      articleNodeType: {
+        type: 'keyword',
+      },
+      articleSortOrder: {
+        type: 'long',
+      },
+      articleText: {
+        type: 'text',
+        analyzer: 'kuromoji_analyzer',
+      },
+      isArticleFile: {
+        type: 'boolean',
+      },
+      version: {
+        type: 'long',
+      },
+      createdAt: {
+        type: 'date',
+      },
+      updatedAt: {
+        type: 'date',
+      },
     },
   },
 }
@@ -1760,7 +1807,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   /**
    * 各環境ごとのElasticsearchのインデックス名です。
    */
-  static readonly IndexNames = {
+  static readonly IndexAliases = {
     prod: 'storage-nodes',
     dev: 'storage-nodes',
     test: 'storage-nodes-test',
@@ -1769,12 +1816,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   /**
    * Elasticsearchのインデックス名です。
    */
-  static readonly IndexName = StorageService.IndexNames[config.env.mode]
+  static readonly IndexName = StorageService.IndexAliases[config.env.mode]
 
   /**
-   * Elasticsearchのインデックスのマッピング定義です。
+   * Elasticsearchのインデックス定義です。
    */
-  static readonly IndexMappings = IndexMappings
+  static readonly IndexDefinition = IndexDefinition
 
   /**
    * ノードIDを生成します。

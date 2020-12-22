@@ -1,4 +1,4 @@
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 
 {
@@ -9,7 +9,7 @@ Content-Type: application/json
 
 ###
 
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -26,7 +26,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -53,7 +53,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -76,7 +76,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -93,7 +93,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/gql_example
+POST {{apiHost}}/gql_example
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -105,7 +105,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/gql_high
+POST {{apiHost}}/gql_high
 Content-Type: application/json
 
 {

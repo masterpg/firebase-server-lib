@@ -1,9 +1,9 @@
-GET {{host}}/rest/keepalive
+GET {{apiHost}}/rest/keepalive
 Authorization: Bearer {"uid": "app.admin", "isAppAdmin": true, "authStatus": "Available"}
 
 ###
 
-GET {{host}}/storage/keepalive
+GET {{apiHost}}/storage/keepalive
 Authorization: Bearer {"uid": "app.admin", "isAppAdmin": true, "authStatus": "Available"}
 
 ###

@@ -5,7 +5,7 @@ import { AppStorageServiceDI, AppStorageServiceModule, DevUtilsServiceDI, DevUti
 import axios, { AxiosRequestConfig } from 'axios'
 import { createNestApplication, initFirebaseApp } from '../src/app/base'
 import { Module } from '@nestjs/common'
-import secret from '../src/config/secret-config'
+import { config } from '../src/config'
 
 //========================================================================
 //
@@ -35,7 +35,7 @@ async function getIdToken(): Promise<string> {
 
   try {
     const response = await axios.request<{ idToken: string }>({
-      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${secret.firebase.apiKey}`,
+      url: `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${config.firebase.apiKey}`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
@@ -58,8 +58,8 @@ async function getIdToken(): Promise<string> {
  * @param idToken
  */
 async function keepAliveOfGQL(idToken?: string): Promise<void> {
-  const config: AxiosRequestConfig = {
-    baseURL: secret.firebase.apiBaseURL,
+  const reqConfig: AxiosRequestConfig = {
+    baseURL: config.functions.baseURL,
     url: 'gql',
     method: 'post',
     data: {
@@ -68,13 +68,13 @@ async function keepAliveOfGQL(idToken?: string): Promise<void> {
     },
   }
   if (idToken) {
-    config.headers = Object.assign(config.headers ?? {}, {
+    reqConfig.headers = Object.assign(reqConfig.headers ?? {}, {
       Authorization: `Bearer ${idToken}`,
     })
   }
 
   try {
-    const res = await axios.request(config)
+    const res = await axios.request(reqConfig)
     if (res.data.errors?.length) {
       console.error(`${chalk.red('GQL Error')}:`, res.data.errors[0].message, '\n')
     }
@@ -88,19 +88,19 @@ async function keepAliveOfGQL(idToken?: string): Promise<void> {
  * @param idToken
  */
 async function keepAliveOfREST(idToken: string): Promise<void> {
-  const config: AxiosRequestConfig = {
-    baseURL: secret.firebase.apiBaseURL,
+  const reqConfig: AxiosRequestConfig = {
+    baseURL: config.functions.baseURL,
     url: 'rest/keepalive',
     method: 'get',
   }
   if (idToken) {
-    config.headers = Object.assign(config.headers ?? {}, {
+    reqConfig.headers = Object.assign(reqConfig.headers ?? {}, {
       Authorization: `Bearer ${idToken}`,
     })
   }
 
   try {
-    await axios.request(config)
+    await axios.request(reqConfig)
   } catch (err) {
     if (err.response?.data) {
       console.error(`${chalk.red('REST Error')}:`, err.response.data, '\n')
@@ -115,19 +115,19 @@ async function keepAliveOfREST(idToken: string): Promise<void> {
  * @param idToken
  */
 async function keepAliveOfStorage(idToken: string): Promise<void> {
-  const config: AxiosRequestConfig = {
-    baseURL: secret.firebase.apiBaseURL,
+  const reqConfig: AxiosRequestConfig = {
+    baseURL: config.functions.baseURL,
     url: 'storage/keepalive',
     method: 'get',
   }
   if (idToken) {
-    config.headers = Object.assign(config.headers ?? {}, {
+    reqConfig.headers = Object.assign(reqConfig.headers ?? {}, {
       Authorization: `Bearer ${idToken}`,
     })
   }
 
   try {
-    await axios.request(config)
+    await axios.request(reqConfig)
   } catch (err) {
     if (err.response?.data) {
       console.error(`${chalk.red('Storage Error')}:`, err.response.data, '\n')

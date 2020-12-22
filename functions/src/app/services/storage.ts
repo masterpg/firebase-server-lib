@@ -1028,7 +1028,7 @@ class AppStorageService extends StorageService {
       },
       _source: false as any,
     })
-    return parseInt(res.body.aggregations.maxArticleSortOrder.value + 0)
+    return parseInt(res.body.aggregations.maxArticleSortOrder.value) || 0
   }
 
   //----------------------------------------------------------------------

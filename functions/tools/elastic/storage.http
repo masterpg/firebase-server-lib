@@ -1,0 +1,450 @@
+# インデックスの削除
+
+DELETE {{elasticHost}}/storage-nodes-test-1
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# インデックスの作成
+
+PUT {{elasticHost}}/storage-nodes-test-1
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "kuromoji_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "kuromoji_iteration_mark"
+          ],
+          "tokenizer": "kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "kuromoji_number"
+          ]
+        },
+        "kuromoji_html_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "html_strip",
+            "kuromoji_iteration_mark"
+          ],
+          "tokenizer": "kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "kuromoji_number"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "nodeType": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "kuromoji_analyzer"
+          }
+        }
+      },
+      "dir": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "kuromoji_analyzer"
+          }
+        }
+      },
+      "path": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "kuromoji_analyzer"
+          }
+        }
+      },
+      "contentType": {
+        "type": "keyword"
+      },
+      "size": {
+        "type": "float"
+      },
+      "share": {
+        "properties": {
+          "isPublic": {
+            "type": "boolean"
+          },
+          "readUIds": {
+            "type": "keyword"
+          },
+          "writeUIds": {
+            "type": "keyword"
+          }
+        }
+      },
+      "articleNodeName": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "kuromoji_analyzer"
+          }
+        }
+      },
+      "articleNodeType": {
+        "type": "keyword"
+      },
+      "articleSortOrder": {
+        "type": "long"
+      },
+      "articleText": {
+        "type": "text",
+        "analyzer": "kuromoji_analyzer"
+      },
+      "isArticleFile": {
+        "type": "boolean"
+      },
+      "version": {
+        "type": "long"
+      },
+      "createdAt": {
+        "type": "date"
+      },
+      "updatedAt": {
+        "type": "date"
+      }
+    }
+  }
+}
+
+###
+
+# インデックスエイリアスの作成
+
+POST {{elasticHost}}/_aliases
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "actions": [
+    { "add": { "index": "storage-nodes-test-1", "alias": "storage-nodes-test" } }
+  ]
+}
+
+###
+
+# インデックス情報の取得
+
+GET {{elasticHost}}/storage-nodes-test
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# 全ノード取得
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [{ "path": "asc" }],
+  "_source": ["id", "nodeType", "name", "dir", "path", "contentType", "size", "share.isPublic", "share.readUIds", "share.writeUIds", "articleNodeName", "articleNodeType", "articleSortOrder", "version", "createdAt", "updatedAt"]
+}
+
+###
+
+# ノードをキー(Id or パス)で検索
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "should": [
+        { "term": { "id": "jO9OD2J3ve9TOiRSCzeA" } },
+        { "term": { "path": "users/app.admin/articles/assets/pic2.jpg" } }
+      ]
+    }
+  }
+}
+
+###
+
+# ノードをキー(Id or パス)で複数検索
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "should": [
+        { "terms": { "id": ["jO9OD2J3ve9TOiRSCzeA"] } },
+        { "terms": { "path": ["users/app.admin/articles/assets/pic2.jpg"] } }
+      ]
+    }
+  }
+}
+
+###
+
+# 指定ディレクトリ配下のノードを検索
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "wildcard": { "path": "users/app.admin/articles/*" }
+  },
+  "sort": [
+    { "path": { "order": "asc" } }
+  ],
+  "_source": ["path"]
+}
+
+###
+
+# 記事系ノードの検索
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "exists": { "field": "articleNodeType" }
+  }
+}
+
+###
+
+# 指定ディレクトリで最大のソート順を取得
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "dir": "users/app.admin/articles/e9AtLprZQNZcaiiP8O0q"
+    }
+  },
+  "aggs": {
+    "max_order": {
+      "max": {
+        "field": "articleSortOrder"
+      }
+    }
+  }
+}
+
+###
+
+# 指定ディレクトリ配下にあるファイル数を取得
+
+GET {{elasticHost}}/storage-nodes-test/_count
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "wildcard": { "path": "users/app.admin/*" } },
+        { "term": { "nodeType": "File" } }
+      ]
+    }
+  }
+}
+
+###
+
+# 指定ディレクトリ配下にあるContent-Typeの種類を取得
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "wildcard": { "path": "users/app.admin/*" } },
+        {
+          "bool": {
+            "must_not": { "term": { "contentType": "" } }
+          }
+        }
+      ]
+    }
+  },
+  "collapse": {
+    "field": "contentType"
+  },
+  "_source": ["contentType"]
+}
+
+###
+
+# 指定ディレクトリ配下にあるContent-Typeの種類の数を取得
+
+GET {{elasticHost}}/storage-nodes-test/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "must": [
+        { "wildcard": { "path": "users/app.admin/*" } },
+        {
+          "bool": {
+            "must_not": { "term": { "contentType": "" } }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "contentTypeNum": {
+      "cardinality": {
+        "field": "contentType"
+      }
+    }
+  }
+}
+
+###
+
+# ソート順の一括設定
+
+POST {{elasticHost}}/storage-nodes-test/_update_by_query
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "terms": {
+      "id": ["sNnsQZvMlWWHpzZ7EGmB", "ta2PCLjYe9hNNoImXij2", "8U4qADQR2uBUvdl2tZKE"]
+    }
+  },
+  "script": {
+    "lang": "painless",
+    "source": "ctx._source.articleSortOrder = params[ctx._source.id]",
+    "params": {
+      "sNnsQZvMlWWHpzZ7EGmB": 10,
+      "ta2PCLjYe9hNNoImXij2": 20,
+      "8U4qADQR2uBUvdl2tZKE": 30
+    }
+  }
+}
+
+###
+
+# 記事テキストの更新
+
+POST {{elasticHost}}/storage-nodes-test/_update/MSSufGqGSbot9j5wcUzE
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "doc": {
+    "articleText": "僕の名前はヤンボー。ぼくの名前はマーボー。"
+  }
+}
+
+
+###
+
+# Analayzerの動作確認
+
+POST {{elasticHost}}/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "kuromoji",
+  "text": "僕の名前はヤンボー。ぼくの名前はマーボー。"
+}
+
+###
+
+# テストデータ投入
+# ※IntelliJでは実行できないためスニペットとして利用することを想定
+
+POST _bulk
+
+{ "index": { "_index": "storage-nodes-test", "_id": "TFSR7o4pUT3AnkgxQmt3" } }
+{"id":"TFSR7o4pUT3AnkgxQmt3","nodeType":"Dir","name":"users","dir":"","path":"users","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:13:54.297Z","updatedAt":"2020-12-09T10:13:54.297Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "wYl9giWGtjxsPksqYjGG" } }
+{"id":"wYl9giWGtjxsPksqYjGG","nodeType":"Dir","name":"app.admin","dir":"users","path":"users/app.admin","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:20.795Z","updatedAt":"2020-12-09T10:19:20.795Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "FqYiPBdT45yyK71MXI3f" } }
+{"id":"FqYiPBdT45yyK71MXI3f","nodeType":"Dir","name":"articles","dir":"users/app.admin","path":"users/app.admin/articles","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:31.790Z","updatedAt":"2020-12-09T10:19:31.790Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "FqYiPBdT45yyK71MXI3f" } }
+{"id":"FqYiPBdT45yyK71MXI3f","nodeType":"Dir","name":"articles","dir":"users/app.admin","path":"users/app.admin/articles","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:31.790Z","updatedAt":"2020-12-09T10:19:31.790Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "O7EGKJVLDP5QQj73oE2R" } }
+{"id":"O7EGKJVLDP5QQj73oE2R","nodeType":"Dir","name":"assets","dir":"users/app.admin/articles","path":"users/app.admin/articles/assets","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:32.390Z","updatedAt":"2020-12-09T10:19:32.390Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "jO9OD2J3ve9TOiRSCzeA" } }
+{"id":"jO9OD2J3ve9TOiRSCzeA","nodeType":"File","name":"pic1.jpg","dir":"users/app.admin/articles/assets","path":"users/app.admin/articles/assets/pic1.jpg","contentType":"image/jpeg","size":136484,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":5,"createdAt":"2020-12-10T14:37:55.600Z","updatedAt":"2020-12-10T14:37:55.600Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "waTUQWrEHwIgz6yEs1bN" } }
+{"id":"waTUQWrEHwIgz6yEs1bN","nodeType":"File","name":"pic2.jpg","dir":"users/app.admin/articles/assets","path":"users/app.admin/articles/assets/pic2.jpg","contentType":"image/jpeg","size":81140,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":false,"version":2,"createdAt":"2020-12-10T14:37:56.401Z","updatedAt":"2020-12-10T14:37:56.401Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "e9AtLprZQNZcaiiP8O0q" } }
+{"id":"e9AtLprZQNZcaiiP8O0q","nodeType":"Dir","name":"e9AtLprZQNZcaiiP8O0q","dir":"users/app.admin/articles","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":"プログラミング","articleNodeType":"CategoryBundle","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:53.433Z","updatedAt":"2020-12-09T10:19:53.433Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "8U4qADQR2uBUvdl2tZKE" } }
+{"id":"8U4qADQR2uBUvdl2tZKE","nodeType":"Dir","name":"8U4qADQR2uBUvdl2tZKE","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/8U4qADQR2uBUvdl2tZKE","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":"Dart","articleNodeType":"Category","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-15T03:30:14.779Z","updatedAt":"2020-12-15T03:30:14.779Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "nZC0lM8QHOx1cMP6Ld7M" } }
+{"id":"nZC0lM8QHOx1cMP6Ld7M","nodeType":"Dir","name":"nZC0lM8QHOx1cMP6Ld7M","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/8U4qADQR2uBUvdl2tZKE","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/8U4qADQR2uBUvdl2tZKE/nZC0lM8QHOx1cMP6Ld7M","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":"変数","articleNodeType":"Article","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-16T16:09:02.721Z","updatedAt":"2020-12-16T16:09:02.721Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "TZQmimJ0YNo3FZAePa0U" } }
+{"id":"TZQmimJ0YNo3FZAePa0U","nodeType":"File","name":"index.md","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/8U4qADQR2uBUvdl2tZKE/nZC0lM8QHOx1cMP6Ld7M","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/8U4qADQR2uBUvdl2tZKE/nZC0lM8QHOx1cMP6Ld7M/index.md","contentType":"text/markdown","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":true,"version":1,"createdAt":"2020-12-16T16:09:04.155Z","updatedAt":"2020-12-16T16:09:04.155Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "sNnsQZvMlWWHpzZ7EGmB" } }
+{"id":"sNnsQZvMlWWHpzZ7EGmB","nodeType":"Dir","name":"sNnsQZvMlWWHpzZ7EGmB","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":"TypeScript","articleNodeType":"Category","articleSortOrder":3,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:20:35.729Z","updatedAt":"2020-12-09T10:20:35.729Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "KirrbCBSOfgzAO2joxU3" } }
+{"id":"KirrbCBSOfgzAO2joxU3","nodeType":"Dir","name":"KirrbCBSOfgzAO2joxU3","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/KirrbCBSOfgzAO2joxU3","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":"インターフェース","articleNodeType":"Article","articleSortOrder":2,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:20:49.665Z","updatedAt":"2020-12-09T10:20:49.665Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "RGriQJLAE9vpC476f3RU" } }
+{"id":"RGriQJLAE9vpC476f3RU","nodeType":"File","name":"index.md","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/KirrbCBSOfgzAO2joxU3","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/KirrbCBSOfgzAO2joxU3/index.md","contentType":"text/markdown","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":true,"version":1,"createdAt":"2020-12-09T10:20:50.595Z","updatedAt":"2020-12-09T10:20:50.595Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "moOU0ttNJqkpSgXQHTZR" } }
+{"id":"moOU0ttNJqkpSgXQHTZR","nodeType":"Dir","name":"moOU0ttNJqkpSgXQHTZR","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/moOU0ttNJqkpSgXQHTZR","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":"クラス","articleNodeType":"Article","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:20:56.676Z","updatedAt":"2020-12-09T10:20:56.676Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "ma1w2lWmZYhHAi4UojaQ" } }
+{"id":"ma1w2lWmZYhHAi4UojaQ","nodeType":"File","name":"index.md","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/moOU0ttNJqkpSgXQHTZR","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/sNnsQZvMlWWHpzZ7EGmB/moOU0ttNJqkpSgXQHTZR/index.md","contentType":"text/markdown","size":3983,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":true,"version":2,"createdAt":"2020-12-09T10:20:57.605Z","updatedAt":"2020-12-09T10:21:32.242Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "ta2PCLjYe9hNNoImXij2" } }
+{"id":"ta2PCLjYe9hNNoImXij2","nodeType":"Dir","name":"ta2PCLjYe9hNNoImXij2","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/ta2PCLjYe9hNNoImXij2","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":"JavaScript","articleNodeType":"Category","articleSortOrder":2,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:20:26.167Z","updatedAt":"2020-12-09T10:20:26.167Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "oELciGJVuEMPcwBJDFT6" } }
+{"id":"oELciGJVuEMPcwBJDFT6","nodeType":"Dir","name":"oELciGJVuEMPcwBJDFT6","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/ta2PCLjYe9hNNoImXij2","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/ta2PCLjYe9hNNoImXij2/oELciGJVuEMPcwBJDFT6","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":"変数","articleNodeType":"Article","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:21:03.843Z","updatedAt":"2020-12-09T10:21:03.843Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "zREvQO9u2naLjKNaDiC5" } }
+{"id":"zREvQO9u2naLjKNaDiC5","nodeType":"File","name":"index.md","dir":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/ta2PCLjYe9hNNoImXij2/oELciGJVuEMPcwBJDFT6","path":"users/app.admin/articles/e9AtLprZQNZcaiiP8O0q/ta2PCLjYe9hNNoImXij2/oELciGJVuEMPcwBJDFT6/index.md","contentType":"text/markdown","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":true,"version":1,"createdAt":"2020-12-09T10:21:04.807Z","updatedAt":"2020-12-09T10:21:04.807Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "xNwbQCg3VRjquqMZIFGC" } }
+{"id":"xNwbQCg3VRjquqMZIFGC","nodeType":"Dir","name":"xNwbQCg3VRjquqMZIFGC","dir":"users/app.admin/articles","path":"users/app.admin/articles/xNwbQCg3VRjquqMZIFGC","contentType":"","size":0,"share":{"readUIds":null,"isPublic":null,"writeUIds":null},"articleNodeName":"ブログ","articleeType":"ListBundle","articleSortOrder":2,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:19:48.074Z","updatedAt":"2020-12-09T10:19:48.074Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "MSSufGqGSbot9j5wcUzE" } }
+{"id":"MSSufGqGSbot9j5wcUzE","nodeType":"Dir","name":"MSSufGqGSbot9j5wcUzE","dir":"users/app.admin/articles/xNwbQCg3VRjquqMZIFGC","path":"users/app.admin/articles/xNwbQCg3VRjquqMZIFGC/MSSufGqGSbot9j5wcUzE","contentType":"","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":"今日は天気でした","articleNodeType":"Article","articleSortOrder":1,"isArticleFile":false,"version":1,"createdAt":"2020-12-09T10:20:08.088Z","updatedAt":"2020-12-09T10:20:08.088Z"}
+{ "index": { "_index": "storage-nodes-test", "_id": "h6CG6q2czIcBMQd07Zhh" } }
+{"id":"h6CG6q2czIcBMQd07Zhh","nodeType":"File","name":"index.md","dir":"users/app.admin/articles/xNwbQCg3VRjquqMZIFGC/MSSufGqGSbot9j5wcUzE","path":"users/app.admin/articles/xNwbQCg3VRjquqMZIFGC/MSSufGqGSbot9j5wcUzE/index.md","contentType":"text/markdown","size":0,"share":{"isPublic":null,"readUIds":null,"writeUIds":null},"articleNodeName":null,"articleNodeType":null,"articleSortOrder":null,"isArticleFile":true,"version":1,"createdAt":"2020-12-09T10:20:09.139Z","updatedAt":"2020-12-09T10:20:09.139Z"}

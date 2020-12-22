@@ -1,4 +1,5 @@
 import { BaseAppConfig, CORSConfigImpl, EnvConfigImpl, FunctionsConfigImpl, GQLConfigImpl, StorageConfigImpl } from './base'
+import { prod as privateConfig } from './private'
 
 //========================================================================
 //
@@ -9,22 +10,30 @@ import { BaseAppConfig, CORSConfigImpl, EnvConfigImpl, FunctionsConfigImpl, GQLC
 class ProdAppConfig extends BaseAppConfig {
   readonly env = new EnvConfigImpl({ mode: 'prod' })
 
-  readonly functions = new FunctionsConfigImpl({
-    region: 'asia-northeast1',
-  })
+  readonly firebase = {
+    ...privateConfig.firebase,
+  }
 
-  readonly cors = new CORSConfigImpl({
-    whitelist: ['https://lived-web-app-b9f08.web.app', 'https://lived-web-app-b9f08.firebaseapp.com'],
-    excludes: [{ method: 'GET', pattern: '^storage/' }],
+  readonly functions = new FunctionsConfigImpl({
+    ...privateConfig.functions,
   })
 
   readonly storage = new StorageConfigImpl({
-    bucket: 'gs://lived-web-app-b9f08.appspot.com/',
+    ...privateConfig.storage,
+  })
+
+  readonly cors = new CORSConfigImpl({
+    ...privateConfig.cors,
+    excludes: [{ method: 'GET', pattern: '^storage/' }],
   })
 
   readonly gql = new GQLConfigImpl({
     schemaFilesOrDirs: ['dist/app/gql'],
   })
+
+  readonly elastic = {
+    ...privateConfig.elastic,
+  }
 }
 
 //========================================================================

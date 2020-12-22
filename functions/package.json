@@ -20,10 +20,10 @@
     "gql": "node ./tools/bin/tools/gql.js",
     "gql:build": "npm run gql build ./src ./dist",
     "gql:watch": "npm run gql build ./src ./dist -- -w",
-    "elastic": "node ./tools/bin/tools/elastic.js",
-    "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/user.js",
-    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/storage.js",
-    "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/keepalive.js"
+    "elastic": "node ./tools/bin/tools/elastic",
+    "user": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/user",
+    "storage": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/storage",
+    "keepalive": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && node ./tools/bin/tools/keepalive"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^7.10.0",
@@ -70,6 +70,7 @@
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-prettier": "^3.1.4",
     "inquirer": "^7.3.3",
+    "inquirer-checkbox-plus-prompt": "^1.0.1",
     "jest": "^26.6.3",
     "prettier": "^2.2.1",
     "supertest": "^6.0.1",

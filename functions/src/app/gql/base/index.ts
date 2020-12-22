@@ -59,7 +59,7 @@ function getCodeFirstGQLModuleOptions(params: { autoSchemaFile: string | boolean
  */
 function getSchemaFirstGQLModuleOptions(schemaFilesOrDirs: string[] = []): GqlModuleOptions {
   // GraphQLのベーススキーマ定義ファイルを追加
-  schemaFilesOrDirs.push(_path.join(config.functions.buildDir, 'app/gql/base.graphql'))
+  schemaFilesOrDirs.push(_path.join(config.env.buildDir, 'app/gql/base.graphql'))
 
   const result: GqlModuleOptions = {
     path: '/',

@@ -10,10 +10,11 @@ screenshots/
 serviceAccountKey.json
 
 functions/dist/
+functions/http-client.env.json
 
 functions/src**/*.js.map
+functions/src/config/private/index.ts
 functions/src/tools/firebase.config.ts
-functions/src/config/secret-config.ts
 
 functions/tests/**/*.js.map
 

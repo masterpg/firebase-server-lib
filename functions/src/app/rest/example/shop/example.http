@@ -1,22 +1,22 @@
-GET {{host}}/rest/example/shop/products
+GET {{apiHost}}/rest/example/shop/products
 
 ###
 
-GET {{host}}/rest/example/shop/products?ids[]=product1&ids[]=product2
+GET {{apiHost}}/rest/example/shop/products?ids[]=product1&ids[]=product2
 
 ###
 
-GET {{host}}/rest/example/shop/cartItems
+GET {{apiHost}}/rest/example/shop/cartItems
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-GET {{host}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
+GET {{apiHost}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-POST {{host}}/rest/example/shop/cartItems
+POST {{apiHost}}/rest/example/shop/cartItems
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -37,7 +37,7 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-PUT {{host}}/rest/example/shop/cartItems
+PUT {{apiHost}}/rest/example/shop/cartItems
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
@@ -54,13 +54,13 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-DELETE {{host}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
+DELETE {{apiHost}}/rest/example/shop/cartItems?ids[]=cartItem1&ids[]=cartItem2
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 ###
 
-PUT {{host}}/rest/example/shop/checkoutCart
+PUT {{apiHost}}/rest/example/shop/checkoutCart
 Content-Type: application/json
 Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 

@@ -14,9 +14,9 @@ import { config } from '../../../config'
 //========================================================================
 
 const gqlOptions = getSchemaFirstGQLModuleOptions([
-  _path.join(config.functions.buildDir, 'app/gql/dto.graphql'),
-  _path.join(config.functions.buildDir, 'app/gql/main/lv1.graphql'),
-  _path.join(config.functions.buildDir, 'app/gql/base/keepalive'),
+  _path.join(config.env.buildDir, 'app/gql/dto.graphql'),
+  _path.join(config.env.buildDir, 'app/gql/main/lv1.graphql'),
+  _path.join(config.env.buildDir, 'app/gql/base/keepalive'),
 ])
 
 const gqlModules = [EnvGQLModule, UserGQLModule, StorageGQLModule, KeepAliveGQLModule]

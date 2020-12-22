@@ -1,6 +1,6 @@
+import { ClientOptions as ElasticConfig } from '@elastic/elasticsearch'
 import { PartialAre } from 'web-base-lib'
 import { SUPPORTED_REGIONS } from 'firebase-functions'
-import secret from './secret-config'
 
 //========================================================================
 //
@@ -10,6 +10,7 @@ import secret from './secret-config'
 
 interface AppConfig {
   readonly env: EnvConfig
+  readonly firebase: FirebaseConfig
   readonly functions: FunctionsConfig
   readonly cors: CORSConfig
   readonly storage: StorageConfig
@@ -23,6 +24,15 @@ interface AppConfig {
 
 interface EnvConfig {
   mode: 'prod' | 'dev' | 'test'
+  readonly buildDir: string
+}
+
+//--------------------------------------------------
+//  Functions
+//--------------------------------------------------
+
+interface FirebaseConfig {
+  readonly apiKey: string
 }
 
 //--------------------------------------------------
@@ -31,7 +41,7 @@ interface EnvConfig {
 
 interface FunctionsConfig {
   readonly region: typeof SUPPORTED_REGIONS[number]
-  readonly buildDir: string
+  readonly baseURL: string
 }
 
 //--------------------------------------------------
@@ -90,31 +100,6 @@ interface GQLConfig {
   schemaFilesOrDirs: string[]
 }
 
-//--------------------------------------------------
-//  Elastic
-//--------------------------------------------------
-
-interface ElasticConfig {
-  cloud: {
-    id: string
-  }
-  auth: ElasticBasicAuth | ElasticApiKeyAuth
-}
-
-interface ElasticBasicAuth {
-  username: string
-  password: string
-}
-
-interface ElasticApiKeyAuth {
-  apiKey:
-    | string
-    | {
-        id: string
-        api_key: string
-      }
-}
-
 //========================================================================
 //
 //  Implementation
@@ -127,15 +112,17 @@ class EnvConfigImpl implements EnvConfig {
   }
 
   readonly mode: EnvConfig['mode']
+  readonly buildDir = 'dist'
 }
 
 class FunctionsConfigImpl implements FunctionsConfig {
-  constructor(params: { region: typeof SUPPORTED_REGIONS[number] }) {
-    this.region = params.region
+  constructor(params: PartialAre<FunctionsConfig, 'region'>) {
+    this.region = params.region || 'asia-northeast1'
+    this.baseURL = params.baseURL
   }
 
   readonly region: typeof SUPPORTED_REGIONS[number]
-  readonly buildDir = 'dist'
+  readonly baseURL: string
 }
 
 class CORSConfigImpl implements CORSConfig {
@@ -171,16 +158,17 @@ class GQLConfigImpl implements GQLConfig {
     this.schemaFilesOrDirs = params.schemaFilesOrDirs
   }
 
-  schemaFilesOrDirs: string[]
+  readonly schemaFilesOrDirs: string[]
 }
 
 abstract class BaseAppConfig implements AppConfig {
   abstract readonly env: EnvConfig
+  abstract readonly firebase: FirebaseConfig
   abstract readonly functions: FunctionsConfig
   abstract readonly cors: CORSConfig
   abstract readonly storage: StorageConfig
   abstract readonly gql: GQLConfig
-  elastic: ElasticConfig = secret.elastic
+  abstract readonly elastic: ElasticConfig
 }
 
 //========================================================================
@@ -189,5 +177,5 @@ abstract class BaseAppConfig implements AppConfig {
 //
 //========================================================================
 
-export { EnvConfig, FunctionsConfig, CORSConfig, StorageConfig, GQLConfig, AppConfig, BaseAppConfig }
+export { EnvConfig, FunctionsConfig, CORSConfig, StorageConfig, GQLConfig, ElasticConfig, AppConfig, BaseAppConfig }
 export { EnvConfigImpl, FunctionsConfigImpl, CORSConfigImpl, StorageConfigImpl, GQLConfigImpl }

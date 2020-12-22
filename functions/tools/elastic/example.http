@@ -1,0 +1,293 @@
+# インデックス削除
+
+DELETE {{elasticHost}}/my-index-1
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# インデックス作成
+
+PUT {{elasticHost}}/my-index-1
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "kuromoji_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "kuromoji_iteration_mark"
+          ],
+          "tokenizer": "kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "kuromoji_number"
+          ]
+        },
+        "kuromoji_html_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "html_strip",
+            "kuromoji_iteration_mark"
+          ],
+          "tokenizer": "kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "kuromoji_number"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "user_name": {
+        "type": "text"
+      },
+      "date": {
+        "type": "date"
+      },
+      "message": {
+        "type": "text",
+        "analyzer": "kuromoji_analyzer"
+      },
+      "tags": {
+        "type": "keyword",
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "kuromoji_analyzer"
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+
+# インデックスエイリアスの作成
+
+POST {{elasticHost}}/_aliases
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "actions": [
+    { "add": { "index": "my-index-1", "alias": "my-index" } }
+  ]
+}
+
+###
+
+# インデックスエイリアスの切り替え
+
+POST {{elasticHost}}/_aliases
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "actions": [
+    { "remove": { "index": "my-index-1", "alias": "my-index" } },
+    { "add": { "index": "my-index-2", "alias": "my-index" } }
+  ]
+}
+
+###
+
+# 再インデックス
+
+POST {{elasticHost}}/_reindex
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "source": { "index": "my-index-1" },
+  "dest": { "index": "my-index-2" }
+}
+
+###
+
+# 再インデックス処理の確認
+
+GET {{elasticHost}}/_tasks?detailed=true&actions=*reindex
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# 再インデックスのキャンセル
+
+POST {{elasticHost}}/_tasks/{taskId}/_cancel
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# インデックス設定を取得
+
+GET {{elasticHost}}/my-index/_settings
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+###
+
+# インデックス設定を更新
+
+PUT {{elasticHost}}/my-index/_settings
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "index": {
+    "max_result_window": 10000
+  }
+}
+
+###
+
+# テストデータ投入
+# ※IntelliJでは実行できないためスニペットとして利用することを想定
+
+POST /my-index/_bulk
+
+{ "index": { "_id": "1" } }
+{ "user_name": "山本 太郎", "date": "2019-10-27T11:52:10", "message": "秋は京都で紅葉狩りをします。", "tags": ["俳優", "政治家"] }
+{ "index": { "_id": "2" } }
+{ "user_name": "山本 美月", "date": "2019-10-27T11:52:10", "message": "私は奈良で紅葉狩りをしました。", "tags": ["俳優", "モデル"] }
+{ "index": { "_id": "3" } }
+{ "user_name": "高野 人母美", "date": "2019-10-27T11:53:46", "message": "秋は北海道でスキーをします。", "tags": ["ボクサー", "モデル"] }
+
+###
+
+# 全データ取得
+
+GET {{elasticHost}}/my-index/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "match_all": {}
+  },
+  "_source": ["user_name", "date", "message"]
+}
+
+###
+
+# データ追加・更新
+
+PUT {{elasticHost}}/my-index/_doc/1
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "user_name": "山本 太郎",
+  "date": "2019-10-27T11:52:10",
+  "message": "夏はオーストラリアで紅葉狩りをします。",
+  "tags": ["俳優", "政治家"]
+}
+
+###
+
+# 全文検索のサンプル
+
+GET {{elasticHost}}/my-index/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "match": {
+      "message": {
+        "query": "紅葉狩り 京都",
+        "operator": "and"
+      }
+    }
+  },
+  "highlight": {
+    "fields": { "message": {} }
+  }
+}
+
+###
+
+# タグ検索のサンプル
+
+GET {{elasticHost}}/my-index/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "term": { "tags": "俳優" }
+  }
+}
+
+###
+
+# タグを全文検索するサンプル①
+
+GET {{elasticHost}}/my-index/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "match": {
+      "tags.text": "政治"
+    }
+  }
+}
+
+###
+
+# タグを全文検索するサンプル②
+
+GET {{elasticHost}}/my-index/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "match": {
+      "tags.text": {
+        "query": "政治 ボクサ",
+        "operator": "or"
+      }
+    }
+  }
+}
+
+###
+
+# kuromoji_analyzerの解析
+
+GET {{elasticHost}}/my-index/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "kuromoji_analyzer",
+  "text": "秋は京都で紅葉狩りをします。"
+}
+
+###
+
+# kuromoji_html_analyzerの解析
+
+GET {{elasticHost}}/my-index/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "kuromoji_html_analyzer",
+  "text": "<p>私は<b>コンピューター</b>を持っています!</p>"
+}
