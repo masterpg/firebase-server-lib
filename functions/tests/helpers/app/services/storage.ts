@@ -28,7 +28,7 @@ async function removeAllStorageNodes(): Promise<void> {
   // Elasticsearchのノードを削除
   const client = newElasticClient()
   await client.deleteByQuery({
-    index: StorageService.IndexName,
+    index: StorageService.IndexAlias,
     body: {
       query: {
         match_all: {},
@@ -122,7 +122,7 @@ async function verifyMoveStorageNodes(fromNodes: StorageNode[], toNodePath: stri
 
     // 移動後ノードが複数存在しないことを検証
     const toNodeCountResponse = await client.count({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: {
           term: { path: toNode.path },

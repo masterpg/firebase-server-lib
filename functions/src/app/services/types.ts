@@ -139,6 +139,7 @@ interface StoragePaginationInput {
 interface StoragePaginationResult<T extends StorageNode = StorageNode> {
   list: T[]
   nextPageToken?: string
+  isPaginationTimeout?: boolean
 }
 
 interface StorageNodeShareSettingsInput {

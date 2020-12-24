@@ -25,10 +25,10 @@ import {
 import { InputValidationError, initApp } from '../../../../../../src/app/base'
 import { StorageService, StorageServiceDI, StorageServiceModule } from '../../../../../../src/app/services/base/storage'
 import { Test, TestingModule } from '@nestjs/testing'
+import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../../src/app/base/elastic'
 import { removeBothEndsSlash, sleep } from 'web-base-lib'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
-import { newElasticClient } from '../../../../../../src/app/base/elastic'
 import request = require('supertest')
 const performance = require('perf_hooks').performance
 
@@ -425,6 +425,34 @@ describe('StorageService', () => {
       expect(actual.list.length).toBe(0)
     })
 
+    it('ページングがタイムアウトした場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      const uploadItems: StorageUploadDataItem[] = []
+      for (let i = 1; i <= 4; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      await storageService.uploadDataItems(uploadItems)
+
+      // 強制的にページングをタイムアウトさせる
+      const pagination = await storageService.getDirDescendants(`d1`, { maxChunk: 3 })
+      const pageToken = decodePageToken(pagination.nextPageToken)
+      await closePointInTime(storageService.client, pageToken.pit.id)
+
+      // ページングがタイムアウトした状態で検索実行
+      const actual = await storageService.getDirDescendants(`d1`, {
+        maxChunk: 3,
+        pageToken: pagination.nextPageToken,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(0)
+      expect(actual.isPaginationTimeout).toBeTruthy()
+    })
+
     it('大量データの場合', async () => {
       await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
@@ -577,6 +605,34 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(0)
+    })
+
+    it('ページングがタイムアウトした場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      const uploadItems: StorageUploadDataItem[] = []
+      for (let i = 1; i <= 4; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      await storageService.uploadDataItems(uploadItems)
+
+      // 強制的にページングをタイムアウトさせる
+      const pagination = await storageService.getDescendants(`d1`, { maxChunk: 3 })
+      const pageToken = decodePageToken(pagination.nextPageToken)
+      await closePointInTime(storageService.client, pageToken.pit.id)
+
+      // ページングがタイムアウトした状態で検索実行
+      const actual = await storageService.getDescendants(`d1`, {
+        maxChunk: 3,
+        pageToken: pagination.nextPageToken,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(0)
+      expect(actual.isPaginationTimeout).toBeTruthy()
     })
 
     it('大量データの場合', async () => {
@@ -902,6 +958,34 @@ describe('StorageService', () => {
       expect(actual.list.length).toBe(0)
     })
 
+    it('ページングがタイムアウトした場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      const uploadItems: StorageUploadDataItem[] = []
+      for (let i = 1; i <= 4; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      await storageService.uploadDataItems(uploadItems)
+
+      // 強制的にページングをタイムアウトさせる
+      const pagination = await storageService.getDirChildren(`d1`, { maxChunk: 3 })
+      const pageToken = decodePageToken(pagination.nextPageToken)
+      await closePointInTime(storageService.client, pageToken.pit.id)
+
+      // ページングがタイムアウトした状態で検索実行
+      const actual = await storageService.getDirChildren(`d1`, {
+        maxChunk: 3,
+        pageToken: pagination.nextPageToken,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(0)
+      expect(actual.isPaginationTimeout).toBeTruthy()
+    })
+
     it('大量データの場合', async () => {
       await storageService.createHierarchicalDirs([`d1`, `d1/d11`, `d2`])
       const uploadItems: StorageUploadDataItem[] = []
@@ -1048,6 +1132,34 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(0)
+    })
+
+    it('ページングがタイムアウトした場合', async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      const uploadItems: StorageUploadDataItem[] = []
+      for (let i = 1; i <= 4; i++) {
+        uploadItems.push({
+          data: `test${i}`,
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/file${i.toString().padStart(2, '0')}.txt`,
+        })
+      }
+      await storageService.uploadDataItems(uploadItems)
+
+      // 強制的にページングをタイムアウトさせる
+      const pagination = await storageService.getChildren(`d1`, { maxChunk: 3 })
+      const pageToken = decodePageToken(pagination.nextPageToken)
+      await closePointInTime(storageService.client, pageToken.pit.id)
+
+      // ページングがタイムアウトした状態で検索実行
+      const actual = await storageService.getChildren(`d1`, {
+        maxChunk: 3,
+        pageToken: pagination.nextPageToken,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(0)
+      expect(actual.isPaginationTimeout).toBeTruthy()
     })
 
     it('大量データの場合', async () => {
@@ -1341,7 +1453,7 @@ describe('StorageService', () => {
       const d11 = await storageService.sgetNode({ path: `d1/d11` })
       const client = newElasticClient()
       await client.delete({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: d11.id,
         refresh: true,
       })
@@ -2816,7 +2928,7 @@ describe('StorageService', () => {
       // テストのためデータベースからファイルノードを削除しておく
       const client = newElasticClient()
       await client.delete({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: fileA.id,
         refresh: true,
       })
@@ -2874,7 +2986,7 @@ describe('StorageService', () => {
       // テストのためデータベースからファイルノードを削除しておく
       const client = newElasticClient()
       await client.delete({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: fileNodeA.id,
         refresh: true,
       })
@@ -3083,7 +3195,7 @@ describe('大量データのテスト', () => {
   async function getFileCount(dirPath: string): Promise<number> {
     const client = newElasticClient()
     const response = await client.count({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: {
           bool: {

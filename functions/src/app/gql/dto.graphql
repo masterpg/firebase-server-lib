@@ -103,6 +103,7 @@ input StoragePaginationInput {
 type StoragePaginationResult {
   list: [StorageNode!]!
   nextPageToken: String
+  isPaginationTimeout: Boolean
 }
 
 type StorageNodeShareSettings {

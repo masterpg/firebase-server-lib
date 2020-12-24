@@ -3,16 +3,16 @@ import * as path from 'path'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule } from './base/firestore'
 import { Inject, Module } from '@nestjs/common'
-import { InputValidationError, generateId } from '../base'
 import { PutTestIndexDataInput, PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput, UserInfo } from './types'
 import { UserServiceDI, UserServiceModule } from './user'
+import { newElasticClient, validateBulkResponse } from '../base/elastic'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import UserRecord = admin.auth.UserRecord
 import dayjs = require('dayjs')
+import { generateId } from '../base'
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
-import { newElasticClient } from '../base/elastic'
 const firebaseTools = require('firebase-tools')
 
 //========================================================================
@@ -66,22 +66,8 @@ class DevUtilsService {
       return [{ index: { _index: index, _id: doc.id } }, doc]
     })
 
-    const { body: bulkResponse } = await this.client.bulk({ refresh: true, body })
-    if (bulkResponse.errors) {
-      const erroredDocuments: any[] = []
-      bulkResponse.items.forEach((action: any, i: number) => {
-        const operation = Object.keys(action)[0]
-        if (action[operation].error) {
-          erroredDocuments.push({
-            status: action[operation].status,
-            error: action[operation].error,
-            operation: body[i * 2],
-            document: body[i * 2 + 1],
-          })
-        }
-      })
-      throw new InputValidationError('Test data put in failed.', { erroredDocuments })
-    }
+    const response = await this.client.bulk({ refresh: true, body })
+    validateBulkResponse(response)
   }
 
   async getTestSignedUploadUrls(inputs: TestSignedUploadUrlInput[]): Promise<string[]> {

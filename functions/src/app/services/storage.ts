@@ -204,7 +204,7 @@ class AppStorageService extends StorageService {
     const deleteFileNodes = async (userRootPath: string) => {
       // データベースからユーザーディレクトリと配下ノードを全て削除
       await this.client.deleteByQuery({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         body: {
           query: {
             bool: {
@@ -313,7 +313,7 @@ class AppStorageService extends StorageService {
       const id = AppStorageService.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id,
         body: {
           doc: {
@@ -363,7 +363,7 @@ class AppStorageService extends StorageService {
     }
 
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: node.id,
       body: {
         doc: {
@@ -420,7 +420,7 @@ class AppStorageService extends StorageService {
 
     // 引数ノードリストの親が持つ子ノードの数と引数ノードリストが一致するか検証
     const countResponse = await this.client.count({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: {
           bool: {
@@ -448,7 +448,7 @@ class AppStorageService extends StorageService {
     }, {} as { [nodePath: string]: number })
 
     await this.client.updateByQuery({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: { term: { dir: parentNode.path } },
         script: {
@@ -485,7 +485,7 @@ class AppStorageService extends StorageService {
     const from = options?.pageToken ? Number(options.pageToken) : 0
 
     const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       size: maxChunk,
       from,
       body: {
@@ -618,7 +618,7 @@ class AppStorageService extends StorageService {
     if (fromDirNode.articleNodeType === StorageArticleNodeType.Category || fromDirNode.articleNodeType === StorageArticleNodeType.Article) {
       const articleSortOrder = await this.m_getNewArticleSortOrder({ path: toDirPath })
       await this.client.update({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: fromDirNode.id,
         body: {
           doc: {
@@ -885,7 +885,7 @@ class AppStorageService extends StorageService {
     const id = dirNode.name
     const now = dayjs().toISOString()
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id,
       body: {
         doc: {
@@ -969,7 +969,7 @@ class AppStorageService extends StorageService {
     }
 
     const res = await this.client.search({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       size: 0,
       body: {
         query: {
@@ -1014,7 +1014,7 @@ class AppStorageService extends StorageService {
     }
 
     const res = await this.client.search({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       size: 0,
       body: {
         query: {

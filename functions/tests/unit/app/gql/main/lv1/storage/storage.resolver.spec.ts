@@ -466,6 +466,7 @@ describe('Lv1 Storage Resolver', () => {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
+            isPaginationTimeout
           }
         }
       `,
@@ -491,6 +492,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDirDescendants.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageDirDescendants.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDirDescendants.isPaginationTimeout).toBeNull()
     })
 
     it('疎通確認 - ユーザーノード', async () => {
@@ -514,6 +516,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDirDescendants.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageDirDescendants.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDirDescendants.isPaginationTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -568,6 +571,7 @@ describe('Lv1 Storage Resolver', () => {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
+            isPaginationTimeout
           }
         }
       `,
@@ -593,6 +597,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDescendants.list).toEqual(toGQLResponseStorageNodes([d11]))
       expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDescendants.isPaginationTimeout).toBeNull()
     })
 
     it('疎通確認 - ユーザーノード', async () => {
@@ -616,6 +621,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDescendants.list).toEqual(toGQLResponseStorageNodes([d11]))
       expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDescendants.isPaginationTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -670,6 +676,7 @@ describe('Lv1 Storage Resolver', () => {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
+            isPaginationTimeout
           }
         }
       `,
@@ -695,6 +702,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDirChildren.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageDirChildren.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDirChildren.isPaginationTimeout).toBeNull()
     })
 
     it('疎通確認 - ユーザーノード', async () => {
@@ -718,6 +726,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDirChildren.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageDirChildren.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDirChildren.isPaginationTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -772,6 +781,7 @@ describe('Lv1 Storage Resolver', () => {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
+            isPaginationTimeout
           }
         }
       `,
@@ -797,6 +807,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageChildren.list).toEqual(toGQLResponseStorageNodes([d11]))
       expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageChildren.isPaginationTimeout).toBeNull()
     })
 
     it('疎通確認 - ユーザーノード', async () => {
@@ -820,6 +831,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageChildren.list).toEqual(toGQLResponseStorageNodes([d11]))
       expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageChildren.isPaginationTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -2164,6 +2176,7 @@ describe('Lv1 Storage Resolver', () => {
               id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
             }
             nextPageToken
+            isPaginationTimeout
           }
         }
       `,

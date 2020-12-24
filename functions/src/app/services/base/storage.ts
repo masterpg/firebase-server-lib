@@ -13,7 +13,20 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
 } from '../types'
-import { ElasticResponse, ElasticTimestamp, SearchResponse, newElasticClient } from '../../base/elastic'
+import {
+  ElasticPageToken,
+  ElasticResponse,
+  ElasticTimestamp,
+  SearchResponse,
+  closePointInTime,
+  decodePageToken,
+  encodePageToken,
+  extractSearchAfter,
+  isPaginationTimeout,
+  newElasticClient,
+  openPointInTime,
+  validateBulkResponse,
+} from '../../base/elastic'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, generateId, validateUID } from '../../base'
@@ -206,7 +219,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const path = removeBothEndsSlash(input.path)
 
     const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: {
           bool: {
@@ -240,21 +253,29 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   async getNodes(input: StorageNodeKeysInput): Promise<NODE[]> {
     const ids = input.ids || []
     const paths = input.paths || []
-    const size = ids.length + paths.length
+    const size = 1000
 
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
-      size,
-      body: {
-        query: {
-          bool: {
-            should: [{ terms: { id: ids } }, { terms: { path: paths } }],
-          },
+    const nodes: NODE[] = []
+    for (const chunk of splitArrayChunk(ids, size)) {
+      const response = await this.client.search<SearchResponse<RawStorageNode>>({
+        index: StorageService.IndexAlias,
+        size,
+        body: {
+          query: { terms: { id: chunk } },
         },
-      },
-    })
-
-    const nodes = this.responseToNodes(response)
+      })
+      nodes.push(...this.responseToNodes(response))
+    }
+    for (const chunk of splitArrayChunk(paths, size)) {
+      const response = await this.client.search<SearchResponse<RawStorageNode>>({
+        index: StorageService.IndexAlias,
+        size,
+        body: {
+          query: { terms: { path: chunk } },
+        },
+      })
+      nodes.push(...this.responseToNodes(response))
+    }
 
     const nodeIdDict: { [id: string]: StorageNode } = {}
     const nodePathDict: { [id: string]: StorageNode } = {}
@@ -361,8 +382,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   ): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
     const maxChunk = input?.maxChunk || StorageService.MaxChunk
-    const from = input?.pageToken ? Number(input.pageToken) : 0
     const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+
+    const pageToken = decodePageToken(input?.pageToken)
+    if (!pageToken.pit) {
+      pageToken.pit = await openPointInTime(this.client, StorageService.IndexAlias)
+    }
 
     let query: any
     // 引数ディレクトリが指定された場合
@@ -391,15 +416,23 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // データベースからノードを取得
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
-      size: maxChunk,
-      from,
-      body: {
-        query,
-        sort: [{ path: 'asc' }],
-      },
-    })
+    let response!: ElasticResponse<RawStorageNode>
+    try {
+      response = await this.client.search<SearchResponse<RawStorageNode>>({
+        size: maxChunk,
+        body: {
+          query,
+          sort: [{ path: 'asc' }],
+          ...pageToken,
+        },
+      })
+    } catch (err) {
+      if (isPaginationTimeout(err)) {
+        return { list: [], isPaginationTimeout: true }
+      } else {
+        throw err
+      }
+    }
     const nodes = this.responseToNodes(response) as NODE[]
 
     // 引数ディレクトリを含む検索の初回検索だった場合
@@ -411,12 +444,18 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       }
     }
 
-    // 次ページの検索開始位置を取得
+    // 次ページのページトークンを取得
     let nextPageToken: string | undefined
+    const searchAfter = extractSearchAfter(response)
     if (nodes.length === 0 || nodes.length < maxChunk) {
       nextPageToken = undefined
+      searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
     } else {
-      nextPageToken = String(from + nodes.length)
+      if (searchAfter?.pitId && searchAfter?.sort) {
+        nextPageToken = encodePageToken(searchAfter.pitId, searchAfter.sort)
+      } else {
+        nextPageToken = undefined
+      }
     }
 
     return { nextPageToken, list: nodes }
@@ -472,7 +511,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // データベースからカウントを取得
     const response = await this.client.count({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: { query },
     })
 
@@ -519,8 +558,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     input?: StoragePaginationInput & { includeSpecifiedDir: boolean }
   ): Promise<StoragePaginationResult<NODE>> {
     const maxChunk = input?.maxChunk || StorageService.MaxChunk
-    const from = input?.pageToken ? Number(input.pageToken) : 0
     const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+
+    const pageToken = decodePageToken(input?.pageToken)
+    if (!pageToken.pit) {
+      pageToken.pit = await openPointInTime(this.client, StorageService.IndexAlias)
+    }
 
     let query: any
     // 引数ディレクトリが指定された場合
@@ -553,15 +596,23 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // データベースからノードを取得
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
-      index: StorageService.IndexName,
-      size: maxChunk,
-      from,
-      body: {
-        query,
-        sort: [{ path: 'asc' }],
-      },
-    })
+    let response!: ElasticResponse<RawStorageNode>
+    try {
+      response = await this.client.search<SearchResponse<RawStorageNode>>({
+        size: maxChunk,
+        body: {
+          query,
+          sort: [{ path: 'asc' }],
+          ...pageToken,
+        },
+      })
+    } catch (err) {
+      if (isPaginationTimeout(err)) {
+        return { list: [], isPaginationTimeout: true }
+      } else {
+        throw err
+      }
+    }
     const nodes = this.responseToNodes(response) as NODE[]
 
     // 引数ディレクトリを含む検索の初回検索だった場合
@@ -573,12 +624,18 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       }
     }
 
-    // 次ページの検索開始位置を取得
+    // 次ページのページトークンを取得
     let nextPageToken: string | undefined
+    const searchAfter = extractSearchAfter(response)
     if (nodes.length === 0 || nodes.length < maxChunk) {
       nextPageToken = undefined
+      searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
     } else {
-      nextPageToken = String(from + nodes.length)
+      if (searchAfter?.pitId && searchAfter?.sort) {
+        nextPageToken = encodePageToken(searchAfter.pitId, searchAfter.sort)
+      } else {
+        nextPageToken = undefined
+      }
     }
 
     return { nextPageToken, list: nodes }
@@ -638,7 +695,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // データベースからカウントを取得
     const response = await this.client.count({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: { query },
     })
 
@@ -731,7 +788,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       const id = StorageService.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id,
         body: {
           doc: {
@@ -783,29 +840,27 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // ディレクトリを作成
     const ids: string[] = []
+    const body: any[] = []
     for (const dirNode of hierarchicalDirNodes) {
       // ディレクトリが存在する場合はディレクトリを作成しない
       if (dirNode.exists) continue
 
-      // データベースに追加
       const id = StorageService.generateNodeId()
       const now = dayjs().toISOString()
-      await this.client.update({
-        index: StorageService.IndexName,
+      body.push({ index: { _index: StorageService.IndexAlias, _id: id } })
+      body.push({
+        ...StorageService.toDBNode(dirNode),
         id,
-        body: {
-          doc: {
-            ...StorageService.toDBNode(dirNode),
-            id,
-            version: 1,
-            createdAt: now,
-            updatedAt: now,
-          },
-          doc_as_upsert: true,
-        },
-        refresh: true,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
       })
+
       ids.push(id)
+    }
+    if (body.length) {
+      const response = await this.client.bulk({ refresh: true, body })
+      validateBulkResponse(response)
     }
 
     const dirNodes = await this.getNodes({ ids })
@@ -833,15 +888,15 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     const bucket = admin.storage().bucket()
     const size = input?.maxChunk ?? 1000
-    let from = 0
     let nodes: { id: string; path: string }[]
+    const pageToken: ElasticPageToken = {
+      pit: await openPointInTime(this.client, StorageService.IndexAlias),
+    }
 
     do {
       // データベースから引数ディレクトリ配下のファイルノードを取得
       const response = await this.client.search<SearchResponse<{ id: string; path: string }>>({
-        index: StorageService.IndexName,
         size,
-        from,
         body: {
           query: {
             bool: {
@@ -856,6 +911,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
             },
           },
           sort: [{ path: 'asc' }],
+          ...pageToken,
         },
         _source: ['id', 'path'],
       })
@@ -871,12 +927,17 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         )
       }
 
-      from += nodes.length
+      // 次のページングトークンを取得
+      if (nodes.length) {
+        const searchAfter = extractSearchAfter(response)!
+        pageToken.pit.id = searchAfter.pitId!
+        pageToken.search_after = searchAfter.sort!
+      }
     } while (nodes.length)
 
     // データベースから引数ディレクトリと配下ノードを全て削除
     await this.client.deleteByQuery({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       body: {
         query: {
           bool: {
@@ -904,7 +965,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     await fileNode.file.delete()
     // ストアからファイルを削除
     await this.client.delete({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: fileNode.id,
       refresh: true,
     })
@@ -980,7 +1041,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       // 既に存在している移動先ディレクトリは削除
       // ※移動先ディレクトリを削除するだけで、配下ノードは削除しない
       await this.client.delete({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: existsToDirNode.id,
         refresh: true,
       })
@@ -988,7 +1049,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // 移動元ディレクトリを移動先ディレクトリへ移動
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
@@ -1023,7 +1084,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
           // ※移動先ノードを削除するだけで、そのノードがディレクトリでも配下ノードは削除しない
           // ・データベースから既に存在している移動先ノードを削除
           await this.client.delete({
-            index: StorageService.IndexName,
+            index: StorageService.IndexAlias,
             id: existsNode.id,
             refresh: true,
           })
@@ -1037,7 +1098,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         // データベースの移動元ノードのパスを移動先のパスへ変更
         const version = node.version + 1
         await this.client.update({
-          index: StorageService.IndexName,
+          index: StorageService.IndexAlias,
           id: node.id,
           body: {
             doc: {
@@ -1110,7 +1171,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       // 移動先の同名ファイルは削除
       // ・データベースからファイルノードを削除
       await this.client.delete({
-        index: StorageService.IndexName,
+        index: StorageService.IndexAlias,
         id: existsNode.id,
         refresh: true,
       })
@@ -1123,7 +1184,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     // データベースの移動元ファイルノードのパスを移動先のパスへ変更
     const version = fileNode.version + 1
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
@@ -1232,7 +1293,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     StorageService.validateShareSettingInput(input)
 
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
@@ -1266,7 +1327,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     StorageService.validateShareSettingInput(input)
 
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
@@ -1541,7 +1602,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * @param file
    * @param input
    */
-  protected async saveFileNode(filePath: string, file: File, input?: { share?: StorageNodeShareSettingsInput }): Promise<FILE_NODE> {
+  async saveFileNode(filePath: string, file: File, input?: { share?: StorageNodeShareSettingsInput }): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
     const existsFileNode = await this.getNode({ path: filePath })
@@ -1557,7 +1618,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const nodeId = existsFileNode?.id ?? StorageService.generateNodeId()
     const now = dayjs().toISOString()
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: nodeId,
       body: {
         doc: {
@@ -1632,7 +1693,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     //
     const now = dayjs().toISOString()
     await this.client.update({
-      index: StorageService.IndexName,
+      index: StorageService.IndexAlias,
       id: nodeId,
       body: {
         doc: {
@@ -1816,7 +1877,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   /**
    * Elasticsearchのインデックス名です。
    */
-  static readonly IndexName = StorageService.IndexAliases[config.env.mode]
+  static readonly IndexAlias = StorageService.IndexAliases[config.env.mode]
 
   /**
    * Elasticsearchのインデックス定義です。
@@ -1827,7 +1888,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * ノードIDを生成します。
    */
   static generateNodeId(): string {
-    return generateId(this.IndexName)
+    return generateId(this.IndexAlias)
   }
 
   /**
