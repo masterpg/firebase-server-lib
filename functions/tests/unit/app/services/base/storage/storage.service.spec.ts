@@ -294,7 +294,7 @@ describe('StorageService', () => {
       const actual = (await storageService.getFileNode({ id: fileNodeA.id }))!
 
       expect(actual.id).toBe(actual.id)
-      expect(actual.file.name).toBe(actual.path)
+      expect(actual.file.name).toBe(actual.id)
       await existsStorageNodes([actual], storageService)
     })
 
@@ -311,7 +311,7 @@ describe('StorageService', () => {
       const actual = (await storageService.getFileNode({ path: fileNodeA.path }))!
 
       expect(actual.path).toBe(actual.path)
-      expect(actual.file.name).toBe(actual.path)
+      expect(actual.file.name).toBe(actual.id)
       await existsStorageNodes([actual], storageService)
     })
 
@@ -1604,7 +1604,7 @@ describe('StorageService', () => {
     })
 
     it('作成ディレクトリパスへのバリデーション実行確認', async () => {
-      const validatePath = td.replace(StorageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validateNodePath')
 
       await storageService.createDir(`d1`)
 
@@ -1665,7 +1665,7 @@ describe('StorageService', () => {
     })
 
     it('作成ディレクトリパスへのバリデーション実行確認', async () => {
-      const validatePath = td.replace(StorageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validateNodePath')
 
       await storageService.createHierarchicalDirs([`d1`, `d2`])
 
@@ -1936,7 +1936,8 @@ describe('StorageService', () => {
       await verifyMoveStorageNodes(fromNodes, `d2/docs`, storageService)
 
       // 移動元の'd1/docs/file.txt'の内容が移動先の'd2/docs/file.txt'に上書きされたことを検証
-      const { file } = await storageService.getStorageFile(`d2/docs/file.txt`)
+      const overwritten_d2_file = toNodes[1]
+      const { file } = await storageService.getStorageFile(overwritten_d2_file.id)
       const fileData = await file.download()
       expect(fileData.toString()).toBe('testA')
     })
@@ -2129,7 +2130,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validatePath = td.replace(StorageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validateNodePath')
 
       await storageService.moveDir(`d1`, `d2`)
 
@@ -2200,6 +2201,7 @@ describe('StorageService', () => {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/fileA.txt`,
+          share: { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] },
         },
       ])
 
@@ -2242,6 +2244,7 @@ describe('StorageService', () => {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/file.txt`,
+          share: { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] },
         },
         {
           data: 'testB',
@@ -2262,7 +2265,7 @@ describe('StorageService', () => {
       await verifyMoveStorageNodes([fromNode], `d2/file.txt`, storageService)
 
       // 移動元の'd1/file.txt'の内容が移動先の'd2/file.txt'に上書きされたことを検証
-      const { file } = await storageService.getStorageFile(`d2/file.txt`)
+      const { file } = await storageService.getStorageFile(actual.id)
       const fileData = await file.download()
       expect(fileData.toString()).toBe('testA')
     })
@@ -2313,7 +2316,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validatePath = td.replace(StorageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validateNodePath')
 
       await storageService.moveFile(`d1/fileA.txt`, `d2/fileA.txt`)
 
@@ -2418,7 +2421,7 @@ describe('StorageService', () => {
       await storageService.createHierarchicalDirs([`d1`])
 
       // バリデーションメソッドのモック化
-      const validateDirName = td.replace(StorageService, 'validateDirName')
+      const validateDirName = td.replace(StorageService, 'validateNodeName')
 
       await storageService.renameDir(`d1`, `d2`)
 
@@ -2562,7 +2565,7 @@ describe('StorageService', () => {
       ])
 
       // バリデーションメソッドのモック化
-      const validateFileName = td.replace(StorageService, 'validateFileName')
+      const validateFileName = td.replace(StorageService, 'validateNodeName')
 
       await storageService.renameFile(`d1/fileA.txt`, `fileB.txt`)
 
@@ -2934,48 +2937,42 @@ describe('StorageService', () => {
       })
 
       // ファイルアップロードの後処理を実行
-      const actual = (await storageService.handleUploadedFile(`d1/d11/fileA.txt`))!
+      const actual = (await storageService.handleUploadedFile(fileA))!
 
       // 戻り値の検証
       await existsStorageNodes([actual], storageService)
-
-      // 祖先ディレクトリが作成されたことを検証
-      const ancestors = await storageService.getAncestorDirs(actual.path)
-      expect(ancestors[0].path).toBe(`d1`)
-      expect(ancestors[1].path).toBe(`d1/d11`)
     })
 
     it('アップロードによるファイル｢更新｣後の実行', async () => {
       await storageService.createHierarchicalDirs([`d1/d11`])
-      const [fileNodeA_1] = await storageService.uploadDataItems([
+      const [fileA] = await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/d11/fileA.txt`,
-          share: { readUIds: ['ichiro'] },
         },
       ])
 
       // アップロードによってファイルが｢更新｣された状態を作成する
       {
         const bucket = admin.storage().bucket()
-        const file = bucket.file(fileNodeA_1.path)
+        const file = bucket.file(fileA.id)
         await file.save('testA-2', { contentType: 'text/plain; charset=utf-8' })
         await storageService.saveMetadata(file, { version: 2 })
       }
 
       // ファイルアップロードの後処理を実行
-      const actual = (await storageService.handleUploadedFile(fileNodeA_1.path))!
+      const actual = (await storageService.handleUploadedFile(fileA))!
 
       // 戻り値の検証
-      const { file, ...fileNodeA_2 } = actual
-      expect(fileNodeA_2.share).toEqual(fileNodeA_1.share)
-      await existsStorageNodes([fileNodeA_2], storageService)
+      const fileData = await actual.file.download()
+      expect(fileData.toString()).toBe('testA-2')
+      await existsStorageNodes([actual], storageService)
     })
 
     it('複数回実行した場合', async () => {
       await storageService.createHierarchicalDirs([`d1/d11`])
-      const [fileNodeA] = await storageService.uploadDataItems([
+      const [fileA] = await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -2987,28 +2984,28 @@ describe('StorageService', () => {
       const client = newElasticClient()
       await client.delete({
         index: StorageService.IndexAlias,
-        id: fileNodeA.id,
+        id: fileA.id,
         refresh: true,
       })
 
       // ファイルアップロードの後処理を実行 - 1
-      await storageService.handleUploadedFile(fileNodeA.path)
-      const fileNodeA_1 = await storageService.sgetNode({ path: `d1/d11/fileA.txt` })
-      const fileA_1 = await storageService.getStorageFile(`d1/d11/fileA.txt`)
+      await storageService.handleUploadedFile(fileA)
+      const fileA_1 = await storageService.sgetNode({ path: fileA.path })
+      const fileDetailA_1 = await storageService.getStorageFile(fileA.path)
 
       // ファイルアップロードの後処理を実行 - 2
-      await storageService.handleUploadedFile(fileNodeA.path)
-      const fileNodeA_2 = await storageService.sgetNode({ path: `d1/d11/fileA.txt` })
-      const fileA_2 = await storageService.getStorageFile(`d1/d11/fileA.txt`)
+      await storageService.handleUploadedFile(fileA)
+      const fileA_2 = await storageService.sgetNode({ path: fileA.path })
+      const fileDetailA_2 = await storageService.getStorageFile(fileA.path)
 
       // 1回目と2回目で内容が同じことを検証
-      expect(fileNodeA_1).toEqual(fileNodeA_2)
-      expect(fileA_1.version).toEqual(fileA_2.version)
+      expect(fileA_1).toEqual(fileA_2)
+      expect(fileDetailA_1.version).toEqual(fileDetailA_2.version)
     })
 
     it('ファイルパスへのバリデーション実行確認', async () => {
       await storageService.createHierarchicalDirs([`d1`])
-      await storageService.uploadDataItems([
+      const [fileA] = await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
@@ -3016,9 +3013,9 @@ describe('StorageService', () => {
         },
       ])
 
-      const validatePath = td.replace(StorageService, 'validatePath')
+      const validatePath = td.replace(StorageService, 'validateNodePath')
 
-      await storageService.handleUploadedFile(`d1/fileA.txt`)
+      await storageService.handleUploadedFile(fileA)
 
       const explanation = td.explain(validatePath)
       expect(explanation.calls.length >= 1).toBeTruthy()
@@ -3026,31 +3023,42 @@ describe('StorageService', () => {
     })
 
     it('存在しないファイルを指定した場合', async () => {
-      let actual!: Error
+      const fileA = {
+        id: StorageService.generateNodeId(),
+        path: `d1/fileA.txt`,
+      }
+
+      let actual!: InputValidationError
       try {
-        await storageService.handleUploadedFile(`d1/fileA.txt`)
+        await storageService.handleUploadedFile(fileA)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`Uploaded file not found: 'd1/fileA.txt'`)
+      expect(actual.detail.message).toBe(`Uploaded file not found.`)
+      expect(actual.detail.values).toEqual(fileA)
     })
 
     it('ファイルの祖先が存在しない場合', async () => {
+      const fileA = {
+        id: StorageService.generateNodeId(),
+        path: `d1/fileA.txt`,
+      }
+
       const bucket = admin.storage().bucket()
-      const file = bucket.file(`d1/fileA.txt`)
+      const file = bucket.file(fileA.id)
       await file.save('testA', { contentType: 'text/plain' })
 
       let actual!: InputValidationError
       try {
-        await storageService.handleUploadedFile(`${file.name}`)
+        await storageService.handleUploadedFile(fileA)
       } catch (err) {
         actual = err
       }
 
       expect(actual.detail.message).toBe(`The ancestor directory of the file does not exist.`)
       expect(actual.detail.values).toEqual({
-        filePath: file.name,
+        fileNodePath: fileA.path,
         ancestorPath: `d1`,
       })
 
@@ -3063,8 +3071,8 @@ describe('StorageService', () => {
     it('ベーシックケース', async () => {
       const requestOrigin = config.cors.whitelist[0]
       const inputs: SignedUploadUrlInput[] = [
-        { filePath: `fileA.txt`, contentType: 'text/plain' },
-        { filePath: `fileB.txt`, contentType: 'text/plain' },
+        { id: StorageService.generateNodeId(), path: `fileA.txt`, contentType: 'text/plain' },
+        { id: StorageService.generateNodeId(), path: `fileB.txt`, contentType: 'text/plain' },
       ]
 
       const actual = await storageService.getSignedUploadUrls(requestOrigin, inputs)
@@ -3088,8 +3096,8 @@ describe('StorageService', () => {
     it('画像ファイルをダウンロード', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       const localFilePath = `${__dirname}/${TEST_FILES_DIR}/desert.jpg`
-      const toFilePath = `d1/desert.jpg`
-      const [fileNode] = await storageService.uploadLocalFiles([{ localFilePath, toFilePath }])
+      const fileNodePath = `d1/desert.jpg`
+      const [fileNode] = await storageService.uploadLocalFiles([{ localFilePath, fileNodePath }])
 
       return request(app.getHttpServer())
         .get(`/${fileNode.path}`)

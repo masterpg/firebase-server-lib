@@ -4,7 +4,6 @@ import { StorageNode, StorageNodeType } from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { StorageService } from '../../../../src/app/services/base/storage'
 import dayjs = require('dayjs')
-import { generateFirestoreId } from '../base'
 import { newElasticClient } from '../../../../src/app/base/elastic'
 
 //========================================================================
@@ -60,7 +59,7 @@ async function existsStorageNodes(nodes: StorageNode[], storageService: StorageS
     // ノードがファイルの場合
     if (node.nodeType === StorageNodeType.File) {
       // ストレージに対象ファイルが存在することを検証
-      const fileDetail = await storageService.getStorageFile(node.path)
+      const fileDetail = await storageService.getStorageFile(node.id)
       expect(fileDetail.exists).toBeTruthy()
       expect(fileDetail.version).toBe(node.version)
     }
@@ -87,7 +86,7 @@ async function notExistsStorageNodes(nodes: StorageNode[], storageService: Stora
     // ノードがファイルの場合
     if (node.nodeType === StorageNodeType.File) {
       // ストレージに対象ファイルが存在しないことを検証
-      const fileDetail = await storageService.getStorageFile(node.path)
+      const fileDetail = await storageService.getStorageFile(node.id)
       expect(fileDetail.exists).toBeFalsy()
     }
   }
@@ -114,7 +113,7 @@ async function verifyMoveStorageNodes(fromNodes: StorageNode[], toNodePath: stri
       throw new Error(`The destination node does not exist: '${newNodePath}'`)
     }
     if (toNode.nodeType === StorageNodeType.File) {
-      const { exists, file, version } = await storageService.getStorageFile(toNode.path)
+      const { exists, file, version } = await storageService.getStorageFile(toNode.id)
       expect(exists).toBeTruthy()
       expect(version).toBe(toNode.version)
       expect(StorageService.extractMetaData(file).version).toBe(toNode.version)
@@ -132,6 +131,7 @@ async function verifyMoveStorageNodes(fromNodes: StorageNode[], toNodePath: stri
     expect(toNodeCountResponse.body.count).toBe(1)
 
     // 移動前と移動後のストアノードを比較検証
+    expect(toNode.share).toEqual(fromNode.share)
     expect(toNode.createdAt).toEqual(fromNode.createdAt)
     expect(toNode.updatedAt).toEqual(fromNode.updatedAt)
     expect(toNode.version).toBe(fromNode.version + 1)
@@ -139,11 +139,20 @@ async function verifyMoveStorageNodes(fromNodes: StorageNode[], toNodePath: stri
     // 移動前ノードが存在しないことを検証
     const fromNode_fetched = await storageService.getNode({ path: fromNode.path })
     expect(fromNode_fetched).toBeUndefined()
-    if (fromNode.nodeType === StorageNodeType.File) {
-      const { exists } = await storageService.getStorageFile(fromNode.path)
-      expect(exists).toBeFalsy()
-    }
   }
+
+  // ストレージにあるファイルが迷子になっていないか検証
+  // ※削除されるべきファイルが削除されず、ストレージにファイルはあるが、
+  //   データベースに対象ノードが存在しないという状況がないか検証。
+  const bucket = admin.storage().bucket()
+  const [files] = await bucket.getFiles()
+  await Promise.all(
+    files.map(async file => {
+      const nodeId = file.name
+      const node = await storageService.getNode({ id: nodeId })
+      expect(node?.id).toBe(nodeId)
+    })
+  )
 }
 
 function newStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): StorageNode {
@@ -152,7 +161,7 @@ function newStorageDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 'na
   const name = path.basename(dirPath)
   const dir = removeStartDirChars(path.dirname(dirPath))
   const result: StorageNode = {
-    id: data.id || generateFirestoreId(),
+    id: data.id || StorageService.generateNodeId(),
     nodeType: StorageNodeType.Dir,
     name,
     dir,
@@ -178,7 +187,7 @@ function newStorageFileNode(filePath: string, data?: Partial<Omit<StorageNode, '
   const name = path.basename(filePath)
   const dir = removeStartDirChars(path.dirname(filePath))
   const result: StorageNode = {
-    id: data.id || generateFirestoreId(),
+    id: data.id || StorageService.generateNodeId(),
     nodeType: StorageNodeType.File,
     name,
     dir,

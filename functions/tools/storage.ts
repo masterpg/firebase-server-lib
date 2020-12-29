@@ -339,7 +339,7 @@ program
     // ノードを削除
     switch (node.nodeType) {
       case StorageNodeType.Dir: {
-        await storageService.removeDir(node.path, { maxChunk: 100000000 })
+        await storageService.removeDir(node.path)
         break
       }
       case StorageNodeType.File: {

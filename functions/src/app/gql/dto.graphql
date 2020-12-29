@@ -119,17 +119,23 @@ input StorageNodeShareSettingsInput {
 }
 
 input StorageNodeKeyInput {
+  id: String!
+  path: String!
+}
+
+input StorageNodeGetKeyInput {
   id: String
   path: String
 }
 
-input StorageNodeKeysInput {
+input StorageNodeGetKeysInput {
   ids: [String!]
   paths: [String!]
 }
 
 input SignedUploadUrlInput {
-  filePath: String!
+  id: String!
+  path: String!
   contentType: String
 }
 

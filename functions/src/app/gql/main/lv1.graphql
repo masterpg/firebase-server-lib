@@ -18,7 +18,7 @@ type Mutation {
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
   setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
-  handleUploadedFile(filePath: String!): StorageNode!
+  handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!
   createArticleTypeDir(input: CreateArticleTypeDirInput!): StorageNode!
   createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
   renameArticleNode(nodePath: String!, newName: String!): StorageNode!
@@ -26,8 +26,8 @@ type Mutation {
 }
 
 type Query {
-  storageNode(input: StorageNodeKeyInput!): StorageNode
-  storageNodes(input: StorageNodeKeysInput!): [StorageNode!]!
+  storageNode(input: StorageNodeGetKeyInput!): StorageNode
+  storageNodes(input: StorageNodeGetKeysInput!): [StorageNode!]!
   storageDirDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
   storageDescendants(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!
   storageDirChildren(dirPath: String, input: StoragePaginationInput): StoragePaginationResult!

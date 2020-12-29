@@ -7,7 +7,7 @@ import {
   IdToken,
   StorageArticleNodeType,
   StorageNode,
-  StorageNodeKeyInput,
+  StorageNodeGetKeyInput,
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -178,47 +178,8 @@ class AppStorageService extends StorageService {
    * @param maxChunk
    */
   async deleteUserDir(uid: string, maxChunk = AppStorageService.MaxChunk): Promise<void> {
-    /**
-     * 指定されたディレクトリのストレージファイルを削除します。
-     * @param userRootPath
-     * @param pageToken
-     */
-    const deleteFiles = async (userRootPath: string, pageToken?: string) => {
-      // ファイルを削除
-      const bucket = admin.storage().bucket()
-      const [files, apiResponse] = await bucket.getFiles({
-        prefix: `users/${uid}`,
-        maxResults: maxChunk,
-        pageToken,
-      })
-      await Promise.all(files.map(file => file.delete()))
-      // まだ残りのファイルがある場合、続けて削除
-      const nextPageToken = (apiResponse as any)?.pageToken
-      if (nextPageToken) await deleteFiles(userRootPath, nextPageToken)
-    }
-
-    /**
-     * 指定されたディレクトリのストアノードを削除します。
-     * @param userRootPath
-     */
-    const deleteFileNodes = async (userRootPath: string) => {
-      // データベースからユーザーディレクトリと配下ノードを全て削除
-      await this.client.deleteByQuery({
-        index: StorageService.IndexAlias,
-        body: {
-          query: {
-            bool: {
-              should: [{ term: { path: userRootPath } }, { wildcard: { path: `${userRootPath}/*` } }],
-            },
-          },
-        },
-        refresh: true,
-      })
-    }
-
     const userRootPath = AppStorageService.getUserRootPath({ uid })
-    await deleteFiles(userRootPath)
-    await deleteFileNodes(userRootPath)
+    await this.removeDir(userRootPath)
   }
 
   //--------------------------------------------------
@@ -264,7 +225,7 @@ class AppStorageService extends StorageService {
    * @param input
    */
   async createArticleGeneralDir(dirPath: string, input?: CreateStorageNodeInput): Promise<StorageNode> {
-    AppStorageService.validatePath(dirPath)
+    AppStorageService.validateNodePath(dirPath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
     this.m_validateArticleRootUnder(dirPath)
@@ -354,11 +315,11 @@ class AppStorageService extends StorageService {
     const node = await this.sgetNode({ path: nodePath })
     switch (node.nodeType) {
       case StorageNodeType.Dir:
-        AppStorageService.validateDirName(newName)
+        AppStorageService.validateNodeName(newName)
         break
       // ※現時点では記事ノードにファイルはないが、今後登場するかもしれないので…
       case StorageNodeType.File:
-        AppStorageService.validateFileName(newName)
+        AppStorageService.validateNodeName(newName)
         break
     }
 
@@ -389,7 +350,7 @@ class AppStorageService extends StorageService {
     if (!orderNodePaths.length) return
 
     // 指定されたパスのバリデーションチェック
-    orderNodePaths.forEach(nodePath => StorageService.validatePath(nodePath))
+    orderNodePaths.forEach(nodePath => StorageService.validateNodePath(nodePath))
     orderNodePaths = orderNodePaths.map(nodePath => removeBothEndsSlash(nodePath))
 
     // 引数ノードリストの親がみな一緒か検証
@@ -539,7 +500,7 @@ class AppStorageService extends StorageService {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
 
-    AppStorageService.validatePath(toDirPath)
+    AppStorageService.validateNodePath(toDirPath)
 
     const fromDirNode = await this.sgetNode({ path: fromDirPath })
     switch (fromDirNode.articleNodeType) {
@@ -690,7 +651,7 @@ class AppStorageService extends StorageService {
    * @param input
    */
   private async m_createArticleBundle(input: CreateArticleTypeDirInput & { articleSortOrder: number }): Promise<StorageNode> {
-    AppStorageService.validatePath(input.dir)
+    AppStorageService.validateNodePath(input.dir)
     AppStorageService.validateArticleNodeName(input.articleNodeName)
     const parentPath = removeBothEndsSlash(input.dir)
 
@@ -719,7 +680,7 @@ class AppStorageService extends StorageService {
    * @param input
    */
   private async m_createArticleCategory(input: CreateArticleTypeDirInput & { articleSortOrder: number }): Promise<StorageNode> {
-    AppStorageService.validatePath(input.dir)
+    AppStorageService.validateNodePath(input.dir)
     AppStorageService.validateArticleNodeName(input.articleNodeName)
     const parentPath = removeBothEndsSlash(input.dir)
 
@@ -796,7 +757,7 @@ class AppStorageService extends StorageService {
     // 記事用ディレクトリに記事のもととなるMarkdownファイルを配置
     const articleFilePath = _path.join(dirPath, config.storage.article.fileName)
     await this.saveStorageFileNode({
-      filePath: articleFilePath,
+      fileNodePath: articleFilePath,
       isArticleFile: true,
       dataParams: {
         data: '',
@@ -849,7 +810,7 @@ class AppStorageService extends StorageService {
     if (typeof dirPath_or_hierarchicalDirNodes === 'string') {
       // 指定パスのバリデーションチェック
       dirPath = dirPath_or_hierarchicalDirNodes
-      AppStorageService.validatePath(dirPath)
+      AppStorageService.validateNodePath(dirPath)
       dirPath = removeBothEndsSlash(dirPath)
       // 引数パスが記事ルート配下のものか検証
       this.m_validateArticleRootUnder(dirPath)
@@ -952,7 +913,7 @@ class AppStorageService extends StorageService {
    * 指定されたノードの親ディレクトリ直下ノードの中で最大のソート順を取得し、「+1」した値を返します。
    * @param input
    */
-  async m_getNewArticleSortOrder(input: StorageNodeKeyInput): Promise<number> {
+  async m_getNewArticleSortOrder(input: StorageNodeGetKeyInput): Promise<number> {
     if (!input.id && !input.path) {
       throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
     }
@@ -997,7 +958,7 @@ class AppStorageService extends StorageService {
    * 指定されたディレクトリ直下のノードの中で、最大のソート順を取得します。
    * @param dirKey
    */
-  async m_getMaxArticleSortOrder(dirKey: StorageNodeKeyInput): Promise<number> {
+  async m_getMaxArticleSortOrder(dirKey: StorageNodeGetKeyInput): Promise<number> {
     if (!dirKey.id && !dirKey.path) {
       throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
     }
@@ -1038,7 +999,7 @@ class AppStorageService extends StorageService {
   //----------------------------------------------------------------------
 
   /**
-   * ユーザーディレクトリパスを取得します。
+   * 指定されたユーザーのホームディレクトリを取得します。
    * @param user
    */
   static getUserRootPath(user: { uid: string }): string {

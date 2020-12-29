@@ -149,17 +149,23 @@ interface StorageNodeShareSettingsInput {
 }
 
 interface StorageNodeKeyInput {
+  id: string
+  path: string
+}
+
+interface StorageNodeGetKeyInput {
   id?: string
   path?: string
 }
 
-interface StorageNodeKeysInput {
+interface StorageNodeGetKeysInput {
   ids?: string[]
   paths?: string[]
 }
 
 interface SignedUploadUrlInput {
-  filePath: string
+  id: string
+  path: string
   contentType?: string
 }
 
@@ -256,18 +262,19 @@ export { TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export { AppConfig, StorageConfig, StorageUsersConfig, StorageArticlesConfig }
 export {
-  StorageNodeType,
+  CreateArticleTypeDirInput,
+  CreateStorageNodeInput,
+  SignedUploadUrlInput,
   StorageArticleNodeType,
-  StorageNodeShareSettings,
   StorageNode,
+  StorageNodeKeyInput,
+  StorageNodeGetKeysInput,
+  StorageNodeGetKeyInput,
+  StorageNodeShareSettings,
+  StorageNodeShareSettingsInput,
+  StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
-  StorageNodeShareSettingsInput,
-  StorageNodeKeyInput,
-  StorageNodeKeysInput,
-  SignedUploadUrlInput,
-  CreateStorageNodeInput,
-  CreateArticleTypeDirInput,
 }
 export { PublicProfile, UserInfo, UserInfoInput, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }

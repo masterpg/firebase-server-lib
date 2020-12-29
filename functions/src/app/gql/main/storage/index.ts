@@ -9,8 +9,9 @@ import {
   SignedUploadUrlInput,
   StorageArticleNodeType,
   StorageNode,
+  StorageNodeGetKeyInput,
+  StorageNodeGetKeysInput,
   StorageNodeKeyInput,
-  StorageNodeKeysInput,
   StorageNodeShareSettingsInput,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -49,7 +50,7 @@ class StorageResolver {
   ) {}
 
   @Query()
-  async storageNode(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode | undefined> {
+  async storageNode(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
     // ID検索
     if (input.id) {
       // 引数IDでノードを検索
@@ -76,7 +77,7 @@ class StorageResolver {
   }
 
   @Query()
-  async storageNodes(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeysInput): Promise<StorageNode[]> {
+  async storageNodes(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeGetKeysInput): Promise<StorageNode[]> {
     // 引数指定なしエラー
     if (!input.ids && !input.paths) {
       throw new InputValidationError(`Both 'ids' and 'paths' are not specified.`)
@@ -218,15 +219,15 @@ class StorageResolver {
   }
 
   @Mutation()
-  async handleUploadedFile(@GQLContextArg() ctx: GQLContext, @Args('filePath') filePath: string): Promise<StorageNode> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { filePath })
-    return await this.storageService.handleUploadedFile(filePath)
+  async handleUploadedFile(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: input.path })
+    return await this.storageService.handleUploadedFile(input)
   }
 
   @Query()
   async signedUploadUrls(@GQLContextArg() ctx: GQLContext, @Args('inputs') inputs: SignedUploadUrlInput[]): Promise<string[]> {
-    const filePaths = inputs.map(input => input.filePath)
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { filePaths })
+    const nodePaths = inputs.map(input => input.path)
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePaths })
     const requestOrigin = (ctx.req.headers.origin as string) || ''
     return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
   }

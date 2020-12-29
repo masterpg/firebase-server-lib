@@ -6,7 +6,6 @@ import {
   GENERAL_USER_HEADER,
   STORAGE_USER_HEADER,
   STORAGE_USER_TOKEN,
-  generateFirestoreId,
   getGQLErrorStatus,
   newAppStorageDirNode,
   newAppStorageFileNode,
@@ -20,9 +19,11 @@ import {
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  SignedUploadUrlInput,
   StorageArticleNodeType,
+  StorageNodeGetKeyInput,
+  StorageNodeGetKeysInput,
   StorageNodeKeyInput,
-  StorageNodeKeysInput,
   StorageNodeShareSettings,
   StoragePaginationResult,
 } from '../../../../../../../src/app/services'
@@ -78,7 +79,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageNode', () => {
     const gql = {
       query: `
-        query GetStorageNode($input: StorageNodeKeyInput!) {
+        query GetStorageNode($input: StorageNodeGetKeyInput!) {
           storageNode(input: $input) {
             id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
@@ -89,7 +90,7 @@ describe('Lv1 Storage Resolver', () => {
     describe('パス検索', () => {
       it('疎通確認 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode('d1')
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ path: d1.path })).thenResolve(d1)
@@ -109,7 +110,7 @@ describe('Lv1 Storage Resolver', () => {
       it('疎通確認 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ path: d1.path })).thenResolve(d1)
@@ -128,7 +129,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('疎通確認 - 結果が空だった場合', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ path: d1.path })).thenResolve(undefined)
@@ -147,7 +148,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('サインインしていない場合', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const response = await requestGQL(app, {
           ...gql,
@@ -159,7 +160,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('アクセス権限がない場合 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const response = await requestGQL(
           app,
@@ -176,7 +177,7 @@ describe('Lv1 Storage Resolver', () => {
       it('アクセス権限がない場合 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeyInput = { path: d1.path }
+        const input: StorageNodeGetKeyInput = { path: d1.path }
 
         const response = await requestGQL(
           app,
@@ -194,7 +195,7 @@ describe('Lv1 Storage Resolver', () => {
     describe('ID検索', () => {
       it('疎通確認 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode('d1')
-        const input: StorageNodeKeyInput = { id: d1.id }
+        const input: StorageNodeGetKeyInput = { id: d1.id }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ id: d1.id })).thenResolve(d1)
@@ -214,7 +215,7 @@ describe('Lv1 Storage Resolver', () => {
       it('疎通確認 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeyInput = { id: d1.id }
+        const input: StorageNodeGetKeyInput = { id: d1.id }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ id: d1.id })).thenResolve(d1)
@@ -233,7 +234,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('疎通確認 - 結果が空だった場合', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeyInput = { id: d1.id }
+        const input: StorageNodeGetKeyInput = { id: d1.id }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ id: d1.id })).thenResolve(undefined)
@@ -252,7 +253,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('アクセス権限がない場合 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeyInput = { id: d1.id }
+        const input: StorageNodeGetKeyInput = { id: d1.id }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ id: d1.id })).thenResolve(d1)
@@ -272,7 +273,7 @@ describe('Lv1 Storage Resolver', () => {
       it('アクセス権限がない場合 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeyInput = { id: d1.id }
+        const input: StorageNodeGetKeyInput = { id: d1.id }
 
         const getNode = td.replace(storageService, 'getNode')
         td.when(getNode({ id: d1.id })).thenResolve(d1)
@@ -294,7 +295,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageNodes', () => {
     const gql = {
       query: `
-        query GetStorageNodes($input: StorageNodeKeysInput!) {
+        query GetStorageNodes($input: StorageNodeGetKeysInput!) {
           storageNodes(input: $input) {
             id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
@@ -305,7 +306,7 @@ describe('Lv1 Storage Resolver', () => {
     describe('パス検索', () => {
       it('疎通確認 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode('d1')
-        const input: StorageNodeKeysInput = { paths: [d1.path] }
+        const input: StorageNodeGetKeysInput = { paths: [d1.path] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ paths: [d1.path] })).thenResolve([d1])
@@ -325,7 +326,7 @@ describe('Lv1 Storage Resolver', () => {
       it('疎通確認 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeysInput = { paths: [d1.path] }
+        const input: StorageNodeGetKeysInput = { paths: [d1.path] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ paths: [d1.path] })).thenResolve([d1])
@@ -344,7 +345,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('アクセス権限がない場合 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeysInput = { paths: [d1.path] }
+        const input: StorageNodeGetKeysInput = { paths: [d1.path] }
 
         const response = await requestGQL(
           app,
@@ -361,7 +362,7 @@ describe('Lv1 Storage Resolver', () => {
       it('アクセス権限がない場合 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeysInput = { paths: [d1.path] }
+        const input: StorageNodeGetKeysInput = { paths: [d1.path] }
 
         const response = await requestGQL(
           app,
@@ -379,7 +380,7 @@ describe('Lv1 Storage Resolver', () => {
     describe('ID検索', () => {
       it('疎通確認 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode('d1')
-        const input: StorageNodeKeysInput = { ids: [d1.id] }
+        const input: StorageNodeGetKeysInput = { ids: [d1.id] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ ids: [d1.id] })).thenResolve([d1])
@@ -399,7 +400,7 @@ describe('Lv1 Storage Resolver', () => {
       it('疎通確認 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeysInput = { ids: [d1.id] }
+        const input: StorageNodeGetKeysInput = { ids: [d1.id] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ ids: [d1.id] })).thenResolve([d1])
@@ -418,7 +419,7 @@ describe('Lv1 Storage Resolver', () => {
 
       it('アクセス権限がない場合 - アプリケーションノード', async () => {
         const d1 = newAppStorageDirNode(`d1`)
-        const input: StorageNodeKeysInput = { ids: [d1.id] }
+        const input: StorageNodeGetKeysInput = { ids: [d1.id] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ ids: [d1.id] })).thenResolve([d1])
@@ -438,7 +439,7 @@ describe('Lv1 Storage Resolver', () => {
       it('アクセス権限がない場合 - ユーザーノード', async () => {
         const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
         const d1 = newAppStorageDirNode(`${userRootPath}/d1`)
-        const input: StorageNodeKeysInput = { ids: [d1.id] }
+        const input: StorageNodeGetKeysInput = { ids: [d1.id] }
 
         const getNodes = td.replace(storageService, 'getNodes')
         td.when(getNodes({ ids: [d1.id] })).thenResolve([d1])
@@ -1066,8 +1067,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('handleUploadedFile', () => {
     const gql = {
       query: `
-        mutation HandleUploadedFile($filePath: String!) {
-          handleUploadedFile(filePath: $filePath) {
+        mutation HandleUploadedFile($input: StorageNodeKeyInput!) {
+          handleUploadedFile(input: $input) {
             id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
         }
@@ -1076,14 +1077,15 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認 - アプリケーションノード', async () => {
       const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path },
+          variables: { input },
         },
         { headers: APP_ADMIN_USER_HEADER }
       )
@@ -1094,14 +1096,15 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認 - ユーザーノード', async () => {
       const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const fileA = newAppStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path },
+          variables: { input },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1111,10 +1114,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { filePath: fileA.path },
+        variables: { input },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1122,12 +1126,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合 - アプリケーションノード', async () => {
       const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path },
+          variables: { input },
         },
         { headers: STORAGE_USER_HEADER }
       )
@@ -1138,14 +1143,15 @@ describe('Lv1 Storage Resolver', () => {
     it('アクセス権限がない場合 - ユーザーノード', async () => {
       const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
       const fileA = newAppStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
       const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(fileA.path)).thenResolve(fileA)
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path },
+          variables: { input },
         },
         { headers: GENERAL_USER_HEADER }
       )
@@ -1784,8 +1790,13 @@ describe('Lv1 Storage Resolver', () => {
     }
 
     it('疎通確認 - アプリケーションノード', async () => {
-      const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
-      const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
+      const inputs: SignedUploadUrlInput[] = [
+        {
+          id: AppStorageService.generateNodeId(),
+          path: `d1/d11/fileA.txt`,
+          contentType: 'text/plain',
+        },
+      ]
       const getSignedUploadUrls = td.replace(storageService, 'getSignedUploadUrls')
       td.when(getSignedUploadUrls(td.matchers.anything(), inputs)).thenResolve([`xxx`])
 
@@ -1803,8 +1814,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認 - ユーザーノード', async () => {
       const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
-      const fileA = newAppStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
-      const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
+      const inputs: SignedUploadUrlInput[] = [
+        {
+          id: AppStorageService.generateNodeId(),
+          path: `${userRootPath}/d1/d11/fileA.txt`,
+          contentType: 'text/plain',
+        },
+      ]
       const getSignedUploadUrls = td.replace(storageService, 'getSignedUploadUrls')
       td.when(getSignedUploadUrls(td.matchers.anything(), inputs)).thenResolve([`xxx`])
 
@@ -1821,8 +1837,13 @@ describe('Lv1 Storage Resolver', () => {
     })
 
     it('サインインしていない場合', async () => {
-      const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
-      const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
+      const inputs: SignedUploadUrlInput[] = [
+        {
+          id: AppStorageService.generateNodeId(),
+          path: `d1/d11/fileA.txt`,
+          contentType: 'text/plain',
+        },
+      ]
 
       const response = await requestGQL(app, {
         ...gql,
@@ -1833,8 +1854,13 @@ describe('Lv1 Storage Resolver', () => {
     })
 
     it('アクセス権限がない場合 - アプリケーションノード', async () => {
-      const fileA = newAppStorageFileNode(`d1/d11/fileA.txt`)
-      const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
+      const inputs: SignedUploadUrlInput[] = [
+        {
+          id: AppStorageService.generateNodeId(),
+          path: `d1/d11/fileA.txt`,
+          contentType: 'text/plain',
+        },
+      ]
 
       const response = await requestGQL(
         app,
@@ -1850,8 +1876,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合 - ユーザーノード', async () => {
       const userRootPath = AppStorageService.getUserRootPath(STORAGE_USER_TOKEN)
-      const fileA = newAppStorageFileNode(`${userRootPath}/d1/d11/fileA.txt`)
-      const inputs = [{ filePath: fileA.path, contentType: 'text/plain' }]
+      const inputs: SignedUploadUrlInput[] = [
+        {
+          id: AppStorageService.generateNodeId(),
+          path: `${userRootPath}/d1/d11/fileA.txt`,
+          contentType: 'text/plain',
+        },
+      ]
 
       const response = await requestGQL(
         app,
@@ -1884,7 +1915,7 @@ describe('Lv1 Storage Resolver', () => {
         articleNodeName: 'バンドル',
         articleNodeType: StorageArticleNodeType.ListBundle,
       }
-      const bundle = newAppStorageDirNode(`${input.dir}/${generateFirestoreId()}`, input)
+      const bundle = newAppStorageDirNode(`${input.dir}/${AppStorageService.generateNodeId()}`, input)
 
       const createArticleTypeDir = td.replace(storageService, 'createArticleTypeDir')
       td.when(createArticleTypeDir(input)).thenResolve(bundle)
@@ -2013,8 +2044,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2037,8 +2068,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2054,8 +2085,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2085,13 +2116,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 2,
       })
-      const cat2 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const cat2 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ2',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2118,13 +2149,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 2,
       })
-      const cat2 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const cat2 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ2',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2141,13 +2172,13 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const cat1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const cat1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ1',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 2,
       })
-      const cat2 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const cat2 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: 'カテゴリ2',
         articleNodeType: StorageArticleNodeType.Category,
         articleSortOrder: 1,
@@ -2184,8 +2215,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = AppStorageService.getArticleRootPath(STORAGE_USER_TOKEN)
-      const bundlePath = `${articleRootPath}/${generateFirestoreId()}`
-      const art1 = newAppStorageDirNode(`${bundlePath}/${generateFirestoreId()}`, {
+      const bundlePath = `${articleRootPath}/${AppStorageService.generateNodeId()}`
+      const art1 = newAppStorageDirNode(`${bundlePath}/${AppStorageService.generateNodeId()}`, {
         articleNodeName: '記事1',
         articleNodeType: StorageArticleNodeType.Article,
         articleSortOrder: 1,

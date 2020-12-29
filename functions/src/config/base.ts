@@ -1,5 +1,5 @@
+import { PartialAre, StorageArticlesConfig, StorageUsersConfig } from 'web-base-lib'
 import { ClientOptions as ElasticConfig } from '@elastic/elasticsearch'
-import { PartialAre } from 'web-base-lib'
 import { SUPPORTED_REGIONS } from 'firebase-functions'
 
 //========================================================================
@@ -136,15 +136,15 @@ class CORSConfigImpl implements CORSConfig {
 }
 
 class StorageConfigImpl implements StorageConfig {
-  constructor(params: PartialAre<StorageConfig, 'user' | 'article'>) {
+  constructor(params: { bucket: string }) {
     this.bucket = params.bucket
     this.user = {
-      rootName: params.user?.rootName ?? 'users',
+      rootName: StorageUsersConfig.RootName,
     }
     this.article = {
-      rootName: params.article?.rootName ?? 'articles',
-      fileName: params.article?.fileName ?? 'index.md',
-      assetsName: params.article?.assetsName ?? 'assets',
+      rootName: StorageArticlesConfig.RootName,
+      fileName: StorageArticlesConfig.FileName,
+      assetsName: StorageArticlesConfig.AssetsName,
     }
   }
 

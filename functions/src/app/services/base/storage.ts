@@ -5,8 +5,9 @@ import {
   CreateStorageNodeInput,
   SignedUploadUrlInput,
   StorageNode,
+  StorageNodeGetKeyInput,
+  StorageNodeGetKeysInput,
   StorageNodeKeyInput,
-  StorageNodeKeysInput,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
   StorageNodeType,
@@ -27,11 +28,11 @@ import {
   openPointInTime,
   validateBulkResponse,
 } from '../../base/elastic'
+import { Entities, RequiredAre, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
-import { InputValidationError, generateId, validateUID } from '../../base'
+import { InputValidationError, generateEntityId, validateUID } from '../../base'
 import { Request, Response } from 'express'
-import { RequiredAre, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import dayjs = require('dayjs')
 import { config } from '../../../config'
 
@@ -210,7 +211,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたノードを取得します。
    * @param input
    */
-  async getNode(input: StorageNodeKeyInput): Promise<NODE | undefined> {
+  async getNode(input: StorageNodeGetKeyInput): Promise<NODE | undefined> {
     if (!input.id && !input.path) {
       return undefined
     }
@@ -238,7 +239,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたノードが見つからなかった場合、例外がスローされます。
    * @param input
    */
-  async sgetNode(input: StorageNodeKeyInput): Promise<NODE> {
+  async sgetNode(input: StorageNodeGetKeyInput): Promise<NODE> {
     const node = await this.getNode(input)
     if (!node) {
       throw new Error(`There is no node in the specified key: ${JSON.stringify(input)}`)
@@ -250,7 +251,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたノードリストを取得します。
    * @param input
    */
-  async getNodes(input: StorageNodeKeysInput): Promise<NODE[]> {
+  async getNodes(input: StorageNodeGetKeysInput): Promise<NODE[]> {
     const ids = input.ids || []
     const paths = input.paths || []
     const size = 1000
@@ -301,11 +302,11 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたファイルノードを取得します。
    * @param key
    */
-  async getFileNode(key: StorageNodeKeyInput): Promise<FILE_NODE | undefined> {
+  async getFileNode(key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
     const fileNode = await this.getNode(key)
     if (!fileNode) return undefined
 
-    const { file, exists } = await this.getStorageFile(fileNode.path)
+    const { file, exists } = await this.getStorageFile(fileNode.id)
     if (!exists) return undefined
 
     return { ...fileNode, file } as FILE_NODE
@@ -316,7 +317,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 指定されたファイルノードが見つからなかった場合、例外がスローされます。
    * @param key
    */
-  async sgetFileNode(key: StorageNodeKeyInput): Promise<FILE_NODE> {
+  async sgetFileNode(key: StorageNodeGetKeyInput): Promise<FILE_NODE> {
     const node = await this.getFileNode(key)
     if (!node) {
       throw new Error(`There is no node in the specified key: ${JSON.stringify(key)}`)
@@ -326,11 +327,11 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
   /**
    * ストレージのファイルを取得します。
-   * @param filePath
+   * @param nodeId
    */
-  async getStorageFile(filePath: string): Promise<StorageFileDetail> {
+  async getStorageFile(nodeId: string): Promise<StorageFileDetail> {
     const bucket = admin.storage().bucket()
-    const file = bucket.file(filePath)
+    const file = bucket.file(nodeId)
     const [exists] = await file.exists()
     const metadata = StorageService.extractMetaData(file)
 
@@ -760,7 +761,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    */
   async createDir(dirPath: string, input?: CreateStorageNodeInput): Promise<NODE> {
     // 指定されたパスのバリデーションチェック
-    StorageService.validatePath(dirPath)
+    StorageService.validateNodePath(dirPath)
     dirPath = removeBothEndsSlash(dirPath)
 
     // 共有設定の入力値を検証
@@ -832,7 +833,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    */
   async createHierarchicalDirs(dirPaths: string[]): Promise<NODE[]> {
     // 指定されたパスのバリデーションチェック
-    dirPaths.forEach(dirPath => StorageService.validatePath(dirPath))
+    dirPaths.forEach(dirPath => StorageService.validateNodePath(dirPath))
     dirPaths = dirPaths.map(dirPath => removeBothEndsSlash(dirPath))
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
@@ -921,7 +922,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       for (const chunk of splitArrayChunk(nodes, size)) {
         await Promise.all(
           chunk.map(async node => {
-            const file = bucket.file(node.path)
+            const file = bucket.file(node.id)
             await file.delete({ ignoreNotFound: true })
           })
         )
@@ -1000,7 +1001,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     toDirPath = removeBothEndsSlash(toDirPath)
     const maxChunk = input?.maxChunk ?? 1000
 
-    StorageService.validatePath(toDirPath)
+    StorageService.validateNodePath(toDirPath)
 
     // 移動元と移動先が同じでないことを確認
     if (fromDirPath === toDirPath) {
@@ -1014,116 +1015,109 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       throw new Error(`The destination directory is its own subdirectory: '${_path.join(fromDirPath)}' -> '${_path.join(toDirPath)}'`)
     }
 
-    const bucket = admin.storage().bucket()
-
-    //
-    // 移動元ディレクトリの移動処理
-    //
-    // 移動元ディレクトリの取得
-    const dirNode = await this.getNode({ path: fromDirPath })
-    if (!dirNode) {
-      throw new Error(`The source directory does not exist: '${fromDirPath}'`)
-    }
-
     // 移動先の所属ディレクトリの存在確認
     // ※バケット直下への移動時はディレクトリの存在確認はしない
-    const toDirParentPath = removeStartDirChars(_path.dirname(toDirPath))
-    if (toDirParentPath) {
-      const toDirParentNode = await this.getNode({ path: toDirParentPath })
-      if (!toDirParentNode) {
-        throw new Error(`The destination directory does not exist: '${toDirParentPath}'`)
+    const toParentPath = removeStartDirChars(_path.dirname(toDirPath))
+    if (toParentPath) {
+      const toParentNode = await this.getNode({ path: toParentPath })
+      if (!toParentNode) {
+        throw new Error(`The destination directory does not exist: '${toParentPath}'`)
       }
     }
 
-    // 移動先ディレクトリが既に存在している場合
-    const existsToDirNode = await this.getNode({ path: toDirPath })
-    if (existsToDirNode) {
-      // 既に存在している移動先ディレクトリは削除
-      // ※移動先ディレクトリを削除するだけで、配下ノードは削除しない
-      await this.client.delete({
-        index: StorageService.IndexAlias,
-        id: existsToDirNode.id,
-        refresh: true,
-      })
-    }
-
-    // 移動元ディレクトリを移動先ディレクトリへ移動
-    await this.client.update({
-      index: StorageService.IndexAlias,
-      id: dirNode.id,
-      body: {
-        doc: {
-          ...this.getSaveBaseStorageNode({
-            id: dirNode.id,
-            path: toDirPath,
-          }),
-          version: dirNode.version + 1,
-        },
-      },
-      refresh: true,
-    })
-
-    //
-    // 移動元ディレクトリの配下ノードの移動処理
-    //
     let pagination: StoragePaginationResult<NODE> = { nextPageToken: undefined, list: [] }
     do {
-      // 配下ノードを取得
-      pagination = await this.getDescendants(fromDirPath, { maxChunk })
+      pagination = await this.getDirDescendants(fromDirPath, {
+        maxChunk,
+        pageToken: pagination.nextPageToken,
+      })
 
-      // 配下ノードの移動処理
-      const promises: Promise<void>[] = pagination.list.map(async node => {
-        // 移動元ノードのパスを移動先のパスへ変換
-        const reg = new RegExp(`^${fromDirPath}`)
-        const newNodePath = node.path.replace(reg, toDirPath)
+      // 移動元ノードのパスを移動先のパスへ変換するための正規表現
+      const reg = new RegExp(`^${fromDirPath}`)
 
-        // 移動先ノードが既に存在している場合
-        const existsNode = await this.getNode({ path: newNodePath })
-        if (existsNode) {
-          // 既に存在している移動先ノードは削除
-          // ※移動先ノードを削除するだけで、そのノードがディレクトリでも配下ノードは削除しない
-          // ・データベースから既に存在している移動先ノードを削除
-          await this.client.delete({
-            index: StorageService.IndexAlias,
-            id: existsNode.id,
-            refresh: true,
-          })
-          // ・移動先ノードがファイルの場合、ストレージからそのファイルを削除
-          if (existsNode.nodeType === StorageNodeType.File) {
-            const file = bucket.file(existsNode.path)
-            await file.delete({ ignoreNotFound: true })
+      // 以降の処理を行いやすくするためにデータ加工
+      const { toNodes, toFileNodes } = pagination.list.reduce(
+        (result, node) => {
+          const toNodePath = node.path.replace(reg, toDirPath)
+          const toNode = {
+            ...node,
+            name: _path.basename(toNodePath),
+            dir: _path.dirname(toNodePath),
+            path: toNodePath,
+            level: StorageService.getNodeLevel(toNodePath),
+            version: node.version + 1,
           }
-        }
+          if (toNode.nodeType === StorageNodeType.File) {
+            result.toFileNodes.push(toNode)
+          }
+          result.toNodes.push(toNode)
+          return result
+        },
+        { toNodes: [], toFileNodes: [] } as { toNodes: StorageNode[]; toFileNodes: StorageNode[] }
+      )
 
-        // データベースの移動元ノードのパスを移動先のパスへ変更
-        const version = node.version + 1
-        await this.client.update({
-          index: StorageService.IndexAlias,
-          id: node.id,
-          body: {
-            doc: {
-              ...this.getSaveBaseStorageNode({
-                id: node.id,
-                path: newNodePath,
-              }),
-              version,
+      // 移動先に同名のファイルが存在する場合、そのファイルを削除
+      // ※ストレージに対する処理
+      await Promise.all(
+        toFileNodes.map(async toFileNode => {
+          const existingToFileNode = await this.getFileNode({ path: toFileNode.path })
+          if (existingToFileNode && existingToFileNode.file) {
+            await existingToFileNode.file.delete({ ignoreNotFound: true })
+          }
+        })
+      )
+
+      // 移動先に同名のノードが存在する場合、そのノードを削除
+      // ※データベースに対する処理
+      await this.client.deleteByQuery({
+        index: StorageService.IndexAlias,
+        body: {
+          query: {
+            terms: { path: toNodes.map(toNode => toNode.path) },
+          },
+        },
+        refresh: true,
+      })
+
+      // 移動元ノードのパスを移動先のパスへ変更
+      // ※データベースに対する処理
+      await this.client.updateByQuery({
+        index: StorageService.IndexAlias,
+        body: {
+          query: {
+            terms: {
+              id: toNodes.map(toNode => toNode.id),
             },
           },
-          refresh: true,
-        })
-
-        // 移動元ノードがファイルの場合、ストレージのファイルを移動先へ移動
-        if (node.nodeType === StorageNodeType.File) {
-          const { exists, file } = await this.getStorageFile(node.path)
-          if (exists) {
-            await file.move(newNodePath)
-            // 移動したストレージファイルのメタデータを更新
-            const { file: movedFile } = await this.getStorageFile(newNodePath)
-            await this.saveMetadata(movedFile, { version })
-          }
-        }
+          script: {
+            lang: 'painless',
+            source: `
+              ctx._source.name = params[ctx._source.id].name;
+              ctx._source.dir = params[ctx._source.id].dir;
+              ctx._source.path = params[ctx._source.id].path;
+              ctx._source.level = params[ctx._source.id].level;
+              ctx._source.version = params[ctx._source.id].version;
+            `,
+            params: toNodes.reduce((result, toNode) => {
+              const { name, dir, path, level, version } = toNode
+              result[toNode.id] = { name, dir, path, level, version }
+              return result
+            }, {} as { [id: string]: { name: string; dir: string; path: string; level: number; version: number } }),
+          },
+        },
+        refresh: true,
       })
-      promises.length && (await Promise.all(promises))
+
+      // 移動したファイルのメタデータを更新
+      // ※データベースに対する処理
+      await Promise.all(
+        toFileNodes.map(async toFileNode => {
+          const { exists, file } = await this.getStorageFile(toFileNode.id)
+          if (exists) {
+            await this.saveMetadata(file, { version: toFileNode.version })
+          }
+        })
+      )
     } while (pagination.nextPageToken)
   }
 
@@ -1147,7 +1141,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     fromFilePath = removeBothEndsSlash(fromFilePath)
     toFilePath = removeBothEndsSlash(toFilePath)
 
-    StorageService.validatePath(toFilePath)
+    StorageService.validateNodePath(toFilePath)
 
     // 移動元ファイルの存在確認
     const fileNode = await this.getFileNode({ path: fromFilePath })
@@ -1157,27 +1151,27 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     // 移動先の所属ディレクトリの存在確認
     // ※バケット直下への移動時はディレクトリの存在確認はしない
-    const toParentDirPath = removeStartDirChars(_path.dirname(toFilePath))
-    if (toParentDirPath) {
-      const toParentDirNode = await this.getNode({ path: toParentDirPath })
-      if (!toParentDirNode) {
-        throw new Error(`The destination directory does not exist: '${toParentDirPath}'`)
+    const toParentPath = removeStartDirChars(_path.dirname(toFilePath))
+    if (toParentPath) {
+      const toParentNode = await this.getNode({ path: toParentPath })
+      if (!toParentNode) {
+        throw new Error(`The destination directory does not exist: '${toParentPath}'`)
       }
     }
 
     // 移動先に同名のファイルが存在している場合
-    const existsNode = await this.getNode({ path: toFilePath })
-    if (existsNode) {
+    const existingToFileNode = await this.getNode({ path: toFilePath })
+    if (existingToFileNode) {
       // 移動先の同名ファイルは削除
       // ・データベースからファイルノードを削除
       await this.client.delete({
         index: StorageService.IndexAlias,
-        id: existsNode.id,
+        id: existingToFileNode.id,
         refresh: true,
       })
       // ・ストレージからファイルを削除
       const bucket = admin.storage().bucket()
-      const file = bucket.file(existsNode.path)
+      const file = bucket.file(existingToFileNode.id)
       await file.delete({ ignoreNotFound: true })
     }
 
@@ -1198,11 +1192,8 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       refresh: true,
     })
 
-    // ストレージのファイルを移動先へ移動
-    await fileNode.file.move(toFilePath)
-
     // 移動したストレージファイルのメタデータを更新
-    const { file: movedFile } = await this.getStorageFile(toFilePath)
+    const { file: movedFile } = await this.getStorageFile(fileNode.id)
     await this.saveMetadata(movedFile, { version })
 
     return this.sgetFileNode({ id: fileNode.id })
@@ -1228,7 +1219,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   async renameDir(dirPath: string, newName: string, input?: { maxChunk?: number }): Promise<void> {
     dirPath = removeBothEndsSlash(dirPath)
 
-    StorageService.validateDirName(newName)
+    StorageService.validateNodeName(newName)
 
     // リネームした際のパスを作成
     const reg = new RegExp(`${_path.basename(dirPath)}$`)
@@ -1262,7 +1253,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   async renameFile(filePath: string, newName: string): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
-    StorageService.validateFileName(newName)
+    StorageService.validateNodeName(newName)
 
     // リネームした際のパスを作成
     const reg = new RegExp(`${_path.basename(filePath)}$`)
@@ -1352,20 +1343,22 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
   /**
    * ファイルアップロードの後に必要な処理を行います。
-   * @param filePath
+   * @param input
    */
-  async handleUploadedFile(filePath: string): Promise<FILE_NODE> {
-    // 指定されたパスのバリデーションチェック
-    StorageService.validatePath(filePath)
+  async handleUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE> {
+    const { id: nodeId, path: nodePath } = input
+
+    // 指定されたパスの検証
+    StorageService.validateNodePath(nodePath)
 
     // ストレージにファイルが存在することを確認
-    const { file, exists } = await this.getStorageFile(filePath)
+    const { file, exists } = await this.getStorageFile(nodeId)
     if (!exists) {
-      throw new Error(`Uploaded file not found: '${filePath}'`)
+      throw new InputValidationError(`Uploaded file not found.`, input)
     }
 
     // ファイルを格納するディレクトリが存在することを検証
-    const parentPath = removeStartDirChars(_path.dirname(filePath))
+    const parentPath = removeStartDirChars(_path.dirname(nodePath))
     const dirNodes = await this.getRequiredHierarchicalDirNodes(parentPath)
     for (const dirNode of dirNodes) {
       if (!dirNode.exists) {
@@ -1374,16 +1367,16 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         await file.delete()
         // 例外をスロー
         throw new InputValidationError(`The ancestor directory of the file does not exist.`, {
-          filePath: filePath,
+          fileNodePath: nodePath,
           ancestorPath: dirNode.path,
         })
       }
     }
 
-    // ファイルノードの作成/更新
-    const fileNode = await this.saveFileNode(filePath, file)
+    // データベースのファイルノード作成/更新
+    const fileNode = await this.saveFileNode(nodePath, file)
 
-    return { ...fileNode, file } as FILE_NODE
+    return fileNode as FILE_NODE
   }
 
   /**
@@ -1393,16 +1386,16 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    */
   async getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
     const bucket = admin.storage().bucket()
-    const urlDict: { [path: string]: string } = {}
+    const urlDict: { [id: string]: string } = {}
 
     for (const input of inputs) {
-      const { filePath, contentType } = input
+      const { id: nodeId, contentType } = input
 
       // ファイルノードの新バージョン番号を取得
-      const fileNode = await this.getNode({ path: filePath })
+      const fileNode = await this.getNode({ id: nodeId })
       const version = (fileNode?.version ?? 0) + 1
 
-      const gcsFileNode = bucket.file(filePath)
+      const gcsFileNode = bucket.file(nodeId)
       const [url] = await gcsFileNode.createResumableUpload({
         origin: requestOrigin,
         metadata: {
@@ -1410,10 +1403,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
           metadata: StorageService.toGCSMetadata({ version }),
         },
       })
-      urlDict[filePath] = url
+      urlDict[nodeId] = url
     }
 
-    return inputs.map(input => urlDict[input.filePath])
+    return inputs.map(input => urlDict[input.id])
   }
 
   //--------------------------------------------------
@@ -1482,7 +1475,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       await Promise.all(
         chunk.map(async uploadItem => {
           const fileNode = await this.saveStorageFileNode({
-            filePath: uploadItem.path,
+            fileNodePath: uploadItem.path,
             dataParams: {
               data: uploadItem.data,
               options: { contentType: uploadItem.contentType },
@@ -1504,10 +1497,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * ローカルファイルをストレージへアップロードします。
    * @param uploadList
    */
-  async uploadLocalFiles(uploadList: { localFilePath: string; toFilePath: string }[]): Promise<FILE_NODE[]> {
+  async uploadLocalFiles(uploadList: { localFilePath: string; fileNodePath: string }[]): Promise<FILE_NODE[]> {
     const dirPaths = uploadList
       .map(uploadItem => {
-        return removeStartDirChars(_path.dirname(uploadItem.toFilePath))
+        return removeStartDirChars(_path.dirname(uploadItem.fileNodePath))
       })
       .filter(dirPath => Boolean(dirPath))
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(...dirPaths)
@@ -1522,16 +1515,18 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     for (const chunk of splitArrayChunk(uploadList, StorageService.MaxChunk)) {
       await Promise.all(
         chunk.map(async uploadItem => {
-          const response = await bucket.upload(uploadItem.localFilePath, { destination: uploadItem.toFilePath })
+          const { localFilePath, fileNodePath } = uploadItem
+          const nodeId = StorageService.generateNodeId()
+          const response = await bucket.upload(localFilePath, { destination: nodeId })
           const [file, metadata] = response
-          const fileNode = await this.saveFileNode(uploadItem.toFilePath, file)
+          const fileNode = await this.saveFileNode(uploadItem.fileNodePath, file)
           uploadedFileDict[fileNode.path] = fileNode
         })
       )
     }
 
     return uploadList.reduce<FILE_NODE[]>((result, item) => {
-      result.push(uploadedFileDict[item.toFilePath])
+      result.push(uploadedFileDict[item.fileNodePath])
       return result
     }, [])
   }
@@ -1597,15 +1592,16 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストレージに格納されているファイルをもとに、ストアのファイルノードを作成/更新します。
-   * @param filePath
+   * ストレージに格納されているファイルをもとに、データベースのファイルノードを作成/更新します。
+   * @param fileNodePath
    * @param file
    * @param input
    */
-  async saveFileNode(filePath: string, file: File, input?: { share?: StorageNodeShareSettingsInput }): Promise<FILE_NODE> {
-    filePath = removeBothEndsSlash(filePath)
+  async saveFileNode(fileNodePath: string, file: File, input?: { share?: StorageNodeShareSettingsInput }): Promise<FILE_NODE> {
+    fileNodePath = removeBothEndsSlash(fileNodePath)
 
-    const existsFileNode = await this.getNode({ path: filePath })
+    const nodeId = file.name
+    const existsFileNode = await this.getNode({ id: nodeId })
     const { version } = StorageService.extractMetaData(file)
 
     // クライアント側ではアップロード前に引数ファイルのメタデータに新バージョン番号が書き込まれる。
@@ -1615,7 +1611,6 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       return { ...existsFileNode, file } as FILE_NODE
     }
 
-    const nodeId = existsFileNode?.id ?? StorageService.generateNodeId()
     const now = dayjs().toISOString()
     await this.client.update({
       index: StorageService.IndexAlias,
@@ -1624,7 +1619,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         doc: {
           ...(this.getSaveBaseStorageNode({
             id: nodeId,
-            path: filePath,
+            path: fileNodePath,
             share: input?.share ?? existsFileNode?.share ?? StorageService.EmptyShareSettings,
           }) as RequiredAre<WriteBaseStorageNode, 'share'>),
           nodeType: StorageNodeType.File,
@@ -1654,24 +1649,24 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * @param params
    */
   protected async saveStorageFileNode(params: {
-    filePath: string
+    fileNodePath: string
     isArticleFile?: boolean
     dataParams: { data: any; options?: SaveOptions }
     share?: StorageNodeShareSettingsInput
   }): Promise<FILE_NODE> {
-    const filePath = removeBothEndsSlash(params.filePath)
+    const fileNodePath = removeBothEndsSlash(params.fileNodePath)
     const isArticleFile = params.isArticleFile ?? false
     const { dataParams, share } = params
 
-    const fileNode = await this.getNode({ path: filePath })
-    const nodeId = fileNode ? fileNode.id : StorageService.generateNodeId()
+    const fileNode = await this.getNode({ path: fileNodePath })
+    const nodeId = fileNode?.id || StorageService.generateNodeId()
     let version = 0
 
     //
     // ストレージにファイルのコンテンツデータを保存
     //
     const bucket = admin.storage().bucket()
-    const file = bucket.file(filePath)
+    const file = bucket.file(nodeId)
 
     let metadata: StorageFileMetadata
     if (fileNode) {
@@ -1699,7 +1694,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         doc: {
           ...(this.getSaveBaseStorageNode({
             id: nodeId,
-            path: filePath,
+            path: fileNodePath,
             share: share ?? fileNode?.share ?? StorageService.EmptyShareSettings,
           }) as RequiredAre<WriteBaseStorageNode, 'share'>),
           nodeType: StorageNodeType.File,
@@ -1869,9 +1864,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * 各環境ごとのElasticsearchのインデックス名です。
    */
   static readonly IndexAliases = {
-    prod: 'storage-nodes',
-    dev: 'storage-nodes',
-    test: 'storage-nodes-test',
+    prod: `${Entities.StorageNodes.Name}`,
+    dev: `${Entities.StorageNodes.Name}`,
+    test: `${Entities.StorageNodes.Name}-test`,
   }
 
   /**
@@ -1888,7 +1883,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * ノードIDを生成します。
    */
   static generateNodeId(): string {
-    return generateId(this.IndexAlias)
+    return generateEntityId(this.IndexAlias)
   }
 
   /**
@@ -1901,10 +1896,10 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ノードパスのチェックを行います。
+   * ノードパスの検証を行います。
    * @param nodePath
    */
-  static validatePath(nodePath?: string): void {
+  static validateNodePath(nodePath?: string): void {
     if (!nodePath) {
       throw new InputValidationError('The specified path is empty.')
     }
@@ -1918,26 +1913,24 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ディレクトリ名のチェックを行います。
-   * @param dirName
+   * ノード名の検証を行います。
+   * @param nodeName
    */
-  static validateDirName(dirName?: string): void {
-    this.validatePath(dirName)
-    // '/'が含まれないことを検証
-    if (/\//g.test(dirName!)) {
-      throw new InputValidationError('The specified directory name is invalid.', { dirName })
+  static validateNodeName(nodeName?: string): void {
+    if (!nodeName) {
+      throw new InputValidationError('The specified node name is empty.')
     }
-  }
 
-  /**
-   * ファイル名のチェックを行います。
-   * @param fileName
-   */
-  static validateFileName(fileName?: string): void {
-    this.validatePath(fileName)
+    // 改行、タブが含まれないことを検証
+    if (/\r?\n|\t/g.test(nodeName)) {
+      throw new InputValidationError('The specified node name is invalid.', {
+        nodeName,
+      })
+    }
+
     // '/'が含まれないことを検証
-    if (/\//g.test(fileName!)) {
-      throw new InputValidationError('The specified file name is invalid.', { fileName })
+    if (/\//g.test(nodeName!)) {
+      throw new InputValidationError('The specified directory name is invalid.', { nodeName })
     }
   }
 

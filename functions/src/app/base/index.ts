@@ -45,12 +45,20 @@ async function createNestApplication(module: any): Promise<INestApplication> {
   return nestApp.init()
 }
 
+/**
+ * エンティティIDを生成します。
+ * @param entityName エンティティ名を指定します。
+ */
+function generateEntityId(entityName: string): string {
+  return admin.firestore().collection(entityName).doc().id
+}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { initApp, initFirebaseApp, createNestHTTPApplication, createNestApplication }
+export { initApp, initFirebaseApp, createNestHTTPApplication, createNestApplication, generateEntityId }
 export * from './firestore'
 export * from './validator'

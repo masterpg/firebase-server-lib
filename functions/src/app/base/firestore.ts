@@ -51,18 +51,10 @@ function isFieldValue(obj: any): boolean {
   return obj instanceof FieldValue
 }
 
-/**
- * FirestoreまたはElasticsearchのドキュメントIDを生成します。
- * @param collectionName Firestoreのコレクションを特定する名前、またはElasticsearchのインデックス名を指定します。
- */
-function generateId(collectionName: string): string {
-  return admin.firestore().collection(collectionName).doc().id
-}
-
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { WriteReadyObserver, firestoreExOptions, isFieldValue, generateId }
+export { WriteReadyObserver, firestoreExOptions, isFieldValue }

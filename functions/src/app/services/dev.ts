@@ -10,7 +10,7 @@ import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import UserRecord = admin.auth.UserRecord
 import dayjs = require('dayjs')
-import { generateId } from '../base'
+import { generateEntityId } from '../base'
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
 const firebaseTools = require('firebase-tools')
@@ -61,7 +61,7 @@ class DevUtilsService {
     })
 
     const body = data.flatMap(doc => {
-      doc.id = doc.id ?? generateId(index)
+      doc.id = doc.id ?? generateEntityId(index)
       doc = { id: doc.id, ...doc } // idをプロパティ群の先頭にしている
       return [{ index: { _index: index, _id: doc.id } }, doc]
     })

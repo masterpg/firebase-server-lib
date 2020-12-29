@@ -4,7 +4,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($input: StorageNodeKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
+  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
     "input": { "path": "test-files/d1" }
   }
@@ -257,9 +257,12 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "HandleUploadedFile",
-  "query": "mutation HandleUploadedFile($filePath: String!) { handleUploadedFile(filePath: $filePath) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
+  "query": "mutation HandleUploadedFile($input: StorageNodeKeyInput!) { handleUploadedFile(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
   "variables": {
-    "filePath": "test-files/d1/fileA.txt"
+    "input": {
+      "id": "12345678901234567890",
+      "path": "test-files/d1/fileA.txt"
+    }
   }
 }
 
@@ -275,7 +278,8 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
   "variables": {
     "inputs": [
       {
-        "filePath": "images/family.png",
+        "id": "12345678901234567890",
+        "path": "images/family.png",
         "contentType": "image/png"
       }
     ]

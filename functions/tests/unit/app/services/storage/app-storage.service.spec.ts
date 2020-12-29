@@ -2307,7 +2307,7 @@ describe('AppStorageService', () => {
 
     const gqlGetStorageNode = {
       query: `
-        query GetStorageNode($input: StorageNodeKeyInput!) {
+        query GetStorageNode($input: StorageNodeGetKeyInput!) {
           storageNode(input: $input) {
             id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
           }
