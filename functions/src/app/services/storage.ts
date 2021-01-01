@@ -13,8 +13,8 @@ import {
   StoragePaginationResult,
 } from './types'
 import { AuthServiceDI, AuthServiceModule } from './base/auth'
+import { DBStorageNode, StorageService } from './base/storage'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
-import { RawStorageNode, StorageService } from './base/storage'
 import { Request, Response } from 'express'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { InputValidationError } from '../base'
@@ -445,7 +445,7 @@ class AppStorageService extends StorageService {
     const maxChunk = options?.maxChunk || AppStorageService.MaxChunk
     const from = options?.pageToken ? Number(options.pageToken) : 0
 
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
+    const response = await this.client.search<SearchResponse<DBStorageNode>>({
       index: StorageService.IndexAlias,
       size: maxChunk,
       from,
@@ -756,14 +756,7 @@ class AppStorageService extends StorageService {
 
     // 記事用ディレクトリに記事のもととなるMarkdownファイルを配置
     const articleFilePath = _path.join(dirPath, config.storage.article.fileName)
-    await this.saveStorageFileNode({
-      fileNodePath: articleFilePath,
-      isArticleFile: true,
-      dataParams: {
-        data: '',
-        options: { contentType: 'text/markdown' },
-      },
-    })
+    await this.saveGCSFileAndFileNode(articleFilePath, '', { contentType: 'text/markdown' }, { isArticleFile: true })
 
     return result
   }

@@ -54,7 +54,7 @@ let storageService!: TestStorageService
 let devUtilsService!: DevUtilsServiceDI.type
 
 type TestStorageService = StorageService & {
-  saveMetadata: StorageService['saveMetadata']
+  saveMetadata: StorageService['saveGCSMetadata']
 }
 
 @Controller()
@@ -2739,181 +2739,193 @@ describe('StorageService', () => {
 
       expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
+  })
 
-    describe('setFileShareSettings', () => {
-      beforeEach(async () => {
-        await storageService.createHierarchicalDirs([`d1`])
-        await storageService.uploadDataItems([
-          {
-            data: 'testA',
-            contentType: 'text/plain; charset=utf-8',
-            path: `d1/fileA.txt`,
-          },
-        ])
+  describe('setFileShareSettings', () => {
+    beforeEach(async () => {
+      await storageService.createHierarchicalDirs([`d1`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d1/fileA.txt`,
+        },
+      ])
+    })
+
+    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeTruthy()
+        expect(metadata.readUIds).toBeNull()
+        expect(metadata.writeUIds).toBeNull()
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
+
+    it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, {
+        readUIds: ['ichiro'],
+        writeUIds: ['ichiro'],
       })
 
-      it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
-
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
-      })
-
-      it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, {
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({
+          isPublic: null,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeNull()
+        expect(metadata.readUIds).toEqual(['ichiro'])
+        expect(metadata.writeUIds).toEqual(['ichiro'])
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
 
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({
-            isPublic: null,
-            readUIds: ['ichiro'],
-            writeUIds: ['ichiro'],
-          })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
+    it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
+      // 公開フラグをオンに設定しておく
+      await storageService.setFileShareSettings(`d1/fileA.txt`, {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['ichiro'],
       })
 
-      it('共有設定 - 公開フラグがオンの状態からオフへ設定', async () => {
-        // 公開フラグをオンに設定しておく
-        await storageService.setFileShareSettings(`d1/fileA.txt`, {
-          isPublic: true,
+      // 公開フラグをオフに設定
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: false })
+
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({
+          isPublic: false,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeFalsy()
+        expect(metadata.readUIds).toEqual(['ichiro'])
+        expect(metadata.writeUIds).toEqual(['ichiro'])
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
 
-        // 公開フラグをオフに設定
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: false })
-
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({
-            isPublic: false,
-            readUIds: ['ichiro'],
-            writeUIds: ['ichiro'],
-          })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
+    it('共有設定 - 読み込み・書き込み権限が設定されている状態から空を設定', async () => {
+      // 読み込み・書き込み権限を設定しておく
+      await storageService.setFileShareSettings(`d1/fileA.txt`, {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['ichiro'],
       })
 
-      it('共有設定 - 読み込み・書き込み権限が設定されている状態から空を設定', async () => {
-        // 読み込み・書き込み権限を設定しておく
-        await storageService.setFileShareSettings(`d1/fileA.txt`, {
-          isPublic: true,
-          readUIds: ['ichiro'],
-          writeUIds: ['ichiro'],
-        })
+      // 読み込み・書き込み権限を空に設定
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: [], writeUIds: [] })
 
-        // 読み込み・書き込み権限を空に設定
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: [], writeUIds: [] })
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeTruthy()
+        expect(metadata.readUIds).toBeNull()
+        expect(metadata.writeUIds).toBeNull()
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
 
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
+    it('共有設定 - 読み込み・書き込み権限が設定されている状態からnullを設定', async () => {
+      // 読み込み・書き込み権限を設定しておく
+      await storageService.setFileShareSettings(`d1/fileA.txt`, {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['ichiro'],
       })
 
-      it('共有設定 - 読み込み・書き込み権限が設定されている状態からnullを設定', async () => {
-        // 読み込み・書き込み権限を設定しておく
-        await storageService.setFileShareSettings(`d1/fileA.txt`, {
-          isPublic: true,
-          readUIds: ['ichiro'],
-          writeUIds: ['ichiro'],
-        })
+      // 読み込み・書き込み権限を空に設定
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: null, writeUIds: null })
 
-        // 読み込み・書き込み権限を空に設定
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: null, writeUIds: null })
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeTruthy()
+        expect(metadata.readUIds).toBeNull()
+        expect(metadata.writeUIds).toBeNull()
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
 
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
-      })
+    it('存在しないファイルを指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
+      } catch (err) {
+        actual = err
+      }
 
-      it('存在しないファイルを指定した場合', async () => {
-        let actual!: Error
-        try {
-          await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
-        } catch (err) {
-          actual = err
-        }
+      expect(actual.message).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
+    })
 
-        expect(actual.message).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
-      })
+    it('inputにnullを指定した場合', async () => {
+      // 共有設定をしておく
+      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
-      it('inputにnullを指定した場合', async () => {
-        // 共有設定をしておく
-        await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      // nullを指定
+      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, null)
 
-        // nullを指定
-        const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, null)
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
+        const metadata = StorageService.extractMetaData(node.file)
+        expect(metadata.isPublic).toBeNull()
+        expect(metadata.readUIds).toBeNull()
+        expect(metadata.writeUIds).toBeNull()
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
 
-        const verify = (node: StorageFileNode) => {
-          expect(node.path).toBe(`d1/fileA.txt`)
-          expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
-          const metadata = StorageService.extractMetaData(node.file)
-          expect(metadata.version).toBe(node.version)
-        }
-        verify(actual)
-        verify(await storageService.sgetFileNode({ id: actual.id }))
-      })
+    it('作成日時＋更新日時の検証', async () => {
+      // 共有設定前のノードを取得
+      const fm_fileA = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
-      it('作成日時＋更新日時の検証', async () => {
-        // 共有設定前のノードを取得
-        const fm_fileA = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
+      // 共有設定を実行
+      const to_fileA = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
 
-        // 共有設定を実行
-        const to_fileA = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+      // 作成日時の検証
+      expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
+      // 更新日時の検証
+      expect(to_fileA.updatedAt).toEqual(fm_fileA.updatedAt)
+    })
 
-        // 作成日時の検証
-        expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
-        // 更新日時の検証
-        expect(to_fileA.updatedAt).toEqual(fm_fileA.updatedAt)
-      })
+    it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
+      } catch (err) {
+        actual = err
+      }
 
-      it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-        let actual!: Error
-        try {
-          await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
-        } catch (err) {
-          actual = err
-        }
+      expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
+    })
 
-        expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
-      })
+    it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
+      let actual!: Error
+      try {
+        await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
+      } catch (err) {
+        actual = err
+      }
 
-      it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-        let actual!: Error
-        try {
-          await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
-        } catch (err) {
-          actual = err
-        }
-
-        expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
-      })
+      expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
   })
 
@@ -2950,6 +2962,11 @@ describe('StorageService', () => {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/d11/fileA.txt`,
+          share: {
+            isPublic: true,
+            readUIds: ['ichiro'],
+            writeUIds: ['ichiro'],
+          },
         },
       ])
 
@@ -2958,7 +2975,6 @@ describe('StorageService', () => {
         const bucket = admin.storage().bucket()
         const file = bucket.file(fileA.id)
         await file.save('testA-2', { contentType: 'text/plain; charset=utf-8' })
-        await storageService.saveMetadata(file, { version: 2 })
       }
 
       // ファイルアップロードの後処理を実行
@@ -3000,7 +3016,7 @@ describe('StorageService', () => {
 
       // 1回目と2回目で内容が同じことを検証
       expect(fileA_1).toEqual(fileA_2)
-      expect(fileDetailA_1.version).toEqual(fileDetailA_2.version)
+      expect(fileDetailA_1.metadata).toEqual(fileDetailA_2.metadata)
     })
 
     it('ファイルパスへのバリデーション実行確認', async () => {

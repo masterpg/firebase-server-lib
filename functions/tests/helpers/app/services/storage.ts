@@ -59,9 +59,18 @@ async function existsStorageNodes(nodes: StorageNode[], storageService: StorageS
     // ノードがファイルの場合
     if (node.nodeType === StorageNodeType.File) {
       // ストレージに対象ファイルが存在することを検証
-      const fileDetail = await storageService.getStorageFile(node.id)
-      expect(fileDetail.exists).toBeTruthy()
-      expect(fileDetail.version).toBe(node.version)
+      const { exists, metadata } = await storageService.getStorageFile(node.id)
+      expect(exists).toBeTruthy()
+      // メタデータの検証
+      if (StorageService.isUserNode(node.path)) {
+        const uid = StorageService.extractUId(node.path)
+        expect(metadata.uid).toBe(uid)
+      } else {
+        expect(metadata.uid).toBeNull()
+      }
+      expect(metadata.isPublic).toBe(node.share.isPublic)
+      expect(metadata.readUIds).toEqual(node.share.readUIds)
+      expect(metadata.writeUIds).toEqual(node.share.writeUIds)
     }
   }
 }
@@ -113,10 +122,17 @@ async function verifyMoveStorageNodes(fromNodes: StorageNode[], toNodePath: stri
       throw new Error(`The destination node does not exist: '${newNodePath}'`)
     }
     if (toNode.nodeType === StorageNodeType.File) {
-      const { exists, file, version } = await storageService.getStorageFile(toNode.id)
+      const { exists, file, metadata } = await storageService.getStorageFile(toNode.id)
       expect(exists).toBeTruthy()
-      expect(version).toBe(toNode.version)
-      expect(StorageService.extractMetaData(file).version).toBe(toNode.version)
+      if (StorageService.isUserNode(toNode.path)) {
+        const uid = StorageService.extractUId(toNode.path)
+        expect(metadata.uid).toBe(uid)
+      } else {
+        expect(metadata.uid).toBeNull()
+      }
+      expect(metadata.isPublic).toBe(toNode.share.isPublic)
+      expect(metadata.readUIds).toEqual(toNode.share.readUIds)
+      expect(metadata.writeUIds).toEqual(toNode.share.writeUIds)
     }
 
     // 移動後ノードが複数存在しないことを検証

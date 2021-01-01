@@ -28,7 +28,7 @@ import {
   openPointInTime,
   validateBulkResponse,
 } from '../../base/elastic'
-import { Entities, RequiredAre, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
+import { Entities, arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { Inject, Module } from '@nestjs/common'
 import { InputValidationError, generateEntityId, validateUID } from '../../base'
@@ -48,20 +48,22 @@ interface StorageFileNode extends StorageNode {
 
 interface StorageFileDetail {
   file: File
-  version: number
   exists: boolean
+  metadata: StorageNodeMetadata
 }
 
-interface StorageFileMetadata {
-  version: number
+interface StorageNodeMetadata {
+  uid: string | null
+  isPublic: boolean | null
+  readUIds: string[] | null
+  writeUIds: string[] | null
 }
 
-interface StorageFileMetadataInput {
-  version?: number
-}
-
-interface StorageFileRawMetadata {
-  version: string
+interface GCSNodeMetadata {
+  uid?: string | null
+  isPublic?: boolean | null
+  readUIds?: string | null
+  writeUIds?: string | null
 }
 
 interface StorageUploadDataItem {
@@ -71,16 +73,7 @@ interface StorageUploadDataItem {
   share?: StorageNodeShareSettingsInput
 }
 
-interface WriteBaseStorageNode {
-  id: string
-  name: string
-  dir: string
-  path: string
-  level: number
-  share?: StorageNodeShareSettings
-}
-
-interface RawStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'>, ElasticTimestamp {}
+interface DBStorageNode extends Omit<StorageNode, 'createdAt' | 'updatedAt'>, ElasticTimestamp {}
 
 const IndexDefinition = {
   settings: {
@@ -219,7 +212,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const id = input.id ?? ''
     const path = removeBothEndsSlash(input.path)
 
-    const response = await this.client.search<SearchResponse<RawStorageNode>>({
+    const response = await this.client.search<SearchResponse<DBStorageNode>>({
       index: StorageService.IndexAlias,
       body: {
         query: {
@@ -258,7 +251,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
     const nodes: NODE[] = []
     for (const chunk of splitArrayChunk(ids, size)) {
-      const response = await this.client.search<SearchResponse<RawStorageNode>>({
+      const response = await this.client.search<SearchResponse<DBStorageNode>>({
         index: StorageService.IndexAlias,
         size,
         body: {
@@ -268,7 +261,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       nodes.push(...this.responseToNodes(response))
     }
     for (const chunk of splitArrayChunk(paths, size)) {
-      const response = await this.client.search<SearchResponse<RawStorageNode>>({
+      const response = await this.client.search<SearchResponse<DBStorageNode>>({
         index: StorageService.IndexAlias,
         size,
         body: {
@@ -335,7 +328,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const [exists] = await file.exists()
     const metadata = StorageService.extractMetaData(file)
 
-    return { file, ...metadata, exists }
+    return { file, exists, metadata }
   }
 
   /**
@@ -417,9 +410,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // データベースからノードを取得
-    let response!: ElasticResponse<RawStorageNode>
+    let response!: ElasticResponse<DBStorageNode>
     try {
-      response = await this.client.search<SearchResponse<RawStorageNode>>({
+      response = await this.client.search<SearchResponse<DBStorageNode>>({
         size: maxChunk,
         body: {
           query,
@@ -597,9 +590,9 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     }
 
     // データベースからノードを取得
-    let response!: ElasticResponse<RawStorageNode>
+    let response!: ElasticResponse<DBStorageNode>
     try {
-      response = await this.client.search<SearchResponse<RawStorageNode>>({
+      response = await this.client.search<SearchResponse<DBStorageNode>>({
         size: maxChunk,
         body: {
           query,
@@ -795,7 +788,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
           doc: {
             ...StorageService.toDBNode(dirNode),
             id,
-            share: this.toStoreShareSettings(input ?? null),
+            share: this.toDBShareSettings(input),
             version: 1,
             createdAt: now,
             updatedAt: now,
@@ -1107,17 +1100,6 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
         },
         refresh: true,
       })
-
-      // 移動したファイルのメタデータを更新
-      // ※データベースに対する処理
-      await Promise.all(
-        toFileNodes.map(async toFileNode => {
-          const { exists, file } = await this.getStorageFile(toFileNode.id)
-          if (exists) {
-            await this.saveMetadata(file, { version: toFileNode.version })
-          }
-        })
-      )
     } while (pagination.nextPageToken)
   }
 
@@ -1182,19 +1164,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
       id: fileNode.id,
       body: {
         doc: {
-          ...this.getSaveBaseStorageNode({
-            id: fileNode.id,
-            path: toFilePath,
-          }),
+          ...StorageService.toPathData(toFilePath),
           version,
         },
       },
       refresh: true,
     })
-
-    // 移動したストレージファイルのメタデータを更新
-    const { file: movedFile } = await this.getStorageFile(fileNode.id)
-    await this.saveMetadata(movedFile, { version })
 
     return this.sgetFileNode({ id: fileNode.id })
   }
@@ -1276,23 +1251,21 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   async setDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
     dirPath = removeBothEndsSlash(dirPath)
 
+    StorageService.validateShareSettingInput(input)
+
     const dirNode = await this.getNode({ path: dirPath })
     if (!dirNode) {
       throw new Error(`The specified directory does not exist: '${dirPath}'`)
     }
 
-    StorageService.validateShareSettingInput(input)
-
+    const share: StorageNodeShareSettings = this.toDBShareSettings(input, dirNode.share)
     await this.client.update({
       index: StorageService.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
-          ...this.getSaveBaseStorageNode({
-            id: dirNode.id,
-            path: dirPath,
-            share: input === null ? null : { ...dirNode.share, ...input },
-          }),
+          ...StorageService.toPathData(dirPath),
+          share,
           version: dirNode.version + 1,
         },
       },
@@ -1310,23 +1283,21 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   async setFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
+    StorageService.validateShareSettingInput(input)
+
     let fileNode = await this.getFileNode({ path: filePath })
     if (!fileNode) {
       throw new Error(`The specified file does not exist: '${filePath}'`)
     }
 
-    StorageService.validateShareSettingInput(input)
-
+    const share: StorageNodeShareSettings = this.toDBShareSettings(input, fileNode.share)
     await this.client.update({
       index: StorageService.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
-          ...this.getSaveBaseStorageNode({
-            id: fileNode.id,
-            path: filePath,
-            share: input === null ? null : Object.assign(fileNode.share, input),
-          }),
+          ...StorageService.toPathData(filePath),
+          share,
           version: fileNode.version + 1,
         },
       },
@@ -1334,9 +1305,8 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     })
     fileNode = await this.sgetFileNode({ id: fileNode.id })
 
-    await this.saveMetadata(fileNode.file, {
-      version: fileNode.version,
-    })
+    // ストレージファイルにメタデータを設定
+    await this.saveGCSMetadata({ file: fileNode.file, path: fileNode.path, share })
 
     return fileNode
   }
@@ -1389,18 +1359,18 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     const urlDict: { [id: string]: string } = {}
 
     for (const input of inputs) {
-      const { id: nodeId, contentType } = input
+      const { id: nodeId, path: nodePath, contentType } = input
 
-      // ファイルノードの新バージョン番号を取得
+      // ファイルノードを取得
       const fileNode = await this.getNode({ id: nodeId })
-      const version = (fileNode?.version ?? 0) + 1
 
+      // アップロードURLを発行
       const gcsFileNode = bucket.file(nodeId)
       const [url] = await gcsFileNode.createResumableUpload({
         origin: requestOrigin,
         metadata: {
           contentType,
-          metadata: StorageService.toGCSMetadata({ version }),
+          metadata: this.toGCSMetadata({ path: nodePath }, fileNode?.share),
         },
       })
       urlDict[nodeId] = url
@@ -1474,14 +1444,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     for (const chunk of splitArrayChunk(uploadList, StorageService.MaxChunk)) {
       await Promise.all(
         chunk.map(async uploadItem => {
-          const fileNode = await this.saveStorageFileNode({
-            fileNodePath: uploadItem.path,
-            dataParams: {
-              data: uploadItem.data,
-              options: { contentType: uploadItem.contentType },
-            },
-            share: uploadItem.share,
-          })
+          const fileNode = await this.saveGCSFileAndFileNode(
+            uploadItem.path,
+            uploadItem.data,
+            { contentType: uploadItem.contentType },
+            { share: uploadItem.share }
+          )
           uploadedFileDict[fileNode.path] = fileNode
         })
       )
@@ -1592,7 +1560,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストレージに格納されているファイルをもとに、データベースのファイルノードを作成/更新します。
+   * ストレージファイルをもとに、データベースのファイルノードを冪等保存します。
    * @param fileNodePath
    * @param file
    * @param input
@@ -1601,37 +1569,35 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     fileNodePath = removeBothEndsSlash(fileNodePath)
 
     const nodeId = file.name
-    const existsFileNode = await this.getNode({ id: nodeId })
-    const { version } = StorageService.extractMetaData(file)
+    const existingFileNode = await this.getNode({ id: nodeId })
 
-    // クライアント側ではアップロード前に引数ファイルのメタデータに新バージョン番号が書き込まれる。
-    // この新バージョン番頭と現在のストレージファイルのバージョン番号を比較し、
-    // 新バージョン番号がストレージファイルと同じまたは古い場合は何もせず終了
-    if (existsFileNode && existsFileNode.version >= version) {
-      return { ...existsFileNode, file } as FILE_NODE
-    }
+    // ストレージファイルにメタデータを設定
+    await this.saveGCSMetadata(
+      {
+        file,
+        path: fileNodePath,
+        share: input?.share,
+      },
+      existingFileNode?.share
+    )
 
-    const now = dayjs().toISOString()
+    // データベースにファイルノードを作成/更新
     await this.client.update({
       index: StorageService.IndexAlias,
       id: nodeId,
       body: {
         doc: {
-          ...(this.getSaveBaseStorageNode({
-            id: nodeId,
-            path: fileNodePath,
-            share: input?.share ?? existsFileNode?.share ?? StorageService.EmptyShareSettings,
-          }) as RequiredAre<WriteBaseStorageNode, 'share'>),
-          nodeType: StorageNodeType.File,
+          ...this.getBaseDBStorageNode(
+            {
+              id: nodeId,
+              path: fileNodePath,
+              nodeType: StorageNodeType.File,
+              share: input?.share,
+            },
+            existingFileNode
+          ),
           contentType: file.metadata.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
-          articleNodeName: null,
-          articleNodeType: null,
-          articleSortOrder: null,
-          isArticleFile: existsFileNode?.isArticleFile ?? false,
-          version,
-          createdAt: existsFileNode?.createdAt ?? now,
-          updatedAt: now,
         },
         doc_as_upsert: true,
       },
@@ -1645,68 +1611,61 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストレージとデータベースへファイルノードを保存します。
-   * @param params
+   * ストレージファイルとデータベースへファイルノードを冪等保存します。
+   * @param fileNodePath
+   * @param data
+   * @param saveOptions
+   * @param input
    */
-  protected async saveStorageFileNode(params: {
-    fileNodePath: string
-    isArticleFile?: boolean
-    dataParams: { data: any; options?: SaveOptions }
-    share?: StorageNodeShareSettingsInput
-  }): Promise<FILE_NODE> {
-    const fileNodePath = removeBothEndsSlash(params.fileNodePath)
-    const isArticleFile = params.isArticleFile ?? false
-    const { dataParams, share } = params
-
-    const fileNode = await this.getNode({ path: fileNodePath })
-    const nodeId = fileNode?.id || StorageService.generateNodeId()
-    let version = 0
+  protected async saveGCSFileAndFileNode(
+    fileNodePath: string,
+    data: any,
+    saveOptions?: SaveOptions,
+    input?: { share?: StorageNodeShareSettingsInput; isArticleFile?: boolean }
+  ): Promise<FILE_NODE> {
+    fileNodePath = removeBothEndsSlash(fileNodePath)
+    const existingFileNode = await this.getNode({ path: fileNodePath })
+    const nodeId = existingFileNode?.id || StorageService.generateNodeId()
 
     //
-    // ストレージにファイルのコンテンツデータを保存
+    // ストレージファイルのコンテンツデータを保存
     //
     const bucket = admin.storage().bucket()
     const file = bucket.file(nodeId)
+    await file.save(data, saveOptions)
 
-    let metadata: StorageFileMetadata
-    if (fileNode) {
-      version = fileNode.version + 1
-      metadata = {
-        ...StorageService.extractMetaData(file),
-        version,
-      }
-    } else {
-      version = 1
-      metadata = { version }
-    }
-
-    await file.save(dataParams.data, dataParams.options)
-    await this.saveMetadata(file, metadata)
+    //
+    // ストレージファイルにメタデータを設定
+    //
+    await this.saveGCSMetadata(
+      {
+        file,
+        path: fileNodePath,
+        share: input?.share,
+      },
+      existingFileNode?.share
+    )
 
     //
     // ストアにノードデータを保存
     //
-    const now = dayjs().toISOString()
     await this.client.update({
       index: StorageService.IndexAlias,
       id: nodeId,
       body: {
         doc: {
-          ...(this.getSaveBaseStorageNode({
-            id: nodeId,
-            path: fileNodePath,
-            share: share ?? fileNode?.share ?? StorageService.EmptyShareSettings,
-          }) as RequiredAre<WriteBaseStorageNode, 'share'>),
-          nodeType: StorageNodeType.File,
-          contentType: dataParams?.options?.contentType ?? '',
+          ...this.getBaseDBStorageNode(
+            {
+              id: nodeId,
+              path: fileNodePath,
+              nodeType: StorageNodeType.File,
+              share: input?.share,
+            },
+            existingFileNode
+          ),
+          contentType: saveOptions?.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
-          articleNodeName: null,
-          articleNodeType: null,
-          articleSortOrder: null,
-          isArticleFile,
-          version,
-          createdAt: fileNode?.createdAt ?? now,
-          updatedAt: now,
+          isArticleFile: input?.isArticleFile ?? false,
         },
         doc_as_upsert: true,
       },
@@ -1721,17 +1680,29 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * ストアノード保存時の基本項目が設定されたオブジェクトを取得します。
-   * @param node
+   * データベースノード保存時の基本項目が設定されたオブジェクトを取得します。
+   * @param input
+   * @param existing
    */
-  protected getSaveBaseStorageNode(node: { id: string; path: string; share?: StorageNodeShareSettingsInput | null }): WriteBaseStorageNode {
+  protected getBaseDBStorageNode(
+    input: { id: string; nodeType: StorageNodeType; path: string; share?: StorageNodeShareSettingsInput | null },
+    existing?: StorageNode
+  ): DBStorageNode {
+    const now = dayjs().toISOString()
     return {
-      id: node.id,
-      name: _path.basename(node.path),
-      dir: removeStartDirChars(_path.dirname(node.path)),
-      path: node.path,
-      level: StorageService.getNodeLevel(node.path),
-      share: this.toStoreShareSettings(node.share),
+      ...StorageService.toPathData(input.path),
+      id: input.id,
+      nodeType: input.nodeType,
+      contentType: existing?.contentType ?? '',
+      size: existing?.size ?? 0,
+      share: this.toDBShareSettings(input.share, existing?.share),
+      articleNodeName: existing?.articleNodeName ?? null,
+      articleNodeType: existing?.articleNodeType ?? null,
+      articleSortOrder: existing?.articleSortOrder ?? null,
+      isArticleFile: existing?.isArticleFile ?? false,
+      version: existing?.version ?? 1,
+      createdAt: existing?.createdAt?.toISOString() ?? now,
+      updatedAt: existing?.updatedAt?.toISOString() ?? now,
     }
   }
 
@@ -1769,7 +1740,7 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * @param rawNode
    * @protected
    */
-  protected toNode(rawNode: RawStorageNode): NODE | undefined {
+  protected toNode(rawNode: DBStorageNode): NODE | undefined {
     if (!rawNode) return undefined
     return {
       ...rawNode,
@@ -1787,37 +1758,41 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
    * データベースのレスポンスデータからノードリストを取得します。
    * @param response
    */
-  protected responseToNodes(response: ElasticResponse<RawStorageNode>): NODE[] {
+  protected responseToNodes(response: ElasticResponse<DBStorageNode>): NODE[] {
     if (!response.body.hits.hits.length) return []
     return response.body.hits.hits.map(hit => this.toNode(hit._source)!)
   }
 
   /**
-   * 共有設定の入力値をストアの格納形式に変換します。
+   * 共有設定の入力値をデータベースの格納形式に変換します。
    * @param input
+   * @param existing
    */
-  protected toStoreShareSettings(input?: StorageNodeShareSettingsInput | null): StorageNodeShareSettings {
+  protected toDBShareSettings(input?: StorageNodeShareSettingsInput | null, existing?: StorageNodeShareSettings): StorageNodeShareSettings {
     let share!: StorageNodeShareSettings
 
     if (input === null) {
-      share = { isPublic: null, readUIds: null, writeUIds: null }
-    } else if (input) {
-      share = { isPublic: null, readUIds: null, writeUIds: null }
-      if (typeof input.isPublic !== 'undefined') {
+      share = StorageService.EmptyShareSettings()
+    } else {
+      share = { ...StorageService.EmptyShareSettings(), ...existing }
+
+      if (typeof input?.isPublic !== 'undefined') {
         share.isPublic = input.isPublic
       }
-      if (typeof input.readUIds !== 'undefined') {
-        if (Array.isArray(input.readUIds) && input.readUIds.length === 0) {
-          share.readUIds = null
-        } else {
+
+      if (typeof input?.readUIds !== 'undefined') {
+        if (input.readUIds?.length) {
           share.readUIds = input.readUIds
+        } else {
+          share.readUIds = null
         }
       }
-      if (typeof input.writeUIds !== 'undefined') {
-        if (Array.isArray(input.writeUIds) && input.writeUIds.length === 0) {
-          share.writeUIds = null
-        } else {
+
+      if (typeof input?.writeUIds !== 'undefined') {
+        if (input.writeUIds?.length) {
           share.writeUIds = input.writeUIds
+        } else {
+          share.writeUIds = null
         }
       }
     }
@@ -1825,25 +1800,83 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
     return share
   }
 
-  //--------------------------------------------------
-  //  Metadata
-  //--------------------------------------------------
-
   /**
-   * 指定されたストレージファイルのメタデータを保存します。
-   * @param file
+   * メタデータをストレージへ保存できる形式へ変換します。
    * @param input
+   * @param existing
    */
-  protected async saveMetadata(file: File, input: StorageFileMetadataInput): Promise<StorageFileMetadata> {
-    const metadata = StorageService.extractMetaData(file)
-
-    if (typeof input.version === 'number') {
-      metadata.version = input.version
+  protected toGCSMetadata(
+    input: { path: string; share?: StorageNodeShareSettingsInput | null },
+    existing?: StorageNodeShareSettings
+  ): GCSNodeMetadata {
+    // メタデータの値をストレージへ保存できるよう文字列に変換する関数
+    function stringify(value: any): string | null {
+      let result: string | null = null
+      try {
+        result = JSON.stringify(value)
+      } catch (err) {}
+      return result
     }
 
-    await file.setMetadata({ metadata: StorageService.toGCSMetadata(metadata) })
+    // 共有設定をストレージへ保存できる形式へ変換する関数
+    function to(input: StorageNodeShareSettingsInput): GCSNodeMetadata {
+      const result: GCSNodeMetadata = {}
 
-    return metadata
+      if (typeof input.isPublic !== 'undefined') {
+        result.isPublic = input.isPublic
+      }
+
+      if (typeof input.readUIds !== 'undefined') {
+        if (input.readUIds?.length) {
+          result.readUIds = stringify(input.readUIds)
+        } else {
+          result.readUIds = null
+        }
+      }
+
+      if (typeof input.writeUIds !== 'undefined') {
+        if (input.writeUIds?.length) {
+          result.writeUIds = stringify(input.writeUIds)
+        } else {
+          result.writeUIds = null
+        }
+      }
+
+      return result
+    }
+
+    const { path, share: shareInput } = input
+
+    const gcsMetadata: GCSNodeMetadata = {
+      uid: null,
+      ...to(existing ?? {}),
+      ...to(shareInput ?? {}),
+    }
+
+    const uid = StorageService.extractUId(path)
+    if (uid) {
+      gcsMetadata.uid = uid
+    }
+
+    return gcsMetadata
+  }
+
+  /**
+   * 指定されたストレージファイルにメタデータを設定します。
+   * @param input
+   * @param existing
+   */
+  protected async saveGCSMetadata(
+    input: { file: File; path: string; share?: StorageNodeShareSettingsInput | null },
+    existing?: StorageNodeShareSettings
+  ): Promise<void> {
+    const { file, path, share } = input
+
+    const gcsMetadata = this.toGCSMetadata({ path, share }, existing)
+
+    await file.setMetadata({
+      metadata: gcsMetadata,
+    })
   }
 
   //----------------------------------------------------------------------
@@ -1854,10 +1887,12 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
 
   static MaxChunk = 50
 
-  static EmptyShareSettings: StorageNodeShareSettings = {
-    isPublic: null,
-    readUIds: null,
-    writeUIds: null,
+  static EmptyShareSettings(): StorageNodeShareSettings {
+    return {
+      isPublic: null,
+      readUIds: null,
+      writeUIds: null,
+    }
   }
 
   /**
@@ -1979,6 +2014,20 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
+   * 指定されたノードパスをノードデータに変換します。
+   * @param nodePath
+   */
+  static toPathData(nodePath: string): { name: string; dir: string; path: string; level: number } {
+    nodePath = removeBothEndsSlash(nodePath)
+    return {
+      name: _path.basename(nodePath),
+      dir: removeStartDirChars(_path.dirname(nodePath)),
+      path: nodePath,
+      level: StorageService.getNodeLevel(nodePath),
+    }
+  }
+
+  /**
    * ノードをデータベースへ保存するプロパティのみに絞り込みます。
    * @param node
    */
@@ -2004,31 +2053,46 @@ class StorageService<NODE extends StorageNode = StorageNode, FILE_NODE extends N
   }
 
   /**
-   * 指定されたストレージファイルからメタデータを取得します。
-   * @param file
+   * 指定されたノードパスがユーザーノードのものか判定します。
+   * @param nodePath
    */
-  static extractMetaData(file: File): StorageFileMetadata {
-    const metadata = file.metadata.metadata || {}
-
-    const result: StorageFileMetadata = {
-      version: metadata.version && !isNaN(metadata.version) ? Number(metadata.version) : 0,
-    }
-
-    return result
+  static isUserNode(nodePath: string): boolean {
+    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+/`)
+    return reg.test(nodePath)
   }
 
   /**
-   * メタデータをGCSへ保存できる形式へ変換します。
-   * @param input
+   * 指定されたノードパスからユーザー名を取り出します。
+   * @param nodePath
    */
-  static toGCSMetadata(input: StorageFileMetadataInput): StorageFileRawMetadata {
-    const result: StorageFileRawMetadata = { version: '' }
+  static extractUId(nodePath: string): string {
+    const reg = new RegExp(`^${config.storage.user.rootName}/(?<uid>[^/]+)`)
+    const execArray = reg.exec(nodePath)
+    return execArray?.groups?.uid ?? ''
+  }
 
-    if (typeof input.version === 'number') {
-      result.version = input.version.toString()
-    }
+  /**
+   * 指定されたストレージファイルからメタデータを取得します。
+   * @param file
+   */
+  static extractMetaData(file: File): StorageNodeMetadata {
+    const rawMetadata = file.metadata.metadata || {}
 
-    return result
+    const uid = rawMetadata.uid ? rawMetadata.uid : null
+
+    const isPublic = rawMetadata.isPublic === 'true' ? true : rawMetadata.isPublic === 'false' ? false : null
+
+    let readUIds: string[] | null = null
+    try {
+      readUIds = rawMetadata.readUIds ? JSON.parse(rawMetadata.readUIds) : null
+    } catch (err) {}
+
+    let writeUIds: string[] | null = null
+    try {
+      writeUIds = rawMetadata.writeUIds ? JSON.parse(rawMetadata.writeUIds) : null
+    } catch (err) {}
+
+    return { uid, isPublic, readUIds, writeUIds }
   }
 }
 
@@ -2055,4 +2119,4 @@ class StorageServiceModule {}
 //----------------------------------------------------------------------
 
 export { StorageService, StorageServiceDI, StorageServiceModule }
-export { StorageFileNode, StorageUploadDataItem, RawStorageNode }
+export { StorageFileNode, StorageUploadDataItem, DBStorageNode }
