@@ -1,10 +1,8 @@
 import * as _path from 'path'
-import * as admin from 'firebase-admin'
+import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import {
-  AuthRoleType,
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
-  IdToken,
   StorageArticleNodeType,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -12,10 +10,8 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
 } from './types'
-import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import { DBStorageNode, StorageService } from './base/storage'
-import { ForbiddenException, Inject, Module } from '@nestjs/common'
-import { Request, Response } from 'express'
+import { Inject, Module } from '@nestjs/common'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { InputValidationError } from '../base'
 import { SearchResponse } from '../base/elastic'
@@ -27,17 +23,6 @@ import dayjs = require('dayjs')
 //  Interfaces
 //
 //========================================================================
-
-interface ValidateAccessibleTarget {
-  nodePath?: string
-  nodePaths?: (string | undefined)[]
-  dirPath?: string
-  dirPaths?: (string | undefined)[]
-  filePath?: string
-  filePaths?: (string | undefined)[]
-  node?: StorageNode
-  nodes?: StorageNode[]
-}
 
 interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
   item: NODE
@@ -61,126 +46,6 @@ class AppStorageService extends StorageService {
   //  Methods
   //
   //----------------------------------------------------------------------
-
-  /**
-   * 指定されたノードパスへリクエストユーザーがアクセス可能か検証します。
-   * @param req
-   * @param res
-   * @param target
-   */
-  async validateAccessible(req: Request, res: Response, target: ValidateAccessibleTarget): Promise<IdToken> {
-    const nodePaths = await this.m_validateAccessibleTargetToNodePaths(target)
-    const roles: AuthRoleType[] = []
-
-    // IDトークンを取得
-    const idTokenValidated = await this.authService.validateIdToken(req, res)
-    if (!idTokenValidated.result) {
-      throw idTokenValidated.error
-    }
-    const idToken = idTokenValidated.idToken!
-
-    // 検査対象となるノードパスがない場合
-    // ※バケット直下へのアクセスとなるので、管理者権限が必要
-    if (!nodePaths.length) {
-      roles.push(AuthRoleType.AppAdmin)
-    }
-
-    // ノードパスの中に管理者権限が必要なノードがあるか調べる
-    // ※ユーザーノード以外は管理者権限が必要
-    if (!roles.includes(AuthRoleType.AppAdmin)) {
-      const needIsAppAdmin = nodePaths.some(nodePath => !this.m_isUserNode(nodePath))
-      needIsAppAdmin && roles.push(AuthRoleType.AppAdmin)
-    }
-
-    // ユーザーノードパスへアクセス可能か検証
-    if (!idToken.isAppAdmin) {
-      for (const nodePath of nodePaths) {
-        if (!this.m_isUserNode(nodePath)) continue
-        // 指定ノードが自ユーザーの所有物でない場合
-        const userRootPath = AppStorageService.getUserRootPath({ uid: idToken.uid })
-        const isOwnUserNode = nodePath == userRootPath || nodePath.startsWith(`${userRootPath}/`)
-        if (!isOwnUserNode) {
-          throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
-        }
-      }
-    }
-
-    // IDトークンをロールを含めて検証
-    const validated = await this.authService.validate(idToken, res, roles)
-    if (!validated.result) {
-      throw validated.error
-    }
-
-    return idToken
-  }
-
-  /**
-   * クライアントから指定されたファイルをサーブします。
-   * @param req
-   * @param res
-   * @param nodeId
-   */
-  async serveFile(req: Request, res: Response, nodeId: string): Promise<Response> {
-    // 引数のファイルノードを取得
-    const fileNode = await this.getFileNode({ id: nodeId })
-    if (!fileNode) {
-      return res.sendStatus(404)
-    }
-
-    // ファイルの共有設定を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
-
-    // ファイルの公開フラグがオンの場合
-    if (share.isPublic) {
-      return this.streamFile(req, res, fileNode)
-    }
-
-    // ユーザー認証されているか検証
-    const validated = await this.authService.validate(req, res)
-    if (!validated.result) {
-      return res.sendStatus(validated.error!.getStatus())
-    }
-    const user = validated.idToken!
-
-    //
-    // 指定されたファイルがユーザーファイルの場合
-    //
-    if (this.m_isUserNode(fileNode.path)) {
-      // 指定ファイルが自ユーザーの所有物である場合
-      const userRootPath = AppStorageService.getUserRootPath(user)
-      if (fileNode.path.startsWith(_path.join(userRootPath, '/'))) {
-        return this.streamFile(req, res, fileNode)
-      }
-    }
-    //
-    // 指定されたファイルがアプリケーションファイルの場合
-    //
-    else {
-      // 自ユーザーがアプリケーション管理者の場合
-      if (user.isAppAdmin) {
-        return this.streamFile(req, res, fileNode)
-      }
-    }
-
-    // ファイルの読み込み権限に自ユーザーが含まれている場合
-    if (share.readUIds && share.readUIds.includes(user.uid)) {
-      return this.streamFile(req, res, fileNode)
-    }
-
-    return res.sendStatus(403)
-  }
-
-  /**
-   * 指定されたユーザーのディレクトリを削除します。
-   * このメソッドはユーザーの削除時に使用されることを想定しています。
-   * @param uid
-   * @param maxChunk
-   */
-  async deleteUserDir(uid: string, maxChunk = AppStorageService.MaxChunk): Promise<void> {
-    const userRootPath = AppStorageService.getUserRootPath({ uid })
-    await this.removeDir(userRootPath)
-  }
 
   //--------------------------------------------------
   //  Article
@@ -278,7 +143,7 @@ class AppStorageService extends StorageService {
         id,
         body: {
           doc: {
-            ...AppStorageService.toDBNode(dirNode),
+            ...this.toDBStorageNode(dirNode),
             id,
             version: 1,
             createdAt: now,
@@ -597,51 +462,6 @@ class AppStorageService extends StorageService {
   //
   //----------------------------------------------------------------------
 
-  /**
-   * `validateAccessible()`の引数で指定される`target`にはノードパス、ノード、ノードリストが含まれます。
-   * targetがノードまたはノードリストの場合はこれらをノードパスに変換し、全てをノードパスとして返します。
-   * @param target
-   */
-  protected async m_validateAccessibleTargetToNodePaths(target: ValidateAccessibleTarget): Promise<string[]> {
-    const nodePaths: string[] = []
-
-    // ノードパスの取得
-    for (const key of Object.keys(target)) {
-      if (/Path$|Paths$/.test(key)) {
-        const value = (target as any)[key] as string | undefined | (string | undefined)[]
-        if (Array.isArray(value)) {
-          const values = value.filter(value => Boolean(value)) as string[]
-          nodePaths.push(...values)
-        } else if (value) {
-          nodePaths.push(value)
-        }
-      }
-    }
-
-    // ノードリストをノードパスに変換
-    for (const key of Object.keys(target)) {
-      if (/node$|nodes$/.test(key)) {
-        const value = (target as any)[key] as StorageNode | StorageNode[]
-        if (Array.isArray(value)) {
-          const values = value.map(node => node.path)
-          nodePaths.push(...values)
-        } else if (value) {
-          nodePaths.push(value.path)
-        }
-      }
-    }
-
-    return nodePaths
-  }
-
-  /**
-   * 指定されたノードパスがユーザーノードのものか判定します。
-   * @param nodePath
-   */
-  private m_isUserNode(nodePath: string): boolean {
-    return nodePath.startsWith(`${config.storage.user.rootName}/`)
-  }
-
   //--------------------------------------------------
   //  Article
   //--------------------------------------------------
@@ -843,7 +663,7 @@ class AppStorageService extends StorageService {
       id,
       body: {
         doc: {
-          ...AppStorageService.toDBNode(dirNode),
+          ...this.toDBStorageNode(dirNode),
           id,
           version: 1,
           createdAt: now,
@@ -992,19 +812,11 @@ class AppStorageService extends StorageService {
   //----------------------------------------------------------------------
 
   /**
-   * 指定されたユーザーのホームディレクトリを取得します。
-   * @param user
-   */
-  static getUserRootPath(user: { uid: string }): string {
-    return _path.join(config.storage.user.rootName, user.uid)
-  }
-
-  /**
    * ユーザーの記事ルートのパスを取得します。
    * @param user
    */
   static getArticleRootPath(user: { uid: string }): string {
-    return _path.join(this.getUserRootPath(user), config.storage.article.rootName)
+    return _path.join(this.toUserRootPath(user), config.storage.article.rootName)
   }
 
   /**
@@ -1101,7 +913,7 @@ class AppStorageService extends StorageService {
     }
 
     // 引数ノード配列を一旦クリアする
-    // この後のソートで並べ替えられたノードがこの配列に設定される
+    // ※この後のソートで並べ替えられたノードがこの配列に設定される
     nodes.splice(0)
 
     // トップレベルノードが記事ルート配下のものである場合、記事系ソートを行う

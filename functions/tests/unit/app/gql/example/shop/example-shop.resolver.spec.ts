@@ -1,9 +1,9 @@
 import * as td from 'testdouble'
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../../../../../../src/app/services'
-import { GENERAL_USER, GENERAL_USER_HEADER, GENERAL_USER_TOKEN, getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
+import { GeneralUser, GeneralUserHeader, GeneralUserToken, getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
 import ExampleGQLContainerModule from '../../../../../../src/app/gql/example'
-import { ExampleShopServiceDI } from '../../../../../../src/app/services/example'
+import { ExampleShopServiceDI } from '../../../../../../src/app/services'
 import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
 import { initApp } from '../../../../../../src/app/base'
 import dayjs = require('dayjs')
@@ -19,69 +19,77 @@ initApp()
 
 type RawProduct = OmitEntityTimestamp<Product> & { createdAt: string; updatedAt: string }
 
-const RAW_PRODUCTS: RawProduct[] = [
-  {
-    id: 'product1',
-    title: 'iPad 4 Mini',
-    price: 500.01,
-    stock: 3,
-    createdAt: '2020-01-01T00:00:00.000Z',
-    updatedAt: '2020-01-02T00:00:00.000Z',
-  },
-  {
-    id: 'product2',
-    title: 'Fire HD 8 Tablet',
-    price: 80.99,
-    stock: 5,
-    createdAt: '2020-01-01T00:00:00.000Z',
-    updatedAt: '2020-01-02T00:00:00.000Z',
-  },
-  {
-    id: 'product3',
-    title: 'MediaPad T5 10',
-    price: 150.8,
-    stock: 10,
-    createdAt: '2020-01-01T00:00:00.000Z',
-    updatedAt: '2020-01-02T00:00:00.000Z',
-  },
-]
+function RawProducts(): RawProduct[] {
+  return [
+    {
+      id: 'product1',
+      title: 'iPad 4 Mini',
+      price: 500.01,
+      stock: 3,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-02T00:00:00.000Z',
+    },
+    {
+      id: 'product2',
+      title: 'Fire HD 8 Tablet',
+      price: 80.99,
+      stock: 5,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-02T00:00:00.000Z',
+    },
+    {
+      id: 'product3',
+      title: 'MediaPad T5 10',
+      price: 150.8,
+      stock: 10,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-02T00:00:00.000Z',
+    },
+  ]
+}
 
-const PRODUCTS: Product[] = RAW_PRODUCTS.map(rawProduct => ({
-  ...rawProduct,
-  createdAt: dayjs(rawProduct.createdAt),
-  updatedAt: dayjs(rawProduct.updatedAt),
-}))
+function Products(): Product[] {
+  return RawProducts().map(rawProduct => ({
+    ...rawProduct,
+    createdAt: dayjs(rawProduct.createdAt),
+    updatedAt: dayjs(rawProduct.updatedAt),
+  }))
+}
 
 type RawCartItem = OmitEntityTimestamp<CartItem> & { createdAt: string; updatedAt: string }
 
-const RAW_CART_ITEMS: RawCartItem[] = [
-  {
-    id: 'cartItem1',
-    uid: GENERAL_USER.uid,
-    productId: 'product1',
-    title: 'iPad 4 Mini',
-    price: 500.01,
-    quantity: 1,
-    createdAt: '2020-01-01T00:00:00.000Z',
-    updatedAt: '2020-01-02T00:00:00.000Z',
-  },
-  {
-    id: 'cartItem2',
-    uid: GENERAL_USER.uid,
-    productId: 'product2',
-    title: 'Fire HD 8 Tablet',
-    price: 80.99,
-    quantity: 2,
-    createdAt: '2020-01-01T00:00:00.000Z',
-    updatedAt: '2020-01-02T00:00:00.000Z',
-  },
-]
+function RawCartItems(): RawCartItem[] {
+  return [
+    {
+      id: 'cartItem1',
+      uid: GeneralUser().uid,
+      productId: 'product1',
+      title: 'iPad 4 Mini',
+      price: 500.01,
+      quantity: 1,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-02T00:00:00.000Z',
+    },
+    {
+      id: 'cartItem2',
+      uid: GeneralUser().uid,
+      productId: 'product2',
+      title: 'Fire HD 8 Tablet',
+      price: 80.99,
+      quantity: 2,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      updatedAt: '2020-01-02T00:00:00.000Z',
+    },
+  ]
+}
 
-const CART_ITEMS: CartItem[] = RAW_CART_ITEMS.map(rawCartItem => ({
-  ...rawCartItem,
-  createdAt: dayjs(rawCartItem.createdAt),
-  updatedAt: dayjs(rawCartItem.updatedAt),
-}))
+function CartItems(): CartItem[] {
+  return RawCartItems().map(rawCartItem => ({
+    ...rawCartItem,
+    createdAt: dayjs(rawCartItem.createdAt),
+    updatedAt: dayjs(rawCartItem.updatedAt),
+  }))
+}
 
 //========================================================================
 //
@@ -113,10 +121,10 @@ describe('ExampleShopResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const ids = CART_ITEMS.map(item => item.id)
+      const ids = CartItems().map(item => item.id)
 
       const getCartItems = td.replace(shopService, 'getCartItems')
-      td.when(getCartItems(GENERAL_USER_TOKEN, ids)).thenResolve(CART_ITEMS)
+      td.when(getCartItems(GeneralUserToken(), ids)).thenResolve(CartItems())
 
       const response = await requestGQL(
         app,
@@ -124,14 +132,14 @@ describe('ExampleShopResolver', () => {
           ...gql,
           variables: { ids },
         },
-        { headers: GENERAL_USER_HEADER }
+        { headers: GeneralUserHeader() }
       )
 
-      expect(response.body.data.cartItems).toEqual(RAW_CART_ITEMS)
+      expect(response.body.data.cartItems).toEqual(RawCartItems())
     })
 
     it('サインインしていない場合', async () => {
-      const ids = CART_ITEMS.map(item => item.id)
+      const ids = CartItems().map(item => item.id)
 
       const response = await requestGQL(app, {
         ...gql,
@@ -154,18 +162,18 @@ describe('ExampleShopResolver', () => {
     it('疎通確認', async () => {
       const inputs: CartItemAddInput[] = [
         {
-          productId: PRODUCTS[0].id,
-          title: PRODUCTS[0].title,
-          price: PRODUCTS[0].price,
+          productId: Products()[0].id,
+          title: Products()[0].title,
+          price: Products()[0].price,
           quantity: 1,
         },
       ]
 
       const addCartItems = td.replace(shopService, 'addCartItems')
-      td.when(addCartItems(GENERAL_USER_TOKEN, inputs)).thenResolve([
+      td.when(addCartItems(GeneralUserToken(), inputs)).thenResolve([
         {
-          ...CART_ITEMS[0],
-          product: PRODUCTS[0],
+          ...CartItems()[0],
+          product: Products()[0],
         },
       ] as CartItemEditResponse[])
 
@@ -175,13 +183,13 @@ describe('ExampleShopResolver', () => {
           ...gql,
           variables: { inputs },
         },
-        { headers: GENERAL_USER_HEADER }
+        { headers: GeneralUserHeader() }
       )
 
       expect(response.body.data.addCartItems).toEqual([
         {
-          ...RAW_CART_ITEMS[0],
-          product: RAW_PRODUCTS[0],
+          ...RawCartItems()[0],
+          product: RawProducts()[0],
         },
       ])
     })
@@ -189,9 +197,9 @@ describe('ExampleShopResolver', () => {
     it('サインインしていない場合', async () => {
       const inputs: CartItemAddInput[] = [
         {
-          productId: PRODUCTS[0].id,
-          title: PRODUCTS[0].title,
-          price: PRODUCTS[0].price,
+          productId: Products()[0].id,
+          title: Products()[0].title,
+          price: Products()[0].price,
           quantity: 1,
         },
       ]
@@ -217,16 +225,16 @@ describe('ExampleShopResolver', () => {
     it('疎通確認', async () => {
       const inputs: CartItemUpdateInput[] = [
         {
-          id: CART_ITEMS[0].id,
-          quantity: CART_ITEMS[0].quantity,
+          id: CartItems()[0].id,
+          quantity: CartItems()[0].quantity,
         },
       ]
 
       const updateCartItems = td.replace(shopService, 'updateCartItems')
-      td.when(updateCartItems(GENERAL_USER_TOKEN, inputs)).thenResolve([
+      td.when(updateCartItems(GeneralUserToken(), inputs)).thenResolve([
         {
-          ...CART_ITEMS[0],
-          product: PRODUCTS[0],
+          ...CartItems()[0],
+          product: Products()[0],
         },
       ] as CartItemEditResponse[])
 
@@ -236,13 +244,13 @@ describe('ExampleShopResolver', () => {
           ...gql,
           variables: { inputs },
         },
-        { headers: GENERAL_USER_HEADER }
+        { headers: GeneralUserHeader() }
       )
 
       expect(response.body.data.updateCartItems).toEqual([
         {
-          ...RAW_CART_ITEMS[0],
-          product: RAW_PRODUCTS[0],
+          ...RawCartItems()[0],
+          product: RawProducts()[0],
         },
       ])
     })
@@ -250,8 +258,8 @@ describe('ExampleShopResolver', () => {
     it('サインインしていない場合', async () => {
       const inputs: CartItemUpdateInput[] = [
         {
-          id: CART_ITEMS[0].id,
-          quantity: CART_ITEMS[0].quantity,
+          id: CartItems()[0].id,
+          quantity: CartItems()[0].quantity,
         },
       ]
 
@@ -274,13 +282,13 @@ describe('ExampleShopResolver', () => {
     }
 
     it('疎通確認', async () => {
-      const ids = [CART_ITEMS[0].id]
+      const ids = [CartItems()[0].id]
 
       const removeCartItems = td.replace(shopService, 'removeCartItems')
-      td.when(removeCartItems(GENERAL_USER_TOKEN, ids)).thenResolve([
+      td.when(removeCartItems(GeneralUserToken(), ids)).thenResolve([
         {
-          ...CART_ITEMS[0],
-          product: PRODUCTS[0],
+          ...CartItems()[0],
+          product: Products()[0],
         },
       ] as CartItemEditResponse[])
 
@@ -290,19 +298,19 @@ describe('ExampleShopResolver', () => {
           ...gql,
           variables: { ids },
         },
-        { headers: GENERAL_USER_HEADER }
+        { headers: GeneralUserHeader() }
       )
 
       expect(response.body.data.removeCartItems).toEqual([
         {
-          ...RAW_CART_ITEMS[0],
-          product: RAW_PRODUCTS[0],
+          ...RawCartItems()[0],
+          product: RawProducts()[0],
         },
       ])
     })
 
     it('サインインしていない場合', async () => {
-      const ids = [CART_ITEMS[0].id]
+      const ids = [CartItems()[0].id]
 
       const response = await requestGQL(app, {
         ...gql,
@@ -324,14 +332,14 @@ describe('ExampleShopResolver', () => {
 
     it('疎通確認', async () => {
       const checkoutCart = td.replace(shopService, 'checkoutCart')
-      td.when(checkoutCart(GENERAL_USER_TOKEN)).thenResolve(true)
+      td.when(checkoutCart(GeneralUserToken())).thenResolve(true)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
         },
-        { headers: GENERAL_USER_HEADER }
+        { headers: GeneralUserHeader() }
       )
 
       expect(response.body.data.checkoutCart).toEqual(true)

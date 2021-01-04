@@ -1,8 +1,7 @@
-import { APP_ADMIN_USER, APP_ADMIN_USER_HEADER, GENERAL_USER, GENERAL_USER_HEADER } from '../../../../../helpers/app'
+import { AppAdminUser, AppAdminUserHeader, GeneralUser, GeneralUserHeader } from '../../../../../helpers/app'
 import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims } from '../../../../../../src/app/services'
+import { MockGQLModule, MockRESTModule } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockGQLModule } from '../../../../../helpers/app/gql'
-import { MockRESTModule } from '../../../../../helpers/app/rest'
 import { Response } from 'supertest'
 import { initApp } from '../../../../../../src/app/base'
 import request = require('supertest')
@@ -22,7 +21,7 @@ beforeAll(async () => {
   }).compile()
 
   const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(APP_ADMIN_USER, GENERAL_USER)
+  await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
 })
 
 describe('AuthService', () => {
@@ -43,7 +42,7 @@ describe('AuthService', () => {
         request(app.getHttpServer())
           .get('/dummyRESTService/admin/settings')
           // 権限を満たすユーザーを設定
-          .set(APP_ADMIN_USER_HEADER)
+          .set(AppAdminUserHeader())
           .expect(200)
           .then((res: Response) => {
             expect(res.body.data).toEqual({ adminKey: 'Admin Key' })
@@ -77,8 +76,8 @@ describe('AuthService', () => {
 
     it('認証ユーザーがまだ利用可能でない場合', async () => {
       const token: UserIdClaims = {
-        uid: APP_ADMIN_USER.uid,
-        ...APP_ADMIN_USER.customClaims,
+        uid: AppAdminUser().uid,
+        ...AppAdminUser().customClaims,
         authStatus: AuthStatus.WaitForEntry,
       }
       return (
@@ -99,7 +98,7 @@ describe('AuthService', () => {
         request(app.getHttpServer())
           .get('/dummyRESTService/admin/settings')
           // ロール権限が足りないユーザーを設定
-          .set(GENERAL_USER_HEADER)
+          .set(GeneralUserHeader())
           .expect(403)
           .then((res: Response) => {
             expect(res.header['www-authenticate']).toEqual(`Bearer error="insufficient_scope"`)
@@ -125,7 +124,7 @@ describe('AuthService', () => {
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 権限を満たすユーザーを設定
-          .set(APP_ADMIN_USER_HEADER)
+          .set(AppAdminUserHeader())
           .expect(200)
           .then((res: Response) => {
             expect(res.body.data.adminSettings).toEqual({ adminKey: 'Admin Key' })
@@ -163,8 +162,8 @@ describe('AuthService', () => {
 
     it('認証ユーザーがまだ利用可能でない場合', async () => {
       const token: UserIdClaims = {
-        uid: APP_ADMIN_USER.uid,
-        ...APP_ADMIN_USER.customClaims,
+        uid: AppAdminUser().uid,
+        ...AppAdminUser().customClaims,
         authStatus: AuthStatus.WaitForEntry,
       }
       return (
@@ -173,7 +172,7 @@ describe('AuthService', () => {
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // 認証ユーザーがまだ利用可能でないトークンを設定
-          .set(GENERAL_USER_HEADER)
+          .set(GeneralUserHeader())
           .expect(200)
           .then((res: Response) => {
             expect(res.header['www-authenticate']).toEqual(`Bearer error="insufficient_scope"`)
@@ -189,7 +188,7 @@ describe('AuthService', () => {
           .send(adminSettingsRequestData)
           .set('Content-Type', 'application/json')
           // ロール権限が足りないユーザーを設定
-          .set(GENERAL_USER_HEADER)
+          .set(GeneralUserHeader())
           .expect(200)
           .then((res: Response) => {
             expect(res.header['www-authenticate']).toEqual(`Bearer error="insufficient_scope"`)

@@ -1,5 +1,5 @@
 import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../../src/app/services'
-import { GENERAL_USER, requestGQL } from '../../../../../../helpers/app'
+import { GeneralUser, requestGQL } from '../../../../../../helpers/app'
 import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
 import { Test } from '@nestjs/testing'
 import { config } from '../../../../../../../src/config'
@@ -14,7 +14,7 @@ beforeAll(async () => {
   }).compile()
 
   const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(GENERAL_USER)
+  await devUtilsService.setTestFirebaseUsers(GeneralUser())
 })
 
 describe('Lv1 Env Resolver', () => {

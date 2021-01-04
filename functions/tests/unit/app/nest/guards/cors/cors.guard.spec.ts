@@ -1,6 +1,5 @@
+import { MockCORSGuardGQLModule, MockCORSGuardRESTModule } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
-import { MockCORSGuardGQLModule } from '../../../../../helpers/app/gql/mock'
-import { MockCORSGuardRESTModule } from '../../../../../helpers/app/rest/mock'
 import { Response } from 'supertest'
 import { config } from '../../../../../../src/config'
 import { initApp } from '../../../../../../src/app/base'

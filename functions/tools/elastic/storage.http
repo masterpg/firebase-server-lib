@@ -245,6 +245,24 @@ Authorization: Basic {{elasticToken}}
 
 ###
 
+# 公開設定されているノードを検索
+
+GET {{elasticHost}}/storage-nodes/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "term": { "share.isPublic": true }
+  },
+  "sort": [
+    { "path": { "order": "asc" } }
+  ],
+  "_source": ["path"]
+}
+
+###
+
 # 指定ディレクトリで最大のソート順を取得
 
 GET {{elasticHost}}/storage-nodes-test/_search
