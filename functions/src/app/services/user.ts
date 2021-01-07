@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin'
-import { AppStorageServiceDI, AppStorageServiceModule } from './storage'
 import { AuthDataResult, AuthStatus, UserInfo, UserInfoInput } from './types'
 import { Inject, Module } from '@nestjs/common'
+import { StorageServiceDI, StorageServiceModule } from './storage'
 import { StoreServiceDI, StoreServiceModule } from './base/store'
 import { EntityId } from '../../firestore-ex'
 import UserRecord = admin.auth.UserRecord
@@ -29,8 +29,8 @@ class UserService {
   @Inject(StoreServiceDI.symbol)
   protected readonly storeService!: StoreServiceDI.type
 
-  @Inject(AppStorageServiceDI.symbol)
-  protected readonly storageService!: AppStorageServiceDI.type
+  @Inject(StorageServiceDI.symbol)
+  protected readonly storageService!: StorageServiceDI.type
 
   //----------------------------------------------------------------------
   //
@@ -178,7 +178,7 @@ namespace UserServiceDI {
 @Module({
   providers: [UserServiceDI.provider],
   exports: [UserServiceDI.provider],
-  imports: [StoreServiceModule, AppStorageServiceModule],
+  imports: [StoreServiceModule, StorageServiceModule],
 })
 class UserServiceModule {}
 

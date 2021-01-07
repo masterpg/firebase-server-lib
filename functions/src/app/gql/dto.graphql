@@ -70,11 +70,16 @@ enum StorageNodeType {
   Dir
 }
 
-enum StorageArticleNodeType {
+enum StorageArticleDirType {
   ListBundle
   CategoryBundle
   Article
   Category
+}
+
+enum StorageArticleFileType {
+  Index
+  Draft
 }
 
 type StorageNode implements TimestampEntity {
@@ -86,10 +91,7 @@ type StorageNode implements TimestampEntity {
   contentType: String!
   size: Int!
   share: StorageNodeShareSettings!
-  articleNodeName: String
-  articleNodeType: StorageArticleNodeType
-  articleSortOrder: Long
-  isArticleFile: Boolean!
+  article: StorageArticleSettings
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -110,6 +112,22 @@ type StorageNodeShareSettings {
   isPublic: Boolean
   readUIds: [String!]
   writeUIds: [String!]
+}
+
+type StorageArticleSettings {
+  dir: StorageArticleDirSettings
+  file: StorageArticleFileSettings
+}
+
+type StorageArticleDirSettings {
+  name: String!
+  type: StorageArticleDirType!
+  sortOrder: Long!
+}
+
+type StorageArticleFileSettings {
+  type: StorageArticleFileType!
+  content: String!
 }
 
 input StorageNodeShareSettingsInput {
@@ -147,6 +165,6 @@ input CreateStorageNodeInput {
 
 input CreateArticleTypeDirInput {
   dir: String!
-  articleNodeName: String!
-  articleNodeType: StorageArticleNodeType
+  name: String!
+  type: StorageArticleDirType
 }

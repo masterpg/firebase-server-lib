@@ -9501,8 +9501,8 @@ wcwidth@^1.0.1:
     defaults "^1.0.3"
 
 "web-base-lib@https://github.com/masterpg/web-base-lib.git":
-  version "0.0.20"
-  resolved "https://github.com/masterpg/web-base-lib.git#1ebcbde525ba7d444a6724d8e0ac89745fdc2c4a"
+  version "0.0.21"
+  resolved "https://github.com/masterpg/web-base-lib.git#ccd082c739fd586480c4aa237d828744e4679344"
   dependencies:
     "@types/node" "^13.13.2"
 

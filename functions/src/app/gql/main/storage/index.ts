@@ -1,13 +1,12 @@
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
-  AppStorageServiceDI,
-  AppStorageServiceModule,
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
   IdToken,
   SignedUploadUrlInput,
-  StorageArticleNodeType,
+  StorageArticleDirType,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
@@ -15,8 +14,9 @@ import {
   StorageNodeShareSettingsInput,
   StoragePaginationInput,
   StoragePaginationResult,
+  StorageServiceDI,
+  StorageServiceModule,
 } from '../../../services'
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { GQLContext, GQLContextArg, UserArg } from '../../../nest'
 import { Inject } from '@nestjs/common'
 import { InputValidationError } from '../../../base'
@@ -33,8 +33,8 @@ import { Module } from '@nestjs/common'
 //--------------------------------------------------
 
 @Module({
-  imports: [AppStorageServiceModule, AuthServiceModule],
-  exports: [AppStorageServiceModule, AuthServiceModule],
+  imports: [StorageServiceModule, AuthServiceModule],
+  exports: [StorageServiceModule, AuthServiceModule],
 })
 class BaseStorageGQLModule {}
 
@@ -46,7 +46,7 @@ class BaseStorageGQLModule {}
 class StorageResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type
   ) {}
 
   @Query()
@@ -275,11 +275,11 @@ class StorageResolver {
   async articleChildren(
     @GQLContextArg() ctx: GQLContext,
     @Args('dirPath') dirPath: string,
-    @Args('articleTypes') articleTypes: StorageArticleNodeType[],
+    @Args('types') types: StorageArticleDirType[],
     @Args('input') input?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
-    return this.storageService.getArticleChildren(dirPath, articleTypes, input)
+    return this.storageService.getArticleChildren(dirPath, types, input)
   }
 }
 
@@ -297,7 +297,7 @@ class StorageGQLModule {}
 class RemoveStorageDirResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type
   ) {}
 
   @Mutation()
@@ -322,7 +322,7 @@ class RemoveStorageDirGQLModule {}
 class MoveStorageDirResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type
   ) {}
 
   @Mutation()
@@ -351,7 +351,7 @@ class MoveStorageDirGQLModule {}
 class RenameStorageDirResolver {
   constructor(
     @Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type,
-    @Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type
+    @Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type
   ) {}
 
   @Mutation()

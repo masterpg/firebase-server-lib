@@ -97,7 +97,7 @@ interface AuthDataResult {
 //  Storage
 //--------------------------------------------------
 
-interface StorageNode extends TimestampEntity {
+interface CoreStorageNode extends TimestampEntity {
   nodeType: StorageNodeType
   name: string
   dir: string
@@ -106,11 +106,11 @@ interface StorageNode extends TimestampEntity {
   contentType: string
   size: number
   share: StorageNodeShareSettings
-  articleNodeName: string | null
-  articleNodeType: StorageArticleNodeType | null
-  articleSortOrder: number | null
-  isArticleFile: boolean
   version: number
+}
+
+interface StorageNode extends CoreStorageNode {
+  article?: StorageArticleSettings
 }
 
 enum StorageNodeType {
@@ -118,11 +118,16 @@ enum StorageNodeType {
   Dir = 'Dir',
 }
 
-enum StorageArticleNodeType {
+enum StorageArticleDirType {
   ListBundle = 'ListBundle',
   CategoryBundle = 'CategoryBundle',
   Category = 'Category',
   Article = 'Article',
+}
+
+enum StorageArticleFileType {
+  Index = 'Index',
+  Draft = 'Draft',
 }
 
 interface StorageNodeShareSettings {
@@ -131,12 +136,28 @@ interface StorageNodeShareSettings {
   writeUIds: string[] | null
 }
 
+interface StorageArticleSettings {
+  dir?: StorageArticleDirSettings
+  file?: StorageArticleFileSettings
+}
+
+interface StorageArticleDirSettings {
+  name: string
+  type: StorageArticleDirType
+  sortOrder: number
+}
+
+interface StorageArticleFileSettings {
+  type: StorageArticleFileType
+  content: string
+}
+
 interface StoragePaginationInput {
   maxChunk?: number
   pageToken?: string
 }
 
-interface StoragePaginationResult<T extends StorageNode = StorageNode> {
+interface StoragePaginationResult<T extends CoreStorageNode = CoreStorageNode> {
   list: T[]
   nextPageToken?: string
   isPaginationTimeout?: boolean
@@ -173,9 +194,9 @@ interface CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
 
 interface CreateArticleTypeDirInput {
   dir: string
-  articleNodeName: string
-  articleNodeType: StorageArticleNodeType
-  articleSortOrder?: number
+  name: string
+  type: StorageArticleDirType
+  sortOrder?: number
 }
 
 //--------------------------------------------------
@@ -262,14 +283,19 @@ export { TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export { AppConfig, StorageConfig, StorageUsersConfig, StorageArticlesConfig }
 export {
+  StorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
   SignedUploadUrlInput,
-  StorageArticleNodeType,
-  StorageNode,
-  StorageNodeKeyInput,
-  StorageNodeGetKeysInput,
+  StorageArticleDirSettings,
+  StorageArticleDirType,
+  StorageArticleFileSettings,
+  StorageArticleFileType,
+  StorageArticleSettings,
+  CoreStorageNode,
   StorageNodeGetKeyInput,
+  StorageNodeGetKeysInput,
+  StorageNodeKeyInput,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
   StorageNodeType,

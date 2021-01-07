@@ -1,6 +1,6 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
-import { StorageService } from '../../src/app/services/base/storage'
+import { StorageService } from '../../src/app/services'
 import { newElasticClient } from '../../src/app/base/elastic'
 import { program } from 'commander'
 

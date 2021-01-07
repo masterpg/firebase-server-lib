@@ -1,8 +1,8 @@
+import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import * as path from 'path'
-import { AppStorageService, AppStorageServiceDI, StorageNode, StorageNodeType } from '../../../../src/app/services'
+import { CoreStorageNode, StorageNode, StorageNodeType, StorageService, StorageServiceDI } from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
-import { StorageService } from '../../../../src/app/services/base/storage'
+import { CoreStorageService } from '../../../../src/app/services/base/core-storage'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
 
@@ -12,16 +12,16 @@ import { newElasticClient } from '../../../../src/app/base/elastic'
 //
 //========================================================================
 
-type StorageTestService = StorageService & {
-  extractMetaData: StorageService['extractMetaData']
-  saveGCSMetadata: StorageService['saveGCSMetadata']
-  m_validateAccessibleTargetToNodePaths: AppStorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
+type CoreStorageTestService = CoreStorageService & {
+  extractMetaData: CoreStorageService['extractMetaData']
+  saveGCSMetadata: CoreStorageService['saveGCSMetadata']
+  m_validateAccessibleTargetToNodePaths: StorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
 }
 
-type AppStorageTestService = AppStorageService &
-  StorageTestService & {
-    m_validateArticleRootUnder: AppStorageServiceDI.type['m_validateArticleRootUnder']
-    m_getBelongToArticleBundle: AppStorageServiceDI.type['m_getBelongToArticleBundle']
+type StorageTestService = StorageService &
+  CoreStorageTestService & {
+    m_validateArticleRootUnder: StorageServiceDI.type['m_validateArticleRootUnder']
+    m_getBelongToArticleBundle: StorageServiceDI.type['m_getBelongToArticleBundle']
   }
 
 //========================================================================
@@ -30,8 +30,8 @@ type AppStorageTestService = AppStorageService &
 //
 //========================================================================
 
-class StorageTestHelper {
-  constructor(protected storageService: StorageTestService) {}
+class CoreStorageTestHelper {
+  constructor(protected storageService: CoreStorageTestService) {}
 
   /**
    * 全てのノードを削除します。
@@ -48,7 +48,7 @@ class StorageTestHelper {
     // Elasticsearchのノードを削除
     const client = newElasticClient()
     await client.deleteByQuery({
-      index: StorageService.IndexAlias,
+      index: CoreStorageService.IndexAlias,
       body: {
         query: {
           match_all: {},
@@ -62,12 +62,12 @@ class StorageTestHelper {
    * 指定されたノードが存在することを検証します。
    * @param nodes
    */
-  async existsNodes(nodes: StorageNode[]): Promise<void> {
+  async existsNodes(nodes: CoreStorageNode[]): Promise<void> {
     for (const node of nodes) {
       // ディレクトリの末尾が'/'でないことを検証
       expect(node.dir.endsWith('/')).toBeFalsy()
       // node.path が ｢node.dir + node.name｣ と一致することを検証
-      expect(node.path).toBe(removeStartDirChars(path.join(node.dir, node.name)))
+      expect(node.path).toBe(removeStartDirChars(_path.join(node.dir, node.name)))
       // バージョンの検証
       expect(node.version >= 1).toBeTruthy()
       // タイムスタンプの検証
@@ -82,8 +82,8 @@ class StorageTestHelper {
         const { exists, metadata } = await this.storageService.getStorageFile(node.id)
         expect(exists).toBeTruthy()
         // メタデータの検証
-        if (StorageService.isUserRootUnder(node.path)) {
-          const uid = StorageService.extractUId(node.path)
+        if (CoreStorageService.isUserRootUnder(node.path)) {
+          const uid = CoreStorageService.extractUId(node.path)
           expect(metadata.uid).toBe(uid)
         } else {
           expect(metadata.uid).toBeNull()
@@ -99,10 +99,10 @@ class StorageTestHelper {
    * 指定されたノードが存在しないことを検証します。
    * @param nodes
    */
-  async notExistsNodes(nodes: StorageNode[]): Promise<void> {
+  async notExistsNodes(nodes: CoreStorageNode[]): Promise<void> {
     for (const node of nodes) {
       // node.path が ｢node.dir + node.name｣ と一致することを検証
-      expect(node.path).toBe(path.join(node.dir, node.name))
+      expect(node.path).toBe(_path.join(node.dir, node.name))
       // バージョンの検証
       expect(node.version >= 1).toBeTruthy()
       // タイムスタンプの検証
@@ -125,8 +125,8 @@ class StorageTestHelper {
    * @param fromNodes 移動前ノード ※移動する前に取得しておいたノード
    * @param toNodePath 移動後ノードのパス
    */
-  async verifyMoveNodes(fromNodes: StorageNode[], toNodePath: string) {
-    StorageService.sortNodes(fromNodes)
+  async verifyMoveNodes(fromNodes: CoreStorageNode[], toNodePath: string) {
+    CoreStorageService.sortNodes(fromNodes)
     const fromNodePath = fromNodes[0].path
     const client = newElasticClient()
 
@@ -142,8 +142,8 @@ class StorageTestHelper {
       if (toNode.nodeType === StorageNodeType.File) {
         const { exists, file, metadata } = await this.storageService.getStorageFile(toNode.id)
         expect(exists).toBeTruthy()
-        if (StorageService.isUserRootUnder(toNode.path)) {
-          const uid = StorageService.extractUId(toNode.path)
+        if (CoreStorageService.isUserRootUnder(toNode.path)) {
+          const uid = CoreStorageService.extractUId(toNode.path)
           expect(metadata.uid).toBe(uid)
         } else {
           expect(metadata.uid).toBeNull()
@@ -155,7 +155,7 @@ class StorageTestHelper {
 
       // 移動後ノードが複数存在しないことを検証
       const toNodeCountResponse = await client.count({
-        index: StorageService.IndexAlias,
+        index: CoreStorageService.IndexAlias,
         body: {
           query: {
             term: { path: toNode.path },
@@ -189,25 +189,21 @@ class StorageTestHelper {
     )
   }
 
-  newDirNode(dirPath: string, data?: Partial<Omit<StorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): StorageNode {
+  newDirNode(dirPath: string, data?: Partial<Omit<CoreStorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): CoreStorageNode {
     dirPath = removeBothEndsSlash(dirPath)
     data = data || {}
-    const name = path.basename(dirPath)
-    const dir = removeStartDirChars(path.dirname(dirPath))
-    const result: StorageNode = {
-      id: data.id || StorageService.generateNodeId(),
+    const name = _path.basename(dirPath)
+    const dir = removeStartDirChars(_path.dirname(dirPath))
+    const result: CoreStorageNode = {
+      id: data.id || CoreStorageService.generateNodeId(),
       nodeType: StorageNodeType.Dir,
       name,
       dir,
       path: dirPath,
-      level: StorageService.getNodeLevel(dirPath),
+      level: CoreStorageService.getNodeLevel(dirPath),
       contentType: data.contentType || '',
       size: data.size || 0,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-      articleNodeName: data.articleNodeName ?? null,
-      articleNodeType: data.articleNodeType ?? null,
-      articleSortOrder: data.articleSortOrder ?? null,
-      isArticleFile: false,
       version: 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
@@ -215,25 +211,21 @@ class StorageTestHelper {
     return result
   }
 
-  newFileNode(filePath: string, data?: Partial<Omit<StorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): StorageNode {
+  newFileNode(filePath: string, data?: Partial<Omit<CoreStorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): CoreStorageNode {
     filePath = removeBothEndsSlash(filePath)
     data = data || {}
-    const name = path.basename(filePath)
-    const dir = removeStartDirChars(path.dirname(filePath))
-    const result: StorageNode = {
-      id: data.id || StorageService.generateNodeId(),
+    const name = _path.basename(filePath)
+    const dir = removeStartDirChars(_path.dirname(filePath))
+    const result: CoreStorageNode = {
+      id: data.id || CoreStorageService.generateNodeId(),
       nodeType: StorageNodeType.File,
       name,
       dir,
       path: filePath,
-      level: StorageService.getNodeLevel(filePath),
+      level: CoreStorageService.getNodeLevel(filePath),
       contentType: data.contentType || 'text/plain; charset=utf-8',
       size: data.size || 5,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-      articleNodeName: data.articleNodeName ?? null,
-      articleNodeType: data.articleNodeType ?? null,
-      articleSortOrder: data.articleSortOrder ?? null,
-      isArticleFile: false,
       version: 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
@@ -242,8 +234,8 @@ class StorageTestHelper {
   }
 }
 
-class AppStorageTestHelper extends StorageTestHelper {
-  constructor(protected storageService: AppStorageTestService) {
+class StorageTestHelper extends CoreStorageTestHelper {
+  constructor(protected storageService: StorageTestService) {
     super(storageService)
   }
 
@@ -251,24 +243,23 @@ class AppStorageTestHelper extends StorageTestHelper {
     dirPath = removeBothEndsSlash(dirPath)
     data = data || {}
 
-    return {
-      ...super.newDirNode(dirPath, data),
-      articleNodeName: data.articleNodeName ?? null,
-      articleNodeType: data.articleNodeType ?? null,
-      articleSortOrder: data.articleSortOrder ?? null,
+    const result: StorageNode = { ...super.newDirNode(dirPath, data) }
+    if (data.article) {
+      result.id = _path.basename(dirPath)
+      result.article = data.article
     }
+
+    return result
   }
 
   newFileNode(filePath: string, data?: Partial<Omit<StorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): StorageNode {
     filePath = removeBothEndsSlash(filePath)
     data = data || {}
 
-    return {
-      ...super.newFileNode(filePath, data),
-      articleNodeName: data.articleNodeName ?? null,
-      articleNodeType: data.articleNodeType ?? null,
-      articleSortOrder: data.articleSortOrder ?? null,
-    }
+    const result: StorageNode = { ...super.newFileNode(filePath, data) }
+    data.article && (result.article = data.article)
+
+    return result
   }
 }
 
@@ -278,4 +269,4 @@ class AppStorageTestHelper extends StorageTestHelper {
 //
 //========================================================================
 
-export { StorageTestHelper, StorageTestService, AppStorageTestHelper, AppStorageTestService }
+export { CoreStorageTestHelper, CoreStorageTestService, StorageTestHelper, StorageTestService }

@@ -4,11 +4,11 @@ import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import * as program from 'commander'
 import {
-  AppStorageService,
-  AppStorageServiceDI,
-  AppStorageServiceModule,
   StorageNode,
   StorageNodeType,
+  StorageService,
+  StorageServiceDI,
+  StorageServiceModule,
   StorageUploadDataItem,
   UserServiceModule,
 } from '../src/app/services'
@@ -27,7 +27,7 @@ dayjs.extend(utc)
 //
 //========================================================================
 
-type OutputFormat = 'oneline' | 'json' | 'object' | 'tree'
+type OutputFormat = 'oneline' | 'json' | 'tree'
 
 interface Padding {
   id: number
@@ -41,7 +41,7 @@ interface Padding {
 //========================================================================
 
 @Module({
-  imports: [AppStorageServiceModule, UserServiceModule],
+  imports: [StorageServiceModule, UserServiceModule],
 })
 class StorageToolModule {}
 
@@ -55,9 +55,6 @@ function print(nodes: StorageNode[], format: OutputFormat, specifiedPath?: strin
     case 'json':
       printInJSON(nodes)
       return
-    case 'object':
-      printInObject(nodes)
-      return
     case 'tree':
       return
   }
@@ -70,7 +67,7 @@ function printInOneLine(nodes: StorageNode[], specifiedPath?: string): void {
   const toDisplayPath = (node: StorageNode) => {
     return splitHierarchicalPaths(node.path).reduce((result, nodePath) => {
       const node = nodeDict[nodePath]
-      const name = node.articleNodeName ? node.articleNodeName : node.name
+      const name = node.article?.dir?.name || node.name
       return result ? `${result}/${name}` : name
     }, '')
   }
@@ -93,26 +90,10 @@ function printInJSON(nodes: StorageNode[]): void {
   console.log(output)
 }
 
-function printInObject(nodes: StorageNode[]): void {
-  const objects = nodes.map(node => toNodeObject(node))
-  console.log(objects)
-}
-
 function toNodeObject(node: StorageNode) {
+  const { createdAt, updatedAt, ...others } = node
   return {
-    id: node.id,
-    nodeType: node.nodeType,
-    name: node.name,
-    dir: node.dir,
-    path: node.path,
-    contentType: node.contentType,
-    size: node.size,
-    share: node.share,
-    articleNodeName: node.articleNodeName,
-    articleNodeType: node.articleNodeType,
-    articleSortOrder: node.articleSortOrder,
-    isArticleFile: node.isArticleFile,
-    version: node.version,
+    ...others,
     createdAt: formatDate(node.createdAt),
     updatedAt: formatDate(node.updatedAt),
   }
@@ -183,10 +164,10 @@ async function confirm(message = 'Continue...'): Promise<boolean> {
 program
   .command('node <id_or_path>')
   .option('-f, --format <type>', `select a format (default: 'oneline')`, 'oneline')
-  .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean; object?: boolean }) => {
+  .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean }) => {
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNode({ path: id_or_path })
@@ -216,10 +197,10 @@ program
 program
   .command('descendants <id_or_path>')
   .option('-f, --format <type>', `select a format (default: 'oneline')`, 'oneline')
-  .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean; object?: boolean }) => {
+  .action(async (id_or_path: string, cmdObj: { format: OutputFormat; json?: boolean }) => {
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNode({ path: id_or_path })
@@ -251,7 +232,7 @@ program
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
       const { list } = await storageService.getDirDescendants(nodePath, { maxChunk: count })
-      AppStorageService.sortNodes(list)
+      StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
     // 取得されたノードがファイルの場合
@@ -270,7 +251,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNode({ path: id_or_path })
@@ -301,7 +282,7 @@ program
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
       const { list } = await storageService.getDirChildren(nodePath, { maxChunk: count })
-      AppStorageService.sortNodes(list)
+      StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
     // 取得されたノードがファイルの場合
@@ -320,7 +301,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     // まずはパスで検索
     let node = await storageService.getNode({ path: id_or_path })
@@ -350,20 +331,20 @@ program
   })
 
 program
-  .command('mkdir <dirPath>')
+  .command('create:dir <dirPath>')
   .description('create directories.')
   .action(async (dirPath: string) => {
     if (!(await confirm('Are you sure you want to create directories?'))) return
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     await storageService.createHierarchicalDirs([dirPath])
   })
 
 program
-  .command('test-files <dirPath>')
+  .command('create:test-files <dirPath>')
   .option('-n --num <num>', 'number of files to be created', '10')
   .action(async (dirPath: string, cmdObj: { num: number }) => {
     const { num } = cmdObj
@@ -372,7 +353,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     await storageService.createHierarchicalDirs([dirPath])
 
@@ -391,7 +372,7 @@ program
   })
 
 program
-  .command('test-dirs <dirPath>')
+  .command('create:test-dirs <dirPath>')
   .option('-n --num <num>', 'number of directories to be created', '10')
   .action(async (dirPath: string, cmdObj: { num: number }) => {
     const { num } = cmdObj
@@ -400,7 +381,7 @@ program
 
     initFirebaseApp()
     const nestApp = await createNestApplication(StorageToolModule)
-    const storageService = nestApp.get(AppStorageServiceDI.symbol) as AppStorageServiceDI.type
+    const storageService = nestApp.get(StorageServiceDI.symbol) as StorageServiceDI.type
 
     const testDirPaths: string[] = []
     for (let i = 1; i <= num; i++) {

@@ -1,10 +1,9 @@
 import * as admin from 'firebase-admin'
-import { CartItem, Product, PublicProfile, StorageNode } from '../types'
+import { CartItem, Product, PublicProfile } from '../types'
 import {
   Collection,
   CollectionFactory,
   DecodeFunc,
-  DecodedObject,
   EncodeFunc,
   EncodedObject,
   FieldValue,
@@ -15,10 +14,10 @@ import {
   Transaction,
   WriteBatch,
 } from '../../../firestore-ex'
-import { firestoreExOptions, isFieldValue } from '../../base'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import dayjs = require('dayjs')
+import { firestoreExOptions } from '../../base'
 
 //========================================================================
 //
@@ -47,51 +46,6 @@ interface StoreUser extends TimestampEntity {
 //  Collections
 //
 //========================================================================
-
-//--------------------------------------------------
-//  Storage
-//--------------------------------------------------
-
-const storageEncode: EncodeFunc<StorageNode> = (obj, operation) => {
-  const result: EncodedObject<StorageNode> = {}
-
-  if (typeof obj.nodeType === 'string') result.nodeType = obj.nodeType
-  if (typeof obj.name === 'string') result.name = obj.name
-  if (typeof obj.dir === 'string') result.dir = obj.dir
-  if (typeof obj.path === 'string') result.path = obj.path
-  if (typeof obj.level === 'number') result.level = obj.level
-  if (typeof obj.contentType === 'string') result.contentType = obj.contentType
-  if (typeof obj.size === 'number') result.size = obj.size
-  if (obj.share) result.share = obj.share
-  if (typeof obj.articleNodeName === 'string' || obj.articleNodeName === null) {
-    result.articleNodeName = obj.articleNodeName
-  }
-  if (typeof obj.articleNodeType === 'string' || obj.articleNodeType === null) {
-    result.articleNodeType = obj.articleNodeType
-  }
-  if (typeof obj.articleSortOrder === 'number' || obj.articleSortOrder === null || isFieldValue(obj.articleSortOrder)) {
-    result.articleSortOrder = obj.articleSortOrder
-  }
-  if (typeof obj.isArticleFile === 'boolean' || obj.isArticleFile === null) {
-    result.isArticleFile = obj.isArticleFile
-  }
-  result.version = obj.version
-
-  const createdAt = StoreService.toStoreDate(obj.createdAt)
-  if (createdAt) result.createdAt = createdAt
-  const updatedAt = StoreService.toStoreDate(obj.updatedAt)
-  if (updatedAt) result.updatedAt = updatedAt
-
-  return result
-}
-
-const storageDecode: DecodeFunc<StorageNode> = doc => {
-  const { createdAt, updatedAt, ...body } = doc
-  const result: DecodedObject<StorageNode> = { ...body }
-  if (createdAt) result.createdAt = dayjs(createdAt.toDate())
-  if (updatedAt) result.updatedAt = dayjs(updatedAt.toDate())
-  return result
-}
 
 //========================================================================
 //
@@ -124,13 +78,6 @@ class StoreService implements BaseStore {
       },
     })
 
-    this.storageDao = this.firestoreEx.collection({
-      path: 'storage-nodes',
-      useTimestamp: false,
-      encode: storageEncode,
-      decode: storageDecode,
-    })
-
     this.productDao = this.firestoreEx.collection({ path: 'products', useTimestamp: true })
 
     this.cartDao = this.firestoreEx.collection({ path: 'cart', useTimestamp: true })
@@ -145,8 +92,6 @@ class StoreService implements BaseStore {
   readonly userDao: Collection<StoreUser>
 
   readonly publicProfileDao: Collection<PublicProfile>
-
-  readonly storageDao: Collection<StorageNode>
 
   readonly productDao: Collection<Product>
 
@@ -241,4 +186,3 @@ class StoreServiceModule {}
 //========================================================================
 
 export { StoreService, StoreServiceDI, StoreServiceModule }
-export { storageDecode, storageEncode }

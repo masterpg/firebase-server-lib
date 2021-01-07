@@ -1,5 +1,5 @@
-import { AppStorageServiceDI, AppStorageServiceModule, AuthServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
 import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { AuthServiceModule, CORSServiceModule, LoggingServiceModule, StorageServiceDI, StorageServiceModule } from '../../services'
 import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseRESTModule } from '../base'
@@ -17,7 +17,7 @@ import KeepAliveRESTModule from '../base/keepalive'
 
 @Controller()
 class StorageController {
-  constructor(@Inject(AppStorageServiceDI.symbol) protected readonly storageService: AppStorageServiceDI.type) {}
+  constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
   @Get(':nodeId')
   async serveFile(@Req() req: Request, @Res() res: Response, @Param('nodeId') nodeId: string): Promise<Response> {
@@ -27,7 +27,7 @@ class StorageController {
 
 @Module({
   controllers: [StorageController],
-  imports: [BaseRESTModule, AppStorageServiceModule],
+  imports: [BaseRESTModule, StorageServiceModule],
 })
 class StorageRESTModule {}
 

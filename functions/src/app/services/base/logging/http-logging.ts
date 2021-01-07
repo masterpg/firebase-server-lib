@@ -5,6 +5,7 @@ import { LoggingLatencyTimer, LoggingSeverity } from './base'
 import { Request, Response } from 'express'
 import { ApiResponse } from '@google-cloud/logging/build/src/log'
 import { Dayjs } from 'dayjs'
+import { ResponseError as ElasticResponseError } from '@elastic/elasticsearch/lib/errors'
 import { GraphQLResolveInfo } from 'graphql'
 import { HttpException } from '@nestjs/common'
 import { IdToken } from '../../types'
@@ -188,9 +189,10 @@ abstract class HTTPLoggingService {
         } else {
           result.error.message = error.message
         }
-
         if (error instanceof ValidationErrors || error instanceof InputValidationError) {
           result.error.detail = error.detail
+        } else if (error instanceof ElasticResponseError) {
+          result.error.detail = error.meta.body
         }
       } else {
         result.error = error

@@ -1,4 +1,4 @@
-import { StorageArticleNodeType, StorageNode } from '../../../../src/app/services'
+import { StorageArticleDirSettings, StorageArticleFileSettings, StorageArticleSettings, StorageNode } from '../../../../src/app/services'
 
 //========================================================================
 //
@@ -6,14 +6,47 @@ import { StorageArticleNodeType, StorageNode } from '../../../../src/app/service
 //
 //========================================================================
 
-interface ResponseStorageNode
-  extends Omit<StorageNode, 'level' | 'articleNodeName' | 'articleNodeType' | 'articleSortOrder' | 'createdAt' | 'updatedAt'> {
-  articleNodeName?: string | null
-  articleNodeType?: StorageArticleNodeType | null
-  articleSortOrder?: number | null
+interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'article' | 'createdAt' | 'updatedAt'> {
+  article: {
+    dir: StorageArticleDirSettings | null
+    file: StorageArticleFileSettings | null
+  } | null
   createdAt: string
   updatedAt: string
 }
+
+const StorageNodeFieldsName = 'StorageNodeFields'
+
+const StorageNodeFields = `
+  fragment ${StorageNodeFieldsName} on StorageNode {
+    id
+    nodeType
+    name
+    dir
+    path
+    contentType
+    size
+    share {
+      isPublic
+      readUIds
+      writeUIds
+    }
+    article {
+      dir {
+        name
+        type
+        sortOrder
+      }
+      file {
+        type
+        content
+      }
+    }
+    version
+    createdAt
+    updatedAt
+  }
+`
 
 //========================================================================
 //
@@ -39,10 +72,13 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       readUIds: node.share.readUIds ?? null,
       writeUIds: node.share.writeUIds ?? null,
     },
-    articleNodeName: node.articleNodeName ?? null,
-    articleNodeType: node.articleNodeType ?? null,
-    articleSortOrder: node.articleSortOrder ?? null,
-    isArticleFile: node.isArticleFile ?? false,
+    article: (() => {
+      if (!node.article) return null
+      return {
+        dir: node.article.dir ?? null,
+        file: node.article.file ?? null,
+      }
+    })(),
     version: node.version,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),
@@ -63,4 +99,4 @@ function toGQLResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] 
 //
 //========================================================================
 
-export { toGQLResponseStorageNode, toGQLResponseStorageNodes }
+export { StorageNodeFieldsName, StorageNodeFields, toGQLResponseStorageNode, toGQLResponseStorageNodes }

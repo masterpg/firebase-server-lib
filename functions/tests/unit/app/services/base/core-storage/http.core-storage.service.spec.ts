@@ -3,23 +3,21 @@ import * as td from 'testdouble'
 import {
   AppAdminUser,
   AppAdminUserHeader,
+  CoreStorageTestHelper,
+  CoreStorageTestService,
   GeneralUserHeader,
-  StorageTestHelper,
-  StorageTestService,
   StorageUser,
   StorageUserHeader,
   StorageUserToken,
   getGQLErrorStatus,
   requestGQL,
-  toGQLResponseStorageNode,
-  toGQLResponseStorageNodes,
 } from '../../../../../helpers/app'
-import { AppStorageServiceDI, DevUtilsServiceDI, DevUtilsServiceModule } from '../../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, StorageServiceDI } from '../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
+import { CoreStorageService } from '../../../../../../src/app/services/base/core-storage'
 import Lv1GQLContainerModule from '../../../../../../src/app/gql/main/lv1'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../../src/app/rest/storage'
-import { StorageService } from '../../../../../../src/app/services/base/storage'
 import { initApp } from '../../../../../../src/app/base'
 import { sleep } from 'web-base-lib'
 import request = require('supertest')
@@ -41,11 +39,11 @@ const TestFilesDir = 'test-files'
 //
 //========================================================================
 
-describe('StorageService - HTTP関連のテスト', () => {
+describe('CoreStorageService - HTTP関連のテスト', () => {
   let testingModule!: TestingModule
-  let storageService!: StorageTestService
+  let storageService!: CoreStorageTestService
   let devUtilsService!: DevUtilsServiceDI.type
-  let h!: StorageTestHelper
+  let h!: CoreStorageTestHelper
 
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
@@ -53,8 +51,8 @@ describe('StorageService - HTTP関連のテスト', () => {
     }).compile()
 
     devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-    storageService = testingModule.get<StorageTestService>(AppStorageServiceDI.symbol)
-    h = new StorageTestHelper(storageService)
+    storageService = testingModule.get<CoreStorageTestService>(StorageServiceDI.symbol)
+    h = new CoreStorageTestHelper(storageService)
 
     await h.removeAllNodes()
 
@@ -79,9 +77,7 @@ describe('StorageService - HTTP関連のテスト', () => {
     const gqlGetStorageNode = {
       query: `
         query GetStorageNode($input: StorageNodeGetKeyInput!) {
-          storageNode(input: $input) {
-            id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-          }
+          storageNode(input: $input) { id }
         }
       `,
     }
@@ -90,9 +86,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       query: `
         query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
           storageDirChildren(dirPath: $dirPath, input: $input) {
-            list {
-              id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt
-            }
+            list { id }
             nextPageToken
           }
         }
@@ -122,7 +116,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           }
         )
 
-        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(fileNode))
+        expect(response.body.data.storageNode).toEqual({ id: fileNode.id })
       })
 
       it('アプリケーション管理者以外でアクセス', async () => {
@@ -171,13 +165,13 @@ describe('StorageService - HTTP関連のテスト', () => {
           }
         )
 
-        expect(response.body.data.storageDirChildren.list).toEqual(toGQLResponseStorageNodes([fileNode]))
+        expect(response.body.data.storageDirChildren.list).toEqual([{ id: fileNode.id }])
       })
     })
 
     describe('ユーザーファイル', () => {
       it('自ユーザーのファイルにアクセス', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -200,11 +194,11 @@ describe('StorageService - HTTP関連のテスト', () => {
           }
         )
 
-        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(fileNode))
+        expect(response.body.data.storageNode).toEqual({ id: fileNode.id })
       })
 
       it('自ユーザーのルートディレクトリにアクセス', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         const [, userDirNode] = await storageService.createHierarchicalDirs([`${userDirPath}`])
 
         const response = await requestGQL(
@@ -219,11 +213,11 @@ describe('StorageService - HTTP関連のテスト', () => {
           }
         )
 
-        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(userDirNode))
+        expect(response.body.data.storageNode).toEqual({ id: userDirNode.id })
       })
 
       it('アプリケーション管理者でアクセス', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -246,11 +240,11 @@ describe('StorageService - HTTP関連のテスト', () => {
           }
         )
 
-        expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(fileNode))
+        expect(response.body.data.storageNode).toEqual({ id: fileNode.id })
       })
 
       it('自ユーザー以外でアクセス', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}`])
         const [fileNode] = await storageService.uploadDataItems([
           {
@@ -288,7 +282,7 @@ describe('StorageService - HTTP関連のテスト', () => {
 
     describe('ユーザーファイル', () => {
       it('ファイルは公開設定 -> 誰でもアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -312,7 +306,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは非公開設定 -> 自ユーザーはアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -339,7 +333,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは非公開設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -363,7 +357,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは公開未設定 -> 自ユーザーはアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -390,7 +384,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは公開未設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -414,7 +408,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -441,7 +435,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -468,7 +462,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーはアクセス不可', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -494,7 +488,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([
@@ -521,7 +515,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       })
 
       it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
-        const userDirPath = StorageService.toUserRootPath(StorageUserToken())
+        const userDirPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userDirPath}/d1`])
         const fileData = 'test'
         const [fileNode] = await storageService.uploadDataItems([

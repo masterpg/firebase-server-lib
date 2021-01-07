@@ -35,7 +35,7 @@ type Query {
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  articleChildren(dirPath: String!, articleTypes: [StorageArticleNodeType!]!, input: StoragePaginationInput): StoragePaginationResult!
+  articleChildren(dirPath: String!, types: [StorageArticleDirType!]!, input: StoragePaginationInput): StoragePaginationResult!
 }
 
 #--------------------------------------------------
