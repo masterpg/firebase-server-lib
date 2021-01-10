@@ -187,7 +187,27 @@ class CoreStorageService<
 > {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {}
 
-  readonly client = newElasticClient()
+  //----------------------------------------------------------------------
+  //
+  //  Variables
+  //
+  //----------------------------------------------------------------------
+
+  protected readonly client = newElasticClient()
+
+  /**
+   * データベースからの取得ノードに含めるフィールドを指定します。
+   */
+  protected get includeNodeFields(): string[] {
+    return []
+  }
+
+  /**
+   * データベースからの取得ノードで除外するフィールドを指定します。
+   */
+  protected get excludeNodeFields(): string[] {
+    return []
+  }
 
   //----------------------------------------------------------------------
   //
@@ -216,6 +236,8 @@ class CoreStorageService<
           },
         },
       },
+      _source_includes: this.includeNodeFields,
+      _source_excludes: this.excludeNodeFields,
     })
 
     const nodes = this.responseToNodes(response)
@@ -252,6 +274,8 @@ class CoreStorageService<
         body: {
           query: { terms: { id: chunk } },
         },
+        _source_includes: this.includeNodeFields,
+        _source_excludes: this.excludeNodeFields,
       })
       nodes.push(...this.responseToNodes(response))
     }
@@ -262,6 +286,8 @@ class CoreStorageService<
         body: {
           query: { terms: { path: chunk } },
         },
+        _source_includes: this.includeNodeFields,
+        _source_excludes: this.excludeNodeFields,
       })
       nodes.push(...this.responseToNodes(response))
     }
@@ -414,6 +440,8 @@ class CoreStorageService<
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
+        _source_includes: this.includeNodeFields,
+        _source_excludes: this.excludeNodeFields,
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -594,6 +622,8 @@ class CoreStorageService<
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
+        _source_includes: this.includeNodeFields,
+        _source_excludes: this.excludeNodeFields,
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -2070,7 +2100,28 @@ class CoreStorageService<
   //
   //----------------------------------------------------------------------
 
-  static MaxChunk = 50
+  static readonly ResponseNodeFields: any = {
+    excludes: ['article.file.content'],
+  }
+
+  // static readonly ResponseNodeFields = [
+  //   'id',
+  //   'nodeType',
+  //   'name',
+  //   'dir',
+  //   'path',
+  //   'level',
+  //   'contentType',
+  //   'size',
+  //   'share.isPublic',
+  //   'share.readUIds',
+  //   'share.writeUIds',
+  //   'version',
+  //   'createdAt',
+  //   'updatedAt',
+  // ]
+
+  static readonly MaxChunk = 50
 
   static EmptyShareSettings(): StorageNodeShareSettings {
     return {

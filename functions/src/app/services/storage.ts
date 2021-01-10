@@ -16,7 +16,7 @@ import {
 } from './types'
 import { ElasticTimestamp, SearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
-import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
+import { PartialAre, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { CoreStorageService } from './base/core-storage'
 import { File } from '@google-cloud/storage'
 import { InputValidationError } from '../base'
@@ -37,7 +37,7 @@ interface StorageFileNode extends StorageNode {
 interface DBStorageNode extends Omit<StorageNode, 'article' | 'createdAt' | 'updatedAt'>, ElasticTimestamp {
   article?: {
     dir?: StorageArticleDirSettings
-    file?: StorageArticleFileSettings
+    file?: PartialAre<StorageArticleFileSettings, 'content'>
   }
 }
 
@@ -97,6 +97,16 @@ const IndexDefinition = merge(CoreStorageService.IndexDefinition, {
 class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DBStorageNode> {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {
     super(authService)
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Variables
+  //
+  //----------------------------------------------------------------------
+
+  protected get excludeNodeFields(): string[] {
+    return [...super.excludeNodeFields, 'article.file.content']
   }
 
   //----------------------------------------------------------------------
@@ -390,6 +400,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
         sort: [{ 'article.dir.sortOrder': 'desc' }],
       },
+      _source_includes: this.includeNodeFields,
+      _source_excludes: this.excludeNodeFields,
     })
     const nodes = this.responseToNodes(response)
 
@@ -549,7 +561,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       result.article = {
         file: {
           type: dbNode.article.file.type,
-          content: dbNode.article.file.content,
+          content: dbNode.article.file.content ?? '',
         },
       }
     }

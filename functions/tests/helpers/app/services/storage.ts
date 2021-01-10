@@ -13,6 +13,7 @@ import { newElasticClient } from '../../../../src/app/base/elastic'
 //========================================================================
 
 type CoreStorageTestService = CoreStorageService & {
+  client: CoreStorageService['client']
   extractMetaData: CoreStorageService['extractMetaData']
   saveGCSMetadata: CoreStorageService['saveGCSMetadata']
   m_validateAccessibleTargetToNodePaths: StorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
