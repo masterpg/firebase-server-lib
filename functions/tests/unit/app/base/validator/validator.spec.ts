@@ -29,9 +29,9 @@ describe('validator', () => {
         actual = err
       }
 
-      expect(actual.detail.length).toBe(2)
-      expect(has(actual.detail[0].constraints, 'isPositive')).toBeTruthy()
-      expect(has(actual.detail[1].constraints, 'isInt')).toBeTruthy()
+      expect(actual.details.length).toBe(2)
+      expect(has(actual.details[0].constraints, 'isPositive')).toBeTruthy()
+      expect(has(actual.details[1].constraints, 'isInt')).toBeTruthy()
     })
 
     it('検証対象が配列の場合', async () => {
@@ -47,10 +47,10 @@ describe('validator', () => {
         actual = err
       }
 
-      expect(actual.detail.length).toBe(3)
-      expect(has(actual.detail[0].constraints, 'isPositive')).toBeTruthy()
-      expect(has(actual.detail[1].constraints, 'isInt')).toBeTruthy()
-      expect(has(actual.detail[2].constraints, 'isNotEmpty')).toBeTruthy()
+      expect(actual.details.length).toBe(3)
+      expect(has(actual.details[0].constraints, 'isPositive')).toBeTruthy()
+      expect(has(actual.details[1].constraints, 'isInt')).toBeTruthy()
+      expect(has(actual.details[2].constraints, 'isNotEmpty')).toBeTruthy()
     })
   })
 })

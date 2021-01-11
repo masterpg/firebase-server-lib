@@ -1,5 +1,6 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
+import { AppError, generateEntityId, validateUID } from '../../base'
 import {
   AuthRoleType,
   CoreStorageNode,
@@ -33,7 +34,6 @@ import {
 import { Entities, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
-import { InputValidationError, generateEntityId, validateUID } from '../../base'
 import { Request, Response } from 'express'
 import dayjs = require('dayjs')
 import { config } from '../../../config'
@@ -793,7 +793,7 @@ class CoreStorageService<
     for (const ancestorDirNode of ancestorDirNodes) {
       // 祖先ディレクトリが存在することをチェック
       if (!ancestorDirNode.exists) {
-        throw new InputValidationError(`The ancestor directory of the specified directory does not exist.`, {
+        throw new AppError(`The ancestor directory of the specified directory does not exist.`, {
           specifiedPath: dirPath,
           ancestorPath: ancestorDirNode.path,
         })
@@ -1349,7 +1349,7 @@ class CoreStorageService<
     // ストレージにファイルが存在することを確認
     const { file, exists } = await this.getStorageFile(nodeId)
     if (!exists) {
-      throw new InputValidationError(`Uploaded file not found.`, input)
+      throw new AppError(`Uploaded file not found.`, input)
     }
 
     // ファイルを格納するディレクトリが存在することを検証
@@ -1361,7 +1361,7 @@ class CoreStorageService<
         // 到達できない迷子のファイルになってしまう。このため対象ファイルはストレージから削除する。
         await file.delete()
         // 例外をスロー
-        throw new InputValidationError(`The ancestor directory of the file does not exist.`, {
+        throw new AppError(`The ancestor directory of the file does not exist.`, {
           fileNodePath: nodePath,
           ancestorPath: dirNode.path,
         })
@@ -1579,7 +1579,7 @@ class CoreStorageService<
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(...dirPaths)
     for (const dirNode of hierarchicalDirNodes) {
       if (!dirNode.exists) {
-        throw new InputValidationError(`The directory '${dirNode.path}' to upload to does not exist.`)
+        throw new AppError(`The directory '${dirNode.path}' to upload to does not exist.`)
       }
     }
 
@@ -1617,7 +1617,7 @@ class CoreStorageService<
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(...dirPaths)
     for (const dirNode of hierarchicalDirNodes) {
       if (!dirNode.exists) {
-        throw new InputValidationError(`The directory '${dirNode.path}' to upload to does not exist.`)
+        throw new AppError(`The directory '${dirNode.path}' to upload to does not exist.`)
       }
     }
 
@@ -2163,12 +2163,12 @@ class CoreStorageService<
    */
   static validateNodePath(nodePath?: string): void {
     if (!nodePath) {
-      throw new InputValidationError('The specified path is empty.')
+      throw new AppError('The specified path is empty.')
     }
 
     // 改行、タブが含まれないことを検証
     if (/\r?\n|\t/g.test(nodePath)) {
-      throw new InputValidationError('The specified path is invalid.', {
+      throw new AppError('The specified path is invalid.', {
         path: nodePath,
       })
     }
@@ -2180,19 +2180,19 @@ class CoreStorageService<
    */
   static validateNodeName(nodeName?: string): void {
     if (!nodeName) {
-      throw new InputValidationError('The specified node name is empty.')
+      throw new AppError('The specified node name is empty.')
     }
 
     // 改行、タブが含まれないことを検証
     if (/\r?\n|\t/g.test(nodeName)) {
-      throw new InputValidationError('The specified node name is invalid.', {
+      throw new AppError('The specified node name is invalid.', {
         nodeName,
       })
     }
 
     // '/'が含まれないことを検証
     if (/\//g.test(nodeName!)) {
-      throw new InputValidationError('The specified directory name is invalid.', { nodeName })
+      throw new AppError('The specified directory name is invalid.', { nodeName })
     }
   }
 

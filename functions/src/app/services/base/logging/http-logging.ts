@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { InputValidationError, ValidationErrors } from '../../../base'
+import { AppError, ValidationErrors } from '../../../base'
 import { Log, Logging } from '@google-cloud/logging'
 import { LoggingLatencyTimer, LoggingSeverity } from './base'
 import { Request, Response } from 'express'
@@ -189,10 +189,14 @@ abstract class HTTPLoggingService {
         } else {
           result.error.message = error.message
         }
-        if (error instanceof ValidationErrors || error instanceof InputValidationError) {
+
+        if (error instanceof AppError) {
+          result.error.cause = error.cause
           result.error.detail = error.detail
+        } else if (error instanceof ValidationErrors) {
+          result.error.details = error.details
         } else if (error instanceof ElasticResponseError) {
-          result.error.detail = error.meta.body
+          result.error.detail = error.meta.body.error
         }
       } else {
         result.error = error

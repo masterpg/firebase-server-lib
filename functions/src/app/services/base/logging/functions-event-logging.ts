@@ -1,4 +1,4 @@
-import { InputValidationError, ValidationErrors } from '../../../base'
+import { AppError, ValidationErrors } from '../../../base'
 import { clone, merge } from 'lodash'
 import { debug, error, info, warn } from 'firebase-functions/lib/logger'
 import { LoggingSeverity } from './base'
@@ -75,8 +75,13 @@ abstract class FunctionsEventLoggingService {
           message: error.message,
         }
 
-        if (error instanceof ValidationErrors || error instanceof InputValidationError) {
+        if (error instanceof AppError) {
+          result.error.cause = error.cause
           result.error.detail = error.detail
+        }
+
+        if (error instanceof ValidationErrors) {
+          result.error.details = error.details
         }
       } else {
         result.error = error

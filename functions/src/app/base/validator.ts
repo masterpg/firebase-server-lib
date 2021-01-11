@@ -10,21 +10,8 @@ import { plainToClass } from 'class-transformer'
 //========================================================================
 
 class ValidationErrors extends BadRequestException {
-  constructor(readonly detail: _ValidationError[]) {
+  constructor(readonly details: _ValidationError[]) {
     super('Validation failed.')
-  }
-}
-
-class InputValidationError extends BadRequestException {
-  constructor(message: string, values?: { [field: string]: any }) {
-    super('Validation failed.')
-    this.m_detail = { message, values }
-  }
-
-  private m_detail: { message: string; values?: { [field: string]: any } }
-
-  get detail(): { message: string; values?: { [field: string]: any } } {
-    return this.m_detail
   }
 }
 
@@ -95,4 +82,4 @@ function validateUID(uid: string): boolean {
 //
 //========================================================================
 
-export { ValidationErrors, InputValidationError, validate, validateSync, validateUID }
+export { ValidationErrors, validate, validateSync, validateUID }

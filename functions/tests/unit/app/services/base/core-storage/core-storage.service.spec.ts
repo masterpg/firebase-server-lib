@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin'
 import * as td from 'testdouble'
+import { AppError, initApp } from '../../../../../../src/app/base'
 import {
   CoreStorageNode,
   CreateStorageNodeInput,
@@ -17,7 +18,6 @@ import {
   StorageFileNode,
 } from '../../../../../../src/app/services/base/core-storage'
 import { CoreStorageTestHelper, CoreStorageTestService } from '../../../../../helpers/app'
-import { InputValidationError, initApp } from '../../../../../../src/app/base'
 import { Test, TestingModule } from '@nestjs/testing'
 import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../../src/app/base/elastic'
 import { removeBothEndsSlash, sleep } from 'web-base-lib'
@@ -1544,7 +1544,7 @@ describe('CoreStorageService', () => {
     })
 
     it('祖先が存在しない場合', async () => {
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // 祖先がいないディレクトリ作成を試みる
         const actual = await storageService.createDir(`d1/d11`)
@@ -1552,8 +1552,8 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The ancestor directory of the specified directory does not exist.`)
-      expect(actual.detail.values).toEqual({
+      expect(actual.cause).toBe(`The ancestor directory of the specified directory does not exist.`)
+      expect(actual.detail).toEqual({
         specifiedPath: `d1/d11`,
         ancestorPath: `d1`,
       })
@@ -2996,15 +2996,15 @@ describe('CoreStorageService', () => {
         path: `d1/fileA.txt`,
       }
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await storageService.handleUploadedFile(fileA)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`Uploaded file not found.`)
-      expect(actual.detail.values).toEqual(fileA)
+      expect(actual.cause).toBe(`Uploaded file not found.`)
+      expect(actual.detail).toEqual(fileA)
     })
 
     it('ファイルの祖先が存在しない場合', async () => {
@@ -3017,15 +3017,15 @@ describe('CoreStorageService', () => {
       const file = bucket.file(fileA.id)
       await file.save('testA', { contentType: 'text/plain' })
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await storageService.handleUploadedFile(fileA)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The ancestor directory of the file does not exist.`)
-      expect(actual.detail.values).toEqual({
+      expect(actual.cause).toBe(`The ancestor directory of the file does not exist.`)
+      expect(actual.detail).toEqual({
         fileNodePath: fileA.path,
         ancestorPath: `d1`,
       })

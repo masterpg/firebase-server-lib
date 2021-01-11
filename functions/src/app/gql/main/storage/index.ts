@@ -18,8 +18,8 @@ import {
   StorageServiceModule,
 } from '../../../services'
 import { GQLContext, GQLContextArg, UserArg } from '../../../nest'
+import { AppError } from '../../../base'
 import { Inject } from '@nestjs/common'
-import { InputValidationError } from '../../../base'
 import { Module } from '@nestjs/common'
 
 //========================================================================
@@ -72,7 +72,7 @@ class StorageResolver {
     }
     // 引数指定なしエラー
     else {
-      throw new InputValidationError(`Both 'id' and 'path' are not specified.`)
+      throw new AppError(`Both 'id' and 'path' are not specified.`)
     }
   }
 
@@ -80,7 +80,7 @@ class StorageResolver {
   async storageNodes(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeGetKeysInput): Promise<StorageNode[]> {
     // 引数指定なしエラー
     if (!input.ids && !input.paths) {
-      throw new InputValidationError(`Both 'ids' and 'paths' are not specified.`)
+      throw new AppError(`Both 'ids' and 'paths' are not specified.`)
     }
 
     const result: StorageNode[] = []

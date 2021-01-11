@@ -1,6 +1,6 @@
+import { AppError, WriteReadyObserver, validate } from '../../base'
 import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../types'
 import { Inject, Module } from '@nestjs/common'
-import { InputValidationError, WriteReadyObserver, validate } from '../../base'
 import { StoreServiceDI, StoreServiceModule } from '../base/store'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { Transaction } from '../../../firestore-ex'
@@ -139,7 +139,7 @@ class ExampleShopService {
     const cartItems = await this.storeService.cartDao.where('uid', '==', uid).where('productId', '==', itemInput.productId).fetch(tx)
     if (cartItems.length > 0) {
       const cartItem = cartItems[0]
-      throw new InputValidationError('The specified cart item already exists.', {
+      throw new AppError('The specified cart item already exists.', {
         cartItemId: cartItem.id,
         uid: cartItem.uid,
         productId: cartItem.productId,
@@ -150,7 +150,7 @@ class ExampleShopService {
     // 商品の在庫数を再計算
     const newStock = product.stock - itemInput.quantity
     if (newStock < 0) {
-      throw new InputValidationError('The product is out of stock.', {
+      throw new AppError('The product is out of stock.', {
         productId: product.id,
         title: product.title,
         currentStock: product.stock,
@@ -192,7 +192,7 @@ class ExampleShopService {
     // 今回カートアイテムに追加された商品の個数をもとに商品の在庫数を算出
     const newStock = product.stock + addedQuantity
     if (newStock < 0) {
-      throw new InputValidationError('The product is out of stock.', {
+      throw new AppError('The product is out of stock.', {
         productId: product.id,
         title: product.title,
         currentStock: product.stock,
@@ -258,7 +258,7 @@ class ExampleShopService {
   private async m_getProductById(id: string, tx: Transaction): Promise<Product> {
     const product = await this.storeService.productDao.fetch(id, tx)
     if (!product) {
-      throw new InputValidationError('The specified product could not be found.', {
+      throw new AppError('The specified product could not be found.', {
         productId: id,
       })
     }
@@ -268,13 +268,13 @@ class ExampleShopService {
   private async m_getCartItemById(uid: string, id: string, tx: Transaction): Promise<CartItem> {
     const cartItem = await this.storeService.cartDao.fetch(id, tx)
     if (!cartItem) {
-      throw new InputValidationError('The specified cart item could not be found.', {
+      throw new AppError('The specified cart item could not be found.', {
         cartItemId: id,
       })
     }
     // 取得したカートアイテムが自身のものかチェック
     if (cartItem.uid !== uid) {
-      throw new InputValidationError('You cannot access the specified cart item.', {
+      throw new AppError('You cannot access the specified cart item.', {
         cartItemId: cartItem.id,
         uid: cartItem.uid,
         requestUID: uid,
@@ -296,7 +296,7 @@ class ExampleShopService {
   private m_validateAddInputDuplication(inputs: CartItemAddInput[]): void {
     const duplicates = findDuplicateItems(inputs, 'productId')
     if (duplicates.length > 0) {
-      throw new InputValidationError(`The specified product is a duplicate.`, {
+      throw new AppError(`The specified product is a duplicate.`, {
         cartItemId: duplicates[0],
       })
     }
@@ -305,7 +305,7 @@ class ExampleShopService {
   private m_validateUpdateInputDuplication(inputs: CartItemUpdateInput[]): void {
     const duplicates = findDuplicateItems(inputs, 'id')
     if (duplicates.length > 0) {
-      throw new InputValidationError(`The specified cart item is a duplicate.`, {
+      throw new AppError(`The specified cart item is a duplicate.`, {
         cartItemId: duplicates[0],
       })
     }
@@ -314,7 +314,7 @@ class ExampleShopService {
   private m_validateRemoveInputDuplication(cartItemIds: string[]): void {
     const duplicates = findDuplicateValues(cartItemIds)
     if (duplicates.length > 0) {
-      throw new InputValidationError(`The specified cart item is a duplicate.`, {
+      throw new AppError(`The specified cart item is a duplicate.`, {
         cartItemId: duplicates[0],
       })
     }

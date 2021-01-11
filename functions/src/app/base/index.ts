@@ -60,5 +60,6 @@ function generateEntityId(entityName: string): string {
 //========================================================================
 
 export { initApp, initFirebaseApp, createNestHTTPApplication, createNestApplication, generateEntityId }
+export * from './base'
 export * from './firestore'
 export * from './validator'

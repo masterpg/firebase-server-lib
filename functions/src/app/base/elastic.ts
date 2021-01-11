@@ -1,6 +1,6 @@
 import { ApiResponse, Client as ElasticClient } from '@elastic/elasticsearch'
+import { AppError } from './base'
 import { Context } from '@elastic/elasticsearch/lib/Transport'
-import { InputValidationError } from './validator'
 import { ResponseError } from '@elastic/elasticsearch/lib/errors'
 import { config } from '../../config'
 
@@ -130,7 +130,7 @@ function isPaginationTimeout(error: ResponseError): boolean {
 
 function validateBulkResponse(response: ElasticBulkResponse): void {
   if (!response.body.errors) return
-  throw new InputValidationError('Elasticsearch Bulk API Error', response.body.items)
+  throw new AppError('Elasticsearch Bulk API Error', response.body.items)
 }
 
 //========================================================================

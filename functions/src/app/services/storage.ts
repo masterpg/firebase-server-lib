@@ -17,9 +17,9 @@ import {
 import { ElasticTimestamp, SearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { PartialAre, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
+import { AppError } from '../base'
 import { CoreStorageService } from './base/core-storage'
 import { File } from '@google-cloud/storage'
-import { InputValidationError } from '../base'
 import { config } from '../../config'
 import { merge } from 'lodash'
 import dayjs = require('dayjs')
@@ -174,7 +174,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 祖先ディレクトリが存在することを検証
     for (const iDirNode of ancestorDirNodes) {
       if (!iDirNode.exists) {
-        throw new InputValidationError(`The ancestor of the specified path does not exist.`, {
+        throw new AppError(`The ancestor of the specified path does not exist.`, {
           specifiedPath: dirPath,
           ancestorPath: iDirNode.path,
         })
@@ -197,7 +197,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         }
       }
       if (nearestArticleDirType !== StorageArticleDirType.Article) {
-        throw new InputValidationError(`The specified path is not under article: '${dirPath}'`)
+        throw new AppError(`The specified path is not under article: '${dirPath}'`)
       }
     }
 
@@ -295,7 +295,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const parentPath = _path.dirname(orderNodePaths[0])
     orderNodePaths.forEach(nodePath => {
       if (parentPath !== _path.dirname(nodePath)) {
-        throw new InputValidationError(`There are multiple parents in 'orderNodePaths'.`, { orderNodePaths })
+        throw new AppError(`There are multiple parents in 'orderNodePaths'.`, { orderNodePaths })
       }
     })
 
@@ -313,7 +313,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         parentArticleDirType === StorageArticleDirType.Category
       )
     ) {
-      throw new InputValidationError(`It is not possible to set the sort order for child nodes.`, {
+      throw new AppError(`It is not possible to set the sort order for child nodes.`, {
         parent: pickProps(parentNode, ['id', 'path', 'article']),
       })
     }
@@ -333,7 +333,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     })
     const childCount = countResponse.body.count
     if (orderNodePaths.length !== childCount) {
-      throw new InputValidationError(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`, {
+      throw new AppError(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`, {
         orderNodePaths,
       })
     }
@@ -423,7 +423,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     if (StorageService.isArticleRootUnder(dirPath)) {
-      throw new InputValidationError(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
+      throw new AppError(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
     }
 
     return super.createDir(dirPath, input)
@@ -434,7 +434,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     for (const dirPath of splitHierarchicalPaths(...dirPaths)) {
       if (StorageService.isArticleRootUnder(dirPath)) {
-        throw new InputValidationError(`This method 'createHierarchicalDirs()' cannot create an article under directory '${dirPath}'.`)
+        throw new AppError(`This method 'createHierarchicalDirs()' cannot create an article under directory '${dirPath}'.`)
       }
     }
 
@@ -454,7 +454,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       // ※リストバンドル、カテゴリバンドルは移動不可
       case StorageArticleDirType.ListBundle:
       case StorageArticleDirType.CategoryBundle: {
-        throw new InputValidationError('Article bundles cannot be moved.', {
+        throw new AppError('Article bundles cannot be moved.', {
           movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
         })
       }
@@ -465,7 +465,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const toParentArticleDirType = toParentNode.article?.dir?.type
         // カテゴリは｢カテゴリバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
         if (!(toParentArticleDirType === StorageArticleDirType.CategoryBundle || toParentArticleDirType === StorageArticleDirType.Category)) {
-          throw new InputValidationError('Categories can only be moved to category bundles or categories.', {
+          throw new AppError('Categories can only be moved to category bundles or categories.', {
             movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
             toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
           })
@@ -484,7 +484,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             toParentArticleDirType === StorageArticleDirType.Category
           )
         ) {
-          throw new InputValidationError('Articles can only be moved to list bundles or category bundles or categories.', {
+          throw new AppError('Articles can only be moved to list bundles or category bundles or categories.', {
             movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
             toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
           })
@@ -501,7 +501,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           const toParentArticleDirType = toParentNode.article?.dir?.type
           // 移動先が｢一般ディレクトリ、記事｣以外の場合
           if (!(!toParentArticleDirType || toParentArticleDirType === StorageArticleDirType.Article)) {
-            throw new InputValidationError('The general directory can only be moved to the general directory or articles.', {
+            throw new AppError('The general directory can only be moved to the general directory or articles.', {
               movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
               toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
             })
@@ -626,7 +626,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const articleRootName = config.storage.article.rootName
     const reg = new RegExp(`${userRootName}/[^/]+/${articleRootName}$`)
     if (!reg.test(parentPath)) {
-      throw new InputValidationError(`The article bundle must be created directly under the article root.`, {
+      throw new AppError(`The article bundle must be created directly under the article root.`, {
         input: pickProps(input, ['dir', 'name', 'type']),
       })
     }
@@ -654,10 +654,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const parentNode = await this.getNode({ path: parentPath })
     const parentArticleDirType = parentNode?.article?.dir?.type
     if (!parentNode) {
-      throw new InputValidationError(`There is no parent directory for the category to be created.`, { parentPath })
+      throw new AppError(`There is no parent directory for the category to be created.`, { parentPath })
     }
     if (!(parentArticleDirType === StorageArticleDirType.CategoryBundle || parentArticleDirType === StorageArticleDirType.Category)) {
-      throw new InputValidationError(`Categories cannot be created under the specified parent.`, {
+      throw new AppError(`Categories cannot be created under the specified parent.`, {
         parentNode: pickProps(parentNode, ['id', 'path', 'article']),
       })
     }
@@ -690,7 +690,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const parentNode = hierarchicalDirNodeDict[parentPath]
     const parentArticleDirType = parentNode.article?.dir?.type
     if (!parentNode.exists) {
-      throw new InputValidationError(`There is no parent directory for the article to be created.`, { parentPath })
+      throw new AppError(`There is no parent directory for the article to be created.`, { parentPath })
     }
     if (
       !(
@@ -699,7 +699,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         parentArticleDirType === StorageArticleDirType.Category
       )
     ) {
-      throw new InputValidationError(`Articles cannot be created under the specified parent.`, {
+      throw new AppError(`Articles cannot be created under the specified parent.`, {
         parentNode: pickProps(parentNode, ['id', 'path', 'article']),
       })
     }
@@ -707,7 +707,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 祖先に記事が存在しないことをチェック
     for (const iDirNode of hierarchicalDirNodes.filter(node => node.path !== dirPath)) {
       if (iDirNode.article?.dir?.type === StorageArticleDirType.Article) {
-        throw new InputValidationError(`The article cannot be created under article.`, {
+        throw new AppError(`The article cannot be created under article.`, {
           specifiedDirPath: dirPath,
           ancestorDirPath: iDirNode.path,
         })
@@ -804,13 +804,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 作成しようとするディレクトリが存在しないことを検証
     const dirNode = hierarchicalDirNodeDict[dirPath]
     if (dirNode.exists) {
-      throw new InputValidationError(`The specified directory already exists: '${dirPath}'`)
+      throw new AppError(`The specified directory already exists: '${dirPath}'`)
     }
 
     for (const iDirNode of ancestorDirNodes) {
       // 作成しようとするディレクトリの祖先が存在することを検証
       if (!iDirNode.exists) {
-        throw new InputValidationError(`The ancestor of the specified path does not exist.`, {
+        throw new AppError(`The ancestor of the specified path does not exist.`, {
           specifiedPath: dirPath,
           ancestorPath: iDirNode.path,
         })
@@ -855,7 +855,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 引数パスが記事ルート配下にあることを検証
     const reg = new RegExp(`^${userRootName}/[^/]+/${articleRootName}/`)
     if (!reg.test(nodePath)) {
-      throw new InputValidationError(`The specified path is not under article root: '${nodePath}'`)
+      throw new AppError(`The specified path is not under article root: '${nodePath}'`)
     }
   }
 
@@ -893,7 +893,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    */
   async m_getNewArticleSortOrder(input: StorageNodeGetKeyInput): Promise<number> {
     if (!input.id && !input.path) {
-      throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
+      throw new AppError(`Either the 'id' or the 'path' must be specified.`)
     }
 
     let nodePath: string
@@ -938,14 +938,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    */
   async m_getMaxArticleSortOrder(dirKey: StorageNodeGetKeyInput): Promise<number> {
     if (!dirKey.id && !dirKey.path) {
-      throw new InputValidationError(`Either the 'id' or the 'path' must be specified.`)
+      throw new AppError(`Either the 'id' or the 'path' must be specified.`)
     }
 
     let dirPath: string
     if (dirKey.id) {
       const dirNode = await this.sgetNode({ id: dirKey.id })
       if (dirNode.nodeType !== StorageNodeType.Dir) {
-        throw new InputValidationError(`The specified node is not a directory.`, { input: dirKey })
+        throw new AppError(`The specified node is not a directory.`, { input: dirKey })
       }
       dirPath = dirNode.path
     } else {

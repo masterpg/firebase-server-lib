@@ -1,3 +1,4 @@
+import { AppError, ValidationErrors, initApp } from '../../../../../../src/app/base'
 import {
   CartItem,
   CartItemAddInput,
@@ -8,7 +9,6 @@ import {
   ExampleShopServiceModule,
   Product,
 } from '../../../../../../src/app/services'
-import { InputValidationError, ValidationErrors, initApp } from '../../../../../../src/app/base'
 import { GeneralUser } from '../../../../../helpers/app'
 import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
 import { StoreServiceDI } from '../../../../../../src/app/services/base/store'
@@ -302,14 +302,14 @@ describe('ExampleShop', () => {
       const input = AddInputs()[0]
       input.productId = 'abcdefg'
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.addCartItems(GeneralUser(), [input])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified product could not be found.')
+      expect(actual.cause).toBe('The specified product could not be found.')
     })
 
     it('既に存在するカートアイテムを追加しようとした場合', async () => {
@@ -319,14 +319,14 @@ describe('ExampleShop', () => {
       ])
       const input = AddInputs()[0]
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.addCartItems(GeneralUser(), [input])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified cart item already exists.')
+      expect(actual.cause).toBe('The specified cart item already exists.')
     })
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
@@ -337,14 +337,14 @@ describe('ExampleShop', () => {
       const input = AddInputs()[0]
       input.quantity = 4 // 在庫数を上回る数を設定
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.addCartItems(GeneralUser(), [input])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The product is out of stock.')
+      expect(actual.cause).toBe('The product is out of stock.')
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
@@ -362,21 +362,21 @@ describe('ExampleShop', () => {
         actual = err
       }
 
-      expect(actual.detail[0].property).toBe('quantity')
-      expect(actual.detail[0].constraints).toHaveProperty('isPositive')
+      expect(actual.details[0].property).toBe('quantity')
+      expect(actual.details[0].constraints).toHaveProperty('isPositive')
     })
 
     it('カートアイテムの商品を重複指定していた場合', async () => {
       const inputs = [AddInputs()[0], AddInputs()[0]]
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.addCartItems(GeneralUser(), inputs)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified product is a duplicate.')
+      expect(actual.cause).toBe('The specified product is a duplicate.')
     })
 
     it('アトミックオペレーションの検証', async () => {
@@ -452,14 +452,14 @@ describe('ExampleShop', () => {
         return { id: item.id, quantity: item.quantity + 1 }
       })
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.updateCartItems(GeneralUser(), updateItems)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('You cannot access the specified cart item.')
+      expect(actual.cause).toBe('You cannot access the specified cart item.')
     })
 
     it('在庫数を上回る数をカートアイテムに設定した場合', async () => {
@@ -472,14 +472,14 @@ describe('ExampleShop', () => {
       const product = Products().find(product => product.id === updateItem.productId)!
       input.quantity += product.stock + 1 // 在庫数を上回る数を設定
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.updateCartItems(GeneralUser(), [input])
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The product is out of stock.')
+      expect(actual.cause).toBe('The product is out of stock.')
     })
 
     it('カートアイテムの数量にマイナス値を設定した場合', async () => {
@@ -498,8 +498,8 @@ describe('ExampleShop', () => {
         actual = err
       }
 
-      expect(actual.detail[0].property).toBe('quantity')
-      expect(actual.detail[0].constraints).toHaveProperty('isPositive')
+      expect(actual.details[0].property).toBe('quantity')
+      expect(actual.details[0].constraints).toHaveProperty('isPositive')
     })
 
     it('更新対象のカートアイテムを重複指定していた場合', async () => {
@@ -508,14 +508,14 @@ describe('ExampleShop', () => {
         { id: CartItems()[0].id, quantity: CartItems()[0].quantity },
       ]
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.updateCartItems(GeneralUser(), inputs)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
+      expect(actual.cause).toBe('The specified cart item is a duplicate.')
     })
 
     it('アトミックオペレーションの検証', async () => {
@@ -592,27 +592,27 @@ describe('ExampleShop', () => {
       ])
       const removeIds = CartItems().map(item => item.id)
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.removeCartItems(GeneralUser(), removeIds)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('You cannot access the specified cart item.')
+      expect(actual.cause).toBe('You cannot access the specified cart item.')
     })
 
     it('削除対象のカートアイテムを重複指定していた場合', async () => {
       const removeIds = [CartItems()[0].id, CartItems()[0].id]
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         await shopService.removeCartItems(GeneralUser(), removeIds)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.detail.message).toBe('The specified cart item is a duplicate.')
+      expect(actual.cause).toBe('The specified cart item is a duplicate.')
     })
 
     it('アトミックオペレーションの検証', async () => {

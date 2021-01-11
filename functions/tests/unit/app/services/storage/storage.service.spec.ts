@@ -1,3 +1,4 @@
+import { AppError, initApp } from '../../../../../src/app/base'
 import {
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
@@ -11,7 +12,6 @@ import {
   StorageServiceModule,
   StorageUploadDataItem,
 } from '../../../../../src/app/services'
-import { InputValidationError, initApp } from '../../../../../src/app/base'
 import { StorageTestHelper, StorageTestService, StorageUserToken } from '../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
 import { pickProps, shuffleArray, sleep } from 'web-base-lib'
@@ -123,7 +123,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.ListBundle,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -132,7 +132,7 @@ describe('StorageService', () => {
         }
 
         // バケット直下が指定されたことで親パスが空文字となり、空文字でノード検索が行われるためエラーとなる
-        expect(actual.detail.message).toBe(`Either the 'id' or the 'path' must be specified.`)
+        expect(actual.cause).toBe(`Either the 'id' or the 'path' must be specified.`)
       })
 
       it('バンドルを記事ルート直下ではなくさらに下の階層に作成しようとした場合', async () => {
@@ -146,7 +146,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.ListBundle,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -154,8 +154,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`The article bundle must be created directly under the article root.`)
-        expect(actual.detail.values).toEqual({ input })
+        expect(actual.cause).toBe(`The article bundle must be created directly under the article root.`)
+        expect(actual.detail).toEqual({ input })
       })
 
       it('バンドルの祖先が存在しない場合', async () => {
@@ -171,7 +171,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.ListBundle,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -179,9 +179,9 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`The ancestor of the specified path does not exist.`)
-        expect(actual.detail.values!.specifiedPath).toMatch(new RegExp(`${articleRootPath}/[^/]+$`))
-        expect(actual.detail.values!.ancestorPath).toBe(articleRootPath)
+        expect(actual.cause).toBe(`The ancestor of the specified path does not exist.`)
+        expect(actual.detail!.specifiedPath).toMatch(new RegExp(`${articleRootPath}/[^/]+$`))
+        expect(actual.detail!.ancestorPath).toBe(articleRootPath)
       })
     })
 
@@ -313,7 +313,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -322,7 +322,7 @@ describe('StorageService', () => {
         }
 
         // バケット直下が指定されたことで親パスが空文字となり、空文字でノード検索が行われるためエラーとなる
-        expect(actual.detail.message).toBe(`Either the 'id' or the 'path' must be specified.`)
+        expect(actual.cause).toBe(`Either the 'id' or the 'path' must be specified.`)
       })
 
       it('ユーザールート直下にカテゴリを作成しようとした場合', async () => {
@@ -337,7 +337,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -345,8 +345,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(userRootNode, ['id', 'path', 'article']),
         })
       })
@@ -368,7 +368,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -376,8 +376,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(bundle, ['id', 'path', 'article']),
         })
       })
@@ -405,7 +405,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -413,8 +413,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(art1, ['id', 'path', 'article']),
         })
       })
@@ -432,7 +432,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -440,8 +440,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(assets, ['id', 'path', 'article']),
         })
       })
@@ -464,7 +464,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Category,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -472,8 +472,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`There is no parent directory for the category to be created.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`There is no parent directory for the category to be created.`)
+        expect(actual.detail).toEqual({
           parentPath: `${bundle.path}/dummy`,
         })
       })
@@ -626,7 +626,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Article,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -635,7 +635,7 @@ describe('StorageService', () => {
         }
 
         // バケット直下が指定されたことで親パスが空文字となり、空文字でノード検索が行われるためエラーとなる
-        expect(actual.detail.message).toBe(`Either the 'id' or the 'path' must be specified.`)
+        expect(actual.cause).toBe(`Either the 'id' or the 'path' must be specified.`)
       })
 
       it('ユーザールート直下に記事を作成しようとした場合', async () => {
@@ -650,7 +650,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Article,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -658,8 +658,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Articles cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Articles cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(userRootNode, ['id', 'path', 'article']),
         })
       })
@@ -682,7 +682,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Article,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -690,8 +690,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`There is no parent directory for the article to be created.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`There is no parent directory for the article to be created.`)
+        expect(actual.detail).toEqual({
           parentPath: `${input.dir}`,
         })
       })
@@ -720,7 +720,7 @@ describe('StorageService', () => {
           type: StorageArticleDirType.Article,
         }
 
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // テスト対象実行
           await storageService.createArticleTypeDir(input)
@@ -728,8 +728,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Articles cannot be created under the specified parent.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Articles cannot be created under the specified parent.`)
+        expect(actual.detail).toEqual({
           parentNode: pickProps(art1, ['id', 'path', 'article']),
         })
       })
@@ -848,7 +848,7 @@ describe('StorageService', () => {
       // ディレクトリのパスを作成
       const d1Path = `${bundle.path}/d1`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.createArticleGeneralDir(d1Path)
@@ -856,7 +856,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The specified path is not under article: '${d1Path}'`)
+      expect(actual.cause).toBe(`The specified path is not under article: '${d1Path}'`)
     })
 
     it('カテゴリ配下にディレクトリを作成しようとした場合', async () => {
@@ -878,7 +878,7 @@ describe('StorageService', () => {
       // ディレクトリのパスを作成
       const d1Path = `${cat1.path}/d1`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.createArticleGeneralDir(d1Path)
@@ -886,7 +886,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The specified path is not under article: '${d1Path}'`)
+      expect(actual.cause).toBe(`The specified path is not under article: '${d1Path}'`)
     })
 
     it('親ディレクトリが存在しない場合', async () => {
@@ -900,7 +900,7 @@ describe('StorageService', () => {
       const d1Path = `${assets.path}/d1`
       const d11Path = `${d1Path}/d1/d11`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.createArticleGeneralDir(d11Path)
@@ -908,8 +908,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The ancestor of the specified path does not exist.`)
-      expect(actual.detail.values).toEqual({
+      expect(actual.cause).toBe(`The ancestor of the specified path does not exist.`)
+      expect(actual.detail).toEqual({
         specifiedPath: d11Path,
         ancestorPath: d1Path,
       })
@@ -948,7 +948,7 @@ describe('StorageService', () => {
       const userRootPath = StorageService.toUserRootPath(StorageUserToken())
       const [users, user, d1] = await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // 記事ルート配下にないノードの名前変更を試みる
         await storageService.renameArticleNode(`${d1.path}`, 'D1')
@@ -956,7 +956,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The specified path is not under article root: '${d1.path}'`)
+      expect(actual.cause).toBe(`The specified path is not under article root: '${d1.path}'`)
     })
 
     it('存在しないノードを名前変更しようとした場合', async () => {
@@ -1173,7 +1173,7 @@ describe('StorageService', () => {
         type: StorageArticleDirType.Article,
       })
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.setArticleSortOrder(StorageUserToken(), [art1.path, art2.path])
@@ -1181,8 +1181,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`There are multiple parents in 'orderNodePaths'.`)
-      expect(actual.detail.values).toEqual({ orderNodePaths: [art1.path, art2.path] })
+      expect(actual.cause).toBe(`There are multiple parents in 'orderNodePaths'.`)
+      expect(actual.detail).toEqual({ orderNodePaths: [art1.path, art2.path] })
     })
 
     it('ソート順を設定するノードが足りなかった場合', async () => {
@@ -1204,7 +1204,7 @@ describe('StorageService', () => {
         sortOrder: 2,
       })
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         // ※本来は'bundle1'と'bundle2'を設定する必要があるが、ここでは'bundle1'のみを設定
@@ -1213,8 +1213,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`)
-      expect(actual.detail.values).toEqual({ orderNodePaths: [bundle1.path] })
+      expect(actual.cause).toBe(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`)
+      expect(actual.detail).toEqual({ orderNodePaths: [bundle1.path] })
     })
 
     it('記事配下のノードにソート順を設定しようとした場合', async () => {
@@ -1237,7 +1237,7 @@ describe('StorageService', () => {
       const d1 = await storageService.createArticleGeneralDir(`${art1.path}/d1`)
       const d2 = await storageService.createArticleGeneralDir(`${art1.path}/d2`)
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.setArticleSortOrder(StorageUserToken(), [d1.path, d2.path])
@@ -1245,8 +1245,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`It is not possible to set the sort order for child nodes.`)
-      expect(actual.detail.values).toEqual({
+      expect(actual.cause).toBe(`It is not possible to set the sort order for child nodes.`)
+      expect(actual.detail).toEqual({
         parent: pickProps(art1, ['id', 'path', 'article']),
       })
     })
@@ -1261,7 +1261,7 @@ describe('StorageService', () => {
       const d1 = await storageService.createArticleGeneralDir(`${assets.path}/d1`)
       const d2 = await storageService.createArticleGeneralDir(`${assets.path}/d2`)
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.setArticleSortOrder(StorageUserToken(), [d1.path, d2.path])
@@ -1269,8 +1269,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`It is not possible to set the sort order for child nodes.`)
-      expect(actual.detail.values).toEqual({
+      expect(actual.cause).toBe(`It is not possible to set the sort order for child nodes.`)
+      expect(actual.detail).toEqual({
         parent: pickProps(assets, ['id', 'path', 'article']),
       })
     })
@@ -1694,7 +1694,7 @@ describe('StorageService', () => {
       // アセットディレクトリのパスを作成
       const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // アセットディレクトリを作成
         await storageService.createDir(assetsPath)
@@ -1702,7 +1702,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`This method 'createDir()' cannot create an article under directory '${assetsPath}'.`)
+      expect(actual.cause).toBe(`This method 'createDir()' cannot create an article under directory '${assetsPath}'.`)
     })
 
     it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
@@ -1711,7 +1711,7 @@ describe('StorageService', () => {
       await storageService.createDir(articleRootPath)
 
       const dirPath = `${articleRootPath}/blog`
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // 記事ルート配下にディレクトリを作成
         await storageService.createDir(dirPath)
@@ -1719,7 +1719,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
+      expect(actual.cause).toBe(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
     })
   })
 
@@ -1766,7 +1766,7 @@ describe('StorageService', () => {
       // アセットディレクトリのパスを作成
       const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // アセットディレクトリを作成
         await storageService.createHierarchicalDirs([assetsPath])
@@ -1774,7 +1774,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`This method 'createHierarchicalDirs()' cannot create an article under directory '${assetsPath}'.`)
+      expect(actual.cause).toBe(`This method 'createHierarchicalDirs()' cannot create an article under directory '${assetsPath}'.`)
     })
 
     it('記事ルート配下にディレクトリを作成しようとした場合', async () => {
@@ -1783,7 +1783,7 @@ describe('StorageService', () => {
       await storageService.createHierarchicalDirs([articleRootPath])
 
       const dirPath = `${articleRootPath}/blog`
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // 記事ルート配下にディレクトリを作成
         await storageService.createHierarchicalDirs([dirPath])
@@ -1791,7 +1791,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.detail.message).toBe(`This method 'createHierarchicalDirs()' cannot create an article under directory '${dirPath}'.`)
+      expect(actual.cause).toBe(`This method 'createHierarchicalDirs()' cannot create an article under directory '${dirPath}'.`)
     })
   })
 
@@ -1896,7 +1896,7 @@ describe('StorageService', () => {
 
     describe('バンドルの移動', () => {
       it('バンドルは移動できない', async () => {
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // バンドルを移動しようとした場合
           // 'programming'を'tmp/programming'へ移動
@@ -1905,8 +1905,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Article bundles cannot be moved.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Article bundles cannot be moved.`)
+        expect(actual.detail).toEqual({
           movingNode: pickProps(programming, ['id', 'path', 'article']),
         })
       })
@@ -1936,7 +1936,7 @@ describe('StorageService', () => {
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           // カテゴリを記事直下へ移動しようとした場合
           // 'programming/ts'を'programming/js/variable/ts'へ移動
@@ -1945,8 +1945,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Categories can only be moved to category bundles or categories.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Categories can only be moved to category bundles or categories.`)
+        expect(actual.detail).toEqual({
           movingNode: pickProps(ts, ['id', 'path', 'article']),
           toParentNode: pickProps(variable, ['id', 'path', 'article']),
         })
@@ -1976,7 +1976,7 @@ describe('StorageService', () => {
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           //  記事を別の記事直下へ移動しようとした場合
           // 'programming/ts/class'を'programming/js/variable/class'へ移動
@@ -1985,8 +1985,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`Articles can only be moved to list bundles or category bundles or categories.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`Articles can only be moved to list bundles or category bundles or categories.`)
+        expect(actual.detail).toEqual({
           movingNode: pickProps(clazz, ['id', 'path', 'article']),
           toParentNode: pickProps(variable, ['id', 'path', 'article']),
         })
@@ -2021,7 +2021,7 @@ describe('StorageService', () => {
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
-        let actual!: InputValidationError
+        let actual!: AppError
         try {
           //  一般ディレクトリをカテゴリバンドルへ移動しようとした場合
           // 'tmp'を'programming/tmp'へ移動
@@ -2030,8 +2030,8 @@ describe('StorageService', () => {
           actual = err
         }
 
-        expect(actual.detail.message).toBe(`The general directory can only be moved to the general directory or articles.`)
-        expect(actual.detail.values).toEqual({
+        expect(actual.cause).toBe(`The general directory can only be moved to the general directory or articles.`)
+        expect(actual.detail).toEqual({
           movingNode: pickProps(tmp, ['id', 'path', 'article']),
           toParentNode: pickProps(programming, ['id', 'path', 'article']),
         })
@@ -2097,7 +2097,7 @@ describe('StorageService', () => {
       // バンドルのパスを作成
       const bundlePath = `${articleRootPath}/blog`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.m_validateArticleRootUnder(bundlePath)
@@ -2117,7 +2117,7 @@ describe('StorageService', () => {
       // 記事のパスを作成
       const art1Path = `${bundlePath}/art1`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.m_validateArticleRootUnder(art1Path)
@@ -2134,7 +2134,7 @@ describe('StorageService', () => {
       // バンドルを記事ルート以外に指定
       const bundlePath = `${userDirPath}/blog`
 
-      let actual!: InputValidationError
+      let actual!: AppError
       try {
         // テスト対象実行
         await storageService.m_validateArticleRootUnder(bundlePath)
@@ -2143,7 +2143,7 @@ describe('StorageService', () => {
       }
 
       // バンドルを記事ルートでないためエラーが発生
-      expect(actual.detail.message).toBe(`The specified path is not under article root: '${bundlePath}'`)
+      expect(actual.cause).toBe(`The specified path is not under article root: '${bundlePath}'`)
     })
   })
 
