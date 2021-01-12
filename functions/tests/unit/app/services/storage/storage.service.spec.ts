@@ -1471,50 +1471,54 @@ describe('StorageService', () => {
       const blog = h.newDirNode(`${articleRoot.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'blog', type: StorageArticleDirType.ListBundle, sortOrder: 2 } },
       })
-      const blog_art1 = h.newDirNode(`${blog.path}/${StorageService.generateNodeId()}`, {
+      const blog_artA = h.newDirNode(`${blog.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art1', type: StorageArticleDirType.Article, sortOrder: 2 } },
       })
-      const blog_art1_index = h.newFileNode(`${blog_art1.path}/index.md`, {
+      const blog_artA_index = h.newFileNode(`${blog_artA.path}/index.md`, {
         article: { file: { type: StorageArticleFileType.Index, content: '' } },
       })
-      const blog_art2 = h.newDirNode(`${blog.path}/${StorageService.generateNodeId()}`, {
+      const blog_artA_images = h.newDirNode(`${blog_artA.path}/images`)
+      const blog_artA_images_picA = h.newFileNode(`${blog_artA_images.path}/picA.png`)
+      const blog_artA_images_picB = h.newFileNode(`${blog_artA_images.path}/picB.png`)
+      const blog_artA_memo = h.newFileNode(`${blog_artA.path}/memo.txt`)
+      const blog_artB = h.newDirNode(`${blog.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: StorageArticleDirType.Article, sortOrder: 1 } },
       })
-      const blog_art2_index = h.newFileNode(`${blog_art2.path}/index.md`, {
+      const blog_artB_index = h.newFileNode(`${blog_artB.path}/index.md`, {
         article: { file: { type: StorageArticleFileType.Index, content: '' } },
       })
 
-      const category = h.newDirNode(`${articleRoot.path}/${StorageService.generateNodeId()}`, {
-        article: { dir: { name: 'category', type: StorageArticleDirType.CategoryBundle, sortOrder: 1 } },
+      const programming = h.newDirNode(`${articleRoot.path}/${StorageService.generateNodeId()}`, {
+        article: { dir: { name: 'programming', type: StorageArticleDirType.CategoryBundle, sortOrder: 1 } },
       })
-      const category_art1 = h.newDirNode(`${category.path}/${StorageService.generateNodeId()}`, {
+      const programming_artC = h.newDirNode(`${programming.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art1', type: StorageArticleDirType.Article, sortOrder: 4 } },
       })
-      const category_art2 = h.newDirNode(`${category.path}/${StorageService.generateNodeId()}`, {
+      const programming_artD = h.newDirNode(`${programming.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: StorageArticleDirType.Article, sortOrder: 3 } },
       })
-      const category_ts = h.newDirNode(`${category.path}/${StorageService.generateNodeId()}`, {
+      const programming_ts = h.newDirNode(`${programming.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'TypeScript', type: StorageArticleDirType.Category, sortOrder: 2 } },
       })
-      const category_ts_art1 = h.newDirNode(`${category_ts.path}/${StorageService.generateNodeId()}`, {
+      const programming_ts_artE = h.newDirNode(`${programming_ts.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art1', type: StorageArticleDirType.Article, sortOrder: 2 } },
       })
-      const category_ts_art1_index = h.newFileNode(`${category_ts_art1.path}/index.md`, {
+      const programming_ts_artE_index = h.newFileNode(`${programming_ts_artE.path}/index.md`, {
         article: { file: { type: StorageArticleFileType.Index, content: '' } },
       })
-      const category_ts_art2 = h.newDirNode(`${category_ts.path}/${StorageService.generateNodeId()}`, {
+      const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: StorageArticleDirType.Article, sortOrder: 1 } },
       })
-      const category_ts_art2_index = h.newFileNode(`${category_ts_art2.path}/index.md`, {
+      const programming_ts_artF_index = h.newFileNode(`${programming_ts_artF.path}/index.md`, {
         article: { file: { type: StorageArticleFileType.Index, content: '' } },
       })
-      const category_js = h.newDirNode(`${category.path}/${StorageService.generateNodeId()}`, {
+      const programming_js = h.newDirNode(`${programming.path}/${StorageService.generateNodeId()}`, {
         article: { dir: { name: 'JavaScript', type: StorageArticleDirType.Category, sortOrder: 1 } },
       })
 
       const assets = h.newDirNode(StorageService.toArticleAssetPath(StorageUserToken()))
-      const assets_pic1 = h.newFileNode(`${assets.path}/pic1.png`)
-      const assets_pic2 = h.newFileNode(`${assets.path}/pic2.png`)
+      const assets_picC = h.newFileNode(`${assets.path}/picC.png`)
+      const assets_picD = h.newFileNode(`${assets.path}/picD.png`)
 
       const tmp = h.newDirNode(`${userRoot.path}/tmp`)
       const d1 = h.newDirNode(`${tmp.path}/d1`)
@@ -1528,22 +1532,26 @@ describe('StorageService', () => {
         userRoot,
         articleRoot,
         blog,
-        blog_art1,
-        blog_art1_index,
-        blog_art2,
-        blog_art2_index,
-        category,
-        category_art1,
-        category_art2,
-        category_ts,
-        category_ts_art1,
-        category_ts_art1_index,
-        category_ts_art2,
-        category_ts_art2_index,
-        category_js,
+        blog_artA,
+        blog_artA_index,
+        blog_artA_images,
+        blog_artA_images_picA,
+        blog_artA_images_picB,
+        blog_artA_memo,
+        blog_artB,
+        blog_artB_index,
+        programming,
+        programming_artC,
+        programming_artD,
+        programming_ts,
+        programming_ts_artE,
+        programming_ts_artE_index,
+        programming_ts_artF,
+        programming_ts_artF_index,
+        programming_js,
         assets,
-        assets_pic1,
-        assets_pic2,
+        assets_picC,
+        assets_picD,
         tmp,
         d1,
         f11,
@@ -1559,28 +1567,32 @@ describe('StorageService', () => {
       expect(nodes[1]).toBe(userRoot)
       expect(nodes[2]).toBe(articleRoot)
       expect(nodes[3]).toBe(blog)
-      expect(nodes[4]).toBe(blog_art1)
-      expect(nodes[5]).toBe(blog_art1_index)
-      expect(nodes[6]).toBe(blog_art2)
-      expect(nodes[7]).toBe(blog_art2_index)
-      expect(nodes[8]).toBe(category)
-      expect(nodes[9]).toBe(category_art1)
-      expect(nodes[10]).toBe(category_art2)
-      expect(nodes[11]).toBe(category_ts)
-      expect(nodes[12]).toBe(category_ts_art1)
-      expect(nodes[13]).toBe(category_ts_art1_index)
-      expect(nodes[14]).toBe(category_ts_art2)
-      expect(nodes[15]).toBe(category_ts_art2_index)
-      expect(nodes[16]).toBe(category_js)
-      expect(nodes[17]).toBe(assets)
-      expect(nodes[18]).toBe(assets_pic1)
-      expect(nodes[19]).toBe(assets_pic2)
-      expect(nodes[20]).toBe(tmp)
-      expect(nodes[21]).toBe(d1)
-      expect(nodes[22]).toBe(f11)
-      expect(nodes[23]).toBe(f12)
-      expect(nodes[24]).toBe(d2)
-      expect(nodes[25]).toBe(f1)
+      expect(nodes[4]).toBe(blog_artA)
+      expect(nodes[5]).toBe(blog_artA_index)
+      expect(nodes[6]).toBe(blog_artA_images)
+      expect(nodes[7]).toBe(blog_artA_images_picA)
+      expect(nodes[8]).toBe(blog_artA_images_picB)
+      expect(nodes[9]).toBe(blog_artA_memo)
+      expect(nodes[10]).toBe(blog_artB)
+      expect(nodes[11]).toBe(blog_artB_index)
+      expect(nodes[12]).toBe(programming)
+      expect(nodes[13]).toBe(programming_artC)
+      expect(nodes[14]).toBe(programming_artD)
+      expect(nodes[15]).toBe(programming_ts)
+      expect(nodes[16]).toBe(programming_ts_artE)
+      expect(nodes[17]).toBe(programming_ts_artE_index)
+      expect(nodes[18]).toBe(programming_ts_artF)
+      expect(nodes[19]).toBe(programming_ts_artF_index)
+      expect(nodes[20]).toBe(programming_js)
+      expect(nodes[21]).toBe(assets)
+      expect(nodes[22]).toBe(assets_picC)
+      expect(nodes[23]).toBe(assets_picD)
+      expect(nodes[24]).toBe(tmp)
+      expect(nodes[25]).toBe(d1)
+      expect(nodes[26]).toBe(f11)
+      expect(nodes[27]).toBe(f12)
+      expect(nodes[28]).toBe(d2)
+      expect(nodes[29]).toBe(f1)
     })
 
     it('パターン②', async () => {

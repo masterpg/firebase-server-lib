@@ -1037,6 +1037,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       children.sort((treeNodeA, treeNodeB) => {
         const a = treeNodeA.item
         const b = treeNodeB.item
+
+        if (a.article?.file?.type === 'Index') return -1
+        if (b.article?.file?.type === 'Index') return 1
+        if (a.article?.file?.type === 'Draft') return -1
+        if (b.article?.file?.type === 'Draft') return 1
+
         if (a.nodeType === b.nodeType) {
           const orderA = a.article?.dir?.sortOrder ?? 0
           const orderB = b.article?.dir?.sortOrder ?? 0
