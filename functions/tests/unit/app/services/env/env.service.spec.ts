@@ -1,4 +1,4 @@
-import { AppConfig, DevUtilsServiceDI, DevUtilsServiceModule, EnvServiceDI, EnvServiceModule } from '../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, EnvServiceDI, EnvServiceModule } from '../../../../../src/app/services'
 import { GeneralUser } from '../../../../helpers/app'
 import { Test } from '@nestjs/testing'
 import { initApp } from '../../../../../src/app/base'
@@ -32,21 +32,7 @@ describe('EnvService', () => {
     envService = testingModule.get<EnvServiceDI.type>(EnvServiceDI.symbol)
   })
 
-  describe('appConfig', () => {
-    it('ベーシックケース', async () => {
-      const actual = await envService.appConfig()
-      expect(actual).toEqual({
-        storage: {
-          user: {
-            rootName: 'users',
-          },
-          article: {
-            rootName: 'articles',
-            fileName: 'index.md',
-            assetsName: 'assets',
-          },
-        },
-      } as AppConfig)
-    })
+  describe('dummyTest', () => {
+    it('ベーシックケース', async () => {})
   })
 })

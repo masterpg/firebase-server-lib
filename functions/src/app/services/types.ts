@@ -46,25 +46,6 @@ interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
 //  Env
 //--------------------------------------------------
 
-interface AppConfig {
-  storage: StorageConfig
-}
-
-interface StorageConfig {
-  user: StorageUsersConfig
-  article: StorageArticlesConfig
-}
-
-interface StorageUsersConfig {
-  rootName: string
-}
-
-interface StorageArticlesConfig {
-  rootName: string
-  fileName: string
-  assetsName: string
-}
-
 //--------------------------------------------------
 //  User
 //--------------------------------------------------
@@ -281,7 +262,6 @@ interface CartItemEditResponse extends TimestampEntity {
 export { JSON, JSONObject }
 export { TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
-export { AppConfig, StorageConfig, StorageUsersConfig, StorageArticlesConfig }
 export {
   StorageNode,
   CreateArticleTypeDirInput,

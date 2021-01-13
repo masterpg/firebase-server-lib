@@ -1,8 +1,6 @@
 import * as admin from 'firebase-admin'
-import { AppConfig } from './types'
 import { IdToken } from './types'
 import { Module } from '@nestjs/common'
-import { config } from '../../config'
 
 //========================================================================
 //
@@ -11,15 +9,6 @@ import { config } from '../../config'
 //========================================================================
 
 class EnvService {
-  async appConfig(): Promise<AppConfig> {
-    return {
-      storage: {
-        user: config.storage.user,
-        article: config.storage.article,
-      },
-    }
-  }
-
   async customToken(user: IdToken): Promise<string> {
     // user.customClaimsには開発や単体テストで必要なカスタムクレームが設定されてくる想定
     return await admin.auth().createCustomToken(user.uid, user.customClaims || {})

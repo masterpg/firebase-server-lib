@@ -2,25 +2,6 @@
 #  Env
 #--------------------------------------------------
 
-type AppConfig {
-  storage: StorageConfig!
-}
-
-type StorageConfig {
-  user: StorageUsersConfig!
-  article: StorageArticlesConfig!
-}
-
-type StorageUsersConfig {
-  rootName: String!
-}
-
-type StorageArticlesConfig {
-  rootName: String!
-  fileName: String!
-  assetsName: String!
-}
-
 #--------------------------------------------------
 #  User
 #--------------------------------------------------

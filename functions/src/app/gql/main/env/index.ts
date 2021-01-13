@@ -1,4 +1,4 @@
-import { AppConfig, AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../../services'
+import { AuthServiceModule, EnvServiceDI, EnvServiceModule } from '../../../services'
 import { Query, Resolver } from '@nestjs/graphql'
 import { Inject } from '@nestjs/common'
 import { Module } from '@nestjs/common'
@@ -12,11 +12,6 @@ import { Module } from '@nestjs/common'
 @Resolver()
 export class EnvResolver {
   constructor(@Inject(EnvServiceDI.symbol) protected readonly envService: EnvServiceDI.type) {}
-
-  @Query()
-  async appConfig(): Promise<AppConfig> {
-    return this.envService.appConfig()
-  }
 }
 
 @Module({
