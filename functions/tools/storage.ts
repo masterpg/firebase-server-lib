@@ -91,9 +91,10 @@ function printInJSON(nodes: StorageNode[]): void {
 }
 
 function toNodeObject(node: StorageNode) {
-  const { createdAt, updatedAt, ...others } = node
+  const { version, createdAt, updatedAt, ...others } = node
   return {
     ...others,
+    version,
     createdAt: formatDate(node.createdAt),
     updatedAt: formatDate(node.updatedAt),
   }

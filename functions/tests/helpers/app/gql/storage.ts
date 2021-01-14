@@ -1,4 +1,4 @@
-import { StorageArticleDirSettings, StorageArticleFileSettings, StorageArticleSettings, StorageNode } from '../../../../src/app/services'
+import { StorageArticleDirSettings, StorageArticleFileSettings, StorageNode } from '../../../../src/app/services'
 
 //========================================================================
 //
@@ -39,7 +39,6 @@ const StorageNodeFields = `
       }
       file {
         type
-        content
       }
     }
     version

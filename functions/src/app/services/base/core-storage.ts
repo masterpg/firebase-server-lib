@@ -1369,7 +1369,7 @@ class CoreStorageService<
     }
 
     // データベースのファイルノード作成/更新
-    return await this.saveFileNode(nodePath, file)
+    return await this.saveFileNode(nodePath, file, { idempotent: true })
   }
 
   /**
@@ -1703,12 +1703,21 @@ class CoreStorageService<
   }
 
   /**
-   * ストレージファイルをもとに、データベースのファイルノードを冪等保存します。
+   * ストレージファイルをもとに、データベースのファイルノードを保存します。
+   * 冪等保存（何度実行しても同じ内容で保存が行われる）したい場合は、
+   * `options.idempotent`に`true`を設定してください。
    * @param fileNodePath
    * @param file
-   * @param input
+   * @param options
    */
-  async saveFileNode(fileNodePath: string, file: File, input?: { share?: StorageNodeShareSettingsInput }): Promise<FILE_NODE> {
+  async saveFileNode(
+    fileNodePath: string,
+    file: File,
+    options?: {
+      share?: StorageNodeShareSettingsInput
+      idempotent?: boolean
+    }
+  ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
 
     const nodeId = file.name
@@ -1719,12 +1728,14 @@ class CoreStorageService<
       {
         file,
         path: fileNodePath,
-        share: input?.share,
+        share: options?.share,
       },
       existingFileNode?.share
     )
 
     // データベースにファイルノードを作成/更新
+    const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
+    const now = dayjs().toISOString()
     await this.client.update({
       index: CoreStorageService.IndexAlias,
       id: nodeId,
@@ -1735,12 +1746,15 @@ class CoreStorageService<
               id: nodeId,
               path: fileNodePath,
               nodeType: StorageNodeType.File,
-              share: input?.share,
+              share: options?.share,
             },
             existingFileNode
           ),
           contentType: file.metadata.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
+          ...(() => {
+            return !options?.idempotent ? { updatedAt: now, version } : {}
+          })(),
         },
         doc_as_upsert: true,
       },
@@ -1754,17 +1768,22 @@ class CoreStorageService<
   }
 
   /**
-   * ストレージファイルとデータベースへファイルノードを冪等保存します。
+   * ストレージファイルとデータベースへファイルノードを保存します。
+   * 冪等保存（何度実行しても同じ内容で保存が行われる）したい場合は、
+   * `options.idempotent`に`true`を設定してください。
    * @param fileNodePath
    * @param data
    * @param saveOptions
-   * @param input
+   * @param options
    */
   protected async saveGCSFileAndFileNode(
     fileNodePath: string,
     data: any,
     saveOptions?: SaveOptions,
-    input?: { share?: StorageNodeShareSettingsInput }
+    options?: {
+      share?: StorageNodeShareSettingsInput
+      idempotent?: boolean
+    }
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const existingFileNode = await this.getNode({ path: fileNodePath })
@@ -1784,7 +1803,7 @@ class CoreStorageService<
       {
         file,
         path: fileNodePath,
-        share: input?.share,
+        share: options?.share,
       },
       existingFileNode?.share
     )
@@ -1792,6 +1811,8 @@ class CoreStorageService<
     //
     // ストアにノードデータを保存
     //
+    const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
+    const now = dayjs().toISOString()
     await this.client.update({
       index: CoreStorageService.IndexAlias,
       id: nodeId,
@@ -1802,12 +1823,15 @@ class CoreStorageService<
               id: nodeId,
               path: fileNodePath,
               nodeType: StorageNodeType.File,
-              share: input?.share,
+              share: options?.share,
             },
             existingFileNode
           ),
           contentType: saveOptions?.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
+          ...(() => {
+            return !options?.idempotent ? { updatedAt: now, version } : {}
+          })(),
         },
         doc_as_upsert: true,
       },

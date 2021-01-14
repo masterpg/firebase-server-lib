@@ -51,29 +51,7 @@ class StorageResolver {
 
   @Query()
   async storageNode(@GQLContextArg() ctx: GQLContext, @Args('input') input: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
-    // ID検索
-    if (input.id) {
-      // 引数IDでノードを検索
-      const node = await this.storageService.getNode({ id: input.id })
-      if (node) {
-        // 検索されたノードにアクセス可能な権限があるか検証
-        await this.storageService.validateAccessible(ctx.req, ctx.res, { node })
-        return node
-      } else {
-        return undefined
-      }
-    }
-    // パス検索
-    else if (input.path) {
-      // 引数パスのノードにアクセス可能か検証
-      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: input.path })
-      // 引数パスでノード検索
-      return this.storageService.getNode({ path: input.path })
-    }
-    // 引数指定なしエラー
-    else {
-      throw new AppError(`Both 'id' and 'path' are not specified.`)
-    }
+    return this.getAccessibleNode(ctx, input)
   }
 
   @Query()
@@ -249,13 +227,9 @@ class StorageResolver {
   }
 
   @Mutation()
-  async renameArticleNode(
-    @GQLContextArg() ctx: GQLContext,
-    @Args('nodePath') nodePath: string,
-    @Args('newName') newName: string
-  ): Promise<StorageNode> {
-    await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath })
-    return this.storageService.renameArticleNode(nodePath, newName)
+  async renameArticleDir(@GQLContextArg() ctx: GQLContext, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode> {
+    await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
+    return this.storageService.renameArticleDir(dirPath, newName)
   }
 
   @Mutation()
@@ -271,6 +245,16 @@ class StorageResolver {
     return true
   }
 
+  @Mutation()
+  async saveArticleSrcDraftFile(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('articleDirPath') articleDirPath: string,
+    @Args('srcContent') srcContent: string
+  ): Promise<StorageNode> {
+    await this.sgetAccessibleNode(ctx, { path: articleDirPath })
+    return this.storageService.saveArticleSrcDraftFile(articleDirPath, srcContent)
+  }
+
   @Query()
   async articleChildren(
     @GQLContextArg() ctx: GQLContext,
@@ -280,6 +264,46 @@ class StorageResolver {
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateAccessible(ctx.req, ctx.res, { dirPath })
     return this.storageService.getArticleChildren(dirPath, types, input)
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  protected async getAccessibleNode(ctx: GQLContext, key: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
+    // ID検索
+    if (key.id) {
+      // 引数IDでノードを検索
+      const node = await this.storageService.getNode({ id: key.id })
+      if (node) {
+        // 検索されたノードにアクセス可能な権限があるか検証
+        await this.storageService.validateAccessible(ctx.req, ctx.res, { node })
+        return node
+      } else {
+        return undefined
+      }
+    }
+    // パス検索
+    else if (key.path) {
+      // 引数パスのノードにアクセス可能か検証
+      await this.storageService.validateAccessible(ctx.req, ctx.res, { nodePath: key.path })
+      // 引数パスでノード検索
+      return this.storageService.getNode({ path: key.path })
+    }
+    // 引数指定なしエラー
+    else {
+      throw new AppError(`Both 'id' and 'path' are not specified.`)
+    }
+  }
+
+  protected async sgetAccessibleNode(ctx: GQLContext, key: StorageNodeGetKeyInput): Promise<StorageNode> {
+    const node = await this.getAccessibleNode(ctx, key)
+    if (!node) {
+      throw new AppError(`There is no node in the specified key.`, { key })
+    }
+    return node
   }
 }
 

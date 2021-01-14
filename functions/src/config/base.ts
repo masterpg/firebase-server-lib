@@ -1,4 +1,4 @@
-import { PartialAre, StorageArticlesConfig, StorageUsersConfig } from 'web-base-lib'
+import { PartialAre, StorageArticleConfig, StorageUserConfig } from 'web-base-lib'
 import { ClientOptions as ElasticConfig } from '@elastic/elasticsearch'
 import { SUPPORTED_REGIONS } from 'firebase-functions'
 
@@ -78,18 +78,19 @@ interface CORSExcludeConfig {
 
 interface StorageConfig {
   readonly bucket: string
-  readonly user: StorageUsersConfig
-  readonly article: StorageArticlesConfig
+  readonly user: StorageUserConfig
+  readonly article: StorageArticleConfig
 }
 
-interface StorageUsersConfig {
+interface StorageUserConfig {
   rootName: string
 }
 
-interface StorageArticlesConfig {
+interface StorageArticleConfig {
   rootName: string
-  fileName: string
   assetsName: string
+  srcMasterFileName: string
+  srcDraftFileName: string
 }
 
 //--------------------------------------------------
@@ -139,18 +140,19 @@ class StorageConfigImpl implements StorageConfig {
   constructor(params: { bucket: string }) {
     this.bucket = params.bucket
     this.user = {
-      rootName: StorageUsersConfig.RootName,
+      rootName: StorageUserConfig.RootName,
     }
     this.article = {
-      rootName: StorageArticlesConfig.RootName,
-      fileName: StorageArticlesConfig.FileName,
-      assetsName: StorageArticlesConfig.AssetsName,
+      rootName: StorageArticleConfig.RootName,
+      assetsName: StorageArticleConfig.AssetsName,
+      srcMasterFileName: StorageArticleConfig.SrcMasterFileName,
+      srcDraftFileName: StorageArticleConfig.SrcDraftFileName,
     }
   }
 
   readonly bucket: string
-  readonly user: StorageUsersConfig
-  readonly article: StorageArticlesConfig
+  readonly user: StorageUserConfig
+  readonly article: StorageArticleConfig
 }
 
 class GQLConfigImpl implements GQLConfig {

@@ -17,8 +17,9 @@ type Mutation {
   handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!
   createArticleTypeDir(input: CreateArticleTypeDirInput!): StorageNode!
   createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
-  renameArticleNode(nodePath: String!, newName: String!): StorageNode!
+  renameArticleDir(dirPath: String!, newName: String!): StorageNode!
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
+  saveArticleSrcDraftFile(articleDirPath: String!, srcContent: String!): StorageNode!
 }
 
 type Query {

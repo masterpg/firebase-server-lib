@@ -101,13 +101,13 @@ enum StorageNodeType {
 
 enum StorageArticleDirType {
   ListBundle = 'ListBundle',
-  CategoryBundle = 'CategoryBundle',
+  TreeBundle = 'TreeBundle',
   Category = 'Category',
   Article = 'Article',
 }
 
 enum StorageArticleFileType {
-  Index = 'Index',
+  Master = 'Master',
   Draft = 'Draft',
 }
 
@@ -130,7 +130,6 @@ interface StorageArticleDirSettings {
 
 interface StorageArticleFileSettings {
   type: StorageArticleFileType
-  content: string
 }
 
 interface StoragePaginationInput {
@@ -263,7 +262,7 @@ export { JSON, JSONObject }
 export { TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
-  StorageNode,
+  CoreStorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
   SignedUploadUrlInput,
@@ -272,7 +271,7 @@ export {
   StorageArticleFileSettings,
   StorageArticleFileType,
   StorageArticleSettings,
-  CoreStorageNode,
+  StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeKeyInput,

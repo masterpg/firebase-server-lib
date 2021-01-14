@@ -53,14 +53,9 @@ enum StorageNodeType {
 
 enum StorageArticleDirType {
   ListBundle
-  CategoryBundle
+  TreeBundle
   Article
   Category
-}
-
-enum StorageArticleFileType {
-  Index
-  Draft
 }
 
 type StorageNode implements TimestampEntity {
@@ -107,8 +102,7 @@ type StorageArticleDirSettings {
 }
 
 type StorageArticleFileSettings {
-  type: StorageArticleFileType!
-  content: String!
+  type: String!
 }
 
 input StorageNodeShareSettingsInput {
