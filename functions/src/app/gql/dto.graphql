@@ -143,3 +143,8 @@ input CreateArticleTypeDirInput {
   name: String!
   type: StorageArticleDirType
 }
+
+type SaveArticleSrcMasterFileResult {
+  master: StorageNode!
+  draft: StorageNode!
+}

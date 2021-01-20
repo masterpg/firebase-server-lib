@@ -3,6 +3,7 @@ import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import {
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
+  SaveArticleSrcMasterFileResult,
   StorageArticleDirSettings,
   StorageArticleDirType,
   StorageArticleFileSettings,
@@ -364,13 +365,44 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   /**
+   * 記事ソースを保存します。
+   * @param articleDirPath
+   * @param srcContent
+   * @param textContent
+   */
+  async saveArticleSrcMasterFile(articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult> {
+    const draftNode = await this.saveArticleSrcDraftFile(articleDirPath, '')
+    const masterNodePath = StorageService.toArticleSrcMasterPath(articleDirPath)
+    let masterNode: StorageNode = await this.saveGCSFileAndFileNode(masterNodePath, srcContent, undefined, { idempotent: true })
+
+    // 全文検索用のテキストコンテンツを設定
+    await this.client.update({
+      index: CoreStorageService.IndexAlias,
+      id: masterNode.id,
+      body: {
+        doc: {
+          article: {
+            textContent,
+          },
+          updatedAt: dayjs().toISOString(),
+          version: masterNode.version + 1,
+        },
+      },
+      refresh: true,
+    })
+    masterNode = await this.sgetNode(masterNode)
+
+    return { master: masterNode, draft: draftNode }
+  }
+
+  /**
    * 記事ソースの下書きファイルを保存します。
    * @param articleDirPath
    * @param srcContent
    */
   async saveArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
-    const articleDraftNode = await this.sgetNode({ path: StorageService.toArticleSrcDraftPath(articleDirPath) })
-    return this.saveGCSFileAndFileNode(articleDraftNode.path, srcContent)
+    const draftNodePath = await StorageService.toArticleSrcDraftPath(articleDirPath)
+    return this.saveGCSFileAndFileNode(draftNodePath, srcContent)
   }
 
   /**

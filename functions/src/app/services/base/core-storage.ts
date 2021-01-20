@@ -1781,8 +1781,8 @@ class CoreStorageService<
     data: any,
     saveOptions?: SaveOptions,
     options?: {
-      share?: StorageNodeShareSettingsInput
       idempotent?: boolean
+      share?: StorageNodeShareSettingsInput
     }
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)

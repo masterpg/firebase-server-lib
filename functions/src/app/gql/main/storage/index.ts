@@ -5,6 +5,7 @@ import {
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
   IdToken,
+  SaveArticleSrcMasterFileResult,
   SignedUploadUrlInput,
   StorageArticleDirType,
   StorageNode,
@@ -243,6 +244,17 @@ class StorageResolver {
     })
     await this.storageService.setArticleSortOrder(user, orderNodePaths)
     return true
+  }
+
+  @Mutation()
+  async saveArticleSrcMasterFile(
+    @GQLContextArg() ctx: GQLContext,
+    @Args('articleDirPath') articleDirPath: string,
+    @Args('srcContent') srcContent: string,
+    @Args('textContent') textContent: string
+  ): Promise<SaveArticleSrcMasterFileResult> {
+    await this.sgetAccessibleNode(ctx, { path: articleDirPath })
+    return this.storageService.saveArticleSrcMasterFile(articleDirPath, srcContent, textContent)
   }
 
   @Mutation()

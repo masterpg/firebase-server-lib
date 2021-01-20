@@ -179,6 +179,11 @@ interface CreateArticleTypeDirInput {
   sortOrder?: number
 }
 
+interface SaveArticleSrcMasterFileResult {
+  master: StorageNode
+  draft: StorageNode
+}
+
 //--------------------------------------------------
 //  Dev
 //--------------------------------------------------
@@ -265,6 +270,7 @@ export {
   CoreStorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeInput,
+  SaveArticleSrcMasterFileResult,
   SignedUploadUrlInput,
   StorageArticleDirSettings,
   StorageArticleDirType,

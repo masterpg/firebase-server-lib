@@ -2326,6 +2326,103 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
+  describe('saveArticleSrcMasterFile', () => {
+    const gql = {
+      query: `
+        mutation SaveArticleSrcMasterFile($articleDirPath: String!, $srcContent: String!, $textContent: String!) {
+          saveArticleSrcMasterFile(articleDirPath: $articleDirPath, srcContent: $srcContent, textContent: $textContent) {
+            master {
+              ...${StorageNodeFieldsName}
+            }
+            draft {
+              ...${StorageNodeFieldsName}
+            }
+          }
+        }
+        ${StorageNodeFields}
+      `,
+    }
+
+    function newArticleNodes(user: UserIdClaims) {
+      const articleRootPath = StorageService.toArticleRootPath(user)
+      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+        article: {
+          dir: {
+            name: '記事1',
+            type: StorageArticleDirType.Article,
+            sortOrder: 1,
+          },
+        },
+      })
+      const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
+        article: { file: { type: StorageArticleFileType.Master } },
+      })
+      const art1_draft = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
+        article: { file: { type: StorageArticleFileType.Master } },
+      })
+      return { art1, art1_master, art1_draft }
+    }
+
+    it('疎通確認', async () => {
+      const { art1_master, art1_draft } = newArticleNodes(StorageUserToken())
+      const articleDirPath = art1_draft.dir
+      const srcContent = '#header1'
+      const textContent = 'header1'
+
+      const getNode = td.replace(storageService, 'getNode')
+      td.when(getNode({ path: articleDirPath })).thenResolve(art1_draft)
+      const saveArticleSrcMasterFile = td.replace(storageService, 'saveArticleSrcMasterFile')
+      td.when(saveArticleSrcMasterFile(articleDirPath, srcContent, textContent)).thenResolve({ master: art1_master, draft: art1_draft })
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { articleDirPath, srcContent, textContent },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.saveArticleSrcMasterFile).toEqual({
+        master: toGQLResponseStorageNode(art1_master),
+        draft: toGQLResponseStorageNode(art1_draft),
+      })
+    })
+
+    it('サインインしていない場合', async () => {
+      const { art1_draft } = newArticleNodes(StorageUserToken())
+      const articleDirPath = art1_draft.dir
+      const srcContent = '#header1'
+      const textContent = 'header1'
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { articleDirPath, srcContent, textContent },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合 - ユーザーノード', async () => {
+      const { art1_draft } = newArticleNodes(StorageUserToken())
+      const articleDirPath = art1_draft.dir
+      const srcContent = '#header1'
+      const textContent = 'header1'
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { articleDirPath, srcContent, textContent },
+        },
+        { headers: GeneralUserHeader() }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
   describe('saveArticleSrcDraftFile', () => {
     const gql = {
       query: `

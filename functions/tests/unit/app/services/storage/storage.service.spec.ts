@@ -1326,6 +1326,72 @@ describe('StorageService', () => {
     })
   })
 
+  describe('saveArticleSrcMasterFile', () => {
+    it('ベーシックケース', async () => {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        dir: `${articleRootPath}`,
+        name: 'バンドル',
+        type: StorageArticleDirType.ListBundle,
+      })
+      // 記事1を作成
+      const art1 = await storageService.createArticleTypeDir({
+        dir: `${bundle.path}`,
+        name: '記事1',
+        type: StorageArticleDirType.Article,
+      })
+      // 記事1のソース
+      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
+      // 記事1の下書き
+      const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+
+      // テスト対象実行
+      const srcContent = '#header1'
+      const textContent = 'header1'
+      const actual = await storageService.saveArticleSrcMasterFile(art1.path, srcContent, textContent)
+
+      // 戻り値の検証
+      {
+        // ソースファイル
+        const { master: art1_master_, draft: art1_draft_ } = actual
+        expect(art1_master_.id).toBe(art1_master.id)
+        expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+        expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
+        expect(art1_master_.version).toBe(art1_master.version + 1)
+        // 下書きファイル
+        expect(art1_draft_.id).toBe(art1_draft.id)
+        expect(art1_draft_.size).toBe(0)
+        expect(art1_draft_.updatedAt.isAfter(art1_draft.updatedAt))
+        expect(art1_draft_.version).toBe(art1_draft.version + 1)
+      }
+
+      // ソースファイルの検証
+      {
+        // ソースファイル
+        const art1_master_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
+        expect(art1_master_.id).toBe(art1_master.id)
+        expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+        expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
+        expect(art1_master_.version).toBe(art1_master.version + 1)
+        const art1_master_src = (await art1_master_.file.download()).toString()
+        expect(art1_master_src).toBe(srcContent)
+        // 下書きファイル
+        const art1_draft_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+        expect(art1_draft_.id).toBe(art1_draft.id)
+        expect(art1_draft_.size).toBe(0)
+        expect(art1_draft_.updatedAt.isAfter(art1_draft.updatedAt))
+        expect(art1_draft_.version).toBe(art1_draft.version + 1)
+        const art1_draft_src = (await art1_draft_.file.download()).toString()
+        expect(art1_draft_src).toBe('')
+      }
+
+      await h.existsNodes(Object.values(actual))
+    })
+  })
+
   describe('saveArticleSrcDraftFile', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
@@ -1347,7 +1413,7 @@ describe('StorageService', () => {
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
 
       // テスト対象実行
-      const srcContent = 'test'
+      const srcContent = '#header1'
       const actual = await storageService.saveArticleSrcDraftFile(art1.path, srcContent)
 
       // 戻り値の検証

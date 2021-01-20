@@ -19,6 +19,7 @@ type Mutation {
   createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
   renameArticleDir(dirPath: String!, newName: String!): StorageNode!
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
+  saveArticleSrcMasterFile(articleDirPath: String!, srcContent: String!, textContent: String!): SaveArticleSrcMasterFileResult!
   saveArticleSrcDraftFile(articleDirPath: String!, srcContent: String!): StorageNode!
 }
 
