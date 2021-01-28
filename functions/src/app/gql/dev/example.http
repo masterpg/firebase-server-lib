@@ -14,6 +14,7 @@ Content-Type: application/json
             "title": "iPad 4 Mini",
             "price": 500.01,
             "stock": 3,
+            "version": 1,
             "createdAt": "2020-01-01 10:00:00",
             "updatedAt": "2020-01-02 12:00:00"
           },
@@ -22,6 +23,7 @@ Content-Type: application/json
             "title": "Fire HD 8 Tablet",
             "price": 80.99,
             "stock": 5,
+            "version": 1,
             "createdAt": "2020-01-01",
             "updatedAt": "2020-01-02"
           },
@@ -30,6 +32,7 @@ Content-Type: application/json
             "title": "MediaPad T5 10",
             "price": 150.8,
             "stock": 10,
+            "version": 1,
             "createdAt": "2020-01-01",
             "updatedAt": "2020-01-02"
           }
@@ -40,21 +43,23 @@ Content-Type: application/json
         "collectionRecords": [
           {
             "id": "cartItem1",
-            "uid": "general.user",
+            "uid": "test.general",
             "productId": "product1",
             "title": "iPad 4 Mini",
             "price": 500.01,
             "quantity": 1,
+            "version": 1,
             "createdAt": "2020-01-01",
             "updatedAt": "2020-01-02"
           },
           {
             "id": "cartItem2",
-            "uid": "general.user",
+            "uid": "test.general",
             "productId": "product2",
             "title": "Fire HD 8 Tablet",
             "price": 80.99,
             "quantity": 2,
+            "version": 1,
             "createdAt": "2020-01-01",
             "updatedAt": "2020-01-02"
           }
@@ -173,7 +178,6 @@ Content-Type: application/json
         "email": "test.general@example.com",
         "emailVerified": true,
         "password": "passpass",
-        "displayName": "一般テストユーザー",
         "disabled": false
       }
     ]
@@ -200,7 +204,7 @@ Content-Type: application/json
 
 {
   "operationName": "SetTestUsers",
-  "query": "mutation SetTestUsers($users: [TestUserInput!]!) { setTestUsers(users: $users) { id fullName email emailVerified isAppAdmin createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } }",
+  "query": "mutation SetTestUsers($users: [TestUserInput!]!) { setTestUsers(users: $users) { id email emailVerified userName fullName isAppAdmin photoURL version createdAt updatedAt } }",
   "variables": {
     "users": [
       {
@@ -208,9 +212,12 @@ Content-Type: application/json
         "email": "test.general@example.com",
         "emailVerified": true,
         "password": "passpass",
-        "displayName": "一般ユーザー",
         "disabled": false,
-        "fullName": "一般 太郎"
+        "userName": "test.general",
+        "fullName": "一般 太郎",
+        "authStatus": "Available",
+        "isAppAdmin": false,
+        "photoURL": "https://example.com/test.general/user.png"
       }
     ]
   }

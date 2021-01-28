@@ -82,10 +82,12 @@ interface StorageConfig {
   readonly article: StorageArticleConfig
 }
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 interface StorageUserConfig {
   rootName: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 interface StorageArticleConfig {
   rootName: string
   assetsName: string

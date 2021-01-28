@@ -146,13 +146,13 @@ describe('CoreStorageService', () => {
       })
 
       it('引数ノードが存在しない場合', async () => {
-        let actual!: Error
+        let actual!: AppError
         try {
           await storageService.sgetNode({ id: '12345678901234567890' })
         } catch (err) {
           actual = err
         }
-        expect(actual.message).toBe(`There is no node in the specified key: {"id":"12345678901234567890"}`)
+        expect(actual.cause).toBe(`There is no node in the specified key: {"id":"12345678901234567890"}`)
       })
     })
 
@@ -167,13 +167,13 @@ describe('CoreStorageService', () => {
       })
 
       it('引数ノードが存在しない場合', async () => {
-        let actual!: Error
+        let actual!: AppError
         try {
           await storageService.sgetNode({ path: 'aaa/bbb/ccc' })
         } catch (err) {
           actual = err
         }
-        expect(actual.message).toBe(`There is no node in the specified key: {"path":"aaa/bbb/ccc"}`)
+        expect(actual.cause).toBe(`There is no node in the specified key: {"path":"aaa/bbb/ccc"}`)
       })
     })
   })
@@ -1663,14 +1663,14 @@ describe('CoreStorageService', () => {
     })
 
     it('dirPathに空文字を指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.removeDir(``)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The argument 'dirPath' is empty.`)
+      expect(actual.cause).toBe(`The argument 'dirPath' is empty.`)
     })
 
     it('大量データの場合', async () => {
@@ -1752,14 +1752,14 @@ describe('CoreStorageService', () => {
     })
 
     it('filePathに空文字を指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.removeFile(``)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The argument 'filePath' is empty.`)
+      expect(actual.cause).toBe(`The argument 'filePath' is empty.`)
     })
   })
 
@@ -1898,7 +1898,7 @@ describe('CoreStorageService', () => {
       // ディレクトリを作成
       await storageService.createHierarchicalDirs([`d1`])
 
-      let actual: Error
+      let actual!: AppError
       try {
         const fromNode = await storageService.sgetNode({ path: `d1` })
         await storageService.moveDir(fromNode.path, fromNode.path + '/') // 移動先に'/'を付けて試す
@@ -1906,7 +1906,7 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual!.message).toBe(`The source and destination are the same: 'd1' -> 'd1'`)
+      expect(actual.cause).toBe(`The source and destination are the same: 'd1' -> 'd1'`)
     })
 
     it('移動先ディレクトリが存在しない場合', async () => {
@@ -1919,14 +1919,14 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.moveDir(`d1`, `d2/d1`)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The destination directory does not exist: 'd2'`)
+      expect(actual.cause).toBe(`The destination directory does not exist: 'd2'`)
     })
 
     it('移動先ディレクトリが移動元のサブディレクトリの場合', async () => {
@@ -1939,14 +1939,14 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.moveDir(`d1`, `d1/d11/d1`)
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The destination directory is its own subdirectory: 'd1' -> 'd1/d11/d1'`)
+      expect(actual.cause).toBe(`The destination directory is its own subdirectory: 'd1' -> 'd1/d11/d1'`)
     })
 
     it('移動元から移動先に共有設定が引き継がれるか検証 - 移動先に同名のディレクトリはない', async () => {
@@ -2223,14 +2223,14 @@ describe('CoreStorageService', () => {
     })
 
     it('移動元ファイルがない場合', async () => {
-      let actual: Error
+      let actual!: AppError
       try {
         await storageService.moveFile(`d1/fileA.txt`, `d2/fileA.txt`)
       } catch (err) {
         actual = err
       }
 
-      expect(actual!.message).toBe(`The source file does not exist: 'd1/fileA.txt'`)
+      expect(actual.cause).toBe(`The source file does not exist: 'd1/fileA.txt'`)
     })
 
     it('移動先ディレクトリが存在しない場合', async () => {
@@ -2243,7 +2243,7 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      let actual!: Error
+      let actual!: AppError
       try {
         const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
         await storageService.moveFile(fromNode.path, `d2/fileA.txt`)
@@ -2251,7 +2251,7 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual.message).toBe(`The destination directory does not exist: 'd2'`)
+      expect(actual.cause).toBe(`The destination directory does not exist: 'd2'`)
     })
 
     it('移動先ファイルパスへのバリデーション実行確認', async () => {
@@ -2308,7 +2308,7 @@ describe('CoreStorageService', () => {
     it('リネームしようとする名前のディレクトリが既に存在する場合', async () => {
       await storageService.createHierarchicalDirs([`d1/docs`, `d1/files`])
 
-      let actual: Error
+      let actual: AppError
       try {
         // 'd1/docs'を'd1/files'へリネーム
         const dirNode = await storageService.sgetNode({ path: `d1/docs` })
@@ -2317,7 +2317,7 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual!.message).toBe(`The specified directory name already exists: 'd1/docs' -> 'd1/files'`)
+      expect(actual!.cause).toBe(`The specified directory name already exists: 'd1/docs' -> 'd1/files'`)
     })
 
     it('ディレクトリパスにディレクトリ名と同じディレクトリがあった場合', async () => {
@@ -2468,7 +2468,7 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      let actual: Error
+      let actual!: AppError
       try {
         // 'd1/fileA.txt'を'd1/fileB.txt'へリネーム
         await storageService.renameFile('d1/fileA.txt', `fileB.txt`)
@@ -2476,7 +2476,7 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual!.message).toBe(`The specified file name already exists: 'd1/fileA.txt' -> 'd1/fileB.txt'`)
+      expect(actual.cause).toBe(`The specified file name already exists: 'd1/fileA.txt' -> 'd1/fileB.txt'`)
     })
 
     it('ファイルパスにファイル名と同じディレクトリがあった場合', async () => {
@@ -2630,14 +2630,14 @@ describe('CoreStorageService', () => {
     })
 
     it('存在しないファイルを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.setDirShareSettings(`dXXX`, { isPublic: true })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified directory does not exist: 'dXXX'`)
+      expect(actual.cause).toBe(`The specified directory does not exist: 'dXXX'`)
     })
 
     it('inputにnullを指定した場合', async () => {
@@ -2669,7 +2669,7 @@ describe('CoreStorageService', () => {
     })
 
     it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         // カンマを含んだユーザーIDを設定
         await storageService.setDirShareSettings(`d1`, { readUIds: ['aaa', 'xxx,yyy'] })
@@ -2677,11 +2677,11 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
+      expect(actual.cause).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
     })
 
     it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         // カンマを含んだユーザーIDを設定
         await storageService.setDirShareSettings(`d1`, { writeUIds: ['aaa', 'xxx,yyy'] })
@@ -2689,7 +2689,7 @@ describe('CoreStorageService', () => {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
+      expect(actual.cause).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
   })
 
@@ -2816,14 +2816,14 @@ describe('CoreStorageService', () => {
     })
 
     it('存在しないファイルを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
+      expect(actual.cause).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
     })
 
     it('inputにnullを指定した場合', async () => {
@@ -2859,25 +2859,25 @@ describe('CoreStorageService', () => {
     })
 
     it('読み込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
+      expect(actual.cause).toBe(`The specified 'readUIds' had an incorrect value: 'xxx,yyy'`)
     })
 
     it('書き込み権限の設定値に不正なユーザーIDを指定した場合', async () => {
-      let actual!: Error
+      let actual!: AppError
       try {
         await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.message).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
+      expect(actual.cause).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
   })
 

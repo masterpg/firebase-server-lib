@@ -18,10 +18,11 @@ import {
 } from '../types'
 import { AuthServiceDI, AuthServiceModule } from './auth'
 import {
+  BaseIndexDefinitions,
+  ElasticAPIResponse,
   ElasticPageToken,
-  ElasticResponse,
-  ElasticTimestamp,
-  SearchResponse,
+  ElasticSearchResponse,
+  ElasticTimestampEntity,
   closePointInTime,
   decodePageToken,
   encodePageToken,
@@ -29,6 +30,8 @@ import {
   isPaginationTimeout,
   newElasticClient,
   openPointInTime,
+  toElasticTimestamp,
+  toEntityTimestamp,
   validateBulkResponse,
 } from '../../base/elastic'
 import { Entities, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
@@ -37,6 +40,8 @@ import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import dayjs = require('dayjs')
 import { config } from '../../../config'
+
+const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
 
 //========================================================================
 //
@@ -75,32 +80,20 @@ interface StorageUploadDataItem {
   share?: StorageNodeShareSettingsInput
 }
 
-interface DBStorageNode extends Omit<CoreStorageNode, 'createdAt' | 'updatedAt'>, ElasticTimestamp {}
+interface DBStorageNode extends ElasticTimestampEntity<CoreStorageNode> {}
 
 const IndexDefinition = {
   settings: {
     analysis: {
       analyzer: {
-        kuromoji_analyzer: {
-          type: 'custom',
-          char_filter: ['kuromoji_iteration_mark'],
-          tokenizer: 'kuromoji_tokenizer',
-          filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
-        },
-        kuromoji_html_analyzer: {
-          type: 'custom',
-          char_filter: ['html_strip', 'kuromoji_iteration_mark'],
-          tokenizer: 'kuromoji_tokenizer',
-          filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
-        },
+        kuromoji_analyzer,
+        kuromoji_html_analyzer,
       },
     },
   },
   mappings: {
     properties: {
-      id: {
-        type: 'keyword',
-      },
+      ...TimestampEntityProps,
       nodeType: {
         type: 'keyword',
       },
@@ -149,15 +142,6 @@ const IndexDefinition = {
             type: 'keyword',
           },
         },
-      },
-      version: {
-        type: 'long',
-      },
-      createdAt: {
-        type: 'date',
-      },
-      updatedAt: {
-        type: 'date',
       },
     },
   },
@@ -227,7 +211,7 @@ class CoreStorageService<
     const id = input.id ?? ''
     const path = removeBothEndsSlash(input.path)
 
-    const response = await this.client.search<SearchResponse<DB_NODE>>({
+    const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
       index: CoreStorageService.IndexAlias,
       body: {
         query: {
@@ -252,7 +236,7 @@ class CoreStorageService<
   async sgetNode(input: StorageNodeGetKeyInput): Promise<NODE> {
     const node = await this.getNode(input)
     if (!node) {
-      throw new Error(`There is no node in the specified key: ${JSON.stringify(input)}`)
+      throw new AppError(`There is no node in the specified key: ${JSON.stringify(input)}`)
     }
     return node
   }
@@ -268,7 +252,7 @@ class CoreStorageService<
 
     const nodes: NODE[] = []
     for (const chunk of splitArrayChunk(ids, size)) {
-      const response = await this.client.search<SearchResponse<DB_NODE>>({
+      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         index: CoreStorageService.IndexAlias,
         size,
         body: {
@@ -280,7 +264,7 @@ class CoreStorageService<
       nodes.push(...this.responseToNodes(response))
     }
     for (const chunk of splitArrayChunk(paths, size)) {
-      const response = await this.client.search<SearchResponse<DB_NODE>>({
+      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         index: CoreStorageService.IndexAlias,
         size,
         body: {
@@ -334,7 +318,7 @@ class CoreStorageService<
   async sgetFileNode(key: StorageNodeGetKeyInput): Promise<FILE_NODE> {
     const node = await this.getFileNode(key)
     if (!node) {
-      throw new Error(`There is no node in the specified key: ${JSON.stringify(key)}`)
+      throw new AppError(`There is no node in the specified key: ${JSON.stringify(key)}`)
     }
     return node
   }
@@ -431,9 +415,9 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticResponse<DB_NODE>
+    let response!: ElasticAPIResponse<DB_NODE>
     try {
-      response = await this.client.search<SearchResponse<DB_NODE>>({
+      response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: maxChunk,
         body: {
           query,
@@ -613,9 +597,9 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticResponse<DB_NODE>
+    let response!: ElasticAPIResponse<DB_NODE>
     try {
-      response = await this.client.search<SearchResponse<DB_NODE>>({
+      response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: maxChunk,
         body: {
           query,
@@ -811,7 +795,7 @@ class CoreStorageService<
         id,
         body: {
           doc: {
-            ...this.squeezeStorageNode(dirNode),
+            ...this.toDBStorageNode(dirNode),
             id,
             share: this.toDBShareSettings(input),
             version: 1,
@@ -868,7 +852,7 @@ class CoreStorageService<
       const now = dayjs().toISOString()
       body.push({ index: { _index: CoreStorageService.IndexAlias, _id: id } })
       body.push({
-        ...this.squeezeStorageNode(dirNode),
+        ...this.toDBStorageNode(dirNode),
         id,
         version: 1,
         createdAt: now,
@@ -902,7 +886,7 @@ class CoreStorageService<
    */
   async removeDir(dirPath: string, input?: { maxChunk?: number }): Promise<void> {
     if (!dirPath) {
-      throw new Error(`The argument 'dirPath' is empty.`)
+      throw new AppError(`The argument 'dirPath' is empty.`)
     }
 
     const bucket = admin.storage().bucket()
@@ -914,7 +898,7 @@ class CoreStorageService<
 
     do {
       // データベースから引数ディレクトリ配下のファイルノードを取得
-      const response = await this.client.search<SearchResponse<{ id: string; path: string }>>({
+      const response = await this.client.search<ElasticSearchResponse<{ id: string; path: string }>>({
         size,
         body: {
           query: {
@@ -974,7 +958,7 @@ class CoreStorageService<
    */
   async removeFile(filePath: string): Promise<FILE_NODE | undefined> {
     if (!filePath) {
-      throw new Error(`The argument 'filePath' is empty.`)
+      throw new AppError(`The argument 'filePath' is empty.`)
     }
 
     const fileNode = await this.getFileNode({ path: filePath })
@@ -1023,14 +1007,14 @@ class CoreStorageService<
 
     // 移動元と移動先が同じでないことを確認
     if (fromDirPath === toDirPath) {
-      throw new Error(`The source and destination are the same: '${fromDirPath}' -> '${toDirPath}'`)
+      throw new AppError(`The source and destination are the same: '${fromDirPath}' -> '${toDirPath}'`)
     }
 
     // 移動先ディレクトリが移動元のサブディレクトリでないことを確認
     // from: aaa/bbb → to: aaa/bbb/ccc/bbb [NG]
     //               → to: aaa/zzz/ccc/bbb [OK]
     if (toDirPath.startsWith(_path.join(fromDirPath, '/'))) {
-      throw new Error(`The destination directory is its own subdirectory: '${_path.join(fromDirPath)}' -> '${_path.join(toDirPath)}'`)
+      throw new AppError(`The destination directory is its own subdirectory: '${_path.join(fromDirPath)}' -> '${_path.join(toDirPath)}'`)
     }
 
     // 移動先の所属ディレクトリの存在確認
@@ -1039,7 +1023,7 @@ class CoreStorageService<
     if (toParentPath) {
       const toParentNode = await this.getNode({ path: toParentPath })
       if (!toParentNode) {
-        throw new Error(`The destination directory does not exist: '${toParentPath}'`)
+        throw new AppError(`The destination directory does not exist: '${toParentPath}'`)
       }
     }
 
@@ -1153,7 +1137,7 @@ class CoreStorageService<
     // 移動元ファイルの存在確認
     const fileNode = await this.getFileNode({ path: fromFilePath })
     if (!fileNode) {
-      throw new Error(`The source file does not exist: '${fromFilePath}'`)
+      throw new AppError(`The source file does not exist: '${fromFilePath}'`)
     }
 
     // 移動先の所属ディレクトリの存在確認
@@ -1162,7 +1146,7 @@ class CoreStorageService<
     if (toParentPath) {
       const toParentNode = await this.getNode({ path: toParentPath })
       if (!toParentNode) {
-        throw new Error(`The destination directory does not exist: '${toParentPath}'`)
+        throw new AppError(`The destination directory does not exist: '${toParentPath}'`)
       }
     }
 
@@ -1228,7 +1212,7 @@ class CoreStorageService<
     // 既に同じ名前のディレクトリがある場合
     const toDirNode = await this.getNode({ path: toDirPath })
     if (toDirNode) {
-      throw new Error(`The specified directory name already exists: '${dirPath}' -> '${toDirPath}'`)
+      throw new AppError(`The specified directory name already exists: '${dirPath}' -> '${toDirPath}'`)
     }
 
     return await this.moveDir(dirPath, toDirPath, input)
@@ -1262,7 +1246,7 @@ class CoreStorageService<
     // 既に同じ名前のファイルがある場合
     const toFileNode = await this.getFileNode({ path: toFilePath })
     if (toFileNode) {
-      throw new Error(`The specified file name already exists: '${filePath}' -> '${toFilePath}'`)
+      throw new AppError(`The specified file name already exists: '${filePath}' -> '${toFilePath}'`)
     }
 
     return await this.moveFile(filePath, toFilePath)
@@ -1280,7 +1264,7 @@ class CoreStorageService<
 
     const dirNode = await this.getNode({ path: dirPath })
     if (!dirNode) {
-      throw new Error(`The specified directory does not exist: '${dirPath}'`)
+      throw new AppError(`The specified directory does not exist: '${dirPath}'`)
     }
 
     const share: StorageNodeShareSettings = this.toDBShareSettings(input, dirNode.share)
@@ -1312,7 +1296,7 @@ class CoreStorageService<
 
     let fileNode = await this.getFileNode({ path: filePath })
     if (!fileNode) {
-      throw new Error(`The specified file does not exist: '${filePath}'`)
+      throw new AppError(`The specified file does not exist: '${filePath}'`)
     }
 
     const share: StorageNodeShareSettings = this.toDBShareSettings(input, fileNode.share)
@@ -1849,7 +1833,7 @@ class CoreStorageService<
    * データベースのレスポンスデータからノードリストを取得します。
    * @param response
    */
-  protected responseToNodes(response: ElasticResponse<DB_NODE>): NODE[] {
+  protected responseToNodes(response: ElasticAPIResponse<DB_NODE>): NODE[] {
     if (!response.body.hits.hits.length) return []
     return response.body.hits.hits.map(hit => this.toStorageNode(hit._source)!)
   }
@@ -1883,7 +1867,7 @@ class CoreStorageService<
    * @protected
    */
   protected toStorageNode(dbNode: DB_NODE): NODE {
-    return {
+    return toEntityTimestamp({
       id: dbNode.id,
       nodeType: dbNode.nodeType,
       ...CoreStorageService.toPathData(dbNode.path),
@@ -1892,30 +1876,9 @@ class CoreStorageService<
       size: dbNode.size,
       share: dbNode.share || CoreStorageService.EmptyShareSettings(),
       version: dbNode.version,
-      createdAt: dayjs(dbNode.createdAt),
-      updatedAt: dayjs(dbNode.updatedAt),
-    } as NODE
-  }
-
-  /**
-   * ノードをデータベースへ保存するプロパティのみに絞り込みます。
-   * @param node
-   */
-  protected squeezeStorageNode(node: NODE): NODE {
-    return pickProps(node, [
-      'id',
-      'nodeType',
-      'name',
-      'dir',
-      'path',
-      'level',
-      'contentType',
-      'size',
-      'share',
-      'version',
-      'createdAt',
-      'updatedAt',
-    ]) as NODE
+      createdAt: dbNode.createdAt,
+      updatedAt: dbNode.updatedAt,
+    }) as NODE
   }
 
   /**
@@ -1927,8 +1890,8 @@ class CoreStorageService<
     input: { id: string; nodeType: StorageNodeType; path: string; share?: StorageNodeShareSettingsInput | null },
     existing?: NODE
   ): DB_NODE {
-    const now = dayjs().toISOString()
-    return {
+    const now = dayjs()
+    return toElasticTimestamp({
       ...CoreStorageService.toPathData(input.path),
       id: input.id,
       nodeType: input.nodeType,
@@ -1936,9 +1899,19 @@ class CoreStorageService<
       size: existing?.size ?? 0,
       share: this.toDBShareSettings(input.share, existing?.share),
       version: existing?.version ?? 1,
-      createdAt: existing?.createdAt?.toISOString() ?? now,
-      updatedAt: existing?.updatedAt?.toISOString() ?? now,
-    } as DB_NODE
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: existing?.updatedAt ?? now,
+    }) as DB_NODE
+  }
+
+  /**
+   * ノードをデータベースへ保存するプロパティのみに絞り込みます。
+   * @param node
+   */
+  protected toDBStorageNode(node: NODE): DB_NODE {
+    return toElasticTimestamp(
+      pickProps(node, ['id', 'nodeType', 'name', 'dir', 'path', 'level', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
+    ) as DB_NODE
   }
 
   /**
@@ -2124,27 +2097,6 @@ class CoreStorageService<
   //
   //----------------------------------------------------------------------
 
-  static readonly ResponseNodeFields: any = {
-    excludes: ['article.file.content'],
-  }
-
-  // static readonly ResponseNodeFields = [
-  //   'id',
-  //   'nodeType',
-  //   'name',
-  //   'dir',
-  //   'path',
-  //   'level',
-  //   'contentType',
-  //   'size',
-  //   'share.isPublic',
-  //   'share.readUIds',
-  //   'share.writeUIds',
-  //   'version',
-  //   'createdAt',
-  //   'updatedAt',
-  // ]
-
   static readonly MaxChunk = 50
 
   static EmptyShareSettings(): StorageNodeShareSettings {
@@ -2227,13 +2179,13 @@ class CoreStorageService<
   static validateShareSettingInput(input?: StorageNodeShareSettingsInput | null): void {
     input?.readUIds?.forEach(uid => {
       if (!validateUID(uid)) {
-        throw new Error(`The specified 'readUIds' had an incorrect value: '${uid}'`)
+        throw new AppError(`The specified 'readUIds' had an incorrect value: '${uid}'`)
       }
     })
 
     input?.writeUIds?.forEach(uid => {
       if (!validateUID(uid)) {
-        throw new Error(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
+        throw new AppError(`The specified 'writeUIds' had an incorrect value: '${uid}'`)
       }
     })
   }

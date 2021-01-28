@@ -1,18 +1,27 @@
 import * as admin from 'firebase-admin'
 import * as path from 'path'
+import { AppError, generateEntityId } from '../base'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
 import { FirestoreServiceDI, FirestoreServiceModule } from './base/firestore'
 import { Inject, Module } from '@nestjs/common'
-import { PutTestIndexDataInput, PutTestStoreDataInput, TestFirebaseUserInput, TestSignedUploadUrlInput, TestUserInput, UserInfo } from './types'
+import {
+  PutTestIndexDataInput,
+  PutTestStoreDataInput,
+  SetUserInfoResultStatus,
+  TestFirebaseUserInput,
+  TestSignedUploadUrlInput,
+  TestUserInput,
+  User,
+} from './types'
 import { UserServiceDI, UserServiceModule } from './user'
 import { newElasticClient, validateBulkResponse } from '../base/elastic'
 import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
-import UserRecord = admin.auth.UserRecord
-import dayjs = require('dayjs')
-import { generateEntityId } from '../base'
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
+import dayjs = require('dayjs')
+import UserRecord = admin.auth.UserRecord
+
 const firebaseTools = require('firebase-tools')
 
 //========================================================================
@@ -143,19 +152,22 @@ class DevUtilsService {
     await this.deleteTestFirebaseUsers(...users.map(user => user.uid))
   }
 
-  async setTestUsers(...inputs: TestUserInput[]): Promise<UserInfo[]> {
-    const dict: { [uid: string]: UserInfo } = {}
+  async setTestUsers(...inputs: TestUserInput[]): Promise<User[]> {
+    const dict: { [uid: string]: User } = {}
     await Promise.all(
       inputs.map(async input => {
         await this.setTestFirebaseUsers(input)
-        const user = await this.userService.setUserInfo(input.uid, input)
-        dict[user.id] = user
+        const { status, user } = await this.userService.setUserInfo(input.uid, input)
+        if (status === SetUserInfoResultStatus.AlreadyExists) {
+          throw new AppError(`A user with the same user name already exists.`, { userName: input.userName })
+        }
+        dict[user!.id] = user!
       })
     )
-    return inputs.reduce((result, input) => {
+    return inputs.reduce<User[]>((result, input) => {
       result.push(dict[input.uid])
       return result
-    }, [] as UserInfo[])
+    }, [])
   }
 
   async deleteTestUsers(...uids: string[]): Promise<void> {
@@ -273,8 +285,9 @@ class DevUtilsService {
     }
 
     // カスタムクレームの設定
-    if (input.customClaims) {
-      const customClaims = { ...userRecord.customClaims, ...input.customClaims }
+    if (typeof input.isAppAdmin === 'boolean' || typeof input.authStatus === 'string') {
+      const { isAppAdmin, authStatus } = input
+      const customClaims = { ...userRecord.customClaims, isAppAdmin, authStatus }
       await admin.auth().setCustomUserClaims(input.uid, customClaims)
     }
 

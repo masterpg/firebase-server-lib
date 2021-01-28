@@ -1,11 +1,10 @@
 import * as admin from 'firebase-admin'
-import { CartItem, Product, PublicProfile } from '../types'
+import { CartItem, Product } from '../types'
 import {
   Collection,
   CollectionFactory,
   DecodeFunc,
   EncodeFunc,
-  EncodedObject,
   FieldValue,
   FirestoreEx,
   Query,
@@ -57,27 +56,6 @@ class StoreService implements BaseStore {
   constructor() {
     this.firestoreEx = new FirestoreEx(admin.firestore(), firestoreExOptions)
 
-    this.userDao = this.firestoreEx.collection({
-      path: 'users',
-      useTimestamp: true,
-      encode: obj => {
-        const result: EncodedObject<StoreUser> = {}
-        if (obj.fullName) result.fullName = obj.fullName
-        return result
-      },
-    })
-
-    this.publicProfileDao = this.firestoreEx.collection({
-      path: 'public-profiles',
-      useTimestamp: true,
-      encode: obj => {
-        const result: EncodedObject<PublicProfile> = {}
-        if (obj.displayName) result.displayName = obj.displayName
-        if (obj.photoURL) result.photoURL = obj.photoURL
-        return result
-      },
-    })
-
     this.productDao = this.firestoreEx.collection({ path: 'products', useTimestamp: true })
 
     this.cartDao = this.firestoreEx.collection({ path: 'cart', useTimestamp: true })
@@ -88,10 +66,6 @@ class StoreService implements BaseStore {
   //  Properties
   //
   //----------------------------------------------------------------------
-
-  readonly userDao: Collection<StoreUser>
-
-  readonly publicProfileDao: Collection<PublicProfile>
 
   readonly productDao: Collection<Product>
 

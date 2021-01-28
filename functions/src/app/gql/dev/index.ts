@@ -9,7 +9,7 @@ import {
   TestFirebaseUserInput,
   TestSignedUploadUrlInput,
   TestUserInput,
-  UserInfo,
+  User,
 } from '../../services'
 import { Inject, Module } from '@nestjs/common'
 import { config } from '../../../config'
@@ -70,7 +70,7 @@ export class DevUtilsResolver {
   }
 
   @Mutation()
-  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<UserInfo[]> {
+  async setTestUsers(@Args('users') users: TestUserInput[]): Promise<User[]> {
     return await this.devUtilsService.setTestUsers(...users)
   }
 

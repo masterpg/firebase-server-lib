@@ -3,6 +3,7 @@ type Product implements TimestampEntity {
   title: String!
   price: Float!
   stock: Int!
+  version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -14,6 +15,7 @@ type CartItem implements TimestampEntity {
   title: String!
   price: Float!
   quantity: Int!
+  version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -38,6 +40,7 @@ type CartItemEditResponse {
   price: Float!
   quantity: Int!
   product: Product!
+  version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }

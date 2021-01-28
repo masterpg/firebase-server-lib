@@ -168,8 +168,7 @@ abstract class AuthService {
 
 class ProdAuthService extends AuthService {
   protected async decodeIdToken(idToken: string): Promise<IdToken> {
-    const decodedIdToken = await admin.auth().verifyIdToken(idToken)
-    return decodedIdToken
+    return await admin.auth().verifyIdToken(idToken)
   }
 }
 

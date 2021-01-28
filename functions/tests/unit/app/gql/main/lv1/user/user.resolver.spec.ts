@@ -2,10 +2,10 @@ import * as td from 'testdouble'
 import {
   AuthDataResult,
   AuthStatus,
-  PublicProfile,
+  SetUserInfoResultStatus,
+  User,
   UserIdClaims,
-  UserInfo,
-  UserInfoInput,
+  UserInput,
   UserServiceDI,
 } from '../../../../../../../src/app/services'
 import { getGQLErrorStatus, requestGQL } from '../../../../../../helpers/app'
@@ -27,30 +27,26 @@ initApp()
 
 const now = dayjs()
 
-const ICHIRO: UserInfo = {
+const Ichiro: User = {
   id: 'ichiro',
-  fullName: '鈴木 一郎',
   email: 'ichiro@example.com',
   emailVerified: true,
+  userName: 'ichiro',
+  fullName: '鈴木 一郎',
   isAppAdmin: false,
+  photoURL: 'https://example.com/ichiro/user.png',
+  version: 1,
   createdAt: now,
   updatedAt: now,
-  publicProfile: {
-    id: 'ichiro',
-    displayName: 'イチロー',
-    photoURL: 'https://example.com/ichiro/user.png',
-    createdAt: now,
-    updatedAt: now,
-  },
 }
 
-const ICHIRO_TOKEN: UserIdClaims = {
-  uid: ICHIRO.id,
+const IchiroToken: UserIdClaims = {
+  uid: Ichiro.id,
   authStatus: AuthStatus.WaitForEmailVerified,
-  isAppAdmin: ICHIRO.isAppAdmin,
+  isAppAdmin: Ichiro.isAppAdmin,
 }
 
-const ICHIRO_HEADER = { Authorization: `Bearer ${JSON.stringify(ICHIRO_TOKEN)}` }
+const IchiroHeader = { Authorization: `Bearer ${JSON.stringify(IchiroToken)}` }
 
 //========================================================================
 //
@@ -58,25 +54,15 @@ const ICHIRO_HEADER = { Authorization: `Bearer ${JSON.stringify(ICHIRO_TOKEN)}` 
 //
 //========================================================================
 
-interface ResponsePublicProfile extends OmitEntityTimestamp<PublicProfile> {
+interface ResponseUser extends OmitEntityTimestamp<User> {
   createdAt: string
   updatedAt: string
 }
 
-interface ResponseUser extends Omit<OmitEntityTimestamp<UserInfo>, 'publicProfile'> {
-  createdAt: string
-  updatedAt: string
-  publicProfile: ResponsePublicProfile
-}
-
-function toResponseUser(user: UserInfo): ResponseUser {
+function toResponseUser(user: User): ResponseUser {
   return merge({}, user, {
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
-    publicProfile: {
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    },
   })
 }
 
@@ -108,8 +94,7 @@ describe('Lv1 User Resolver', () => {
             status
             token
             user { 
-              id fullName email emailVerified isAppAdmin createdAt updatedAt
-              publicProfile { id displayName photoURL createdAt updatedAt }
+              id email emailVerified userName fullName isAppAdmin photoURL version createdAt updatedAt
             }
           }
         }
@@ -121,12 +106,12 @@ describe('Lv1 User Resolver', () => {
       const authDataResult: AuthDataResult = {
         status: AuthStatus.WaitForEntry,
         token: 'abcdefghijklmnopqrstuvwxyz',
-        user: ICHIRO,
+        user: Ichiro,
       }
-      td.when(getAuthData(ICHIRO_TOKEN.uid)).thenResolve(authDataResult)
+      td.when(getAuthData(IchiroToken.uid)).thenResolve(authDataResult)
 
       const response = await requestGQL(app, gql, {
-        headers: { ...ICHIRO_HEADER },
+        headers: { ...IchiroHeader },
       })
 
       expect(response.body.data.authData).toEqual({
@@ -143,34 +128,40 @@ describe('Lv1 User Resolver', () => {
   })
 
   describe('setOwnUserInfo', () => {
-    const ICHIRO_INPUT: UserInfoInput = {
+    const IchiroInput: UserInput = {
+      userName: 'ichiro',
       fullName: '鈴木 一郎',
-      displayName: 'イチロー',
+      photoURL: 'https://example.com/ichiro/user.png',
     }
 
     const gql = {
       query: `
-        mutation SetOwnUserInfo($input: UserInfoInput!) {
+        mutation SetOwnUser($input: UserInput!) {
           setOwnUserInfo(input: $input) {
-            id fullName email emailVerified isAppAdmin createdAt updatedAt
-            publicProfile { id displayName photoURL createdAt updatedAt }
+            status
+            user {
+              id email emailVerified userName fullName isAppAdmin photoURL version createdAt updatedAt
+            }
           }
         }
       `,
       variables: {
-        input: ICHIRO_INPUT,
+        input: IchiroInput,
       },
     }
 
     it('疎通確認', async () => {
       const setUserInfo = td.replace(userService, 'setUserInfo')
-      td.when(setUserInfo(ICHIRO_TOKEN.uid, td.matchers.contains(ICHIRO_INPUT))).thenResolve(ICHIRO)
+      td.when(setUserInfo(Ichiro.id, td.matchers.contains(IchiroInput))).thenResolve({ status: SetUserInfoResultStatus.Success, user: Ichiro })
 
       const response = await requestGQL(app, gql, {
-        headers: { ...ICHIRO_HEADER },
+        headers: { ...IchiroHeader },
       })
 
-      expect(response.body.data.setOwnUserInfo).toEqual(toResponseUser(ICHIRO))
+      expect(response.body.data.setOwnUserInfo).toEqual({
+        status: SetUserInfoResultStatus.Success,
+        user: toResponseUser(Ichiro),
+      })
     })
 
     it('サインインしていない場合', async () => {
@@ -190,10 +181,10 @@ describe('Lv1 User Resolver', () => {
 
     it('疎通確認', async () => {
       const deleteUser = td.replace(userService, 'deleteUser')
-      td.when(deleteUser(ICHIRO_TOKEN.uid)).thenResolve(true)
+      td.when(deleteUser(IchiroToken.uid)).thenResolve(true)
 
       const response = await requestGQL(app, gql, {
-        headers: { ...ICHIRO_HEADER },
+        headers: { ...IchiroHeader },
       })
 
       expect(response.body.data.deleteOwnUser).toBeTruthy()

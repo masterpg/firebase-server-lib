@@ -41,7 +41,7 @@ type Query {
 #--------------------------------------------------
 
 type Mutation {
-  setOwnUserInfo(input: UserInfoInput!): UserInfo!
+  setOwnUserInfo(input: UserInput!): SetOwnUserResult!
   deleteOwnUser: Boolean!
 }
 

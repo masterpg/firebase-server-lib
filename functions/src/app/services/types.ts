@@ -11,11 +11,19 @@ import { IsPositive } from 'class-validator'
 type JSON = any
 type JSONObject = any
 
-interface TimestampEntity {
+interface Entity {
   id: string
+  version: number
+}
+
+interface EntityTimestamp {
   createdAt: Dayjs
   updatedAt: Dayjs
 }
+
+type OmitTimestamp<T = unknown> = Omit<T, 'createdAt' | 'updatedAt'>
+
+type TimestampEntity<T = unknown> = Entity & OmitTimestamp<T> & EntityTimestamp
 
 //--------------------------------------------------
 //  Auth
@@ -43,35 +51,38 @@ interface UserIdClaims extends UserClaims {
 interface IdToken extends admin.auth.DecodedIdToken, UserClaims {}
 
 //--------------------------------------------------
-//  Env
-//--------------------------------------------------
-
-//--------------------------------------------------
 //  User
 //--------------------------------------------------
 
-interface PublicProfile extends TimestampEntity {
-  displayName: string
+interface User extends TimestampEntity {
+  email: string
+  emailVerified: boolean
+  userName: string
+  fullName: string
+  isAppAdmin: boolean
   photoURL?: string
 }
 
-interface UserInfo extends TimestampEntity {
+interface UserInput {
+  userName: string
   fullName: string
-  email: string
-  emailVerified: boolean
-  isAppAdmin: boolean
-  publicProfile: PublicProfile
+  photoURL?: string
 }
 
-interface UserInfoInput {
-  fullName: string
-  displayName: string
+interface SetUserInfoResult {
+  status: SetUserInfoResultStatus
+  user?: User
+}
+
+enum SetUserInfoResultStatus {
+  AlreadyExists = 'AlreadyExists',
+  Success = 'Success',
 }
 
 interface AuthDataResult {
   status: AuthStatus
   token: string
-  user?: UserInfo
+  user?: User
 }
 
 //--------------------------------------------------
@@ -203,20 +214,15 @@ interface TestSignedUploadUrlInput {
   contentType?: string
 }
 
-interface TestFirebaseUserInput {
+interface TestFirebaseUserInput extends UserClaims {
   uid: string
   email?: string
   emailVerified?: boolean
   password?: string
-  displayName?: string
   disabled?: boolean
-  photoURL?: string
-  customClaims?: UserClaims
 }
 
-interface TestUserInput extends TestFirebaseUserInput, UserInfoInput {
-  displayName: string
-}
+interface TestUserInput extends TestFirebaseUserInput, UserInput {}
 
 //--------------------------------------------------
 //  Example Shop
@@ -264,7 +270,7 @@ interface CartItemEditResponse extends TimestampEntity {
 //========================================================================
 
 export { JSON, JSONObject }
-export { TimestampEntity }
+export { Entity, EntityTimestamp, OmitTimestamp, TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
   CoreStorageNode,
@@ -287,6 +293,6 @@ export {
   StoragePaginationInput,
   StoragePaginationResult,
 }
-export { PublicProfile, UserInfo, UserInfoInput, AuthDataResult }
+export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }
 export { Product, CartItem, CartItemAddInput, CartItemUpdateInput, CartItemEditResponse }

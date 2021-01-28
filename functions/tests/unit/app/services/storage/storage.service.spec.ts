@@ -1014,7 +1014,7 @@ describe('StorageService', () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       await storageService.createHierarchicalDirs([articleRootPath])
 
-      let actual!: Error
+      let actual!: AppError
       try {
         // パスに存在しないノードを指定
         await storageService.renameArticleDir(`${articleRootPath}/xxx`, 'Bundle')
@@ -1022,7 +1022,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.message).toBe(`There is no node in the specified key: {"path":"${articleRootPath}/xxx"}`)
+      expect(actual.cause).toBe(`There is no node in the specified key: {"path":"${articleRootPath}/xxx"}`)
     })
   })
 

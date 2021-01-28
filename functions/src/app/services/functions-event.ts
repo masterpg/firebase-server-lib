@@ -25,6 +25,7 @@ class FunctionsEventService {
   async authOnDeleteUser(user: UserRecord, context: EventContext): Promise<void> {
     let error: Error | undefined
     try {
+      await this.userService.deleteUser(user.uid)
       await this.storageService.deleteUserDir(user.uid)
     } catch (err) {
       error = err

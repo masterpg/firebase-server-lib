@@ -8,6 +8,7 @@ scalar JSONObject
 
 interface TimestampEntity {
   id: ID!
+  version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }

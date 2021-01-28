@@ -162,11 +162,17 @@ class ExampleShopService {
     await writeReady.wait()
 
     // 新規カートアイテム追加を実行
-    const cartItem = { id: '', uid, ...itemInput }
+    const cartItem = {
+      id: '',
+      uid,
+      version: 1,
+      ...itemInput,
+    }
     cartItem.id = await this.storeService.cartDao.add(cartItem, tx)
 
     // 商品の在庫数更新を実行
     product.stock = newStock
+    product.version += 1
     await this.storeService.productDao.update(product, tx)
 
     return cartItem.id
@@ -209,6 +215,7 @@ class ExampleShopService {
       {
         id: cartItem.id,
         quantity: cartItem.quantity,
+        version: cartItem.version + 1,
       },
       tx
     )
@@ -219,6 +226,7 @@ class ExampleShopService {
       {
         id: product.id,
         stock: product.stock,
+        version: product.version + 1,
       },
       tx
     )
@@ -250,6 +258,7 @@ class ExampleShopService {
 
     // 商品の在庫数更新を実行
     product.stock = newStock
+    product.version += 1
     await this.storeService.productDao.update(product, tx)
 
     return cartItem

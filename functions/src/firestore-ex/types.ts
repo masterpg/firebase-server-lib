@@ -77,17 +77,14 @@ export type Entity = EntityId
 export type TimestampEntity = EntityId & AppTimestamp
 
 export import CollectionReference = firestore.CollectionReference
-export import DocumentData = firestore.DocumentData
 export import DocumentReference = firestore.DocumentReference
 export import DocumentSnapshot = firestore.DocumentSnapshot
-export import FieldPath = firestore.FieldPath
-export import FieldValue = firestore.FieldValue
 export import Firestore = firestore.Firestore
 export import OrderByDirection = firestore.OrderByDirection
 export import Query = firestore.Query
 export import QuerySnapshot = firestore.QuerySnapshot
-export import Timestamp = firestore.Timestamp
 export import Transaction = firestore.Transaction
 export import WhereFilterOp = firestore.WhereFilterOp
 export import WriteBatch = firestore.WriteBatch
 export import WriteResult = firestore.WriteResult
+export { DocumentData, FieldPath, FieldValue, Timestamp }

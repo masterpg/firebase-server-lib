@@ -16,7 +16,7 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
 } from './types'
-import { ElasticTimestamp, SearchResponse } from '../base/elastic'
+import { ElasticSearchResponse, ElasticTimestamp } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { AppError } from '../base'
@@ -214,7 +214,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         id,
         body: {
           doc: {
-            ...this.squeezeStorageNode(dirNode),
+            ...this.toDBStorageNode(dirNode),
             id,
             version: 1,
             createdAt: now,
@@ -428,7 +428,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const maxChunk = options?.maxChunk || StorageService.MaxChunk
     const from = options?.pageToken ? Number(options.pageToken) : 0
 
-    const response = await this.client.search<SearchResponse<DBStorageNode>>({
+    const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: CoreStorageService.IndexAlias,
       size: maxChunk,
       from,
@@ -607,16 +607,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return result
   }
 
-  protected squeezeStorageNode(node: StorageNode): StorageNode {
-    const result: StorageNode = { ...super.squeezeStorageNode(node) }
-    if (node.article?.dir) {
-      result.article = { dir: pickProps(node.article.dir, ['name', 'type', 'sortOrder']) }
-    } else if (node.article?.file) {
-      result.article = { file: pickProps(node.article.file, ['type']) }
-    }
-    return result
-  }
-
   protected toBaseDBStorageNode(
     input: { id: string; nodeType: StorageNodeType; path: string; share?: StorageNodeShareSettingsInput | null },
     existing?: StorageNode
@@ -636,6 +626,16 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           type: existing.article.file.type,
         },
       }
+    }
+    return result
+  }
+
+  protected toDBStorageNode(node: StorageNode): DBStorageNode {
+    const result = { ...super.toDBStorageNode(node) }
+    if (node.article?.dir) {
+      result.article = { dir: pickProps(node.article.dir, ['name', 'type', 'sortOrder']) }
+    } else if (node.article?.file) {
+      result.article = { file: pickProps(node.article.file, ['type']) }
     }
     return result
   }
@@ -877,7 +877,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       id,
       body: {
         doc: {
-          ...this.squeezeStorageNode(dirNode),
+          ...this.toDBStorageNode(dirNode),
           id,
           version: 1,
           createdAt: now,

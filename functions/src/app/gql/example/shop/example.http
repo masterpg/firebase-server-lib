@@ -3,7 +3,7 @@ Content-Type: application/json
 
 {
   "operationName": "GetProducts",
-  "query": "query GetProducts { products(ids: [\"product1\", \"product3\"]) { id title price stock createdAt updatedAt } }",
+  "query": "query GetProducts { products(ids: [\"product1\", \"product3\"]) { id title price stock version createdAt updatedAt } }",
   "variables": {}
 }
 
@@ -11,11 +11,11 @@ Content-Type: application/json
 
 POST {{apiHost}}/gql_example
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
 
 {
   "operationName": "GetCartItems",
-  "query": "query GetCartItems($ids: [ID!]!) { cartItems(ids: $ids) { id uid productId title price quantity createdAt updatedAt } }",
+  "query": "query GetCartItems($ids: [ID!]!) { cartItems(ids: $ids) { id uid productId title price quantity version createdAt updatedAt } }",
   "variables": {
     "ids": [
       "cartItem1",
@@ -28,11 +28,11 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{apiHost}}/gql_example
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
 
 {
   "operationName": "AddCartItems",
-  "query": "mutation AddCartItems($inputs: [CartItemAddInput!]!) { addCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt } }",
+  "query": "mutation AddCartItems($inputs: [CartItemAddInput!]!) { addCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt } }",
   "variables": {
     "inputs": [
       {
@@ -55,11 +55,11 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{apiHost}}/gql_example
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
 
 {
   "operationName": "UpdateCartItems",
-  "query": "mutation UpdateCartItems($inputs: [CartItemUpdateInput!]!) { updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt } }",
+  "query": "mutation UpdateCartItems($inputs: [CartItemUpdateInput!]!) { updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt } }",
   "variables": {
     "inputs": [
       {
@@ -78,11 +78,11 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{apiHost}}/gql_example
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
 
 {
   "operationName": "RemoveCartItems",
-  "query": "mutation RemoveCartItems($ids: [ID!]!) { removeCartItems(ids: $ids) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt } }",
+  "query": "mutation RemoveCartItems($ids: [ID!]!) { removeCartItems(ids: $ids) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt } }",
   "variables": {
     "ids": [
       "cartItem1",
@@ -95,34 +95,10 @@ Authorization: Bearer {"uid": "general", "authStatus": "Available"}
 
 POST {{apiHost}}/gql_example
 Content-Type: application/json
-Authorization: Bearer {"uid": "general", "authStatus": "Available"}
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
 
 {
-  "operationName": "Checkout",
+  "operationName": "CheckoutCart",
   "query": "mutation CheckoutCart { checkoutCart }",
   "variables": {}
 }
-
-###
-
-POST {{apiHost}}/gql_high
-Content-Type: application/json
-
-{
-  "operationName": "GetProducts",
-  "query": "query GetProducts($inputs: [CartItemUpdateInput!]!) { products(inputs: $inputs) { id title price stock json jsonObject createdAt updatedAt } }",
-  "variables": {
-    "inputs": [
-      {
-        "id": "cartItem1",
-        "quantity": 1
-      },
-      {
-        "id": "cartItem2",
-        "quantity": 2
-      }
-    ]
-  }
-}
-
-###

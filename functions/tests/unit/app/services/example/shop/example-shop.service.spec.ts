@@ -39,6 +39,7 @@ function RawProducts(): RawProduct[] {
       title: 'iPad 4 Mini',
       price: 500.01,
       stock: 3,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -47,6 +48,7 @@ function RawProducts(): RawProduct[] {
       title: 'Fire HD 8 Tablet',
       price: 80.99,
       stock: 5,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -55,6 +57,7 @@ function RawProducts(): RawProduct[] {
       title: 'MediaPad T5 10',
       price: 150.8,
       stock: 10,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -80,6 +83,7 @@ function RawCartItems(): RawCartItem[] {
       title: 'iPad 4 Mini',
       price: 500.01,
       quantity: 1,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -90,6 +94,7 @@ function RawCartItems(): RawCartItem[] {
       title: 'Fire HD 8 Tablet',
       price: 80.99,
       quantity: 2,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -263,6 +268,7 @@ describe('ExampleShop', () => {
       return CartItems().map(item => {
         delete item.id
         delete item.uid
+        delete item.version
         delete item.createdAt
         delete item.updatedAt
         return item
@@ -286,9 +292,13 @@ describe('ExampleShop', () => {
         const beforeProduct = Products().find(product => product.id === actualItem.productId)!
         // 戻り値の検証
         expect(actualItem).toEqual({ ...addedCartItem, product: updatedProduct })
+        expect(actualItem.version).toBe(1)
+        expect(actualItem.createdAt.isValid()).toBeTruthy()
+        expect(actualItem.updatedAt.isValid()).toBeTruthy()
         expect(actualItem.product.stock).toEqual(beforeProduct.stock - actualItem.quantity)
         // 商品の在庫が更新されているか検証
         expect(updatedProduct).toEqual(actualItem.product)
+        expect(updatedProduct.version).toBe(beforeProduct.version + 1)
         expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
         expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }
@@ -428,10 +438,12 @@ describe('ExampleShop', () => {
         // 戻り値の検証
         expect(actualItem).toEqual({ ...updatedCartItem, product: updatedProduct })
         expect(actualItem.quantity).toEqual(input.quantity)
+        expect(actualItem.version).toEqual(beforeCartItem.version + 1)
         expect(actualItem.createdAt).toEqual(beforeCartItem.createdAt)
         expect(actualItem.updatedAt.isAfter(beforeCartItem.updatedAt)).toBeTruthy()
         // 商品の在庫が更新されているか検証
         expect(updatedProduct.stock).toBe(beforeProduct.stock - 1)
+        expect(updatedProduct.version).toBe(beforeProduct.version + 1)
         expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
         expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }
@@ -574,6 +586,7 @@ describe('ExampleShop', () => {
         expect(removedItem).toBeUndefined()
         // 商品の在庫が更新されているか検証
         expect(updatedProduct.stock).toBe(beforeProduct.stock + beforeCartItem.quantity)
+        expect(updatedProduct.version).toBe(beforeProduct.version + 1)
         expect(updatedProduct.createdAt).toEqual(beforeProduct.createdAt)
         expect(updatedProduct.updatedAt.isAfter(beforeProduct.updatedAt)).toBeTruthy()
       }

@@ -7,10 +7,11 @@ export function GeneralUser(): Required<TestUserInput> {
     email: 'test.general@example.com',
     emailVerified: true,
     password: 'passpass',
-    displayName: '一般テストユーザー',
     disabled: false,
-    customClaims: { authStatus: AuthStatus.Available },
+    userName: 'test.general',
     fullName: '一般 太郎',
+    authStatus: AuthStatus.Available,
+    isAppAdmin: false,
     photoURL: 'https://example.com/test.general/user.png',
   }
 }
@@ -18,7 +19,8 @@ export function GeneralUser(): Required<TestUserInput> {
 export function GeneralUserToken(): UserIdClaims {
   return {
     uid: GeneralUser().uid,
-    ...GeneralUser().customClaims,
+    isAppAdmin: GeneralUser().isAppAdmin,
+    authStatus: GeneralUser().authStatus,
   }
 }
 
@@ -34,10 +36,11 @@ export function AppAdminUser(): Required<TestUserInput> {
     email: 'test.app.admin@example.com',
     emailVerified: true,
     password: 'passpass',
-    displayName: 'アプリケーション管理テストユーザー',
     disabled: false,
-    customClaims: { authStatus: AuthStatus.Available, isAppAdmin: true },
+    userName: 'test.app.admin',
     fullName: '管理 太郎',
+    authStatus: AuthStatus.Available,
+    isAppAdmin: true,
     photoURL: 'https://example.com/test.app.admin/user.png',
   }
 }
@@ -45,7 +48,8 @@ export function AppAdminUser(): Required<TestUserInput> {
 export function AppAdminUserToken(): UserIdClaims {
   return {
     uid: AppAdminUser().uid,
-    ...AppAdminUser().customClaims,
+    authStatus: AppAdminUser().authStatus,
+    isAppAdmin: AppAdminUser().isAppAdmin,
   }
 }
 
@@ -61,10 +65,11 @@ export function StorageUser(): Required<TestUserInput> {
     email: 'test.storage@example.com',
     emailVerified: true,
     password: 'passpass',
-    displayName: 'ストレージテストユーザー',
     disabled: false,
-    customClaims: { authStatus: AuthStatus.Available },
+    userName: 'test.storage',
     fullName: '貯蔵 太郎',
+    authStatus: AuthStatus.Available,
+    isAppAdmin: false,
     photoURL: 'https://example.com/test.storage/user.png',
   }
 }
@@ -72,7 +77,8 @@ export function StorageUser(): Required<TestUserInput> {
 export function StorageUserToken(): UserIdClaims {
   return {
     uid: StorageUser().uid,
-    ...StorageUser().customClaims,
+    authStatus: StorageUser().authStatus,
+    isAppAdmin: StorageUser().isAppAdmin,
   }
 }
 

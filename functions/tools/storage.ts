@@ -14,6 +14,7 @@ import {
 } from '../src/app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
 import { createNestApplication, initFirebaseApp } from '../src/app/base'
+import { CoreStorageService } from '../src/app/services/base/core-storage'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import dayjs = require('dayjs')
@@ -27,7 +28,7 @@ dayjs.extend(utc)
 //
 //========================================================================
 
-type OutputFormat = 'oneline' | 'json' | 'tree'
+type OutputFormat = 'oneline' | 'json' | 'bulk' | 'tree'
 
 interface Padding {
   id: number
@@ -54,6 +55,9 @@ function print(nodes: StorageNode[], format: OutputFormat, specifiedPath?: strin
       return
     case 'json':
       printInJSON(nodes)
+      return
+    case 'bulk':
+      printInBulk(nodes)
       return
     case 'tree':
       return
@@ -87,6 +91,16 @@ function printInOneLine(nodes: StorageNode[], specifiedPath?: string): void {
 function printInJSON(nodes: StorageNode[]): void {
   const objects = nodes.map(node => toNodeObject(node))
   const output = JSON.stringify(objects, null, 2)
+  console.log(output)
+}
+
+function printInBulk(nodes: StorageNode[]): void {
+  const objects = nodes.map(node => toNodeObject(node))
+  let output = ''
+  for (const object of objects) {
+    output += `{"index":{"_index":"${CoreStorageService.IndexAliases.test}","_id":"${object.id}"}}\n`
+    output += `${JSON.stringify(object)}\n`
+  }
   console.log(output)
 }
 

@@ -1,17 +1,17 @@
-POST {{apiHost}}/gql_standard
+POST {{apiHost}}/gql_lv1
 Content-Type: application/json
-Authorization: Bearer {"uid": "general"}
+Authorization: Bearer {"uid": "test.general"}
 
 {
   "operationName": "GetAuthData",
-  "query": "query GetAuthData { authData { status token user { id fullName email emailVerified isAppAdmin createdAt updatedAt publicProfile { id displayName photoURL createdAt updatedAt } } } }"
+  "query": "query GetAuthData { authData { status token user { id email emailVerified userName fullName isAppAdmin photoURL version createdAt updatedAt } } }"
 }
 
 ###
 
-POST {{apiHost}}/gql_standard
+POST {{apiHost}}/gql_lv1
 Content-Type: application/json
-Authorization: Bearer {"uid": "test.storage"}
+Authorization: Bearer {"uid": "test.general"}
 
 {
   "operationName": "DeleteOwnUser",

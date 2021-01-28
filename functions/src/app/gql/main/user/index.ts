@@ -4,8 +4,8 @@ import {
   AuthServiceDI,
   AuthServiceModule,
   IdToken,
-  UserInfo,
-  UserInfoInput,
+  SetUserInfoResult,
+  UserInput,
   UserServiceDI,
   UserServiceModule,
 } from '../../../services'
@@ -39,9 +39,9 @@ export class UserResolver {
   }
 
   @Mutation()
-  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input') input: UserInfoInput): Promise<UserInfo> {
-    const user = await this.m_getIdToken(context.req)
-    return this.userService.setUserInfo(user.uid, input)
+  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input') input: UserInput): Promise<SetUserInfoResult> {
+    const idToken = await this.m_getIdToken(context.req)
+    return this.userService.setUserInfo(idToken.uid, input)
   }
 
   @Mutation()

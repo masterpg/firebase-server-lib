@@ -18,10 +18,9 @@ input TestFirebaseUserInput {
   email: String
   emailVerified: Boolean
   password: String
-  displayName: String
   disabled: Boolean
-  photoURL: String
-  customClaims: JSONObject
+  isAppAdmin: Boolean
+  authStatus: AuthStatus
 }
 
 input TestUserInput {
@@ -29,11 +28,13 @@ input TestUserInput {
   email: String
   emailVerified: Boolean
   password: String
-  displayName: String!
   disabled: Boolean
   photoURL: String
   customClaims: JSONObject
+  userName: String!
   fullName: String!
+  isAppAdmin: Boolean
+  authStatus: AuthStatus
 }
 
 type Mutation {
@@ -43,7 +44,7 @@ type Mutation {
   removeTestStorageFiles(filePaths: [String!]!): Boolean!
   setTestFirebaseUsers(users: [TestFirebaseUserInput!]!): Boolean!
   deleteTestFirebaseUsers(uids: [String!]!): Boolean!
-  setTestUsers(users: [TestUserInput!]!): [UserInfo!]!
+  setTestUsers(users: [TestUserInput!]!): [User!]!
   deleteTestUsers(uids: [String!]!): Boolean!
 }
 

@@ -1,6 +1,6 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
-import { StorageService } from '../../src/app/services'
+import { StorageService, UserService } from '../../src/app/services'
 import { newElasticClient } from '../../src/app/base/elastic'
 import { program } from 'commander'
 
@@ -13,10 +13,14 @@ inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'
 //========================================================================
 
 const Indices = {
-  ...Object.values(StorageService.IndexAliases).reduce((result, alias) => {
+  ...Object.values(UserService.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
+    result[alias] = UserService.IndexDefinition
+    return result
+  }, {}),
+  ...Object.values(StorageService.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
     result[alias] = StorageService.IndexDefinition
     return result
-  }, {} as { [alias: string]: any }),
+  }, {}),
 }
 
 //========================================================================
@@ -47,7 +51,8 @@ async function init(): Promise<void> {
 
   const client = newElasticClient()
 
-  for (const alias of Object.values(StorageService.IndexAliases)) {
+  const aliases = [...Object.values(UserService.IndexAliases), ...Object.values(StorageService.IndexAliases)]
+  for (const alias of aliases) {
     const res = await client.indices.existsAlias({ name: alias })
     const exists: boolean = res.body
     if (exists) {
@@ -59,7 +64,7 @@ async function init(): Promise<void> {
     await client.indices.create({
       index,
       body: {
-        ...StorageService.IndexDefinition,
+        ...Indices[alias],
       },
     })
 

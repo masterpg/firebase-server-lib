@@ -26,6 +26,7 @@ function RawProducts(): RawProduct[] {
       title: 'iPad 4 Mini',
       price: 500.01,
       stock: 3,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -34,6 +35,7 @@ function RawProducts(): RawProduct[] {
       title: 'Fire HD 8 Tablet',
       price: 80.99,
       stock: 5,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -42,6 +44,7 @@ function RawProducts(): RawProduct[] {
       title: 'MediaPad T5 10',
       price: 150.8,
       stock: 10,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -67,6 +70,7 @@ function RawCartItems(): RawCartItem[] {
       title: 'iPad 4 Mini',
       price: 500.01,
       quantity: 1,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -77,6 +81,7 @@ function RawCartItems(): RawCartItem[] {
       title: 'Fire HD 8 Tablet',
       price: 80.99,
       quantity: 2,
+      version: 1,
       createdAt: '2020-01-01T00:00:00.000Z',
       updatedAt: '2020-01-02T00:00:00.000Z',
     },
@@ -115,7 +120,7 @@ describe('ExampleShopResolver', () => {
     const gql = {
       query: `
         query GetCartItems($ids: [ID!]!) {
-          cartItems(ids: $ids) { id uid productId title price quantity createdAt updatedAt }
+          cartItems(ids: $ids) { id uid productId title price quantity version createdAt updatedAt }
         }
       `,
     }
@@ -154,7 +159,7 @@ describe('ExampleShopResolver', () => {
     const gql = {
       query: `
         mutation AddCartItems($inputs: [CartItemAddInput!]!) {
-          addCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt }
+          addCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt }
         }
       `,
     }
@@ -217,7 +222,7 @@ describe('ExampleShopResolver', () => {
     const gql = {
       query: `
         mutation UpdateCartItems($inputs: [CartItemUpdateInput!]!) {
-          updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt }
+          updateCartItems(inputs: $inputs) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt }
         }
       `,
     }
@@ -276,7 +281,7 @@ describe('ExampleShopResolver', () => {
     const gql = {
       query: `
         mutation RemoveCartItems($ids: [ID!]!) {
-          removeCartItems(ids: $ids) { id uid productId title price quantity product { id title price stock createdAt updatedAt } createdAt updatedAt }
+          removeCartItems(ids: $ids) { id uid productId title price quantity product { id title price stock version createdAt updatedAt } version createdAt updatedAt }
         }
       `,
     }

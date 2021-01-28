@@ -12,34 +12,39 @@ enum AuthStatus {
   Available
 }
 
+type User implements TimestampEntity {
+  id: ID!
+  email: String!
+  emailVerified: Boolean!
+  userName: String!
+  fullName: String!
+  isAppAdmin: Boolean!
+  photoURL: String
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input UserInput {
+  userName: String!
+  fullName: String!
+  photoURL: String
+}
+
+type SetOwnUserResult {
+  status: SetOwnUserResultStatus!
+  user: User
+}
+
+enum SetOwnUserResultStatus {
+  AlreadyExists
+  Success
+}
+
 type AuthDataResult {
   status: AuthStatus!
   token: String!
-  user: UserInfo
-}
-
-type UserInfo implements TimestampEntity {
-  id: ID!
-  fullName: String!
-  email: String!
-  emailVerified: Boolean!
-  isAppAdmin: Boolean!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  publicProfile: PublicProfile!
-}
-
-type PublicProfile implements TimestampEntity {
-  id: ID!
-  displayName: String!
-  photoURL: String
-  createdAt: DateTime!
-  updatedAt: DateTime!
-}
-
-input UserInfoInput {
-  fullName: String!
-  displayName: String!
+  user: User
 }
 
 #--------------------------------------------------

@@ -1,14 +1,47 @@
 import { ApiResponse, Client as ElasticClient } from '@elastic/elasticsearch'
+import { OmitTimestamp, TimestampEntity } from '../services'
 import { AppError } from './base'
 import { Context } from '@elastic/elasticsearch/lib/Transport'
 import { ResponseError } from '@elastic/elasticsearch/lib/errors'
 import { config } from '../../config'
+import dayjs = require('dayjs')
 
 //========================================================================
 //
 //  Interfaces
 //
 //========================================================================
+
+namespace BaseIndexDefinitions {
+  export const kuromoji_analyzer = {
+    type: 'custom',
+    char_filter: ['kuromoji_iteration_mark'],
+    tokenizer: 'kuromoji_tokenizer',
+    filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
+  }
+
+  export const kuromoji_html_analyzer = {
+    type: 'custom',
+    char_filter: ['html_strip', 'kuromoji_iteration_mark'],
+    tokenizer: 'kuromoji_tokenizer',
+    filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
+  }
+
+  export const TimestampEntityProps = {
+    id: {
+      type: 'keyword',
+    },
+    version: {
+      type: 'long',
+    },
+    createdAt: {
+      type: 'date',
+    },
+    updatedAt: {
+      type: 'date',
+    },
+  }
+}
 
 interface SearchBody {
   query: {
@@ -29,7 +62,7 @@ interface Explanation {
   details: Explanation[]
 }
 
-interface SearchResponse<T> {
+interface ElasticSearchResponse<T> {
   pit_id?: string
   took: number
   timed_out: boolean
@@ -56,16 +89,18 @@ interface SearchResponse<T> {
   aggregations?: any
 }
 
-type ElasticResponse<T = any> = ApiResponse<SearchResponse<T>, Context>
+type ElasticAPIResponse<T = any> = ApiResponse<ElasticSearchResponse<T>, Context>
 
-type ElasticBulkResponse<T = any> = ApiResponse<Record<string, any>, Context>
-
-type ElasticTimestamp = { createdAt: string; updatedAt: string }
+type ElasticBulkAPIResponse<T = any> = ApiResponse<Record<string, any>, Context>
 
 interface ElasticPageToken {
   pit: { id: string; keep_alive: string }
   search_after?: string[]
 }
+
+type ElasticTimestamp = { createdAt: string; updatedAt: string }
+
+type ElasticTimestampEntity<T extends TimestampEntity = TimestampEntity> = OmitTimestamp<T> & ElasticTimestamp
 
 //========================================================================
 //
@@ -111,7 +146,7 @@ function decodePageToken(pageToken?: string): ElasticPageToken | Record<string, 
   return { pit, search_after }
 }
 
-function extractSearchAfter<T>(response: ElasticResponse<T>): { pitId?: string; sort?: string[] } | undefined {
+function extractSearchAfter<T>(response: ElasticAPIResponse<T>): { pitId?: string; sort?: string[] } | undefined {
   const length = response.body.hits.hits.length
   if (!length) return {}
 
@@ -128,9 +163,25 @@ function isPaginationTimeout(error: ResponseError): boolean {
   return rootCause[0].type === 'search_context_missing_exception'
 }
 
-function validateBulkResponse(response: ElasticBulkResponse): void {
+function validateBulkResponse(response: ElasticBulkAPIResponse): void {
   if (!response.body.errors) return
   throw new AppError('Elasticsearch Bulk API Error', response.body.items)
+}
+
+function toEntityTimestamp<T extends ElasticTimestampEntity>(entity: T): TimestampEntity<T> {
+  return {
+    ...entity,
+    createdAt: dayjs(entity.createdAt),
+    updatedAt: dayjs(entity.updatedAt),
+  }
+}
+
+function toElasticTimestamp<T extends TimestampEntity>(entity: T): ElasticTimestampEntity<T> {
+  return {
+    ...entity,
+    createdAt: entity.createdAt.toISOString(),
+    updatedAt: entity.updatedAt.toISOString(),
+  }
 }
 
 //========================================================================
@@ -140,13 +191,15 @@ function validateBulkResponse(response: ElasticBulkResponse): void {
 //========================================================================
 
 export {
-  ElasticBulkResponse,
+  BaseIndexDefinitions,
+  ElasticAPIResponse,
+  ElasticBulkAPIResponse,
   ElasticClient,
   ElasticPageToken,
-  ElasticResponse,
+  ElasticSearchResponse,
   ElasticTimestamp,
+  ElasticTimestampEntity,
   SearchBody,
-  SearchResponse,
   closePointInTime,
   decodePageToken,
   encodePageToken,
@@ -154,5 +207,7 @@ export {
   isPaginationTimeout,
   newElasticClient,
   openPointInTime,
+  toElasticTimestamp,
+  toEntityTimestamp,
   validateBulkResponse,
 }

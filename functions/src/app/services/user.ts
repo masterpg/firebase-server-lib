@@ -1,10 +1,22 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, UserInfo, UserInfoInput } from './types'
-import { Inject, Module } from '@nestjs/common'
-import { StorageServiceDI, StorageServiceModule } from './storage'
-import { StoreServiceDI, StoreServiceModule } from './base/store'
-import { EntityId } from '../../firestore-ex'
+import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserInput } from './types'
+import {
+  BaseIndexDefinitions,
+  ElasticAPIResponse,
+  ElasticSearchResponse,
+  ElasticTimestampEntity,
+  newElasticClient,
+  toElasticTimestamp,
+  toEntityTimestamp,
+} from '../base/elastic'
+import { AppError } from '../base'
+import { Entities } from 'web-base-lib'
+import { Module } from '@nestjs/common'
+import { config } from '../../config'
+import dayjs = require('dayjs')
 import UserRecord = admin.auth.UserRecord
+
+const { kuromoji_analyzer, TimestampEntityProps } = BaseIndexDefinitions
 
 //========================================================================
 //
@@ -12,11 +24,52 @@ import UserRecord = admin.auth.UserRecord
 //
 //========================================================================
 
+interface DBUser extends ElasticTimestampEntity<User> {}
+
 enum AuthProviderType {
   Google = 'google.com',
   Facebook = 'facebook.com',
   Password = 'password',
   Anonymous = 'anonymous',
+}
+
+const IndexDefinition = {
+  settings: {
+    analysis: {
+      analyzer: {
+        kuromoji_analyzer,
+      },
+    },
+  },
+  mappings: {
+    properties: {
+      ...TimestampEntityProps,
+      email: {
+        type: 'keyword',
+      },
+      userName: {
+        type: 'keyword',
+      },
+      userNameLower: {
+        type: 'keyword',
+      },
+      fullName: {
+        type: 'keyword',
+        fields: {
+          text: {
+            type: 'text',
+            analyzer: 'kuromoji_analyzer',
+          },
+        },
+      },
+      isAppAdmin: {
+        type: 'boolean',
+      },
+      photoURL: {
+        type: 'keyword',
+      },
+    },
+  },
 }
 
 //========================================================================
@@ -26,11 +79,13 @@ enum AuthProviderType {
 //========================================================================
 
 class UserService {
-  @Inject(StoreServiceDI.symbol)
-  protected readonly storeService!: StoreServiceDI.type
+  //----------------------------------------------------------------------
+  //
+  //  Variables
+  //
+  //----------------------------------------------------------------------
 
-  @Inject(StorageServiceDI.symbol)
-  protected readonly storageService!: StorageServiceDI.type
+  protected readonly client = newElasticClient()
 
   //----------------------------------------------------------------------
   //
@@ -78,63 +133,87 @@ class UserService {
     return { status, token, user }
   }
 
-  async setUserInfo(uid: string, input: UserInfoInput): Promise<UserInfo> {
-    const userInput: EntityId & UserInfoInput = { id: uid, ...input }
+  async setUserInfo(uid: string, input: UserInput): Promise<SetUserInfoResult> {
+    UserService.validateUserName(input.userName)
+    UserService.validateFullName(input.fullName)
+
     let userRecord!: UserRecord
     try {
-      userRecord = await admin.auth().getUser(userInput.id)
+      userRecord = await admin.auth().getUser(uid)
     } catch (err) {
       const detail = JSON.stringify({ uid })
       throw new Error(`There is no user: ${detail}`)
     }
-    const storeUser = await this.storeService.userDao.fetch(userInput.id)
 
-    if (!storeUser) {
-      await this.storeService.runBatch(async batch => {
-        await this.storeService.userDao.set(userInput, batch)
-        await this.storeService.publicProfileDao.set(
-          {
-            ...userInput,
-            photoURL: userRecord.photoURL,
+    let user = await this.getUser(userRecord.uid)
+
+    // 同じ名前のユーザー名がないことを検証
+    const countResponse = await this.client.count({
+      index: UserService.IndexAlias,
+      body: {
+        query: {
+          bool: {
+            must: [
+              {
+                bool: { must_not: [{ term: { id: userRecord.uid } }] },
+              },
+              { term: { userNameLower: input.userName.toLowerCase() } },
+            ],
           },
-          batch
-        )
-      })
-    } else {
-      await this.storeService.runBatch(async batch => {
-        await this.storeService.userDao.update(userInput, batch)
-        await this.storeService.publicProfileDao.update(
-          {
-            ...userInput,
-            photoURL: userRecord.photoURL,
-          },
-          batch
-        )
-      })
+        },
+      },
+    })
+    const alreadyExist = countResponse.body.count > 0
+    if (alreadyExist) {
+      return { status: SetUserInfoResultStatus.AlreadyExists }
     }
 
-    return (await this.getUser(userInput.id))!
+    // ユーザー情報の登録
+    const now = dayjs()
+    await this.client.update({
+      index: UserService.IndexAlias,
+      id: userRecord.uid,
+      body: {
+        doc: {
+          ...this.toDBUser({
+            id: userRecord.uid,
+            email: userRecord.email!,
+            userName: input.userName,
+            fullName: input.fullName,
+            isAppAdmin: Boolean(userRecord.customClaims?.isAppAdmin),
+            photoURL: input.photoURL,
+            version: user?.version ? user.version + 1 : 1,
+            createdAt: user?.createdAt ?? now,
+            updatedAt: now,
+          }),
+        },
+        doc_as_upsert: true,
+      },
+      refresh: true,
+    })
+
+    user = (await this.getUser(userRecord.uid))!
+    return { status: SetUserInfoResultStatus.Success, user }
   }
 
-  async getUser(uid: string): Promise<UserInfo | undefined> {
-    const storeUser = await this.storeService.userDao.fetch(uid)
-    if (!storeUser) return
+  async getUser(uid: string): Promise<User | undefined> {
+    const response = await this.client.search<ElasticSearchResponse<DBUser>>({
+      index: UserService.IndexAlias,
+      body: {
+        query: {
+          term: { id: uid },
+        },
+      },
+    })
+    const users = this.responseToUsers(response)
+    if (!users.length) return
 
-    const publicProfile = await this.storeService.publicProfileDao.fetch(uid)
-    if (!publicProfile) {
-      const { id, fullName } = storeUser
-      const user = { id, fullName }
-      throw new Error(`Public profile not found: ${user}`)
-    }
-
+    const user = users[0]
     const userRecord = await admin.auth().getUser(uid)
 
     return {
-      ...storeUser,
-      email: userRecord.email!,
+      ...user,
       emailVerified: userRecord.emailVerified,
-      isAppAdmin: Boolean(userRecord.customClaims?.isAppAdmin),
-      publicProfile,
     }
   }
 
@@ -152,10 +231,15 @@ class UserService {
       await admin.auth().deleteUser(userRecord.uid)
     }
 
-    // ストアのユーザー情報を削除
-    await this.storeService.runBatch(async batch => {
-      await this.storeService.userDao.delete(uid, batch)
-      await this.storeService.publicProfileDao.delete(uid, batch)
+    // データベースのユーザー情報を削除
+    await this.client.deleteByQuery({
+      index: UserService.IndexAlias,
+      body: {
+        query: {
+          term: { id: uid },
+        },
+      },
+      refresh: true,
     })
   }
 
@@ -164,6 +248,126 @@ class UserService {
   //  Internal methods
   //
   //----------------------------------------------------------------------
+
+  /**
+   * データベースのレスポンスデータからユーザーを取得します。
+   * @param response
+   */
+  protected responseToUsers(response: ElasticAPIResponse<DBUser>): Omit<User, 'emailVerified'>[] {
+    if (!response.body.hits.hits.length) return []
+    return response.body.hits.hits.map(hit => this.toUser(hit._source)!)
+  }
+
+  /**
+   * データベースから取得したユーザーをアプリケーションで扱われる形式へ変換します。
+   * @param dbUser
+   */
+  protected toUser(dbUser: DBUser): Omit<User, 'emailVerified'> {
+    return {
+      ...toEntityTimestamp({
+        id: dbUser.id,
+        email: dbUser.email,
+        userName: dbUser.userName,
+        fullName: dbUser.fullName,
+        isAppAdmin: dbUser.isAppAdmin,
+        photoURL: dbUser.photoURL,
+        version: dbUser.version,
+        createdAt: dbUser.createdAt,
+        updatedAt: dbUser.updatedAt,
+      }),
+    }
+  }
+
+  /**
+   * ユーザーをデータベースの格納形式に変換します。
+   * @param user
+   */
+  protected toDBUser(user: Omit<User, 'emailVerified'>): ElasticTimestampEntity<Omit<User, 'emailVerified'>> {
+    return {
+      ...toElasticTimestamp({
+        id: user.id,
+        email: user.email,
+        userName: user.userName,
+        userNameLower: user.userName.toLowerCase(),
+        fullName: user.fullName,
+        isAppAdmin: user.isAppAdmin,
+        photoURL: user.photoURL,
+        version: user.version,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }),
+    }
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Static
+  //
+  //----------------------------------------------------------------------
+
+  /**
+   * 各環境ごとのElasticsearchのインデックス名です。
+   */
+  static readonly IndexAliases = {
+    prod: `${Entities.Users.Name}`,
+    dev: `${Entities.Users.Name}`,
+    test: `${Entities.Users.Name}-test`,
+  }
+
+  /**
+   * Elasticsearchのインデックス名です。
+   */
+  static readonly IndexAlias = UserService.IndexAliases[config.env.mode]
+
+  /**
+   * Elasticsearchのインデックス定義です。
+   */
+  static readonly IndexDefinition = IndexDefinition
+
+  /**
+   * ユーザー名の検証を行います。
+   * @param userName
+   */
+  static validateUserName(userName?: string): void {
+    function throwInvalidError(): never {
+      throw new AppError(`The specified 'userName' is invalid.`, { userName })
+    }
+
+    if (!userName) {
+      throw new AppError(`The specified 'userName' is empty.`)
+    }
+
+    // 60文字以下であることを検証
+    if (userName.length > 60) throwInvalidError()
+
+    // 英(大小)数と｢-_｣以外の文字が使用されていないことを検証
+    if (/[^a-zA-Z0-9.\-_]/.test(userName)) throwInvalidError()
+  }
+
+  /**
+   * フルネームの検証を行います。
+   * @param fullName
+   */
+  static validateFullName(fullName?: string): void {
+    function throwInvalidError(): never {
+      throw new AppError(`The specified 'fullName' is invalid.`, { fullName })
+    }
+
+    if (!fullName) {
+      throw new AppError(`The specified 'fullName' is empty.`)
+    }
+
+    // 60文字以下であることを検証
+    if (fullName.length > 60) throwInvalidError()
+
+    // 禁則文字が使用されていないことを検証
+    /* eslint-disable no-irregular-whitespace */
+    // ※ 改行、タブ、｢<>^*~　｣
+    if (/\n|\r|\r\n|\t|[<>^*~　]/.test(fullName)) {
+      throwInvalidError()
+    }
+    /* eslint-disable no-irregular-whitespace */
+  }
 }
 
 namespace UserServiceDI {
@@ -178,7 +382,6 @@ namespace UserServiceDI {
 @Module({
   providers: [UserServiceDI.provider],
   exports: [UserServiceDI.provider],
-  imports: [StoreServiceModule, StorageServiceModule],
 })
 class UserServiceModule {}
 
