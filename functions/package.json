@@ -8,8 +8,8 @@
   "scripts": {
     "build": "rm -rf ./dist && (tsc --project ./tsconfig.build.json & npm run build:tools) && npm run gql:build",
     "build:tools": "rm -rf ./tools/bin && tsc --project ./tsconfig.tools.json",
-    "serve": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --port=5010)",
-    "shell": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase functions:shell --port=5010)",
+    "serve": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase serve --only functions --host=0.0.0.0 --port=5010)",
+    "shell": "npm run build && export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && (npm run gql:watch & tsc --project ./tsconfig.build.json --watch & firebase functions:shell --host=0.0.0.0 --port=5010)",
     "test": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && jest --runInBand",
     "test:app": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && jest --runInBand /app/",
     "test:firestore-ex": "export GOOGLE_APPLICATION_CREDENTIALS=../serviceAccountKey.json && jest --runInBand /firestore-ex/",
