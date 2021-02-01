@@ -7,7 +7,7 @@ import { BadRequestException } from '@nestjs/common'
 //========================================================================
 
 class AppError extends BadRequestException {
-  constructor(public readonly cause: string, public readonly detail?: { [field: string]: any }) {
+  constructor(public readonly cause: string, public readonly data?: { [field: string]: any }) {
     super('Application Error')
   }
 }

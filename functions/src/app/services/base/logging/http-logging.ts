@@ -191,8 +191,10 @@ abstract class HTTPLoggingService {
         }
 
         if (error instanceof AppError) {
-          result.error.cause = error.cause
-          result.error.detail = error.detail
+          result.error.detail = {
+            cause: error.cause,
+            data: error.data,
+          }
         } else if (error instanceof ValidationErrors) {
           result.error.details = error.details
         } else if (error instanceof ElasticResponseError) {

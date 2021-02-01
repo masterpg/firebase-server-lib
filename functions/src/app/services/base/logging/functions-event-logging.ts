@@ -76,8 +76,10 @@ abstract class FunctionsEventLoggingService {
         }
 
         if (error instanceof AppError) {
-          result.error.cause = error.cause
-          result.error.detail = error.detail
+          result.error.detail = {
+            cause: error.cause,
+            data: error.data,
+          }
         }
 
         if (error instanceof ValidationErrors) {

@@ -1553,7 +1553,7 @@ describe('CoreStorageService', () => {
       }
 
       expect(actual.cause).toBe(`The ancestor directory of the specified directory does not exist.`)
-      expect(actual.detail).toEqual({
+      expect(actual.data).toEqual({
         specifiedPath: `d1/d11`,
         ancestorPath: `d1`,
       })
@@ -3004,7 +3004,7 @@ describe('CoreStorageService', () => {
       }
 
       expect(actual.cause).toBe(`Uploaded file not found.`)
-      expect(actual.detail).toEqual(fileA)
+      expect(actual.data).toEqual(fileA)
     })
 
     it('ファイルの祖先が存在しない場合', async () => {
@@ -3025,7 +3025,7 @@ describe('CoreStorageService', () => {
       }
 
       expect(actual.cause).toBe(`The ancestor directory of the file does not exist.`)
-      expect(actual.detail).toEqual({
+      expect(actual.data).toEqual({
         fileNodePath: fileA.path,
         ancestorPath: `d1`,
       })

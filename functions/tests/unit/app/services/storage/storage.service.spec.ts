@@ -155,7 +155,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`The article bundle must be created directly under the article root.`)
-        expect(actual.detail).toEqual({ input })
+        expect(actual.data).toEqual({ input })
       })
 
       it('バンドルの祖先が存在しない場合', async () => {
@@ -180,8 +180,8 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`The ancestor of the specified path does not exist.`)
-        expect(actual.detail!.specifiedPath).toMatch(new RegExp(`${articleRootPath}/[^/]+$`))
-        expect(actual.detail!.ancestorPath).toBe(articleRootPath)
+        expect(actual.data!.specifiedPath).toMatch(new RegExp(`${articleRootPath}/[^/]+$`))
+        expect(actual.data!.ancestorPath).toBe(articleRootPath)
       })
     })
 
@@ -347,7 +347,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(userRootNode, ['id', 'path', 'article']),
         })
       })
@@ -378,7 +378,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(bundle, ['id', 'path', 'article']),
         })
       })
@@ -415,7 +415,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(art1, ['id', 'path', 'article']),
         })
       })
@@ -442,7 +442,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Categories cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(assets, ['id', 'path', 'article']),
         })
       })
@@ -474,7 +474,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`There is no parent directory for the category to be created.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentPath: `${bundle.path}/dummy`,
         })
       })
@@ -678,7 +678,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Articles cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(userRootNode, ['id', 'path', 'article']),
         })
       })
@@ -710,7 +710,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`There is no parent directory for the article to be created.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentPath: `${input.dir}`,
         })
       })
@@ -748,7 +748,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Articles cannot be created under the specified parent.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           parentNode: pickProps(art1, ['id', 'path', 'article']),
         })
       })
@@ -928,7 +928,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`The ancestor of the specified path does not exist.`)
-      expect(actual.detail).toEqual({
+      expect(actual.data).toEqual({
         specifiedPath: d11Path,
         ancestorPath: d1Path,
       })
@@ -990,7 +990,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`The specified path is not a directory.`)
-      expect(actual.detail).toEqual({ specifiedPath: art1_src.path })
+      expect(actual.data).toEqual({ specifiedPath: art1_src.path })
     })
 
     it('記事ルート配下でないノードの名前を変更しようとした場合', async () => {
@@ -1232,7 +1232,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`There are multiple parents in 'orderNodePaths'.`)
-      expect(actual.detail).toEqual({ orderNodePaths: [art1.path, art2.path] })
+      expect(actual.data).toEqual({ orderNodePaths: [art1.path, art2.path] })
     })
 
     it('ソート順を設定するノードが足りなかった場合', async () => {
@@ -1264,7 +1264,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`The number of 'orderNodePaths' does not match the number of children of the parent of 'orderNodePaths'.`)
-      expect(actual.detail).toEqual({ orderNodePaths: [bundle1.path] })
+      expect(actual.data).toEqual({ orderNodePaths: [bundle1.path] })
     })
 
     it('記事配下のノードにソート順を設定しようとした場合', async () => {
@@ -1296,7 +1296,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`It is not possible to set the sort order for child nodes.`)
-      expect(actual.detail).toEqual({
+      expect(actual.data).toEqual({
         parent: pickProps(art1, ['id', 'path', 'article']),
       })
     })
@@ -1320,7 +1320,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`It is not possible to set the sort order for child nodes.`)
-      expect(actual.detail).toEqual({
+      expect(actual.data).toEqual({
         parent: pickProps(assets, ['id', 'path', 'article']),
       })
     })
@@ -2109,7 +2109,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Article bundles cannot be moved.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           movingNode: pickProps(programming, ['id', 'path', 'article']),
         })
       })
@@ -2150,7 +2150,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Categories can only be moved to category bundles or categories.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           movingNode: pickProps(ts, ['id', 'path', 'article']),
           toParentNode: pickProps(variable, ['id', 'path', 'article']),
         })
@@ -2191,7 +2191,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`Articles can only be moved to list bundles or category bundles or categories.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           movingNode: pickProps(clazz, ['id', 'path', 'article']),
           toParentNode: pickProps(variable, ['id', 'path', 'article']),
         })
@@ -2236,7 +2236,7 @@ describe('StorageService', () => {
         }
 
         expect(actual.cause).toBe(`The general directory can only be moved to the general directory or articles.`)
-        expect(actual.detail).toEqual({
+        expect(actual.data).toEqual({
           movingNode: pickProps(tmp, ['id', 'path', 'article']),
           toParentNode: pickProps(programming, ['id', 'path', 'article']),
         })
