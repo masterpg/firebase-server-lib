@@ -19,8 +19,9 @@ import {
 import { AuthServiceDI, AuthServiceModule } from './auth'
 import {
   BaseIndexDefinitions,
-  ElasticAPIResponse,
+  ElasticMSearchAPIResponse,
   ElasticPageToken,
+  ElasticSearchAPIResponse,
   ElasticSearchResponse,
   ElasticTimestampEntity,
   closePointInTime,
@@ -415,7 +416,7 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticAPIResponse<DB_NODE>
+    let response!: ElasticSearchAPIResponse<DB_NODE>
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: maxChunk,
@@ -597,7 +598,7 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticAPIResponse<DB_NODE>
+    let response!: ElasticSearchAPIResponse<DB_NODE>
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: maxChunk,
@@ -1831,11 +1832,25 @@ class CoreStorageService<
 
   /**
    * データベースのレスポンスデータからノードリストを取得します。
-   * @param response
+   * @param apiResponse
    */
-  protected responseToNodes(response: ElasticAPIResponse<DB_NODE>): NODE[] {
-    if (!response.body.hits.hits.length) return []
-    return response.body.hits.hits.map(hit => this.toStorageNode(hit._source)!)
+  protected responseToNodes(apiResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
+    // Multi search APIのレスポンスの場合
+    if ((apiResponse as ElasticMSearchAPIResponse<DB_NODE>).body.responses) {
+      const mAPIResponse = apiResponse as ElasticMSearchAPIResponse<DB_NODE>
+      const nodes: NODE[] = []
+      for (const response of mAPIResponse.body.responses) {
+        if (!response.hits.hits.length) continue
+        nodes.push(...response.hits.hits.map(hit => this.toStorageNode(hit._source)))
+      }
+      return nodes
+    }
+    // Single search APIのレスポンスの場合
+    else {
+      const sAPIResponse = apiResponse as ElasticSearchAPIResponse<DB_NODE>
+      if (!sAPIResponse.body.hits.hits.length) return []
+      return sAPIResponse.body.hits.hits.map(hit => this.toStorageNode(hit._source))
+    }
   }
 
   /**

@@ -89,7 +89,13 @@ interface ElasticSearchResponse<T> {
   aggregations?: any
 }
 
-type ElasticAPIResponse<T = any> = ApiResponse<ElasticSearchResponse<T>, Context>
+interface ElasticMSearchResponse<T> {
+  responses: ElasticSearchResponse<T>[]
+}
+
+type ElasticSearchAPIResponse<T = any> = ApiResponse<ElasticSearchResponse<T>, Context>
+
+type ElasticMSearchAPIResponse<T = any> = ApiResponse<ElasticMSearchResponse<T>, Context>
 
 type ElasticBulkAPIResponse<T = any> = ApiResponse<Record<string, any>, Context>
 
@@ -146,7 +152,7 @@ function decodePageToken(pageToken?: string): ElasticPageToken | Record<string, 
   return { pit, search_after }
 }
 
-function extractSearchAfter<T>(response: ElasticAPIResponse<T>): { pitId?: string; sort?: string[] } | undefined {
+function extractSearchAfter<T>(response: ElasticSearchAPIResponse<T>): { pitId?: string; sort?: string[] } | undefined {
   const length = response.body.hits.hits.length
   if (!length) return {}
 
@@ -192,11 +198,13 @@ function toElasticTimestamp<T extends TimestampEntity>(entity: T): ElasticTimest
 
 export {
   BaseIndexDefinitions,
-  ElasticAPIResponse,
+  ElasticSearchAPIResponse,
+  ElasticMSearchAPIResponse,
   ElasticBulkAPIResponse,
   ElasticClient,
   ElasticPageToken,
   ElasticSearchResponse,
+  ElasticMSearchResponse,
   ElasticTimestamp,
   ElasticTimestampEntity,
   SearchBody,

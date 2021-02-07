@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserInput } from './types'
 import {
   BaseIndexDefinitions,
-  ElasticAPIResponse,
+  ElasticSearchAPIResponse,
   ElasticSearchResponse,
   ElasticTimestampEntity,
   newElasticClient,
@@ -251,11 +251,11 @@ class UserService {
 
   /**
    * データベースのレスポンスデータからユーザーを取得します。
-   * @param response
+   * @param apiResponse
    */
-  protected responseToUsers(response: ElasticAPIResponse<DBUser>): Omit<User, 'emailVerified'>[] {
-    if (!response.body.hits.hits.length) return []
-    return response.body.hits.hits.map(hit => this.toUser(hit._source)!)
+  protected responseToUsers(apiResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'emailVerified'>[] {
+    if (!apiResponse.body.hits.hits.length) return []
+    return apiResponse.body.hits.hits.map(hit => this.toUser(hit._source)!)
   }
 
   /**
