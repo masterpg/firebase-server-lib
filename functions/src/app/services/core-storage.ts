@@ -59,21 +59,6 @@ interface StorageFileNode extends CoreStorageNode {
 interface StorageFileDetail {
   file: File
   exists: boolean
-  metadata: StorageNodeMetadata
-}
-
-interface StorageNodeMetadata {
-  uid: string | null
-  isPublic: boolean | null
-  readUIds: string[] | null
-  writeUIds: string[] | null
-}
-
-interface GCSNodeMetadata {
-  uid?: string | null
-  isPublic?: boolean | null
-  readUIds?: string | null
-  writeUIds?: string | null
 }
 
 interface StorageUploadDataItem {
@@ -340,9 +325,8 @@ class CoreStorageService<
     const bucket = admin.storage().bucket()
     const file = bucket.file(nodeId)
     const [exists] = await file.exists()
-    const metadata = this.extractMetaData(file)
 
-    return { file, exists, metadata }
+    return { file, exists }
   }
 
   /**
@@ -1323,9 +1307,6 @@ class CoreStorageService<
     })
     fileNode = await this.sgetFileNode({ id: fileNode.id })
 
-    // ストレージファイルにメタデータを設定
-    await this.saveGCSMetadata({ file: fileNode.file, path: fileNode.path, share })
-
     return fileNode
   }
 
@@ -1462,7 +1443,6 @@ class CoreStorageService<
         origin: requestOrigin,
         metadata: {
           contentType,
-          metadata: this.toGCSMetadata({ path: nodePath }, fileNode?.share),
         },
       })
       urlDict[nodeId] = url
@@ -1765,16 +1745,6 @@ class CoreStorageService<
     const nodeId = file.name
     const existingFileNode = await this.getNode({ id: nodeId })
 
-    // ストレージファイルにメタデータを設定
-    await this.saveGCSMetadata(
-      {
-        file,
-        path: fileNodePath,
-        share: options?.share,
-      },
-      existingFileNode?.share
-    )
-
     // データベースにファイルノードを作成/更新
     const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
     const now = dayjs().toISOString()
@@ -1837,18 +1807,6 @@ class CoreStorageService<
     const bucket = admin.storage().bucket()
     const file = bucket.file(nodeId)
     await file.save(data, saveOptions)
-
-    //
-    // ストレージファイルにメタデータを設定
-    //
-    await this.saveGCSMetadata(
-      {
-        file,
-        path: fileNodePath,
-        share: options?.share,
-      },
-      existingFileNode?.share
-    )
 
     //
     // ストアにノードデータを保存
@@ -2021,109 +1979,6 @@ class CoreStorageService<
     }
 
     return share
-  }
-
-  /**
-   * メタデータをストレージへ保存できる形式へ変換します。
-   * @param input
-   * @param existing
-   */
-  protected toGCSMetadata(
-    input: { path: string; share?: StorageNodeShareSettingsInput | null },
-    existing?: StorageNodeShareSettings
-  ): GCSNodeMetadata {
-    // メタデータの値をストレージへ保存できるよう文字列に変換する関数
-    function stringify(value: any): string | null {
-      let result: string | null = null
-      try {
-        result = JSON.stringify(value)
-      } catch (err) {}
-      return result
-    }
-
-    // 共有設定をストレージへ保存できる形式へ変換する関数
-    function to(input: StorageNodeShareSettingsInput): GCSNodeMetadata {
-      const result: GCSNodeMetadata = {}
-
-      if (typeof input.isPublic !== 'undefined') {
-        result.isPublic = input.isPublic
-      }
-
-      if (typeof input.readUIds !== 'undefined') {
-        if (input.readUIds?.length) {
-          result.readUIds = stringify(input.readUIds)
-        } else {
-          result.readUIds = null
-        }
-      }
-
-      if (typeof input.writeUIds !== 'undefined') {
-        if (input.writeUIds?.length) {
-          result.writeUIds = stringify(input.writeUIds)
-        } else {
-          result.writeUIds = null
-        }
-      }
-
-      return result
-    }
-
-    const { path, share: shareInput } = input
-
-    const gcsMetadata: GCSNodeMetadata = {
-      uid: null,
-      ...to(existing ?? {}),
-      ...to(shareInput ?? {}),
-    }
-
-    const uid = CoreStorageService.extractUId(path)
-    if (uid) {
-      gcsMetadata.uid = uid
-    }
-
-    return gcsMetadata
-  }
-
-  /**
-   * 指定されたストレージファイルからメタデータを取得します。
-   * @param file
-   */
-  protected extractMetaData(file: File): StorageNodeMetadata {
-    const rawMetadata = file.metadata.metadata || {}
-
-    const uid = rawMetadata.uid ? rawMetadata.uid : null
-
-    const isPublic = rawMetadata.isPublic === 'true' ? true : rawMetadata.isPublic === 'false' ? false : null
-
-    let readUIds: string[] | null = null
-    try {
-      readUIds = rawMetadata.readUIds ? JSON.parse(rawMetadata.readUIds) : null
-    } catch (err) {}
-
-    let writeUIds: string[] | null = null
-    try {
-      writeUIds = rawMetadata.writeUIds ? JSON.parse(rawMetadata.writeUIds) : null
-    } catch (err) {}
-
-    return { uid, isPublic, readUIds, writeUIds }
-  }
-
-  /**
-   * 指定されたストレージファイルにメタデータを設定します。
-   * @param input
-   * @param existing
-   */
-  protected async saveGCSMetadata(
-    input: { file: File; path: string; share?: StorageNodeShareSettingsInput | null },
-    existing?: StorageNodeShareSettings
-  ): Promise<void> {
-    const { file, path, share } = input
-
-    const gcsMetadata = this.toGCSMetadata({ path, share }, existing)
-
-    await file.setMetadata({
-      metadata: gcsMetadata,
-    })
   }
 
   /**

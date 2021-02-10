@@ -14,8 +14,6 @@ import { newElasticClient } from '../../../../src/app/base/elastic'
 
 type CoreStorageTestService = CoreStorageService & {
   client: CoreStorageService['client']
-  extractMetaData: CoreStorageService['extractMetaData']
-  saveGCSMetadata: CoreStorageService['saveGCSMetadata']
   m_validateBrowsableNodesTargetToNodePaths: StorageServiceDI.type['m_validateBrowsableNodesTargetToNodePaths']
 }
 
@@ -80,18 +78,8 @@ class CoreStorageTestHelper {
       // ノードがファイルの場合
       if (node.nodeType === StorageNodeType.File) {
         // ストレージに対象ファイルが存在することを検証
-        const { exists, metadata } = await this.storageService.getStorageFile(node.id)
+        const { exists } = await this.storageService.getStorageFile(node.id)
         expect(exists).toBeTruthy()
-        // メタデータの検証
-        if (CoreStorageService.isUserRootUnder(node.path)) {
-          const uid = CoreStorageService.extractUId(node.path)
-          expect(metadata.uid).toBe(uid)
-        } else {
-          expect(metadata.uid).toBeNull()
-        }
-        expect(metadata.isPublic).toBe(node.share.isPublic)
-        expect(metadata.readUIds).toEqual(node.share.readUIds)
-        expect(metadata.writeUIds).toEqual(node.share.writeUIds)
       }
     }
   }
@@ -141,17 +129,8 @@ class CoreStorageTestHelper {
         throw new Error(`The destination node does not exist: '${newNodePath}'`)
       }
       if (toNode.nodeType === StorageNodeType.File) {
-        const { exists, file, metadata } = await this.storageService.getStorageFile(toNode.id)
+        const { exists, file } = await this.storageService.getStorageFile(toNode.id)
         expect(exists).toBeTruthy()
-        if (CoreStorageService.isUserRootUnder(toNode.path)) {
-          const uid = CoreStorageService.extractUId(toNode.path)
-          expect(metadata.uid).toBe(uid)
-        } else {
-          expect(metadata.uid).toBeNull()
-        }
-        expect(metadata.isPublic).toBe(toNode.share.isPublic)
-        expect(metadata.readUIds).toEqual(toNode.share.readUIds)
-        expect(metadata.writeUIds).toEqual(toNode.share.writeUIds)
       }
 
       // 移動後ノードが複数存在しないことを検証

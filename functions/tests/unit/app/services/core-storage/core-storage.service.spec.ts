@@ -3380,10 +3380,6 @@ describe('CoreStorageService', () => {
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeTruthy()
-        expect(metadata.readUIds).toBeNull()
-        expect(metadata.writeUIds).toBeNull()
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3402,10 +3398,6 @@ describe('CoreStorageService', () => {
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeNull()
-        expect(metadata.readUIds).toEqual(['ichiro'])
-        expect(metadata.writeUIds).toEqual(['ichiro'])
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3429,10 +3421,6 @@ describe('CoreStorageService', () => {
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeFalsy()
-        expect(metadata.readUIds).toEqual(['ichiro'])
-        expect(metadata.writeUIds).toEqual(['ichiro'])
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3452,10 +3440,6 @@ describe('CoreStorageService', () => {
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeTruthy()
-        expect(metadata.readUIds).toBeNull()
-        expect(metadata.writeUIds).toBeNull()
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3475,10 +3459,6 @@ describe('CoreStorageService', () => {
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeTruthy()
-        expect(metadata.readUIds).toBeNull()
-        expect(metadata.writeUIds).toBeNull()
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3505,10 +3485,6 @@ describe('CoreStorageService', () => {
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
         expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
-        const metadata = storageService.extractMetaData(node.file)
-        expect(metadata.isPublic).toBeNull()
-        expect(metadata.readUIds).toBeNull()
-        expect(metadata.writeUIds).toBeNull()
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3637,7 +3613,6 @@ describe('CoreStorageService', () => {
 
       // 1回目と2回目で内容が同じことを検証
       expect(fileA_1).toEqual(fileA_2)
-      expect(fileDetailA_1.metadata).toEqual(fileDetailA_2.metadata)
     })
 
     it('ファイルパスへのバリデーション実行確認', async () => {
