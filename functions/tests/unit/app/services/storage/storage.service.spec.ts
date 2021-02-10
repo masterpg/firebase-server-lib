@@ -1350,9 +1350,9 @@ describe('StorageService', () => {
         name: '記事1',
         type: StorageArticleDirType.Article,
       })
-      // 記事1のソース
+      // 記事1のマスターファイル
       const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
-      // 記事1の下書き
+      // 記事1の下書きファイル
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
 
       // テスト対象実行
@@ -1362,25 +1362,28 @@ describe('StorageService', () => {
 
       // 戻り値の検証
       {
-        // ソースファイル
+        // マスターファイル
         const { master: art1_master_, draft: art1_draft_ } = actual
         expect(art1_master_.id).toBe(art1_master.id)
         expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+        expect(art1_master_.contentType).toBe('text/markdown')
         expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
         expect(art1_master_.version).toBe(art1_master.version + 1)
         // 下書きファイル
         expect(art1_draft_.id).toBe(art1_draft.id)
         expect(art1_draft_.size).toBe(0)
+        expect(art1_draft_.contentType).toBe('text/markdown')
         expect(art1_draft_.updatedAt.isAfter(art1_draft.updatedAt))
         expect(art1_draft_.version).toBe(art1_draft.version + 1)
       }
 
-      // ソースファイルの検証
+      // マスターファイルの検証
       {
-        // ソースファイル
+        // マスターファイル
         const art1_master_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
         expect(art1_master_.id).toBe(art1_master.id)
         expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+        expect(art1_master_.contentType).toBe('text/markdown')
         expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
         expect(art1_master_.version).toBe(art1_master.version + 1)
         const art1_master_src = (await art1_master_.file.download()).toString()
@@ -1389,6 +1392,7 @@ describe('StorageService', () => {
         const art1_draft_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
         expect(art1_draft_.id).toBe(art1_draft.id)
         expect(art1_draft_.size).toBe(0)
+        expect(art1_draft_.contentType).toBe('text/markdown')
         expect(art1_draft_.updatedAt.isAfter(art1_draft.updatedAt))
         expect(art1_draft_.version).toBe(art1_draft.version + 1)
         const art1_draft_src = (await art1_draft_.file.download()).toString()
@@ -1416,7 +1420,7 @@ describe('StorageService', () => {
         name: '記事1',
         type: StorageArticleDirType.Article,
       })
-      // 記事1の下書き
+      // 記事1の下書きファイル
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
 
       // テスト対象実行
@@ -1433,6 +1437,7 @@ describe('StorageService', () => {
       const _art1_draft = await storageService.sgetFileNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
       expect(_art1_draft.id).toBe(art1_draft.id)
       expect(_art1_draft.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+      expect(_art1_draft.contentType).toBe('text/markdown')
       expect(_art1_draft.updatedAt.isAfter(art1_draft.updatedAt))
       expect(_art1_draft.version).toBe(art1_draft.version + 1)
       const _srcContent = (await _art1_draft.file.download()).toString()

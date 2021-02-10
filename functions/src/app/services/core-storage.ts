@@ -1827,7 +1827,7 @@ class CoreStorageService<
             },
             existingFileNode
           ),
-          contentType: saveOptions?.contentType ?? '',
+          contentType: saveOptions?.contentType ?? existingFileNode?.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
           ...(() => {
             return !options?.idempotent ? { updatedAt: now, version } : {}
