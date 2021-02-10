@@ -20,10 +20,9 @@ import Lv1GQLContainerModule from '../../../../../src/app/gql/main/lv1'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../src/app/rest/storage'
 import { initApp } from '../../../../../src/app/base'
-import { sleep } from 'web-base-lib'
 import request = require('supertest')
 
-jest.setTimeout(25000)
+jest.setTimeout(15000)
 initApp()
 
 //========================================================================
@@ -60,7 +59,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
     await devUtilsService.setTestFirebaseUsers(AppAdminUser(), StorageUser())
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-    await sleep(1500)
+    // await sleep(1500)
   })
 
   afterEach(() => {

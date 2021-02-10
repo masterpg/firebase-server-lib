@@ -14,7 +14,7 @@ import {
 } from '../../../../../src/app/services'
 import { StorageTestHelper, StorageTestService, StorageUserToken } from '../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
-import { pickProps, shuffleArray, sleep } from 'web-base-lib'
+import { pickProps, shuffleArray } from 'web-base-lib'
 import { config } from '../../../../../src/config'
 
 jest.setTimeout(30000)
@@ -51,7 +51,7 @@ describe('StorageService', () => {
     await h.removeAllNodes()
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-    await sleep(1500)
+    // await sleep(1500)
   })
 
   describe('createArticleTypeDir', () => {
@@ -1564,7 +1564,7 @@ describe('StorageService', () => {
     })
 
     it('大量データの場合', async () => {
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 5; i++) {
         await storageService.createArticleTypeDir({
           dir: `${py.path}`,
           name: `art${i.toString().padStart(2, '0')}`,
@@ -1578,23 +1578,18 @@ describe('StorageService', () => {
       actual.push(...fetched.list)
       while (fetched.nextPageToken) {
         fetched = await storageService.getArticleChildren(`${py.path}`, [StorageArticleDirType.Article], {
-          maxChunk: 3,
+          maxChunk: 2,
           pageToken: fetched.nextPageToken,
         })
         actual.push(...fetched.list)
       }
 
-      expect(actual.length).toBe(10)
-      expect(actual[0].article?.dir?.name).toBe(`art10`)
-      expect(actual[1].article?.dir?.name).toBe(`art09`)
-      expect(actual[2].article?.dir?.name).toBe(`art08`)
-      expect(actual[3].article?.dir?.name).toBe(`art07`)
-      expect(actual[4].article?.dir?.name).toBe(`art06`)
-      expect(actual[5].article?.dir?.name).toBe(`art05`)
-      expect(actual[6].article?.dir?.name).toBe(`art04`)
-      expect(actual[7].article?.dir?.name).toBe(`art03`)
-      expect(actual[8].article?.dir?.name).toBe(`art02`)
-      expect(actual[9].article?.dir?.name).toBe(`art01`)
+      expect(actual.length).toBe(5)
+      expect(actual[0].article?.dir?.name).toBe(`art05`)
+      expect(actual[1].article?.dir?.name).toBe(`art04`)
+      expect(actual[2].article?.dir?.name).toBe(`art03`)
+      expect(actual[3].article?.dir?.name).toBe(`art02`)
+      expect(actual[4].article?.dir?.name).toBe(`art01`)
       await h.existsNodes(actual)
     })
   })

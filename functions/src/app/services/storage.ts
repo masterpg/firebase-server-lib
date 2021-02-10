@@ -16,7 +16,7 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
 } from './types'
-import { ElasticMSearchResponse, ElasticSearchResponse, ElasticTimestamp } from '../base/elastic'
+import { ElasticSearchResponse, ElasticTimestamp } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { AppError } from '../base'

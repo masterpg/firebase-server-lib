@@ -18,9 +18,9 @@ import {
 import { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule, StorageFileNode } from '../../../../../src/app/services/core-storage'
 import { Test, TestingModule } from '@nestjs/testing'
 import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../src/app/base/elastic'
-import { removeBothEndsSlash, sleep } from 'web-base-lib'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../../../../src/config'
+import { removeBothEndsSlash } from 'web-base-lib'
 const performance = require('perf_hooks').performance
 
 jest.setTimeout(25000)
@@ -65,7 +65,7 @@ describe('CoreStorageService', () => {
     await h.removeAllNodes()
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
-    await sleep(1500)
+    // await sleep(1500)
   })
 
   afterEach(() => {

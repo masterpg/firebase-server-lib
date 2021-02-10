@@ -62,26 +62,28 @@ class CoreStorageTestHelper {
    * @param nodes
    */
   async existsNodes(nodes: CoreStorageNode[]): Promise<void> {
-    for (const node of nodes) {
-      // ディレクトリの末尾が'/'でないことを検証
-      expect(node.dir.endsWith('/')).toBeFalsy()
-      // node.path が ｢node.dir + node.name｣ と一致することを検証
-      expect(node.path).toBe(removeStartDirChars(_path.join(node.dir, node.name)))
-      // バージョンの検証
-      expect(node.version >= 1).toBeTruthy()
-      // タイムスタンプの検証
-      expect(dayjs.isDayjs(node.createdAt)).toBeTruthy()
-      expect(dayjs.isDayjs(node.updatedAt)).toBeTruthy()
-      // データベースに対象ノードが存在することを確認
-      expect(node).toMatchObject(await this.storageService.sgetNode({ path: node.path }))
-      expect(node).toMatchObject(await this.storageService.sgetNode({ id: node.id }))
-      // ノードがファイルの場合
-      if (node.nodeType === StorageNodeType.File) {
-        // ストレージに対象ファイルが存在することを検証
-        const { exists } = await this.storageService.getStorageFile(node.id)
-        expect(exists).toBeTruthy()
-      }
-    }
+    await Promise.all(
+      nodes.map(async node => {
+        // ディレクトリの末尾が'/'でないことを検証
+        expect(node.dir.endsWith('/')).toBeFalsy()
+        // node.path が ｢node.dir + node.name｣ と一致することを検証
+        expect(node.path).toBe(removeStartDirChars(_path.join(node.dir, node.name)))
+        // バージョンの検証
+        expect(node.version >= 1).toBeTruthy()
+        // タイムスタンプの検証
+        expect(dayjs.isDayjs(node.createdAt)).toBeTruthy()
+        expect(dayjs.isDayjs(node.updatedAt)).toBeTruthy()
+        // データベースに対象ノードが存在することを確認
+        expect(node).toMatchObject(await this.storageService.sgetNode({ path: node.path }))
+        expect(node).toMatchObject(await this.storageService.sgetNode({ id: node.id }))
+        // ノードがファイルの場合
+        if (node.nodeType === StorageNodeType.File) {
+          // ストレージに対象ファイルが存在することを検証
+          const { exists } = await this.storageService.getStorageFile(node.id)
+          expect(exists).toBeTruthy()
+        }
+      })
+    )
   }
 
   /**
@@ -89,24 +91,26 @@ class CoreStorageTestHelper {
    * @param nodes
    */
   async notExistsNodes(nodes: CoreStorageNode[]): Promise<void> {
-    for (const node of nodes) {
-      // node.path が ｢node.dir + node.name｣ と一致することを検証
-      expect(node.path).toBe(_path.join(node.dir, node.name))
-      // バージョンの検証
-      expect(node.version >= 1).toBeTruthy()
-      // タイムスタンプの検証
-      expect(dayjs.isDayjs(node.createdAt)).toBeTruthy()
-      expect(dayjs.isDayjs(node.updatedAt)).toBeTruthy()
-      // ストアに対象ノードが存在しないことを確認
-      expect(await this.storageService.getNode({ path: node.path })).toBeUndefined()
-      expect(await this.storageService.getNode({ id: node.id })).toBeUndefined()
-      // ノードがファイルの場合
-      if (node.nodeType === StorageNodeType.File) {
-        // ストレージに対象ファイルが存在しないことを検証
-        const fileDetail = await this.storageService.getStorageFile(node.id)
-        expect(fileDetail.exists).toBeFalsy()
-      }
-    }
+    await Promise.all(
+      nodes.map(async node => {
+        // node.path が ｢node.dir + node.name｣ と一致することを検証
+        expect(node.path).toBe(_path.join(node.dir, node.name))
+        // バージョンの検証
+        expect(node.version >= 1).toBeTruthy()
+        // タイムスタンプの検証
+        expect(dayjs.isDayjs(node.createdAt)).toBeTruthy()
+        expect(dayjs.isDayjs(node.updatedAt)).toBeTruthy()
+        // ストアに対象ノードが存在しないことを確認
+        expect(await this.storageService.getNode({ path: node.path })).toBeUndefined()
+        expect(await this.storageService.getNode({ id: node.id })).toBeUndefined()
+        // ノードがファイルの場合
+        if (node.nodeType === StorageNodeType.File) {
+          // ストレージに対象ファイルが存在しないことを検証
+          const fileDetail = await this.storageService.getStorageFile(node.id)
+          expect(fileDetail.exists).toBeFalsy()
+        }
+      })
+    )
   }
 
   /**
@@ -119,41 +123,43 @@ class CoreStorageTestHelper {
     const fromNodePath = fromNodes[0].path
     const client = newElasticClient()
 
-    for (const fromNode of fromNodes) {
-      const reg = new RegExp(`^${fromNodePath}`)
-      const newNodePath = fromNode.path.replace(reg, toNodePath)
-      const toNode = await this.storageService.sgetNode({ path: newNodePath })
+    await Promise.all(
+      fromNodes.map(async fromNode => {
+        const reg = new RegExp(`^${fromNodePath}`)
+        const newNodePath = fromNode.path.replace(reg, toNodePath)
+        const toNode = await this.storageService.sgetNode({ path: newNodePath })
 
-      // 移動後ノードが存在することを検証
-      if (!toNode) {
-        throw new Error(`The destination node does not exist: '${newNodePath}'`)
-      }
-      if (toNode.nodeType === StorageNodeType.File) {
-        const { exists, file } = await this.storageService.getStorageFile(toNode.id)
-        expect(exists).toBeTruthy()
-      }
+        // 移動後ノードが存在することを検証
+        if (!toNode) {
+          throw new Error(`The destination node does not exist: '${newNodePath}'`)
+        }
+        if (toNode.nodeType === StorageNodeType.File) {
+          const { exists, file } = await this.storageService.getStorageFile(toNode.id)
+          expect(exists).toBeTruthy()
+        }
 
-      // 移動後ノードが複数存在しないことを検証
-      const toNodeCountResponse = await client.count({
-        index: CoreStorageService.IndexAlias,
-        body: {
-          query: {
-            term: { path: toNode.path },
+        // 移動後ノードが複数存在しないことを検証
+        const toNodeCountResponse = await client.count({
+          index: CoreStorageService.IndexAlias,
+          body: {
+            query: {
+              term: { path: toNode.path },
+            },
           },
-        },
+        })
+        expect(toNodeCountResponse.body.count).toBe(1)
+
+        // 移動前と移動後のストアノードを比較検証
+        expect(toNode.share).toEqual(fromNode.share)
+        expect(toNode.createdAt).toEqual(fromNode.createdAt)
+        expect(toNode.updatedAt).toEqual(fromNode.updatedAt)
+        expect(toNode.version).toBe(fromNode.version + 1)
+
+        // 移動前ノードが存在しないことを検証
+        const fromNode_fetched = await this.storageService.getNode({ path: fromNode.path })
+        expect(fromNode_fetched).toBeUndefined()
       })
-      expect(toNodeCountResponse.body.count).toBe(1)
-
-      // 移動前と移動後のストアノードを比較検証
-      expect(toNode.share).toEqual(fromNode.share)
-      expect(toNode.createdAt).toEqual(fromNode.createdAt)
-      expect(toNode.updatedAt).toEqual(fromNode.updatedAt)
-      expect(toNode.version).toBe(fromNode.version + 1)
-
-      // 移動前ノードが存在しないことを検証
-      const fromNode_fetched = await this.storageService.getNode({ path: fromNode.path })
-      expect(fromNode_fetched).toBeUndefined()
-    }
+    )
 
     // ストレージにあるファイルが迷子になっていないか検証
     // ※削除されるべきファイルが削除されず、ストレージにファイルはあるが、
