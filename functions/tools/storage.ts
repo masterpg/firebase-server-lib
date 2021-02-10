@@ -14,7 +14,7 @@ import {
 } from '../src/app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
 import { createNestApplication, initFirebaseApp } from '../src/app/base'
-import { CoreStorageService } from '../src/app/services/base/core-storage'
+import { CoreStorageService } from '../src/app/services/core-storage'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import dayjs = require('dayjs')

@@ -15,17 +15,17 @@ initApp()
 //
 //========================================================================
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [DevUtilsServiceModule],
-  }).compile()
-
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
-})
-
 describe('AuthService', () => {
   let app: any
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
+  })
 
   beforeEach(async () => {
     const testingModule: TestingModule = await Test.createTestingModule({

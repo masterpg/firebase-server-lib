@@ -7,17 +7,17 @@ import { initApp } from '../../../../../../../src/app/base'
 jest.setTimeout(5000)
 initApp()
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [DevUtilsServiceModule],
-  }).compile()
-
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(GeneralUser())
-})
-
 describe('Lv1 Env Resolver', () => {
   let app: any
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    await devUtilsService.setTestFirebaseUsers(GeneralUser())
+  })
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({

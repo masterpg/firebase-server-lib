@@ -1,6 +1,6 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import { AppError, generateEntityId, validateUID } from '../../base'
+import { AppError, generateEntityId, validateUID } from '../base'
 import {
   AuthRoleType,
   CoreStorageNode,
@@ -15,8 +15,9 @@ import {
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
-} from '../types'
-import { AuthServiceDI, AuthServiceModule } from './auth'
+  UserIdClaims,
+} from './types'
+import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import {
   BaseIndexDefinitions,
   ElasticMSearchAPIResponse,
@@ -34,13 +35,14 @@ import {
   toElasticTimestamp,
   toEntityTimestamp,
   validateBulkResponse,
-} from '../../base/elastic'
+} from '../base/elastic'
 import { Entities, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { File, SaveOptions } from '@google-cloud/storage'
-import { ForbiddenException, Inject, Module } from '@nestjs/common'
+import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { ServiceHelper } from './base/helper'
+import { config } from '../../config'
 import dayjs = require('dayjs')
-import { config } from '../../../config'
 
 const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
 
@@ -148,7 +150,13 @@ const IndexDefinition = {
   },
 }
 
-interface ValidateAccessibleTarget {
+interface ValidateBrowsableTarget {
+  nodeId?: string
+  nodeIds?: string[]
+  dirId?: string
+  dirIds?: string[]
+  fileId?: string
+  fileIds?: string[]
   nodePath?: string
   nodePaths?: (string | undefined)[]
   dirPath?: string
@@ -1358,6 +1366,82 @@ class CoreStorageService<
   }
 
   /**
+   * Cloud Storageのセキュリティルールを通過させるため、
+   * ユーザークレイムにファイルアクセス権限を設定します。
+   * @param user
+   * @param input
+   */
+  async setFileAccessAuthClaims(user: UserIdClaims, input: StorageNodeKeyInput): Promise<string> {
+    // ファイルの共有設定を取得
+    const hierarchicalNodes = await this.getHierarchicalNodes(input.path)
+    const share = this.getInheritedShareSettings(hierarchicalNodes)
+
+    //
+    // 読み込み権限
+    //
+    let readableNodeId: string | undefined
+    // アプリケーションファイルの場合
+    if (CoreStorageService.isAppNode(input.path)) {
+      // 「自ユーザーがアプリケーション管理者」or「ファイルが公開」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
+      if (user.isAppAdmin || share.isPublic || share.readUIds?.includes(user.uid)) {
+        readableNodeId = input.id
+      }
+    }
+    // ユーザーファイルの場合
+    else {
+      // 「ファイルが自ユーザの所有物」or「ファイルが公開」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
+      if (CoreStorageService.isOwnUserRootUnder(user, input.path) || share.isPublic || share.readUIds?.includes(user.uid)) {
+        readableNodeId = input.id
+      }
+    }
+
+    //
+    // 書き込み権限
+    //
+    let writableNodeId: string | undefined
+    // アプリケーションファイルの場合
+    if (CoreStorageService.isAppNode(input.path)) {
+      // 「自ユーザーがアプリケーション管理者」or「ファイルの書き込み権限に自ユーザーが含まれている」の場合、書き込み可能
+      if (user.isAppAdmin || share.writeUIds?.includes(user.uid)) {
+        writableNodeId = input.id
+      }
+    }
+    // ユーザーファイルの場合
+    else {
+      // 「ファイルが自ユーザの所有物」or「ファイルの書き込み権限に自ユーザーが含まれている」の場合、読み込み可能
+      if (CoreStorageService.isOwnUserRootUnder(user, input.path) || share.writeUIds?.includes(user.uid)) {
+        writableNodeId = input.id
+      }
+    }
+
+    // ユーザークレイムに指定ノードのアクセス権限を設定
+    await admin.auth().setCustomUserClaims(user.uid, {
+      ...ServiceHelper.pickUserClaims(user),
+      readableNodeId,
+      writableNodeId,
+    })
+
+    // カスタムトークンの取得
+    return await admin.auth().createCustomToken(user.uid, {})
+  }
+
+  /**
+   * Cloud Storageのセキュリティルールを通過させるために
+   * ユーザークレイムに設定されていたファイルアクセス権限を削除します。
+   * @param user
+   */
+  async removeFileAccessAuthClaims(user: UserIdClaims): Promise<string> {
+    // ユーザークレイムからアクセス権限を削除
+    const userClaims = ServiceHelper.pickUserClaims(user)
+    delete userClaims?.readableNodeId
+    delete userClaims?.writableNodeId
+    await admin.auth().setCustomUserClaims(user.uid, userClaims)
+
+    // カスタムトークンの取得
+    return await admin.auth().createCustomToken(user.uid, {})
+  }
+
+  /**
    * 署名付きのアップロードURLを取得します。
    * @param requestOrigin
    * @param inputs
@@ -1403,55 +1487,38 @@ class CoreStorageService<
   }
 
   /**
-   * 指定されたノードパスへリクエストユーザーがアクセス可能か検証します。
-   * @param req
-   * @param res
+   * 指定されたノードパスへリクエストユーザーが閲覧可能か検証します。
+   * @param idToken
    * @param target
    */
-  async validateAccessible(req: Request, res: Response, target: ValidateAccessibleTarget): Promise<IdToken> {
-    const nodePaths = await this.m_validateAccessibleTargetToNodePaths(target)
+  async validateBrowsableNodes(idToken: IdToken, target: ValidateBrowsableTarget): Promise<void> {
+    const nodePaths = await this.m_validateBrowsableNodesTargetToNodePaths(target)
     const roles: AuthRoleType[] = []
 
-    // IDトークンを取得
-    const idTokenValidated = await this.authService.validateIdToken(req, res)
-    if (!idTokenValidated.result) {
-      throw idTokenValidated.error
-    }
-    const idToken = idTokenValidated.idToken!
-
-    // 検査対象となるノードパスがない場合
-    // ※バケット直下へのアクセスとなるので、管理者権限が必要
-    if (!nodePaths.length) {
-      roles.push(AuthRoleType.AppAdmin)
+    if (!idToken) {
+      throw new UnauthorizedException('Authentication failed because no ID token was specified in the argument.')
     }
 
     // ノードパスの中に管理者権限が必要なノードがあるか調べる
-    // ※ユーザーノード以外は管理者権限が必要
-    if (!roles.includes(AuthRoleType.AppAdmin)) {
-      const needIsAppAdmin = nodePaths.some(nodePath => !CoreStorageService.isUserRootFamily(nodePath))
-      needIsAppAdmin && roles.push(AuthRoleType.AppAdmin)
-    }
+    const needIsAppAdmin = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
+    needIsAppAdmin && roles.push(AuthRoleType.AppAdmin)
 
-    // ユーザーノードパスへアクセス可能か検証
+    // アプリケーション管理者以外の場合
+    // ※アプリケーション管理者は全ユーザーノードを閲覧可能
+    //   ただしファイルの中身を読み込むことはできない
     if (!idToken.isAppAdmin) {
+      // ノードパスをリクエストユーザーが閲覧可能か検証
       for (const nodePath of nodePaths) {
-        if (!CoreStorageService.isUserRootFamily(nodePath)) continue
-        // 指定ノードが自ユーザーの所有物でない場合
-        const userRootPath = CoreStorageService.toUserRootPath({ uid: idToken.uid })
-        const isOwnUserNode = nodePath == userRootPath || nodePath.startsWith(`${userRootPath}/`)
-        if (!isOwnUserNode) {
+        // 指定ノードがリクエストユーザーの所有物でない場合
+        if (!CoreStorageService.isOwnUserRootFamily(idToken, nodePath)) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
         }
       }
     }
 
     // IDトークンをロールを含めて検証
-    const validated = await this.authService.validate(idToken, res, roles)
-    if (!validated.result) {
-      throw validated.error
-    }
-
-    return idToken
+    const validated = await this.authService.validate(idToken, roles)
+    if (!validated.result) throw validated.error
   }
 
   /**
@@ -1483,29 +1550,19 @@ class CoreStorageService<
     }
     const user = validated.idToken!
 
-    //
-    // 指定されたファイルがユーザーファイルの場合
-    //
-    if (CoreStorageService.isUserRootUnder(fileNode.path)) {
-      // 指定ファイルが自ユーザーの所有物である場合
-      const userHomePath = CoreStorageService.toUserRootPath(user)
-      if (fileNode.path.startsWith(_path.join(userHomePath, '/'))) {
+    // アプリケーションファイルの場合
+    if (CoreStorageService.isAppNode(fileNode.path)) {
+      // 「自ユーザーがアプリケーション管理者」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
+      if (user.isAppAdmin || share.readUIds?.includes(user.uid)) {
         return this.streamFile(req, res, fileNode)
       }
     }
-    //
-    // 指定されたファイルがアプリケーションファイルの場合
-    //
+    // ユーザーファイルの場合
     else {
-      // 自ユーザーがアプリケーション管理者の場合
-      if (user.isAppAdmin) {
+      // 「ファイルが自ユーザの所有物」or「ファイルが公開」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
+      if (CoreStorageService.isOwnUserRootUnder(user, fileNode.path) || share.isPublic || share.readUIds?.includes(user.uid)) {
         return this.streamFile(req, res, fileNode)
       }
-    }
-
-    // ファイルの読み込み権限に自ユーザーが含まれている場合
-    if (share.readUIds && share.readUIds.includes(user.uid)) {
-      return this.streamFile(req, res, fileNode)
     }
 
     return res.sendStatus(403)
@@ -2070,11 +2127,11 @@ class CoreStorageService<
   }
 
   /**
-   * `validateAccessible()`の引数で指定される`target`にはノードパス、ノード、ノードリストが含まれます。
+   * `validateBrowsableNodes()`の引数で指定される`target`にはノードパス、ノード、ノードリストが含まれます。
    * targetがノードまたはノードリストの場合はこれらをノードパスに変換し、全てをノードパスとして返します。
    * @param target
    */
-  protected async m_validateAccessibleTargetToNodePaths(target: ValidateAccessibleTarget): Promise<string[]> {
+  protected async m_validateBrowsableNodesTargetToNodePaths(target: ValidateBrowsableTarget): Promise<string[]> {
     const nodePaths: string[] = []
 
     // ノードパスの取得
@@ -2088,6 +2145,24 @@ class CoreStorageService<
           nodePaths.push(value)
         }
       }
+    }
+
+    // ノードIDをノードパスに変換
+    const nodeIds: string[] = []
+    for (const key of Object.keys(target)) {
+      if (/Id$|Ids$/.test(key)) {
+        const value = (target as any)[key] as string | undefined | (string | undefined)[]
+        if (Array.isArray(value)) {
+          const values = value.filter(value => Boolean(value)) as string[]
+          nodeIds.push(...values)
+        } else if (value) {
+          nodeIds.push(value)
+        }
+      }
+    }
+    if (nodeIds.length) {
+      const nodes = await this.getNodes({ ids: nodeIds })
+      nodePaths.push(...nodes.map(node => node.path))
     }
 
     // ノードリストをノードパスに変換
@@ -2232,6 +2307,37 @@ class CoreStorageService<
   }
 
   /**
+   * 指定されたパスがアプリケーションノードか否かを取得します。
+   * @param nodePath
+   */
+  static isAppNode(nodePath: string): boolean {
+    // ユーザーノード以外はアプリケーションノードと判定
+    return !this.isUserRootFamily(nodePath)
+  }
+
+  /**
+   * 指定されたパスがユーザールートを含めたファミリーノードか否かを取得します。
+   * @param user
+   * @param nodePath
+   */
+  static isOwnUserRootFamily(user: { uid: string }, nodePath: string): boolean {
+    const userRootPath = this.toUserRootPath(user)
+    const reg = new RegExp(`^${userRootPath}$|^${userRootPath}/`)
+    return reg.test(nodePath)
+  }
+
+  /**
+   * 指定されたパスがユーザールート配下のノードか否かを取得します。
+   * @param user
+   * @param nodePath
+   */
+  static isOwnUserRootUnder(user: { uid: string }, nodePath: string): boolean {
+    const userRootPath = this.toUserRootPath(user)
+    const reg = new RegExp(`^${userRootPath}/`)
+    return reg.test(nodePath)
+  }
+
+  /**
    * 指定されたパスがユーザールートを含めたファミリーノードか否かを取得します。
    * @param nodePath
    */
@@ -2241,7 +2347,7 @@ class CoreStorageService<
   }
 
   /**
-   * 指定されたパスがユーザールートの配下ノードか否かを取得します。
+   * 指定されたパスがユーザールート配下のノードか否かを取得します。
    * @param nodePath
    */
   static isUserRootUnder(nodePath: string): boolean {

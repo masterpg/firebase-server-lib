@@ -25,19 +25,19 @@ initApp()
 //
 //========================================================================
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [DevUtilsServiceModule],
-  }).compile()
-
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
-})
-
 describe('Lv3 Storage Resolver', () => {
   let app: any
   let storageService: StorageTestService
   let h!: StorageTestHelper
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
+  })
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

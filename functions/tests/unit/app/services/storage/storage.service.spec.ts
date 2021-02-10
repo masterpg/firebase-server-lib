@@ -32,12 +32,19 @@ describe('StorageService', () => {
   let devUtilsService!: DevUtilsServiceDI.type
   let h!: StorageTestHelper
 
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  })
+
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
       imports: [DevUtilsServiceModule, StorageServiceModule],
     }).compile()
 
-    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     storageService = testingModule.get<StorageTestService>(StorageServiceDI.symbol)
     h = new StorageTestHelper(storageService)
 

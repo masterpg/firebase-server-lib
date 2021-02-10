@@ -20,7 +20,7 @@ import { ElasticMSearchResponse, ElasticSearchResponse, ElasticTimestamp } from 
 import { Inject, Module } from '@nestjs/common'
 import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { AppError } from '../base'
-import { CoreStorageService } from './base/core-storage'
+import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 import { merge } from 'lodash'
@@ -1200,4 +1200,4 @@ class StorageServiceModule {}
 //========================================================================
 
 export { StorageService, StorageServiceDI, StorageServiceModule }
-export { StorageFileNode, StorageUploadDataItem } from './base/core-storage'
+export { StorageFileNode, StorageUploadDataItem } from './core-storage'

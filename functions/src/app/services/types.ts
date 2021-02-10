@@ -42,6 +42,8 @@ enum AuthRoleType {
 interface UserClaims {
   isAppAdmin?: boolean
   authStatus?: AuthStatus
+  readableNodeId?: string
+  writableNodeId?: string
 }
 
 interface UserIdClaims extends UserClaims {

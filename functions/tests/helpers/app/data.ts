@@ -1,7 +1,7 @@
 import { AuthStatus, UserIdClaims } from '../../../src/app/services'
 import { TestUserInput } from '../../../src/app/services'
 
-export function GeneralUser(): Required<TestUserInput> {
+export function GeneralUser(): Required<Omit<TestUserInput, 'readableNodeId' | 'writableNodeId'>> {
   return {
     uid: 'test.general',
     email: 'test.general@example.com',
@@ -30,7 +30,7 @@ export function GeneralUserHeader() {
   }
 }
 
-export function AppAdminUser(): Required<TestUserInput> {
+export function AppAdminUser(): Required<Omit<TestUserInput, 'readableNodeId' | 'writableNodeId'>> {
   return {
     uid: 'test.app.admin',
     email: 'test.app.admin@example.com',
@@ -59,7 +59,7 @@ export function AppAdminUserHeader() {
   }
 }
 
-export function StorageUser(): Required<TestUserInput> {
+export function StorageUser(): Required<Omit<TestUserInput, 'readableNodeId' | 'writableNodeId'>> {
   return {
     uid: 'test.storage',
     email: 'test.storage@example.com',

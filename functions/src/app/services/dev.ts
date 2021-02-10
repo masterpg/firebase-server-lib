@@ -15,7 +15,7 @@ import {
 } from './types'
 import { UserServiceDI, UserServiceModule } from './user'
 import { newElasticClient, validateBulkResponse } from '../base/elastic'
-import { removeBothEndsSlash, splitFilePath } from 'web-base-lib'
+import { pickProps, removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import { isISO8601 } from 'class-validator'
 import { isNumber } from 'lodash'
@@ -286,8 +286,10 @@ class DevUtilsService {
 
     // カスタムクレームの設定
     if (typeof input.isAppAdmin === 'boolean' || typeof input.authStatus === 'string') {
-      const { isAppAdmin, authStatus } = input
-      const customClaims = { ...userRecord.customClaims, isAppAdmin, authStatus }
+      const customClaims = {
+        ...userRecord.customClaims,
+        ...pickProps(input, ['isAppAdmin', 'authStatus', 'readableNodeId', 'writableNodeId']),
+      }
       await admin.auth().setCustomUserClaims(input.uid, customClaims)
     }
 

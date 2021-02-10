@@ -39,21 +39,29 @@ abstract class AuthService {
   async validate(req: Request, res: Response, roles?: string[]): Promise<AuthValidateResult>
 
   /**
-   * リクエストヘッダーからIDトークン(ユーザー情報)を取得し、また必要な検証も行います。
+   * 指定されたIDトークン(ユーザー情報)の検証を行います。
    * @param idToken
-   * @param res
    * @param roles
    */
-  async validate(idToken: IdToken, res: Response, roles?: string[]): Promise<AuthValidateResult>
+  async validate(idToken: IdToken, roles?: string[]): Promise<AuthValidateResult>
 
-  async validate(arg1: Request | IdToken, res: Response, roles?: string[]): Promise<AuthValidateResult> {
+  async validate(req_or_idToken: Request | IdToken, res_or_roles?: Response | string[], roles?: string[]): Promise<AuthValidateResult> {
     let idToken: IdToken
+    let res: Response | undefined
 
-    if (typeof (arg1 as any).uid === 'string') {
-      idToken = arg1 as IdToken
+    if (res_or_roles) {
+      if (Array.isArray(res_or_roles)) {
+        roles = res_or_roles as string[]
+      } else {
+        res = res_or_roles as Response
+      }
+    }
+
+    if (typeof (req_or_idToken as any).uid === 'string') {
+      idToken = req_or_idToken as IdToken
     } else {
-      const req: Request = arg1 as Request
-      const validated = await this.validateIdToken(req, res)
+      const req: Request = req_or_idToken as Request
+      const validated = await this.validateIdToken(req, res!)
       if (!validated.result) {
         return validated
       }
@@ -61,17 +69,17 @@ abstract class AuthService {
     }
 
     if (idToken.authStatus !== AuthStatus.Available) {
-      res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
+      res && res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
       return {
         result: false,
         error: new ForbiddenException(`Authorization failed because the user '${idToken.uid}' is not available.`),
       }
     }
 
-    for (const role of roles || []) {
+    for (const role of roles ?? []) {
       if (role === AuthRoleType.AppAdmin) {
         if (!idToken.isAppAdmin) {
-          res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
+          res && res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
           return {
             result: false,
             error: new ForbiddenException(`Authorization failed because the user '${idToken.uid}' role is invalid.`),

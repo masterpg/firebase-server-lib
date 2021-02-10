@@ -21,6 +21,8 @@ input TestFirebaseUserInput {
   disabled: Boolean
   isAppAdmin: Boolean
   authStatus: AuthStatus
+  readableNodeId: String
+  writableNodeId: String
 }
 
 input TestUserInput {

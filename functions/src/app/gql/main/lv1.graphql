@@ -15,6 +15,8 @@ type Mutation {
   setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
   handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!
+  setFileAccessAuthClaims(input: StorageNodeKeyInput!): String!
+  removeFileAccessAuthClaims: String!
   createArticleTypeDir(input: CreateArticleTypeDirInput!): StorageNode!
   createArticleGeneralDir(dirPath: String!, input: CreateStorageNodeInput): StorageNode!
   renameArticleDir(dirPath: String!, newName: String!): StorageNode!

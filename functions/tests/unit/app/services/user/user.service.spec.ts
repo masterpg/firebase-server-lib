@@ -92,9 +92,6 @@ const Users = [NotVerifiedUser, VerifiedUser, AvailableUser, DeleteUser1, JiroYa
 //
 //========================================================================
 
-let userService!: UserTestService
-let devUtilsService!: DevUtilsServiceDI.type
-
 type UserTestService = UserService
 
 async function removeAllDBUsers(): Promise<void> {
@@ -116,23 +113,27 @@ async function removeAllDBUsers(): Promise<void> {
 //
 //========================================================================
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [UserServiceModule, DevUtilsServiceModule],
-  }).compile()
-  userService = testingModule.get<UserServiceDI.type>(UserServiceDI.symbol)
-  devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-})
-
-afterAll(async () => {
-  await devUtilsService.deleteTestUsers(...Users.map(user => user.uid))
-})
-
 /**
  * TODO Jest did not exit one second after the test run has completed.
  *  admin.auth()の非同期メソッド`getUser()`などを実行すると上記警告が発生しJestが終了しない
  */
 describe('UserService', () => {
+  let userService!: UserTestService
+  let devUtilsService!: DevUtilsServiceDI.type
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [UserServiceModule, DevUtilsServiceModule],
+    }).compile()
+
+    userService = testingModule.get<UserServiceDI.type>(UserServiceDI.symbol)
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  })
+
+  afterAll(async () => {
+    await devUtilsService.deleteTestUsers(...Users.map(user => user.uid))
+  })
+
   afterEach(() => {
     td.reset()
   })

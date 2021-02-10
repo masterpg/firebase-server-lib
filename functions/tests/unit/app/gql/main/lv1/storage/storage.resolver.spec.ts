@@ -35,6 +35,7 @@ import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
 import { config } from '../../../../../../../src/config'
 import { initApp } from '../../../../../../../src/app/base'
+import { pickProps } from 'web-base-lib'
 
 jest.setTimeout(5000)
 initApp()
@@ -57,19 +58,19 @@ const InitialShareSettings: StorageNodeShareSettings = {
 //
 //========================================================================
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [DevUtilsServiceModule],
-  }).compile()
-
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
-})
-
 describe('Lv1 Storage Resolver', () => {
   let app: any
   let storageService: StorageTestService
   let h!: StorageTestHelper
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser())
+  })
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -1137,103 +1138,6 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('handleUploadedFile', () => {
-    const gql = {
-      query: `
-        mutation HandleUploadedFile($input: StorageNodeKeyInput!) {
-          handleUploadedFile(input: $input) {
-            ...${StorageNodeFieldsName}
-          }
-        }
-        ${StorageNodeFields}
-      `,
-    }
-
-    it('疎通確認 - アプリケーションノード', async () => {
-      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
-      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
-      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(input)).thenResolve(fileA)
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { input },
-        },
-        { headers: AppAdminUserHeader() }
-      )
-
-      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponseStorageNode(fileA))
-    })
-
-    it('疎通確認 - ユーザーノード', async () => {
-      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
-      const fileA = h.newFileNode(`${userRootPath}/d1/d11/fileA.txt`)
-      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
-      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(input)).thenResolve(fileA)
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { input },
-        },
-        { headers: StorageUserHeader() }
-      )
-
-      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponseStorageNode(fileA))
-    })
-
-    it('サインインしていない場合', async () => {
-      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
-      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
-
-      const response = await requestGQL(app, {
-        ...gql,
-        variables: { input },
-      })
-
-      expect(getGQLErrorStatus(response)).toBe(401)
-    })
-
-    it('アクセス権限がない場合 - アプリケーションノード', async () => {
-      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
-      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { input },
-        },
-        { headers: StorageUserHeader() }
-      )
-
-      expect(getGQLErrorStatus(response)).toBe(403)
-    })
-
-    it('アクセス権限がない場合 - ユーザーノード', async () => {
-      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
-      const fileA = h.newFileNode(`${userRootPath}/d1/d11/fileA.txt`)
-      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
-      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
-      td.when(handleUploadedFile(input)).thenResolve(fileA)
-
-      const response = await requestGQL(
-        app,
-        {
-          ...gql,
-          variables: { input },
-        },
-        { headers: GeneralUserHeader() }
-      )
-
-      expect(getGQLErrorStatus(response)).toBe(403)
-    })
-  })
-
   describe('createStorageDir', () => {
     const gql = {
       query: `
@@ -1858,6 +1762,183 @@ describe('Lv1 Storage Resolver', () => {
       )
 
       expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('handleUploadedFile', () => {
+    const gql = {
+      query: `
+        mutation HandleUploadedFile($input: StorageNodeKeyInput!) {
+          handleUploadedFile(input: $input) {
+            ...${StorageNodeFieldsName}
+          }
+        }
+        ${StorageNodeFields}
+      `,
+    }
+
+    it('疎通確認 - アプリケーションノード', async () => {
+      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
+      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input },
+        },
+        { headers: AppAdminUserHeader() }
+      )
+
+      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponseStorageNode(fileA))
+    })
+
+    it('疎通確認 - ユーザーノード', async () => {
+      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
+      const fileA = h.newFileNode(`${userRootPath}/d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
+      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponseStorageNode(fileA))
+    })
+
+    it('サインインしていない場合', async () => {
+      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { input },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+
+    it('アクセス権限がない場合 - アプリケーションノード', async () => {
+      const fileA = h.newFileNode(`d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+
+    it('アクセス権限がない場合 - ユーザーノード', async () => {
+      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
+      const fileA = h.newFileNode(`${userRootPath}/d1/d11/fileA.txt`)
+      const input: StorageNodeKeyInput = { id: fileA.id, path: fileA.path }
+      const handleUploadedFile = td.replace(storageService, 'handleUploadedFile')
+      td.when(handleUploadedFile(input)).thenResolve(fileA)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input },
+        },
+        { headers: GeneralUserHeader() }
+      )
+
+      expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('setFileAccessAuthClaims', () => {
+    const gql = {
+      query: `
+        mutation SetFileAccessAuthClaims($input: StorageNodeKeyInput!) {
+          setFileAccessAuthClaims(input: $input)
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
+      const d1 = h.newDirNode(`${userRootPath}/d1`)
+      const input: StorageNodeKeyInput = pickProps(d1, ['id', 'path'])
+
+      const setFileAccessAuthClaims = td.replace(storageService, 'setFileAccessAuthClaims')
+      td.when(setFileAccessAuthClaims(td.matchers.contains({ uid: StorageUserToken().uid }), td.matchers.contains({ path: input.path }))).thenResolve(
+        `xxx`
+      )
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.setFileAccessAuthClaims).toBe('xxx')
+    })
+
+    it('サインインしていない場合', async () => {
+      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
+      const d1 = h.newDirNode(`${userRootPath}/d1`)
+      const input: StorageNodeKeyInput = pickProps(d1, ['id', 'path'])
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { input },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('removeFileAccessAuthClaims', () => {
+    const gql = {
+      query: `
+        mutation RemoveFileAccessAuthClaims {
+          removeFileAccessAuthClaims
+        }
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const removeFileAccessAuthClaims = td.replace(storageService, 'removeFileAccessAuthClaims')
+      td.when(removeFileAccessAuthClaims(td.matchers.contains({ uid: StorageUserToken().uid }))).thenResolve(`xxx`)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.removeFileAccessAuthClaims).toBe('xxx')
+    })
+
+    it('サインインしていない場合', async () => {
+      const userRootPath = StorageService.toUserRootPath(StorageUserToken())
+
+      const response = await requestGQL(app, {
+        ...gql,
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 

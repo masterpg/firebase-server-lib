@@ -115,26 +115,25 @@ function CartItems(): CartItem[] {
 //
 //========================================================================
 
-beforeAll(async () => {
-  const testingModule = await Test.createTestingModule({
-    imports: [DevUtilsServiceModule],
-  }).compile()
-
-  const devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
-  await devUtilsService.setTestFirebaseUsers(GeneralUser())
-})
-
 describe('ExampleShop', () => {
   let devUtilsService: DevUtilsServiceDI.type
   let storeService: StoreServiceDI.type
   let shopService: ExampleShopServiceDI.type
+
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+    await devUtilsService.setTestFirebaseUsers(GeneralUser())
+  })
 
   beforeEach(async () => {
     const testingModule = await Test.createTestingModule({
       imports: [ExampleShopServiceModule, DevUtilsServiceModule],
     }).compile()
 
-    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     storeService = testingModule.get<StoreServiceDI.type>(StoreServiceDI.symbol)
     shopService = testingModule.get<ExampleShopServiceDI.type>(ExampleShopServiceDI.symbol)
   })

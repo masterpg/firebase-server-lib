@@ -2,7 +2,7 @@ import * as _path from 'path'
 import * as admin from 'firebase-admin'
 import { CoreStorageNode, StorageNode, StorageNodeType, StorageService, StorageServiceDI } from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
-import { CoreStorageService } from '../../../../src/app/services/base/core-storage'
+import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
 
@@ -16,7 +16,7 @@ type CoreStorageTestService = CoreStorageService & {
   client: CoreStorageService['client']
   extractMetaData: CoreStorageService['extractMetaData']
   saveGCSMetadata: CoreStorageService['saveGCSMetadata']
-  m_validateAccessibleTargetToNodePaths: StorageServiceDI.type['m_validateAccessibleTargetToNodePaths']
+  m_validateBrowsableNodesTargetToNodePaths: StorageServiceDI.type['m_validateBrowsableNodesTargetToNodePaths']
 }
 
 type StorageTestService = StorageService &

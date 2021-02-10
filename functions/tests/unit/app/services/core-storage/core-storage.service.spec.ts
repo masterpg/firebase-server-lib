@@ -1,27 +1,26 @@
 import * as admin from 'firebase-admin'
 import * as td from 'testdouble'
-import { AppError, initApp } from '../../../../../../src/app/base'
+import { AppAdminUser, CoreStorageTestHelper, CoreStorageTestService, GeneralUser, StorageUser, StorageUserToken } from '../../../../helpers/app'
+import { AppError, initApp } from '../../../../../src/app/base'
 import {
   CoreStorageNode,
   CreateStorageNodeInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  IdToken,
   SignedUploadUrlInput,
+  StorageNode,
   StorageNodeShareSettings,
   StorageNodeType,
   StorageUploadDataItem,
-} from '../../../../../../src/app/services'
-import {
-  CoreStorageService,
-  CoreStorageServiceDI,
-  CoreStorageServiceModule,
-  StorageFileNode,
-} from '../../../../../../src/app/services/base/core-storage'
-import { CoreStorageTestHelper, CoreStorageTestService } from '../../../../../helpers/app'
+  UserClaims,
+} from '../../../../../src/app/services'
+import { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule, StorageFileNode } from '../../../../../src/app/services/core-storage'
 import { Test, TestingModule } from '@nestjs/testing'
-import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../../src/app/base/elastic'
+import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../src/app/base/elastic'
 import { removeBothEndsSlash, sleep } from 'web-base-lib'
-import { config } from '../../../../../../src/config'
+import { HttpException } from '@nestjs/common/exceptions/http.exception'
+import { config } from '../../../../../src/config'
 const performance = require('perf_hooks').performance
 
 jest.setTimeout(25000)
@@ -47,12 +46,19 @@ describe('CoreStorageService', () => {
   let devUtilsService!: DevUtilsServiceDI.type
   let h!: CoreStorageTestHelper
 
+  beforeAll(async () => {
+    const testingModule = await Test.createTestingModule({
+      imports: [DevUtilsServiceModule],
+    }).compile()
+
+    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
+  })
+
   beforeEach(async () => {
     testingModule = await Test.createTestingModule({
       imports: [DevUtilsServiceModule, CoreStorageServiceModule],
     }).compile()
 
-    devUtilsService = testingModule.get<DevUtilsServiceDI.type>(DevUtilsServiceDI.symbol)
     storageService = testingModule.get<CoreStorageTestService>(CoreStorageServiceDI.symbol)
     h = new CoreStorageTestHelper(storageService)
 
@@ -2527,6 +2533,669 @@ describe('CoreStorageService', () => {
     })
   })
 
+  describe('setFileAccessAuthClaims', () => {
+    beforeAll(async () => {
+      await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    function expectOtherUserClaims(actual: UserClaims, expected: UserClaims): void {
+      expect(actual.isAppAdmin).toBe(expected.isAppAdmin)
+      expect(actual.authStatus).toBe(expected.authStatus)
+    }
+
+    describe('ユーザーファイル', () => {
+      let fileNodeA: StorageNode
+
+      beforeEach(async () => {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+        const [uploadedNode] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${userRootPath}/d1/fileA.txt`,
+          },
+        ])
+        fileNodeA = uploadedNode
+      })
+
+      it('ファイルは公開設定 -> 誰でも読み込み可能', async () => {
+        // ファイルに公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは非公開設定 -> 自ユーザーは読み書き可能', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※自ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(StorageUserToken(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, StorageUserToken())
+      })
+
+      it('ファイルは非公開設定 -> 他ユーザーは読み書き不可', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(AppAdminUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, AppAdminUser())
+      })
+
+      it('ファイルは公開未設定 -> 自ユーザーは読み書き可能', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※自ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(StorageUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(StorageUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, StorageUser())
+      })
+
+      it('ファイルは公開未設定 -> 他ユーザーは読み書き不可', async () => {
+        // ファイルを公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルに読み書き権限設定 -> 他ユーザーも読み書き可能', async () => {
+        // ファイルに読み書き権限設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーも読み込み可能', async () => {
+        // 上位ディレクトリに公開設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーは読み込み不可', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // 上位ディレクトリに公開設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは公開未設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き可能', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // 上位ディレクトリに読み書き権限設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルに読み込み権限設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き不可', async () => {
+        // ファイルに読み書き権限設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        })
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        // 上位ディレクトリに設定した読み込み権限ではなく、
+        // ファイルに設定した読み込み権限が適用されるため、アクセス不可
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限未設定 -> 自ユーザーは読み書き可能', async () => {
+        // アップロード前のファイルノードを取得
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+        const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
+
+        // 上位ディレクトリは権限未設定
+        await storageService.setDirShareSettings(fileNodeA.dir, null)
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※自ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(StorageUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(StorageUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeX.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeX.id)
+        expectOtherUserClaims(userClaims, StorageUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限未設定 -> 他ユーザーは読み書き不可', async () => {
+        // アップロード前のファイルノードを取得
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+        const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
+
+        // 上位ディレクトリは権限未設定
+        await storageService.setDirShareSettings(fileNodeA.dir, null)
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーは読み書き可能', async () => {
+        // アップロード前のファイルノードを取得
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+        const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeX.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeX.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+    })
+
+    describe('アプリケーションファイル', () => {
+      let fileNodeA: StorageNode
+
+      beforeEach(async () => {
+        await storageService.createHierarchicalDirs([`d1`])
+        const [uploadedNode] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `d1/fileA.txt`,
+          },
+        ])
+        fileNodeA = uploadedNode
+      })
+
+      it('ファイルは公開設定 -> 誰でも読み込み可能', async () => {
+        // ファイルに公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは非公開設定 -> アプリケーション管理者は読み書き可能', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(AppAdminUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, AppAdminUser())
+      })
+
+      it('ファイルは非公開設定 -> アプリケーション管理者以外は読み書き不可', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは公開未設定 -> アプリケーション管理者は読み書き可能', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(AppAdminUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, AppAdminUser())
+      })
+
+      it('ファイルは公開未設定 -> アプリケーション管理者以外は読み書き不可', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルに読み書き権限設定 -> アプリケーション管理者以外も読み書き可能', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外も読み込み可能', async () => {
+        // ファイルに公開未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: null,
+        })
+
+        // 上位ディレクトリに公開設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外は読み書き不可', async () => {
+        // ファイルに非公開設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          isPublic: false,
+        })
+
+        // 上位ディレクトリに公開設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          isPublic: true,
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルは公開未設定 + 上位ディレクトリに読み書き権限設定 -> アプリケーション管理者以外も読み書き可能', async () => {
+        // ファイルに読み書き未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          readUIds: null,
+          writeUIds: null,
+        })
+
+        // 上位ディレクトリに読み書き設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeA.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeA.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('ファイルに読み書き権限設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き不可', async () => {
+        // ファイルに読み書き未設定
+        await storageService.setFileShareSettings(fileNodeA.path, {
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        })
+
+        // 上位ディレクトリに読み書き設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※アプリケーション管理者以外に権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeA)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限未設定 -> 自ユーザーは読み書き可能', async () => {
+        // アップロード前のファイルノードを取得
+        await storageService.createHierarchicalDirs([`d1`])
+        const fileNodeX = h.newFileNode(`d1/fileX.txt`)
+
+        // 上位ディレクトリは権限未設定
+        await storageService.setDirShareSettings(fileNodeA.dir, null)
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※自ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(AppAdminUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeX.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeX.id)
+        expectOtherUserClaims(userClaims, AppAdminUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限未設定 -> 他ユーザーは読み書き不可', async () => {
+        // アップロード前のファイルノードを取得
+        await storageService.createHierarchicalDirs([`d1`])
+        const fileNodeX = h.newFileNode(`d1/fileX.txt`)
+
+        // 上位ディレクトリは権限未設定
+        await storageService.setDirShareSettings(fileNodeA.dir, null)
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBeUndefined()
+        expect(userClaims.writableNodeId).toBeUndefined()
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+
+      it('アップロード前 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーは読み書き可能', async () => {
+        // アップロード前のファイルノードを取得
+        await storageService.createHierarchicalDirs([`d1`])
+        const fileNodeX = h.newFileNode(`d1/fileX.txt`)
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareSettings(fileNodeA.dir, {
+          readUIds: [GeneralUser().uid],
+          writeUIds: [GeneralUser().uid],
+        })
+
+        // ユーザークレイムにノードアクセス権限を設定
+        // ※他ユーザーに権限設定
+        const actual = await storageService.setFileAccessAuthClaims(GeneralUser(), fileNodeX)
+
+        expect(actual.length).toBeGreaterThan(0)
+
+        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userClaims = userRecord.customClaims as UserClaims
+        expect(userClaims.readableNodeId).toBe(fileNodeX.id)
+        expect(userClaims.writableNodeId).toBe(fileNodeX.id)
+        expectOtherUserClaims(userClaims, GeneralUser())
+      })
+    })
+  })
+
+  describe('removeFileAccessAuthClaims', () => {
+    beforeAll(async () => {
+      await devUtilsService.setTestFirebaseUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    function expectOtherUserClaims(actual: UserClaims, expected: UserClaims): void {
+      expect(actual.isAppAdmin).toBe(expected.isAppAdmin)
+      expect(actual.authStatus).toBe(expected.authStatus)
+    }
+
+    it('ベーシックケース', async () => {
+      const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
+      const fileData = 'test'
+      const [fileNode] = await storageService.uploadDataItems([
+        {
+          data: fileData,
+          contentType: 'text/plain; charset=utf-8',
+          path: `${userRootPath}/d1/fileA.txt`,
+          // ファイルに読み書き権限設定
+          share: {
+            readUIds: [StorageUserToken().uid],
+            writeUIds: [StorageUserToken().uid],
+          },
+        },
+      ])
+
+      // ユーザーにノードアクセス権限を設定
+      await storageService.setFileAccessAuthClaims(StorageUserToken(), fileNode)
+
+      // ユーザーのノードアクセス権限をクリア
+      const actual = await storageService.removeFileAccessAuthClaims(StorageUserToken())
+
+      expect(actual.length).toBeGreaterThan(0)
+
+      const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+      const userClaims = userRecord.customClaims as UserClaims
+      expect(userClaims.readableNodeId).toBeUndefined()
+      expect(userClaims.writableNodeId).toBeUndefined()
+      expectOtherUserClaims(userClaims, StorageUserToken())
+    })
+
+    it('2回実行した場合', async () => {
+      // ユーザーのノードアクセス権限をクリア - 1回目
+      await storageService.removeFileAccessAuthClaims(StorageUserToken())
+      // ユーザーのノードアクセス権限をクリア - 2回目
+      const actual = await storageService.removeFileAccessAuthClaims(StorageUserToken())
+
+      expect(actual.length).toBeGreaterThan(0)
+
+      const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+      const userClaims = userRecord.customClaims as UserClaims
+      expect(userClaims.readableNodeId).toBeUndefined()
+      expect(userClaims.writableNodeId).toBeUndefined()
+      expectOtherUserClaims(userClaims, StorageUserToken())
+    })
+  })
+
   describe('setDirShareSettings', () => {
     beforeEach(async () => {
       await storageService.createHierarchicalDirs([`d1`])
@@ -3123,7 +3792,97 @@ describe('CoreStorageService', () => {
     })
   })
 
-  describe('m_validateAccessibleTargetToNodePaths', () => {
+  describe('validateBrowsableNodes', () => {
+    const AppAdminUserToken = (AppAdminUser() as any) as IdToken
+    const StorageUserToken = (StorageUser() as any) as IdToken
+    const GeneralUserToken = (GeneralUser() as any) as IdToken
+
+    describe('アプリケーションノード', () => {
+      it('アプリケーションのディレクトリを閲覧', async () => {
+        const d1 = await storageService.createDir(`d1`)
+
+        // アプリケーション管理者で閲覧
+        await storageService.validateBrowsableNodes(AppAdminUserToken, { dirPath: d1.path })
+      })
+
+      it('アプリケーション管理者以外で閲覧', async () => {
+        const d1 = await storageService.createDir(`d1`)
+
+        let actual!: HttpException
+        try {
+          // アプリケーション管理者以外で閲覧
+          await storageService.validateBrowsableNodes(GeneralUserToken, { dirPath: d1.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+    })
+
+    describe('ユーザーノード', () => {
+      it('自ユーザーのディレクトリを閲覧', async () => {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken)
+        await storageService.createHierarchicalDirs([`${userRootPath}`])
+        const d1 = await storageService.createDir(`${userRootPath}/d1`)
+
+        // 自ユーザーで閲覧
+        await storageService.validateBrowsableNodes(StorageUserToken, { dirPath: d1.path })
+      })
+
+      it('自ユーザーのルートディレクトリを閲覧', async () => {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken)
+        await storageService.createHierarchicalDirs([`${userRootPath}`])
+        const d1 = await storageService.createDir(`${userRootPath}/d1`)
+
+        // 自ユーザーで閲覧
+        await storageService.validateBrowsableNodes(StorageUserToken, { dirPath: userRootPath })
+      })
+
+      it('アプリケーション管理者で閲覧', async () => {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken)
+        await storageService.createHierarchicalDirs([`${userRootPath}`])
+        const d1 = await storageService.createDir(`${userRootPath}/d1`)
+
+        // アプリケーション管理者で閲覧
+        await storageService.validateBrowsableNodes(AppAdminUserToken, { dirPath: d1.path })
+      })
+
+      it('自ユーザー以外で閲覧', async () => {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken)
+        await storageService.createHierarchicalDirs([`${userRootPath}`])
+        const d1 = await storageService.createDir(`${userRootPath}/d1`)
+
+        let actual!: HttpException
+        try {
+          // 自ユーザー以外で閲覧
+          await storageService.validateBrowsableNodes(GeneralUserToken, { dirPath: d1.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+    })
+
+    it('サインインしていない場合', async () => {
+      const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken)
+      await storageService.createHierarchicalDirs([`${userRootPath}`])
+      const d1 = await storageService.createDir(`${userRootPath}/d1`)
+
+      let actual!: HttpException
+      try {
+        // サインインしていない状況を再現するために、トークンにundefinedを渡す
+        await storageService.validateBrowsableNodes(undefined as any, { dirPath: d1.path })
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.getStatus()).toBe(401)
+    })
+  })
+
+  describe('m_validateBrowsableNodesTargetToNodePaths', () => {
     it('ベーシックケース', async () => {
       const [dir1, dir2] = await storageService.createHierarchicalDirs(['dir1', 'dir2'])
       const [file1, file2, file3, file4, file5, file6] = await storageService.uploadDataItems([
@@ -3135,7 +3894,7 @@ describe('CoreStorageService', () => {
         { data: 'test', contentType: 'text/plain; charset=utf-8', path: `file6.txt` },
       ])
 
-      const actual = await storageService.m_validateAccessibleTargetToNodePaths({
+      const actual = await storageService.m_validateBrowsableNodesTargetToNodePaths({
         nodePath: file1.path,
         nodePaths: [file2.path],
         filePath: file3.path,
@@ -3152,7 +3911,7 @@ describe('CoreStorageService', () => {
     })
 
     it('空文字またはundefinedを指定した場合', async () => {
-      const actual = await storageService.m_validateAccessibleTargetToNodePaths({
+      const actual = await storageService.m_validateBrowsableNodesTargetToNodePaths({
         nodePath: '',
         nodePaths: [''],
         filePath: undefined,
@@ -3167,7 +3926,7 @@ describe('CoreStorageService', () => {
     })
 
     it('何も指定しなかった場合', async () => {
-      const actual = await storageService.m_validateAccessibleTargetToNodePaths({})
+      const actual = await storageService.m_validateBrowsableNodesTargetToNodePaths({})
 
       expect(actual.length).toBe(0)
     })

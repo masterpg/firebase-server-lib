@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserInput } from './types'
+import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './types'
 import {
   BaseIndexDefinitions,
   ElasticSearchAPIResponse,
@@ -122,8 +122,11 @@ class UserService {
     }
 
     // 認証ステータスをトークンに設定
+    const userClaims: UserClaims | undefined = userRecord.customClaims
+    delete userClaims?.readableNodeId
+    delete userClaims?.writableNodeId
     await admin.auth().setCustomUserClaims(uid, {
-      ...userRecord.customClaims,
+      ...userClaims,
       authStatus: status,
     })
 
@@ -141,8 +144,7 @@ class UserService {
     try {
       userRecord = await admin.auth().getUser(uid)
     } catch (err) {
-      const detail = JSON.stringify({ uid })
-      throw new Error(`There is no user: ${detail}`)
+      throw new AppError(`There is no user.`, { uid })
     }
 
     let user = await this.getUser(userRecord.uid)
@@ -170,6 +172,7 @@ class UserService {
 
     // ユーザー情報の登録
     const now = dayjs()
+    const isAppAdmin = Boolean((userRecord.customClaims as UserClaims)?.isAppAdmin)
     await this.client.update({
       index: UserService.IndexAlias,
       id: userRecord.uid,
@@ -180,7 +183,7 @@ class UserService {
             email: userRecord.email!,
             userName: input.userName,
             fullName: input.fullName,
-            isAppAdmin: Boolean(userRecord.customClaims?.isAppAdmin),
+            isAppAdmin,
             photoURL: input.photoURL,
             version: user?.version ? user.version + 1 : 1,
             createdAt: user?.createdAt ?? now,
