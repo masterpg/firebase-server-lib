@@ -3612,7 +3612,8 @@ describe('CoreStorageService', () => {
       const fileDetailA_2 = await storageService.getStorageFile(fileA.path)
 
       // 1回目と2回目で内容が同じことを検証
-      expect(fileA_1).toEqual(fileA_2)
+      expect(fileA_2.updatedAt.isAfter(fileA_1.updatedAt)).toBeTruthy()
+      expect(fileA_2.version).toBe(fileA_1.version + 1)
     })
 
     it('ファイルパスへのバリデーション実行確認', async () => {

@@ -1343,7 +1343,7 @@ class CoreStorageService<
     }
 
     // データベースのファイルノード作成/更新
-    return await this.saveFileNode(nodePath, file, { idempotent: true })
+    return await this.saveFileNode(nodePath, file)
   }
 
   /**
