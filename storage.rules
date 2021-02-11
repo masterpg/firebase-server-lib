@@ -2,31 +2,54 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    /**
+     * ユーザーファイルのアップロードか否かを取得します。
+     */
+    function isUserFileUpload() {
+      return resource == null && request.resource.metadata.uid != null;
+    }
+
+    /**
+     * アプリケーションファイルのアップロードか否かを取得します。
+     * ※ユーザーファイル以外をアプリケーションファイルとみなす。
+     */
+    function isAppFileUpload() {
+      return resource == null && (request.resource.metadata == null || request.resource.metadata.uid == null);
+    }
+
+    /**
+     * アプリケーションファイルのアップロードか否かを取得します。
+     * ※ユーザーファイル以外をアプリケーションファイルとみなす。
+     */
+    function isAppFileAccess() {
+      return resource.metadata == null || resource.metadata.uid == null;
+    }
+
     // 一旦全てのアクセスを拒否
     match /{allPaths=**} {
       allow read, write: if false;
     }
-    // 自身のユーザーディレクトリへのアクセスを許可
-    match /users/{uid}/{allPaths=**} {
+
+    // ユーザーファイルのアクセス制御
+    match /{allPaths=**} {
+      // アップロード: ログインユーザーが自身の所有ファイルをアップロードしようとしている場合、許可
+      allow create: if isUserFileUpload() && request.resource.metadata.uid == request.auth.uid;
+      // 読み/書き: ログインユーザーが自身の所有ファイルの読み書きを行おうとしている場合、許可
+      allow read, write: if resource.metadata.uid == request.auth.uid;
+      // 読み込み: ファイルの公開フラグがオンの場合、許可
       allow read: if resource.metadata.isPublic == 'true';
-      allow read: if request.auth.uid == uid ||
-        request.auth.uid in resource.metadata.readUIds.split(',');
-      allow write: if request.auth.uid == uid ||
-        request.auth.uid in resource.metadata.writeUIds.split(',');
+      // 読み込み: ログインユーザーがファイルの読み込み可能ユーザーに当てはまる場合、許可
+      allow read: if request.auth.uid in resource.metadata.readUIds.split(',');
+      // 書き込み: ログインユーザーがファイルの書き込み可能ユーザーに当てはまる場合、許可
+      allow write: if request.auth.uid in resource.metadata.writeUIds.split(',');
     }
-    // アプリケーション管理者によるユーザーディレクトリ直下へのアクセスは許可
-    match /users/{node} {
-      allow read, write: if request.auth.token.isAppAdmin;
-    }
-    // アプリケーション管理者によるユーザーディレクトリ以外へのアクセスを許可①
-    // ※バケット直下にあるディレクトリの配下ノードが対象
-    match /{dir}/{descendants=**} {
-      allow read, write: if request.auth.token.isAppAdmin && dir != 'users';
-    }
-    // アプリケーション管理者によるユーザーディレクトリ以外へのアクセスを許可②
-    // ※バケット直下のノードが対象
-    match /{node} {
-      allow read, write: if request.auth.token.isAppAdmin;
+
+    // アプリケーションファイルのアクセス制御
+    match /{allPaths=**} {
+      // アップロード: アプリケーションファイルのアップロードはアプリケーション管理者のみ許可
+      allow create: if isAppFileUpload() && request.auth.token.isAppAdmin;
+      // 読み/書き: アプリケーションファイルの読み書きはアプリケーション管理者のみ許可
+      allow read, write: if isAppFileAccess() && request.auth.token.isAppAdmin;
     }
   }
 }
