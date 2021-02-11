@@ -32,7 +32,7 @@
 
 ##### IAM API を有効にする
 次のリンクの`[PROJECT_ID]`の部分を実際のプロジェクトIDに置き換えてリンク先を開きます。画面上部にある「APIを有効にする」ボタンをクリックして IAM を有効にしてください。  
-※`[PROJECT_ID]`の例: `my-example-app-1234`
+※`[PROJECT_ID]`の例: `my-app-1234`
 
 https://console.developers.google.com/apis/api/iam.googleapis.com/overview?project=[PROJECT_ID]
 
@@ -71,16 +71,32 @@ to propagate to our systems and retry.
 * `elasticHost`: Elasticsearch のリクエスト先ホストを設定。
 * `elasticToken`: Elasticsearch へリクエストするためのベーシック認証トークン。`USERNAME:PASSWORD`を Base64 でエンコードし、トークンとして設定。※ [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html#http-clients)
 
-### Elasticsearch の環境構築
-
-#### インデックスの初期化
-本アプリケーションで必要な「インデックス」を作成します。まず Elasticsearch のツールを使用するためにビルドを行います。
+### 開発ツールのビルド
+開発のサポートをする各種ツールを使用するために、次のコマンドを実行してください。
 
 ```
 $ yarn build
 ```
 
-これで Elasticsearch のツールが使用可能になったので、次のコマンドでインデックスを作成します。
+### Firebase の環境構築
+次のコマンドで Firebase の環境構築をおこなってください。
+
+#### 本番環境
+
+```
+$ yarn firebase:prod
+```
+
+#### 開発環境
+
+```
+$ yarn firebase:dev
+```
+
+### Elasticsearch の環境構築
+
+#### インデックスの初期化
+本アプリケーションで必要な Elasticsearch の「インデックス」を作成します。次のコマンドを実行してください。
 
 ```
 $ yarn elastic indices:init
@@ -91,5 +107,5 @@ $ yarn elastic indices:init
 ## 単体テスト
 
 ### FirestoreEx の単体テスト実行
-1. ターミナルで`yarn firestore`を実行。
+1. ターミナルで`yarn firestore:emulators`を実行。
 2. 上記とは別のターミナルを開き、`yarn test:firestore-ex`を実行。

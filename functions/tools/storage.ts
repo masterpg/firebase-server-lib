@@ -3,6 +3,7 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import * as program from 'commander'
+import { AppConfig, DevAppConfig, ProdAppConfig, TestAppConfig } from '../src/config'
 import {
   StorageNode,
   StorageNodeType,
@@ -17,6 +18,7 @@ import { createNestApplication, initFirebaseApp } from '../src/app/base'
 import { CoreStorageService } from '../src/app/services/core-storage'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
+import { Storage } from '@google-cloud/storage'
 import dayjs = require('dayjs')
 import utc = require('dayjs/plugin/utc')
 
@@ -45,6 +47,25 @@ interface Padding {
   imports: [StorageServiceModule, UserServiceModule],
 })
 class StorageToolModule {}
+
+function getConfig(env: 'prod' | 'dev' | 'test'): AppConfig {
+  let config: AppConfig
+  switch (env) {
+    case 'prod':
+      config = new ProdAppConfig()
+      break
+    case 'dev':
+      config = new DevAppConfig()
+      break
+    case 'test':
+      config = new TestAppConfig()
+      break
+  }
+  if (!config) {
+    throw new Error(`The specified environment is invalid: '${env}'`)
+  }
+  return config
+}
 
 function print(nodes: StorageNode[], format: OutputFormat, specifiedPath?: string) {
   if (nodes.length === 0) return
@@ -406,6 +427,39 @@ program
     }
 
     await storageService.createHierarchicalDirs(testDirPaths)
+  })
+
+program
+  .command('cors:set <env>')
+  .description('set up CORS on the bucket.', {
+    env: 'specify the environment (choices: "prod", "dev", "test")',
+  })
+  .action(async (env: 'prod' | 'dev' | 'test') => {
+    const config = getConfig(env)
+    const storage = new Storage()
+    await storage.bucket(config.storage.bucket).setCorsConfiguration([
+      {
+        maxAgeSeconds: 3600,
+        method: ['GET', 'HEAD', 'DELETE'],
+        origin: config.cors.whitelist,
+        responseHeader: ['Content-Type'],
+      },
+    ])
+  })
+
+program
+  .command('cors:get <env>')
+  .description('get the CORS on the bucket.', {
+    env: 'specify the environment (choices: "prod", "dev", "test")',
+  })
+  .action(async (env: 'prod' | 'dev' | 'test') => {
+    const config = getConfig(env)
+    const storage = new Storage()
+    const [metadata] = await storage.bucket(config.storage.bucket).getMetadata()
+
+    console.log(`\nBucket: ${config.storage.bucket}\n`)
+    console.log(JSON.stringify(metadata.cors, null, 2))
+    console.log('') // 改行
   })
 
 program.parseAsync(process.argv)

@@ -29,4 +29,4 @@ const config: AppConfig = (() => {
 //
 //========================================================================
 
-export { config }
+export { config, AppConfig, ProdAppConfig, DevAppConfig, TestAppConfig }
