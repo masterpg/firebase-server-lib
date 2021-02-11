@@ -2,54 +2,18 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    /**
-     * ユーザーファイルのアップロードか否かを取得します。
-     */
-    function isUserFileUpload() {
-      return resource == null && request.resource.metadata.uid != null;
-    }
-
-    /**
-     * アプリケーションファイルのアップロードか否かを取得します。
-     * ※ユーザーファイル以外をアプリケーションファイルとみなす。
-     */
-    function isAppFileUpload() {
-      return resource == null && (request.resource.metadata == null || request.resource.metadata.uid == null);
-    }
-
-    /**
-     * アプリケーションファイルのアップロードか否かを取得します。
-     * ※ユーザーファイル以外をアプリケーションファイルとみなす。
-     */
-    function isAppFileAccess() {
-      return resource.metadata == null || resource.metadata.uid == null;
-    }
-
     // 一旦全てのアクセスを拒否
     match /{allPaths=**} {
       allow read, write: if false;
     }
 
-    // ユーザーファイルのアクセス制御
     match /{allPaths=**} {
-      // アップロード: ログインユーザーが自身の所有ファイルをアップロードしようとしている場合、許可
-      allow create: if isUserFileUpload() && request.resource.metadata.uid == request.auth.uid;
-      // 読み/書き: ログインユーザーが自身の所有ファイルの読み書きを行おうとしている場合、許可
-      allow read, write: if resource.metadata.uid == request.auth.uid;
-      // 読み込み: ファイルの公開フラグがオンの場合、許可
-      allow read: if resource.metadata.isPublic == 'true';
-      // 読み込み: ログインユーザーがファイルの読み込み可能ユーザーに当てはまる場合、許可
-      allow read: if request.auth.uid in resource.metadata.readUIds.split(',');
-      // 書き込み: ログインユーザーがファイルの書き込み可能ユーザーに当てはまる場合、許可
-      allow write: if request.auth.uid in resource.metadata.writeUIds.split(',');
-    }
-
-    // アプリケーションファイルのアクセス制御
-    match /{allPaths=**} {
-      // アップロード: アプリケーションファイルのアップロードはアプリケーション管理者のみ許可
-      allow create: if isAppFileUpload() && request.auth.token.isAppAdmin;
-      // 読み/書き: アプリケーションファイルの読み書きはアプリケーション管理者のみ許可
-      allow read, write: if isAppFileAccess() && request.auth.token.isAppAdmin;
+      // アップロード: ログインユーザーに対象ファイルの書き込み権限が設定されている場合、許可
+      allow create: if request.auth.token.writableNodeId == request.resource.name;
+      // 読み込み: ログインユーザーに対象ファイルの読み込み権限が設定されている場合、許可
+      allow read: if request.auth.token.readableNodeId == resource.name;
+      // 読み込み: ログインユーザーに対象ファイルの書き込み権限が設定されている場合、許可
+      allow write: if request.auth.token.writableNodeId == resource.name;
     }
   }
 }
