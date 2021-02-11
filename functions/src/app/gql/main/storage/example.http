@@ -106,7 +106,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "CreateStorageDir",
-  "query": "mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) { createStorageDir(dirPath: $dirPath, input: $input) { id path } }",
+  "query": "mutation CreateStorageDir($dirPath: String!, $options: CreateStorageNodeOptions) { createStorageDir(dirPath: $dirPath, input: $input) { id path } }",
   "variables": {
     "dirPath": "test-files"
   }

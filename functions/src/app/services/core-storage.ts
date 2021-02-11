@@ -4,7 +4,7 @@ import { AppError, generateEntityId, validateUID } from '../base'
 import {
   AuthRoleType,
   CoreStorageNode,
-  CreateStorageNodeInput,
+  CreateStorageNodeOptions,
   IdToken,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
@@ -230,7 +230,7 @@ class CoreStorageService<
   async sgetNode(input: StorageNodeGetKeyInput): Promise<NODE> {
     const node = await this.getNode(input)
     if (!node) {
-      throw new AppError(`There is no node in the specified key: ${JSON.stringify(input)}`)
+      throw new AppError(`There is no node in the specified key.`, { key: input })
     }
     return node
   }
@@ -292,10 +292,10 @@ class CoreStorageService<
 
   /**
    * 指定されたファイルノードを取得します。
-   * @param key
+   * @param input
    */
-  async getFileNode(key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
-    const fileNode = await this.getNode(key)
+  async getFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
+    const fileNode = await this.getNode(input)
     if (!fileNode) return undefined
 
     const { file, exists } = await this.getStorageFile(fileNode.id)
@@ -307,12 +307,12 @@ class CoreStorageService<
   /**
    * 指定されたファイルノードを取得します。
    * 指定されたファイルノードが見つからなかった場合、例外がスローされます。
-   * @param key
+   * @param input
    */
-  async sgetFileNode(key: StorageNodeGetKeyInput): Promise<FILE_NODE> {
-    const node = await this.getFileNode(key)
+  async sgetFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE> {
+    const node = await this.getFileNode(input)
     if (!node) {
-      throw new AppError(`There is no node in the specified key: ${JSON.stringify(key)}`)
+      throw new AppError(`There is no node in the specified key.`, { key: input })
     }
     return node
   }
@@ -343,10 +343,10 @@ class CoreStorageService<
    *   + 'archives/photos/family.png'
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getDirDescendants(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getDescendants(dirPath, { ...input, includeSpecifiedDir: true })
+  async getDirDescendants(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
+    return this.m_getDescendants(dirPath, { ...pagination, includeSpecifiedDir: true })
   }
 
   /**
@@ -362,21 +362,21 @@ class CoreStorageService<
    *   + 'archives/photos/family.png'
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getDescendants(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getDescendants(dirPath, { ...input, includeSpecifiedDir: false })
+  async getDescendants(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
+    return this.m_getDescendants(dirPath, { ...pagination, includeSpecifiedDir: false })
   }
 
   private async m_getDescendants(
     dirPath?: string,
-    input?: StoragePaginationInput & { includeSpecifiedDir: boolean }
+    pagination?: StoragePaginationInput & { includeSpecifiedDir: boolean }
   ): Promise<StoragePaginationResult<NODE>> {
     dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = input?.maxChunk || CoreStorageService.MaxChunk
-    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+    const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
+    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
-    const pageToken = decodePageToken(input?.pageToken)
+    const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
       pageToken.pit = await openPointInTime(this.client, CoreStorageService.IndexAlias)
     }
@@ -430,7 +430,7 @@ class CoreStorageService<
     const nodes = this.responseToNodes(response)
 
     // 引数ディレクトリを含む検索の初回検索だった場合
-    if (includeSpecifiedDir && dirPath && !input?.pageToken) {
+    if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
       // 引数で指定されたパスのノードが存在しない場合
       if (!nodes.some(node => node.path === dirPath)) {
         // 検索結果なしで終了
@@ -468,14 +468,14 @@ class CoreStorageService<
    * 指定されたディレクトリ配下のノードの数を取得します。
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getDescendantCount(dirPath?: string, input?: StoragePaginationInput): Promise<number> {
+  async getDescendantCount(dirPath?: string, pagination?: StoragePaginationInput): Promise<number> {
     return this.m_getDescendantCount(dirPath, { includeSpecifiedDir: false })
   }
 
-  private async m_getDescendantCount(dirPath?: string, input?: { includeSpecifiedDir: boolean }): Promise<number> {
-    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+  private async m_getDescendantCount(dirPath?: string, pagination?: { includeSpecifiedDir: boolean }): Promise<number> {
+    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
     let query: any
     // 引数ディレクトリが指定された場合
@@ -524,10 +524,10 @@ class CoreStorageService<
    *   + 'archives/photos/children.png'
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getDirChildren(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getChildren(dirPath, { ...input, includeSpecifiedDir: true })
+  async getDirChildren(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
+    return this.m_getChildren(dirPath, { ...pagination, includeSpecifiedDir: true })
   }
 
   /**
@@ -541,20 +541,20 @@ class CoreStorageService<
    *   + 'archives/photos/children.png'
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getChildren(dirPath?: string, input?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getChildren(dirPath, { ...input, includeSpecifiedDir: false })
+  async getChildren(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
+    return this.m_getChildren(dirPath, { ...pagination, includeSpecifiedDir: false })
   }
 
   private async m_getChildren(
     dirPath?: string,
-    input?: StoragePaginationInput & { includeSpecifiedDir: boolean }
+    pagination?: StoragePaginationInput & { includeSpecifiedDir: boolean }
   ): Promise<StoragePaginationResult<NODE>> {
-    const maxChunk = input?.maxChunk || CoreStorageService.MaxChunk
-    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+    const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
+    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
-    const pageToken = decodePageToken(input?.pageToken)
+    const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
       pageToken.pit = await openPointInTime(this.client, CoreStorageService.IndexAlias)
     }
@@ -612,7 +612,7 @@ class CoreStorageService<
     const nodes = this.responseToNodes(response)
 
     // 引数ディレクトリを含む検索の初回検索だった場合
-    if (includeSpecifiedDir && dirPath && !input?.pageToken) {
+    if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
       // 引数で指定されたパスのノードが存在しない場合
       if (!nodes.some(node => node.path === dirPath)) {
         // 検索結果なしで終了
@@ -650,14 +650,14 @@ class CoreStorageService<
    * 指定されたディレクトリ直下のノードの数を取得します。
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async getChildCount(dirPath?: string, input?: StoragePaginationInput): Promise<number> {
+  async getChildCount(dirPath?: string, pagination?: StoragePaginationInput): Promise<number> {
     return this.m_getChildCount(dirPath, { includeSpecifiedDir: false })
   }
 
-  private async m_getChildCount(dirPath?: string, input?: { includeSpecifiedDir: boolean }): Promise<number> {
-    const includeSpecifiedDir = Boolean(input?.includeSpecifiedDir)
+  private async m_getChildCount(dirPath?: string, pagination?: { includeSpecifiedDir: boolean }): Promise<number> {
+    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
     let query: any
     // 引数ディレクトリが指定された場合
@@ -752,15 +752,15 @@ class CoreStorageService<
   /**
    * ディレクトリを作成します。
    * @param dirPath
-   * @param input
+   * @param options
    */
-  async createDir(dirPath: string, input?: CreateStorageNodeInput): Promise<NODE> {
+  async createDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(dirPath)
     dirPath = removeBothEndsSlash(dirPath)
 
     // 共有設定の入力値を検証
-    CoreStorageService.validateShareSettingInput(input)
+    CoreStorageService.validateShareSettingInput(options?.share)
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
@@ -790,7 +790,7 @@ class CoreStorageService<
           doc: {
             ...this.toDBStorageNode(dirNode),
             id,
-            share: this.toDBShareSettings(input),
+            share: this.toDBShareSettings(options?.share),
             version: 1,
             createdAt: now,
             updatedAt: now,
@@ -804,8 +804,8 @@ class CoreStorageService<
     }
     // 引数ディレクトリが既に存在する場合
     else {
-      if (input) {
-        return await this.setDirShareSettings(dirPath, input)
+      if (options?.share) {
+        return await this.setDirShareSettings(dirPath, options.share)
       } else {
         return (await this.getNode({ path: dirPath }))!
       }
@@ -875,15 +875,15 @@ class CoreStorageService<
    *   + 'home/photos/children.png'
    *
    * @param dirPath
-   * @param input
+   * @param pagination
    */
-  async removeDir(dirPath: string, input?: { maxChunk?: number }): Promise<void> {
+  async removeDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
     if (!dirPath) {
       throw new AppError(`The argument 'dirPath' is empty.`)
     }
 
     const bucket = admin.storage().bucket()
-    const size = input?.maxChunk ?? 1000
+    const size = pagination?.maxChunk ?? 1000
     let nodes: { id: string; path: string }[]
     const pageToken: ElasticPageToken = {
       pit: await openPointInTime(this.client, CoreStorageService.IndexAlias),
@@ -989,12 +989,12 @@ class CoreStorageService<
    *
    * @param fromDirPath
    * @param toDirPath
-   * @param input
+   * @param options
    */
-  async moveDir(fromDirPath: string, toDirPath: string, input?: { maxChunk?: number }): Promise<void> {
+  async moveDir(fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
-    const maxChunk = input?.maxChunk ?? 1000
+    const maxChunk = options?.maxChunk ?? 1000
 
     CoreStorageService.validateNodePath(toDirPath)
 
@@ -1191,9 +1191,9 @@ class CoreStorageService<
    *
    * @param dirPath
    * @param newName
-   * @param input
+   * @param options
    */
-  async renameDir(dirPath: string, newName: string, input?: { maxChunk?: number }): Promise<void> {
+  async renameDir(dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void> {
     dirPath = removeBothEndsSlash(dirPath)
 
     CoreStorageService.validateNodeName(newName)
@@ -1208,7 +1208,7 @@ class CoreStorageService<
       throw new AppError(`The specified directory name already exists: '${dirPath}' -> '${toDirPath}'`)
     }
 
-    return await this.moveDir(dirPath, toDirPath, input)
+    return await this.moveDir(dirPath, toDirPath, options)
   }
 
   /**

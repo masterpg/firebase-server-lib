@@ -183,7 +183,9 @@ interface SignedUploadUrlInput {
   contentType?: string
 }
 
-interface CreateStorageNodeInput extends StorageNodeShareSettingsInput {}
+interface CreateStorageNodeOptions {
+  share?: StorageNodeShareSettingsInput
+}
 
 interface CreateArticleTypeDirInput {
   dir: string
@@ -195,6 +197,11 @@ interface CreateArticleTypeDirInput {
 interface SaveArticleSrcMasterFileResult {
   master: StorageNode
   draft: StorageNode
+}
+
+interface GetArticleChildrenInput {
+  dirPath: string
+  types: StorageArticleDirType[]
 }
 
 //--------------------------------------------------
@@ -277,7 +284,8 @@ export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
   CoreStorageNode,
   CreateArticleTypeDirInput,
-  CreateStorageNodeInput,
+  CreateStorageNodeOptions,
+  GetArticleChildrenInput,
   SaveArticleSrcMasterFileResult,
   SignedUploadUrlInput,
   StorageArticleDirSettings,

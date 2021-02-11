@@ -4,11 +4,11 @@ import {
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleTypeDirInput,
-  CreateStorageNodeInput,
+  CreateStorageNodeOptions,
+  GetArticleChildrenInput,
   IdToken,
   SaveArticleSrcMasterFileResult,
   SignedUploadUrlInput,
-  StorageArticleDirType,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
@@ -86,40 +86,40 @@ class StorageResolver {
   async storageDirDescendants(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('input') input?: StoragePaginationInput
+    @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDirDescendants(dirPath, input)
+    return this.storageService.getDirDescendants(dirPath, pagination)
   }
 
   @Query()
   async storageDescendants(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('input') input?: StoragePaginationInput
+    @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDescendants(dirPath, input)
+    return this.storageService.getDescendants(dirPath, pagination)
   }
 
   @Query()
   async storageDirChildren(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('input') input?: StoragePaginationInput
+    @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDirChildren(dirPath, input)
+    return this.storageService.getDirChildren(dirPath, pagination)
   }
 
   @Query()
   async storageChildren(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath?: string,
-    @Args('input') input?: StoragePaginationInput
+    @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getChildren(dirPath, input)
+    return this.storageService.getChildren(dirPath, pagination)
   }
 
   @Query()
@@ -138,10 +138,10 @@ class StorageResolver {
   async createStorageDir(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath: string,
-    @Args('input') input?: CreateStorageNodeInput
+    @Args('options') options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.createDir(dirPath, input)
+    return this.storageService.createDir(dirPath, options)
   }
 
   @Mutation()
@@ -223,19 +223,23 @@ class StorageResolver {
   }
 
   @Mutation()
-  async createArticleTypeDir(@UserArg() user: IdToken, @Args('input') input: CreateArticleTypeDirInput): Promise<StorageNode> {
+  async createArticleTypeDir(
+    @UserArg() user: IdToken,
+    @Args('input') input: CreateArticleTypeDirInput,
+    @Args('options') options: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
     await this.storageService.validateBrowsableNodes(user, { dirPath: input.dir })
-    return this.storageService.createArticleTypeDir(input)
+    return this.storageService.createArticleTypeDir(input, options)
   }
 
   @Mutation()
   async createArticleGeneralDir(
     @UserArg() user: IdToken,
     @Args('dirPath') dirPath: string,
-    @Args('input') input?: CreateStorageNodeInput
+    @Args('options') options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
     await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.createArticleGeneralDir(dirPath, input)
+    return this.storageService.createArticleGeneralDir(dirPath, options)
   }
 
   @Mutation()
@@ -275,12 +279,11 @@ class StorageResolver {
   @Query()
   async articleChildren(
     @UserArg() user: IdToken,
-    @Args('dirPath') dirPath: string,
-    @Args('types') types: StorageArticleDirType[],
-    @Args('input') input?: StoragePaginationInput
+    @Args('input') input: GetArticleChildrenInput,
+    @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getArticleChildren(dirPath, types, input)
+    await this.storageService.validateBrowsableNodes(user, { dirPath: input.dirPath })
+    return this.storageService.getArticleChildren(input, pagination)
   }
 
   //----------------------------------------------------------------------

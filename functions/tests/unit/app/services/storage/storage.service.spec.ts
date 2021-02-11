@@ -760,6 +760,35 @@ describe('StorageService', () => {
         })
       })
     })
+
+    it('共有設定を指定した場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      // テスト対象実行
+      const input: CreateArticleTypeDirInput = {
+        dir: `${articleRootPath}`,
+        name: 'バンドル',
+        type: StorageArticleDirType.ListBundle,
+      }
+      const options = {
+        share: {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['jiro'],
+        },
+      }
+      const actual = await storageService.createArticleTypeDir(input, options)
+
+      expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
+      expect(actual.id === actual.name).toBeTruthy()
+      expect(actual.article?.dir?.name).toBe(input.name)
+      expect(actual.article?.dir?.type).toBe(input.type)
+      expect(actual.article?.dir?.sortOrder).toBe(1)
+      expect(actual.share).toEqual(options.share)
+      await h.existsNodes([actual])
+    })
   })
 
   describe('createArticleGeneralDir', () => {
@@ -819,6 +848,26 @@ describe('StorageService', () => {
       await h.existsNodes([actual])
     })
 
+    it('共有設定を指定した場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      // アセットディレクトリの作成
+      const assetsPath = `${articleRootPath}/${config.storage.article.assetsName}`
+      const share = {
+        isPublic: true,
+        readUIds: ['ichiro'],
+        writeUIds: ['jiro'],
+      }
+      const actual = await storageService.createArticleGeneralDir(assetsPath, { share })
+
+      expect(actual.path).toBe(assetsPath)
+      expect(actual.article).toBeUndefined()
+      expect(actual.share).toEqual(share)
+      await h.existsNodes([actual])
+    })
+
     it('既に存在するディレクトリを作成しようとした場合 - 共有設定なし', async () => {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -845,18 +894,15 @@ describe('StorageService', () => {
       const d1 = await storageService.createArticleGeneralDir(`${assets.path}/d1`)
 
       // 同じパスのディレクトリ作成を試みる
-      const actual = await storageService.createArticleGeneralDir(`${d1.path}`, {
+      const share = {
         isPublic: true,
         readUIds: ['ichiro'],
         writeUIds: ['jiro'],
-      })
+      }
+      const actual = await storageService.createArticleGeneralDir(`${d1.path}`, { share })
 
       expect(actual.path).toBe(`${d1.path}`)
-      expect(actual.share).toEqual<StorageNodeShareSettings>({
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['jiro'],
-      })
+      expect(actual.share).toEqual(share)
       expect(actual.version).toBe(d1.version + 1)
       await h.existsNodes([actual])
     })
@@ -1029,7 +1075,8 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.cause).toBe(`There is no node in the specified key: {"path":"${articleRootPath}/xxx"}`)
+      expect(actual.cause).toBe(`There is no node in the specified key.`)
+      expect(actual.data).toEqual({ key: { path: `${articleRootPath}/xxx` } })
     })
   })
 
@@ -1549,7 +1596,10 @@ describe('StorageService', () => {
     })
 
     it('ベーシックケース', async () => {
-      const actual = await storageService.getArticleChildren(`${programming.path}`, [StorageArticleDirType.Category, StorageArticleDirType.Article])
+      const actual = await storageService.getArticleChildren({
+        dirPath: `${programming.path}`,
+        types: [StorageArticleDirType.Category, StorageArticleDirType.Article],
+      })
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(4)
@@ -1562,39 +1612,48 @@ describe('StorageService', () => {
 
     it('対象ノードに存在しないノードを指定した場合', async () => {
       // パスに存在しないノードを指定
-      const actual = await storageService.getArticleChildren(`${programming.path}/cobol`, [StorageArticleDirType.Category])
+      const actual = await storageService.getArticleChildren({
+        dirPath: `${programming.path}/cobol`,
+        types: [StorageArticleDirType.Category],
+      })
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(0)
     })
 
     it('大量データの場合', async () => {
-      for (let i = 1; i <= 5; i++) {
-        await storageService.createArticleTypeDir({
-          dir: `${py.path}`,
-          name: `art${i.toString().padStart(2, '0')}`,
-          type: StorageArticleDirType.Article,
+      await Promise.all(
+        [...Array(10)].map(async (_, i) => {
+          await storageService.createArticleTypeDir({
+            dir: `${py.path}`,
+            name: `art${(i + 1).toString().padStart(2, '0')}`,
+            type: StorageArticleDirType.Article,
+            sortOrder: i + 1,
+          })
         })
-      }
+      )
 
       // 大量データを想定して検索を行う
       const actual: StorageNode[] = []
-      let fetched = await storageService.getArticleChildren(`${py.path}`, [StorageArticleDirType.Article], { maxChunk: 3 })
+      const input = { dirPath: `${py.path}`, types: [StorageArticleDirType.Article] }
+      let fetched = await storageService.getArticleChildren(input, { maxChunk: 3 })
       actual.push(...fetched.list)
       while (fetched.nextPageToken) {
-        fetched = await storageService.getArticleChildren(`${py.path}`, [StorageArticleDirType.Article], {
-          maxChunk: 2,
-          pageToken: fetched.nextPageToken,
-        })
+        fetched = await storageService.getArticleChildren(input, { maxChunk: 3, pageToken: fetched.nextPageToken })
         actual.push(...fetched.list)
       }
 
-      expect(actual.length).toBe(5)
-      expect(actual[0].article?.dir?.name).toBe(`art05`)
-      expect(actual[1].article?.dir?.name).toBe(`art04`)
-      expect(actual[2].article?.dir?.name).toBe(`art03`)
-      expect(actual[3].article?.dir?.name).toBe(`art02`)
-      expect(actual[4].article?.dir?.name).toBe(`art01`)
+      expect(actual.length).toBe(10)
+      expect(actual[0].article?.dir?.name).toBe(`art10`)
+      expect(actual[1].article?.dir?.name).toBe(`art09`)
+      expect(actual[2].article?.dir?.name).toBe(`art08`)
+      expect(actual[3].article?.dir?.name).toBe(`art07`)
+      expect(actual[4].article?.dir?.name).toBe(`art06`)
+      expect(actual[5].article?.dir?.name).toBe(`art05`)
+      expect(actual[6].article?.dir?.name).toBe(`art04`)
+      expect(actual[7].article?.dir?.name).toBe(`art03`)
+      expect(actual[8].article?.dir?.name).toBe(`art02`)
+      expect(actual[9].article?.dir?.name).toBe(`art01`)
       await h.existsNodes(actual)
     })
   })

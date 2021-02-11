@@ -137,10 +137,8 @@ input SignedUploadUrlInput {
   contentType: String
 }
 
-input CreateStorageNodeInput {
-  isPublic: Boolean
-  readUIds: [String!]
-  writeUIds: [String!]
+input CreateStorageNodeOptions {
+  share: StorageNodeShareSettingsInput
 }
 
 input CreateArticleTypeDirInput {
@@ -152,4 +150,9 @@ input CreateArticleTypeDirInput {
 type SaveArticleSrcMasterFileResult {
   master: StorageNode!
   draft: StorageNode!
+}
+
+input GetArticleChildrenInput {
+  dirPath: String!
+  types: [StorageArticleDirType!]!
 }

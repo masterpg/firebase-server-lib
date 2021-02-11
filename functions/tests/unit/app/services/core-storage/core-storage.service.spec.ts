@@ -4,7 +4,7 @@ import { AppAdminUser, CoreStorageTestHelper, CoreStorageTestService, GeneralUse
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
   CoreStorageNode,
-  CreateStorageNodeInput,
+  CreateStorageNodeOptions,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   IdToken,
@@ -158,7 +158,8 @@ describe('CoreStorageService', () => {
         } catch (err) {
           actual = err
         }
-        expect(actual.cause).toBe(`There is no node in the specified key: {"id":"12345678901234567890"}`)
+        expect(actual.cause).toBe(`There is no node in the specified key.`)
+        expect(actual.data).toEqual({ key: { id: '12345678901234567890' } })
       })
     })
 
@@ -179,7 +180,8 @@ describe('CoreStorageService', () => {
         } catch (err) {
           actual = err
         }
-        expect(actual.cause).toBe(`There is no node in the specified key: {"path":"aaa/bbb/ccc"}`)
+        expect(actual.cause).toBe(`There is no node in the specified key.`)
+        expect(actual.data).toEqual({ key: { path: 'aaa/bbb/ccc' } })
       })
     })
   })
@@ -1502,9 +1504,11 @@ describe('CoreStorageService', () => {
 
     it('共有設定を指定した場合', async () => {
       const actual = await storageService.createDir(`d1`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['jiro'],
+        share: {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['jiro'],
+        },
       })
 
       expect(actual.path).toBe(`d1`)
@@ -1532,9 +1536,11 @@ describe('CoreStorageService', () => {
 
       // 同じパスのディレクトリ作成を試みる
       const actual = await storageService.createDir(`d1`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['jiro'],
+        share: {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['jiro'],
+        },
       })
 
       expect(actual.path).toBe(`d1`)
@@ -1578,12 +1584,12 @@ describe('CoreStorageService', () => {
     it('共有設定入力へのバリデーション実行確認', async () => {
       const validateShareSettingInput = td.replace(CoreStorageService, 'validateShareSettingInput')
 
-      const input: CreateStorageNodeInput = { isPublic: null }
-      await storageService.createDir(`d1`, input)
+      const options: CreateStorageNodeOptions = { share: { isPublic: null } }
+      await storageService.createDir(`d1`, options)
 
       const explanation = td.explain(validateShareSettingInput)
       expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(input)
+      expect(explanation.calls[0].args[0]).toBe(options.share)
     })
   })
 

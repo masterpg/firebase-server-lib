@@ -529,8 +529,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDirDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) {
-          storageDirDescendants(dirPath: $dirPath, input: $input) {
+        query GetStorageDirDescendants($dirPath: String, $pagination: StoragePaginationInput) {
+          storageDirDescendants(dirPath: $dirPath, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
             }
@@ -555,7 +555,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -579,7 +579,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -594,7 +594,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -635,8 +635,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) {
-          storageDescendants(dirPath: $dirPath, input: $input) {
+        query GetStorageDescendants($dirPath: String, $pagination: StoragePaginationInput) {
+          storageDescendants(dirPath: $dirPath, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
             }
@@ -661,7 +661,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -685,7 +685,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -700,7 +700,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -713,7 +713,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -729,7 +729,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: GeneralUserHeader() }
       )
@@ -741,8 +741,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDirChildren', () => {
     const gql = {
       query: `
-        query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) {
-          storageDirChildren(dirPath: $dirPath, input: $input) {
+        query GetStorageDirChildren($dirPath: String, $pagination: StoragePaginationInput) {
+          storageDirChildren(dirPath: $dirPath, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
             }
@@ -767,7 +767,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -791,7 +791,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -806,7 +806,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -819,7 +819,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -835,7 +835,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: GeneralUserHeader() }
       )
@@ -847,8 +847,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) {
-          storageChildren(dirPath: $dirPath, input: $input) {
+        query GetStorageChildren($dirPath: String, $pagination: StoragePaginationInput) {
+          storageChildren(dirPath: $dirPath, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
             }
@@ -873,7 +873,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -897,7 +897,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -912,7 +912,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+        variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -925,7 +925,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: StorageUserHeader() }
       )
@@ -941,7 +941,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: { maxChunk: 3 } },
+          variables: { dirPath: d1.path, pagination: { maxChunk: 3 } },
         },
         { headers: GeneralUserHeader() }
       )
@@ -1141,8 +1141,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('createStorageDir', () => {
     const gql = {
       query: `
-        mutation CreateStorageDir($dirPath: String!, $input: CreateStorageNodeInput) {
-          createStorageDir(dirPath: $dirPath, input: $input) {
+        mutation CreateStorageDir($dirPath: String!, $options: CreateStorageNodeOptions) {
+          createStorageDir(dirPath: $dirPath, options: $options) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -1153,13 +1153,13 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認 - アプリケーションノード', async () => {
       const d1 = h.newDirNode(`d1`, { share: InitialShareSettings })
       const createDir = td.replace(storageService, 'createDir')
-      td.when(createDir(d1.path, InitialShareSettings)).thenResolve(d1)
+      td.when(createDir(d1.path, { share: InitialShareSettings })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: InitialShareSettings },
+          variables: { dirPath: d1.path, options: { share: InitialShareSettings } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -1171,13 +1171,13 @@ describe('Lv1 Storage Resolver', () => {
       const userRootPath = StorageService.toUserRootPath(StorageUserToken())
       const d1 = h.newDirNode(`${userRootPath}/d1`, { share: InitialShareSettings })
       const createDir = td.replace(storageService, 'createDir')
-      td.when(createDir(d1.path, InitialShareSettings)).thenResolve(d1)
+      td.when(createDir(d1.path, { share: InitialShareSettings })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: InitialShareSettings },
+          variables: { dirPath: d1.path, options: { share: InitialShareSettings } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -2062,8 +2062,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('createArticleTypeDir', () => {
     const gql = {
       query: `
-        mutation CreateArticleTypeDir($input: CreateArticleTypeDirInput!) {
-          createArticleTypeDir(input: $input) {
+        mutation CreateArticleTypeDir($input: CreateArticleTypeDirInput!, $options: CreateStorageNodeOptions) {
+          createArticleTypeDir(input: $input, options: $options) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -2089,13 +2089,13 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       const createArticleTypeDir = td.replace(storageService, 'createArticleTypeDir')
-      td.when(createArticleTypeDir(input)).thenResolve(bundle)
+      td.when(createArticleTypeDir(input, { share: InitialShareSettings })).thenResolve(bundle)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input },
+          variables: { input, options: { share: InitialShareSettings } },
         },
         { headers: StorageUserHeader() }
       )
@@ -2143,8 +2143,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('createArticleGeneralDir', () => {
     const gql = {
       query: `
-        mutation CreateArticleGeneralDir($dirPath: String!, $input: CreateStorageNodeInput) {
-          createArticleGeneralDir(dirPath: $dirPath, input: $input) {
+        mutation CreateArticleGeneralDir($dirPath: String!, $options: CreateStorageNodeOptions) {
+          createArticleGeneralDir(dirPath: $dirPath, options: $options) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -2158,13 +2158,13 @@ describe('Lv1 Storage Resolver', () => {
       const d1 = h.newDirNode(`${assetsPath}/d1`)
 
       const createArticleGeneralDir = td.replace(storageService, 'createArticleGeneralDir')
-      td.when(createArticleGeneralDir(d1.path, InitialShareSettings)).thenResolve(d1)
+      td.when(createArticleGeneralDir(d1.path, { share: InitialShareSettings })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: InitialShareSettings },
+          variables: { dirPath: d1.path, options: { share: InitialShareSettings } },
         },
         { headers: StorageUserHeader() }
       )
@@ -2593,8 +2593,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('articleChildren', () => {
     const gql = {
       query: `
-        query GetArticleChildren($dirPath: String!, $types: [StorageArticleDirType!]!, $input: StoragePaginationInput) {
-          articleChildren(dirPath: $dirPath, types: $types, input: $input) {
+        query GetArticleChildren($input: GetArticleChildrenInput!, $pagination: StoragePaginationInput) {
+          articleChildren(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
             }
@@ -2618,8 +2618,11 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
+
+      const input = { dirPath: bundlePath, types: [StorageArticleDirType.Article] }
+      const pagination = { maxChunk: 3 }
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
-      td.when(getArticleChildren(bundlePath, [StorageArticleDirType.Article], { maxChunk: 3 })).thenResolve({
+      td.when(getArticleChildren(input, pagination)).thenResolve({
         list: [art1],
         nextPageToken: 'abcdefg',
       } as StoragePaginationResult)
@@ -2628,11 +2631,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: {
-            dirPath: bundlePath,
-            types: [StorageArticleDirType.Article],
-            input: { maxChunk: 3 },
-          },
+          variables: { input, pagination },
         },
         { headers: StorageUserHeader() }
       )
@@ -2647,7 +2646,10 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: bundlePath, types: [StorageArticleDirType.Article], input: { maxChunk: 3 } },
+        variables: {
+          input: { dirPath: bundlePath, types: [StorageArticleDirType.Article] },
+          pagination: { maxChunk: 3 },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -2661,7 +2663,10 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: bundlePath, types: [StorageArticleDirType.Article], input: { maxChunk: 3 } },
+          variables: {
+            input: { dirPath: bundlePath, types: [StorageArticleDirType.Article] },
+            pagination: { maxChunk: 3 },
+          },
         },
         { headers: GeneralUserHeader() }
       )

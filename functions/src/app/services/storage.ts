@@ -2,7 +2,8 @@ import * as _path from 'path'
 import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import {
   CreateArticleTypeDirInput,
-  CreateStorageNodeInput,
+  CreateStorageNodeOptions,
+  GetArticleChildrenInput,
   SaveArticleSrcMasterFileResult,
   StorageArticleDirSettings,
   StorageArticleDirType,
@@ -18,7 +19,7 @@ import {
 } from './types'
 import { ElasticSearchResponse, ElasticTimestamp } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
-import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
+import { RequiredAre, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { AppError } from '../base'
 import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
@@ -124,8 +125,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   /**
    * 記事系ディレクトリを作成します。
    * @param input
+   * @param options
    */
-  async createArticleTypeDir(input: CreateArticleTypeDirInput): Promise<StorageNode> {
+  async createArticleTypeDir(input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode> {
     // 作成するノードのソート順を取得
     let sortOrder: number
     if (typeof input.sortOrder === 'number') {
@@ -142,13 +144,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     switch (input.type) {
       case StorageArticleDirType.ListBundle:
       case StorageArticleDirType.TreeBundle:
-        result = await this.m_createArticleBundle({ ...input, sortOrder })
+        result = await this.m_createArticleBundle({ ...input, sortOrder }, options)
         break
       case StorageArticleDirType.Category:
-        result = await this.m_createArticleCategory({ ...input, sortOrder })
+        result = await this.m_createArticleCategory({ ...input, sortOrder }, options)
         break
       case StorageArticleDirType.Article:
-        result = await this.m_createArticle({ ...input, sortOrder })
+        result = await this.m_createArticle({ ...input, sortOrder }, options)
         break
     }
     return result
@@ -157,9 +159,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   /**
    * 記事ルート配下に一般ディレクトリを作成します。
    * @param dirPath
-   * @param input
+   * @param options
    */
-  async createArticleGeneralDir(dirPath: string, input?: CreateStorageNodeInput): Promise<StorageNode> {
+  async createArticleGeneralDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode> {
     StorageService.validateNodePath(dirPath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
@@ -216,6 +218,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           doc: {
             ...this.toDBStorageNode(dirNode),
             id,
+            share: this.toDBShareSettings(options?.share),
             version: 1,
             createdAt: now,
             updatedAt: now,
@@ -229,8 +232,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
     // 引数ディレクトリが既に存在する場合
     else {
-      if (input) {
-        return await this.setDirShareSettings(dirPath, input)
+      if (options?.share) {
+        return await this.setDirShareSettings(dirPath, options.share)
       } else {
         return await this.sgetNode({ path: dirPath })
       }
@@ -415,18 +418,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    *   + 'users/taro/articles/programing/js'
    *   + 'users/taro/articles/programing/ts'
    *
-   * @param dirPath
-   * @param types
-   * @param options
+   * @param input
+   * @param pagination
    */
-  async getArticleChildren(
-    dirPath: string,
-    types: StorageArticleDirType[],
-    options?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    dirPath = removeBothEndsSlash(dirPath)
-    const maxChunk = options?.maxChunk || StorageService.MaxChunk
-    const from = options?.pageToken ? Number(options.pageToken) : 0
+  async getArticleChildren(input: GetArticleChildrenInput, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<StorageNode>> {
+    const dirPath = removeBothEndsSlash(input.dirPath)
+    const maxChunk = pagination?.maxChunk || StorageService.MaxChunk
+    const from = pagination?.pageToken ? Number(pagination.pageToken) : 0
 
     const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: CoreStorageService.IndexAlias,
@@ -435,7 +433,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         query: {
           bool: {
-            must: [{ term: { dir: dirPath } }, { terms: { 'article.dir.type': types } }],
+            must: [{ term: { dir: dirPath } }, { terms: { 'article.dir.type': input.types } }],
           },
         },
         sort: [{ 'article.dir.sortOrder': 'desc' }],
@@ -459,7 +457,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //  Overridden
   //--------------------------------------------------
 
-  async createDir(dirPath: string, input?: CreateStorageNodeInput): Promise<StorageNode> {
+  async createDir(dirPath: string, input?: CreateStorageNodeOptions): Promise<StorageNode> {
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     if (StorageService.isArticleRootUnder(dirPath)) {
@@ -653,8 +651,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   /**
    * バンドルを作成します。
    * @param input
+   * @param options
    */
-  private async m_createArticleBundle(input: CreateArticleTypeDirInput & { sortOrder: number }): Promise<StorageNode> {
+  private async m_createArticleBundle(
+    input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>,
+    options?: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
     StorageService.validateNodePath(input.dir)
     StorageService.validateArticleDirName(input.name)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -671,18 +673,18 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // バンドルを作成
     const dirPath = _path.join(input.dir, StorageService.generateNodeId())
-    return this.m_createArticleTypeDir(dirPath, {
-      name: input.name,
-      type: input.type,
-      sortOrder: input.sortOrder,
-    })
+    return this.m_createArticleTypeDir(dirPath, input, options)
   }
 
   /**
    * カテゴリディレクトリを作成します。
    * @param input
+   * @param options
    */
-  private async m_createArticleCategory(input: CreateArticleTypeDirInput & { sortOrder: number }): Promise<StorageNode> {
+  private async m_createArticleCategory(
+    input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>,
+    options?: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
     StorageService.validateNodePath(input.dir)
     StorageService.validateArticleDirName(input.name)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -703,9 +705,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // カテゴリを作成
     const dirPath = _path.join(input.dir, StorageService.generateNodeId())
     return this.m_createArticleTypeDir(dirPath, {
-      name: input.name,
+      ...input,
       type: StorageArticleDirType.Category,
-      sortOrder: input.sortOrder,
     })
   }
 
@@ -713,8 +714,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事ディレクトリを作成します。
    * ※記事ディレクトリには記事に必要なファイルが格納されることになります。
    * @param input
+   * @param options
    */
-  private async m_createArticle(input: CreateArticleTypeDirInput & { sortOrder: number }): Promise<StorageNode> {
+  private async m_createArticle(
+    input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>,
+    options?: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
     StorageService.validateArticleDirName(input.name)
     const dirPath = _path.join(input.dir, StorageService.generateNodeId())
     const parentPath = removeBothEndsSlash(input.dir)
@@ -754,9 +759,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 記事ディレクトリを作成
     const result = await this.m_createArticleTypeDir(hierarchicalDirNodes, {
-      name: input.name,
+      ...input,
       type: StorageArticleDirType.Article,
-      sortOrder: input.sortOrder,
     })
 
     // 記事ディレクトリに記事ソースと下書きファイルを配置
@@ -799,6 +803,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事ルート配下にディレクトリを作成します。
    * @param dirPath
    * @param input
+   * @param options
    */
   private async m_createArticleTypeDir(
     dirPath: string,
@@ -806,13 +811,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       name: string
       type: StorageArticleDirType
       sortOrder: number
-    }
+    },
+    options?: CreateStorageNodeOptions
   ): Promise<StorageNode>
 
   /**
    * 記事ルート配下に記事系ディレクトリを作成します。
    * @param hierarchicalDirNodes
    * @param input
+   * @param options
    */
   private async m_createArticleTypeDir(
     hierarchicalDirNodes: (StorageNode & { exists: boolean })[],
@@ -820,7 +827,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       name: string
       type: StorageArticleDirType
       sortOrder: number
-    }
+    },
+    options?: CreateStorageNodeOptions
   ): Promise<StorageNode>
 
   private async m_createArticleTypeDir(
@@ -829,7 +837,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       name: string
       type: StorageArticleDirType
       sortOrder: number
-    }
+    },
+    options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
     // 作成するディレクトリのパスと、その階層構造を形成するのに必要なノードを取得
     let dirPath: string
@@ -879,6 +888,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         doc: {
           ...this.toDBStorageNode(dirNode),
           id,
+          share: this.toDBShareSettings(options?.share),
           version: 1,
           createdAt: now,
           updatedAt: now,
