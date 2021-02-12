@@ -2,6 +2,7 @@ import * as _path from 'path'
 import * as admin from 'firebase-admin'
 import { CoreStorageNode, StorageNode, StorageNodeType, StorageService, StorageServiceDI } from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
+import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
@@ -47,7 +48,7 @@ class CoreStorageTestHelper {
     // Elasticsearchのノードを削除
     const client = newElasticClient()
     await client.deleteByQuery({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: {
         query: {
           match_all: {},
@@ -140,7 +141,7 @@ class CoreStorageTestHelper {
 
         // 移動後ノードが複数存在しないことを検証
         const toNodeCountResponse = await client.count({
-          index: CoreStorageService.IndexAlias,
+          index: CoreStorageSchema.IndexAlias,
           body: {
             query: {
               term: { path: toNode.path },

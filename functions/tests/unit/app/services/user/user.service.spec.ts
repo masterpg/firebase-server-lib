@@ -9,6 +9,7 @@ import {
   TestUserInput,
   User,
   UserClaims,
+  UserSchema,
   UserService,
   UserServiceDI,
   UserServiceModule,
@@ -97,7 +98,7 @@ type UserTestService = UserService
 async function removeAllDBUsers(): Promise<void> {
   const client = newElasticClient()
   await client.deleteByQuery({
-    index: UserService.IndexAlias,
+    index: UserSchema.IndexAlias,
     body: {
       query: {
         match_all: {},

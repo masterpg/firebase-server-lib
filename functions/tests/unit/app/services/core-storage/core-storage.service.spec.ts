@@ -4,6 +4,7 @@ import { AppAdminUser, CoreStorageTestHelper, CoreStorageTestService, GeneralUse
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
   CoreStorageNode,
+  CoreStorageSchema,
   CreateStorageNodeOptions,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -1421,7 +1422,7 @@ describe('CoreStorageService', () => {
       const d11 = await storageService.sgetNode({ path: `d1/d11` })
       const client = newElasticClient()
       await client.delete({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         id: d11.id,
         refresh: true,
       })
@@ -3546,7 +3547,7 @@ describe('CoreStorageService', () => {
       // テストのためデータベースからファイルノードを削除しておく
       const client = newElasticClient()
       await client.delete({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         id: fileA.id,
         refresh: true,
       })
@@ -3602,7 +3603,7 @@ describe('CoreStorageService', () => {
       // テストのためデータベースからファイルノードを削除しておく
       const client = newElasticClient()
       await client.delete({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         id: fileA.id,
         refresh: true,
       })
@@ -3968,7 +3969,7 @@ describe('大量データのテスト', () => {
   async function getFileCount(dirPath: string): Promise<number> {
     const client = newElasticClient()
     const response = await client.count({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: {
         query: {
           bool: {

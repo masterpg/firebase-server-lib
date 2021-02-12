@@ -16,15 +16,13 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
   UserIdClaims,
-} from './types'
+} from './base/types'
 import { AuthServiceDI, AuthServiceModule } from './base/auth'
 import {
-  BaseIndexDefinitions,
   ElasticMSearchAPIResponse,
   ElasticPageToken,
   ElasticSearchAPIResponse,
   ElasticSearchResponse,
-  ElasticTimestampEntity,
   closePointInTime,
   decodePageToken,
   encodePageToken,
@@ -36,15 +34,15 @@ import {
   toEntityTimestamp,
   validateBulkResponse,
 } from '../base/elastic'
-import { Entities, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
+import { CoreStorageSchema } from './base/schema'
 import { ServiceHelper } from './base/helper'
 import { config } from '../../config'
 import dayjs = require('dayjs')
-
-const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
+import DBStorageNode = CoreStorageSchema.DBStorageNode
 
 //========================================================================
 //
@@ -66,73 +64,6 @@ interface StorageUploadDataItem {
   path: string
   contentType: string
   share?: StorageNodeShareSettingsInput
-}
-
-interface DBStorageNode extends ElasticTimestampEntity<CoreStorageNode> {}
-
-const IndexDefinition = {
-  settings: {
-    analysis: {
-      analyzer: {
-        kuromoji_analyzer,
-        kuromoji_html_analyzer,
-      },
-    },
-  },
-  mappings: {
-    properties: {
-      ...TimestampEntityProps,
-      nodeType: {
-        type: 'keyword',
-      },
-      name: {
-        type: 'keyword',
-        fields: {
-          text: {
-            type: 'text',
-            analyzer: 'kuromoji_analyzer',
-          },
-        },
-      },
-      dir: {
-        type: 'keyword',
-        fields: {
-          text: {
-            type: 'text',
-            analyzer: 'kuromoji_analyzer',
-          },
-        },
-      },
-      path: {
-        type: 'keyword',
-        fields: {
-          text: {
-            type: 'text',
-            analyzer: 'kuromoji_analyzer',
-          },
-        },
-      },
-      contentType: {
-        type: 'keyword',
-      },
-      size: {
-        type: 'float',
-      },
-      share: {
-        properties: {
-          isPublic: {
-            type: 'boolean',
-          },
-          readUIds: {
-            type: 'keyword',
-          },
-          writeUIds: {
-            type: 'keyword',
-          },
-        },
-      },
-    },
-  },
 }
 
 interface ValidateBrowsableTarget {
@@ -206,7 +137,7 @@ class CoreStorageService<
     const path = removeBothEndsSlash(input.path)
 
     const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: {
         query: {
           bool: {
@@ -247,7 +178,7 @@ class CoreStorageService<
     const nodes: NODE[] = []
     for (const chunk of splitArrayChunk(ids, size)) {
       const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         size,
         body: {
           query: { terms: { id: chunk } },
@@ -259,7 +190,7 @@ class CoreStorageService<
     }
     for (const chunk of splitArrayChunk(paths, size)) {
       const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         size,
         body: {
           query: { terms: { path: chunk } },
@@ -378,7 +309,7 @@ class CoreStorageService<
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
-      pageToken.pit = await openPointInTime(this.client, CoreStorageService.IndexAlias)
+      pageToken.pit = await openPointInTime(this.client, CoreStorageSchema.IndexAlias)
     }
 
     let query: any
@@ -505,7 +436,7 @@ class CoreStorageService<
 
     // データベースからカウントを取得
     const response = await this.client.count({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: { query },
     })
 
@@ -556,7 +487,7 @@ class CoreStorageService<
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
-      pageToken.pit = await openPointInTime(this.client, CoreStorageService.IndexAlias)
+      pageToken.pit = await openPointInTime(this.client, CoreStorageSchema.IndexAlias)
     }
 
     let query: any
@@ -691,7 +622,7 @@ class CoreStorageService<
 
     // データベースからカウントを取得
     const response = await this.client.count({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: { query },
     })
 
@@ -784,7 +715,7 @@ class CoreStorageService<
       const id = CoreStorageService.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         id,
         body: {
           doc: {
@@ -843,7 +774,7 @@ class CoreStorageService<
 
       const id = CoreStorageService.generateNodeId()
       const now = dayjs().toISOString()
-      body.push({ index: { _index: CoreStorageService.IndexAlias, _id: id } })
+      body.push({ index: { _index: CoreStorageSchema.IndexAlias, _id: id } })
       body.push({
         ...this.toDBStorageNode(dirNode),
         id,
@@ -886,7 +817,7 @@ class CoreStorageService<
     const size = pagination?.maxChunk ?? 1000
     let nodes: { id: string; path: string }[]
     const pageToken: ElasticPageToken = {
-      pit: await openPointInTime(this.client, CoreStorageService.IndexAlias),
+      pit: await openPointInTime(this.client, CoreStorageSchema.IndexAlias),
     }
 
     do {
@@ -933,7 +864,7 @@ class CoreStorageService<
 
     // データベースから引数ディレクトリと配下ノードを全て削除
     await this.client.deleteByQuery({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       body: {
         query: {
           bool: {
@@ -961,7 +892,7 @@ class CoreStorageService<
     await fileNode.file.delete()
     // ストアからファイルを削除
     await this.client.delete({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
       refresh: true,
     })
@@ -1065,7 +996,7 @@ class CoreStorageService<
       // 移動先に同名のノードが存在する場合、そのノードを削除
       // ※データベースに対する処理
       await this.client.deleteByQuery({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         body: {
           query: {
             terms: { path: toNodes.map(toNode => toNode.path) },
@@ -1077,7 +1008,7 @@ class CoreStorageService<
       // 移動元ノードのパスを移動先のパスへ変更
       // ※データベースに対する処理
       await this.client.updateByQuery({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         body: {
           query: {
             terms: {
@@ -1149,7 +1080,7 @@ class CoreStorageService<
       // 移動先の同名ファイルは削除
       // ・データベースからファイルノードを削除
       await this.client.delete({
-        index: CoreStorageService.IndexAlias,
+        index: CoreStorageSchema.IndexAlias,
         id: existingToFileNode.id,
         refresh: true,
       })
@@ -1162,7 +1093,7 @@ class CoreStorageService<
     // データベースの移動元ファイルノードのパスを移動先のパスへ変更
     const version = fileNode.version + 1
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
@@ -1262,7 +1193,7 @@ class CoreStorageService<
 
     const share: StorageNodeShareSettings = this.toDBShareSettings(input, dirNode.share)
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
@@ -1294,7 +1225,7 @@ class CoreStorageService<
 
     const share: StorageNodeShareSettings = this.toDBShareSettings(input, fileNode.share)
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
@@ -1749,7 +1680,7 @@ class CoreStorageService<
     const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
     const now = dayjs().toISOString()
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
         doc: {
@@ -1814,7 +1745,7 @@ class CoreStorageService<
     const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
     const now = dayjs().toISOString()
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
         doc: {
@@ -2053,29 +1984,10 @@ class CoreStorageService<
   }
 
   /**
-   * 各環境ごとのElasticsearchのインデックス名です。
-   */
-  static readonly IndexAliases = {
-    prod: `${Entities.StorageNodes.Name}`,
-    dev: `${Entities.StorageNodes.Name}`,
-    test: `${Entities.StorageNodes.Name}-test`,
-  }
-
-  /**
-   * Elasticsearchのインデックス名です。
-   */
-  static readonly IndexAlias = CoreStorageService.IndexAliases[config.env.mode]
-
-  /**
-   * Elasticsearchのインデックス定義です。
-   */
-  static readonly IndexDefinition = IndexDefinition
-
-  /**
    * ノードIDを生成します。
    */
   static generateNodeId(): string {
-    return generateEntityId(this.IndexAlias)
+    return generateEntityId(CoreStorageSchema.IndexAlias)
   }
 
   /**
@@ -2275,4 +2187,4 @@ class CoreStorageServiceModule {}
 //----------------------------------------------------------------------
 
 export { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule }
-export { StorageFileNode, StorageUploadDataItem, DBStorageNode }
+export { StorageFileNode, StorageUploadDataItem }

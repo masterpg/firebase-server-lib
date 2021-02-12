@@ -1,7 +1,6 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './types'
+import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base/types'
 import {
-  BaseIndexDefinitions,
   ElasticSearchAPIResponse,
   ElasticSearchResponse,
   ElasticTimestampEntity,
@@ -10,13 +9,11 @@ import {
   toEntityTimestamp,
 } from '../base/elastic'
 import { AppError } from '../base'
-import { Entities } from 'web-base-lib'
 import { Module } from '@nestjs/common'
-import { config } from '../../config'
 import dayjs = require('dayjs')
 import UserRecord = admin.auth.UserRecord
-
-const { kuromoji_analyzer, TimestampEntityProps } = BaseIndexDefinitions
+import { UserSchema } from './base/schema'
+import DBUser = UserSchema.DBUser
 
 //========================================================================
 //
@@ -24,52 +21,11 @@ const { kuromoji_analyzer, TimestampEntityProps } = BaseIndexDefinitions
 //
 //========================================================================
 
-interface DBUser extends ElasticTimestampEntity<User> {}
-
 enum AuthProviderType {
   Google = 'google.com',
   Facebook = 'facebook.com',
   Password = 'password',
   Anonymous = 'anonymous',
-}
-
-const IndexDefinition = {
-  settings: {
-    analysis: {
-      analyzer: {
-        kuromoji_analyzer,
-      },
-    },
-  },
-  mappings: {
-    properties: {
-      ...TimestampEntityProps,
-      email: {
-        type: 'keyword',
-      },
-      userName: {
-        type: 'keyword',
-      },
-      userNameLower: {
-        type: 'keyword',
-      },
-      fullName: {
-        type: 'keyword',
-        fields: {
-          text: {
-            type: 'text',
-            analyzer: 'kuromoji_analyzer',
-          },
-        },
-      },
-      isAppAdmin: {
-        type: 'boolean',
-      },
-      photoURL: {
-        type: 'keyword',
-      },
-    },
-  },
 }
 
 //========================================================================
@@ -151,7 +107,7 @@ class UserService {
 
     // 同じ名前のユーザー名がないことを検証
     const countResponse = await this.client.count({
-      index: UserService.IndexAlias,
+      index: UserSchema.IndexAlias,
       body: {
         query: {
           bool: {
@@ -174,7 +130,7 @@ class UserService {
     const now = dayjs()
     const isAppAdmin = Boolean((userRecord.customClaims as UserClaims)?.isAppAdmin)
     await this.client.update({
-      index: UserService.IndexAlias,
+      index: UserSchema.IndexAlias,
       id: userRecord.uid,
       body: {
         doc: {
@@ -201,7 +157,7 @@ class UserService {
 
   async getUser(uid: string): Promise<User | undefined> {
     const response = await this.client.search<ElasticSearchResponse<DBUser>>({
-      index: UserService.IndexAlias,
+      index: UserSchema.IndexAlias,
       body: {
         query: {
           term: { id: uid },
@@ -236,7 +192,7 @@ class UserService {
 
     // データベースのユーザー情報を削除
     await this.client.deleteByQuery({
-      index: UserService.IndexAlias,
+      index: UserSchema.IndexAlias,
       body: {
         query: {
           term: { id: uid },
@@ -307,25 +263,6 @@ class UserService {
   //  Static
   //
   //----------------------------------------------------------------------
-
-  /**
-   * 各環境ごとのElasticsearchのインデックス名です。
-   */
-  static readonly IndexAliases = {
-    prod: `${Entities.Users.Name}`,
-    dev: `${Entities.Users.Name}`,
-    test: `${Entities.Users.Name}-test`,
-  }
-
-  /**
-   * Elasticsearchのインデックス名です。
-   */
-  static readonly IndexAlias = UserService.IndexAliases[config.env.mode]
-
-  /**
-   * Elasticsearchのインデックス定義です。
-   */
-  static readonly IndexDefinition = IndexDefinition
 
   /**
    * ユーザー名の検証を行います。

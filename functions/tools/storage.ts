@@ -7,6 +7,7 @@ import { AppConfig, DevAppConfig, ProdAppConfig, TestAppConfig } from '../src/co
 import {
   StorageNode,
   StorageNodeType,
+  StorageSchema,
   StorageService,
   StorageServiceDI,
   StorageServiceModule,
@@ -15,7 +16,6 @@ import {
 } from '../src/app/services'
 import { arrayToDict, splitHierarchicalPaths } from 'web-base-lib'
 import { createNestApplication, initFirebaseApp } from '../src/app/base'
-import { CoreStorageService } from '../src/app/services/core-storage'
 import { Dayjs } from 'dayjs'
 import { Module } from '@nestjs/common'
 import { Storage } from '@google-cloud/storage'
@@ -119,7 +119,7 @@ function printInBulk(nodes: StorageNode[]): void {
   const objects = nodes.map(node => toNodeObject(node))
   let output = ''
   for (const object of objects) {
-    output += `{"index":{"_index":"${CoreStorageService.IndexAliases.test}","_id":"${object.id}"}}\n`
+    output += `{"index":{"_index":"${StorageSchema.IndexAliases.test}","_id":"${object.id}"}}\n`
     output += `${JSON.stringify(object)}\n`
   }
   console.log(output)

@@ -12,7 +12,7 @@ import {
   TestSignedUploadUrlInput,
   TestUserInput,
   User,
-} from './types'
+} from './base/types'
 import { UserServiceDI, UserServiceModule } from './user'
 import { newElasticClient, validateBulkResponse } from '../base/elastic'
 import { pickProps, removeBothEndsSlash, splitFilePath } from 'web-base-lib'

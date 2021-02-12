@@ -1,5 +1,5 @@
 import { AppError, WriteReadyObserver, validate } from '../../base'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../types'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../base/types'
 import { Inject, Module } from '@nestjs/common'
 import { StoreServiceDI, StoreServiceModule } from '../base/store'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'

@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin'
 import { AppError } from '../../base'
-import { UserClaims } from '../types'
+import { UserClaims } from './types'
 import { auth } from 'firebase-admin/lib/auth'
 import { pickProps } from 'web-base-lib'
 import UserRecord = auth.UserRecord

@@ -1,6 +1,6 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
-import { StorageService, UserService } from '../../src/app/services'
+import { StorageSchema, UserSchema } from '../../src/app/services'
 import { newElasticClient } from '../../src/app/base/elastic'
 import { program } from 'commander'
 
@@ -13,12 +13,12 @@ inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'
 //========================================================================
 
 const Indices = {
-  ...Object.values(UserService.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
-    result[alias] = UserService.IndexDefinition
+  ...Object.values(UserSchema.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
+    result[alias] = UserSchema.IndexDefinition
     return result
   }, {}),
-  ...Object.values(StorageService.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
-    result[alias] = StorageService.IndexDefinition
+  ...Object.values(StorageSchema.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
+    result[alias] = StorageSchema.IndexDefinition
     return result
   }, {}),
 }
@@ -51,7 +51,7 @@ async function init(): Promise<void> {
 
   const client = newElasticClient()
 
-  const aliases = [...Object.values(UserService.IndexAliases), ...Object.values(StorageService.IndexAliases)]
+  const aliases = [...Object.values(UserSchema.IndexAliases), ...Object.values(UserSchema.IndexAliases)]
   for (const alias of aliases) {
     const res = await client.indices.existsAlias({ name: alias })
     const exists: boolean = res.body
@@ -300,7 +300,7 @@ program
 
 program
   .command('reindex:cancel')
-  .description(`Create an index with the latest index definition and reindex it here.`)
+  .description(`Cancels a running reindex.`)
   .action(async () => {
     await cancelReindex()
   })

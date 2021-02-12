@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { AuthRoleType, AuthStatus, IdToken } from '../types'
+import { AuthRoleType, AuthStatus, IdToken } from './types'
 import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { HTTPLoggingServiceDI } from './logging'

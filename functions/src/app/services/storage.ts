@@ -5,9 +5,7 @@ import {
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
   SaveArticleSrcMasterFileResult,
-  StorageArticleDirSettings,
   StorageArticleDirType,
-  StorageArticleFileSettings,
   StorageArticleFileType,
   StorageArticleSettings,
   StorageNode,
@@ -16,16 +14,17 @@ import {
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
-} from './types'
-import { ElasticSearchResponse, ElasticTimestamp } from '../base/elastic'
+} from './base/types'
 import { Inject, Module } from '@nestjs/common'
 import { RequiredAre, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
 import { AppError } from '../base'
 import { CoreStorageService } from './core-storage'
+import { ElasticSearchResponse } from '../base/elastic'
 import { File } from '@google-cloud/storage'
+import { StorageSchema } from './base/schema'
 import { config } from '../../config'
-import { merge } from 'lodash'
 import dayjs = require('dayjs')
+import DBStorageNode = StorageSchema.DBStorageNode
 
 //========================================================================
 //
@@ -37,59 +36,11 @@ interface StorageFileNode extends StorageNode {
   file: File
 }
 
-interface DBStorageNode extends Omit<StorageNode, 'article' | 'createdAt' | 'updatedAt'>, ElasticTimestamp {
-  article?: {
-    dir?: StorageArticleDirSettings
-    file?: StorageArticleFileSettings
-  }
-}
-
 interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
   item: NODE
   parent?: TreeStorageNode<NODE>
   children: TreeStorageNode<NODE>[]
 }
-
-const IndexDefinition = merge(CoreStorageService.IndexDefinition, {
-  mappings: {
-    properties: {
-      article: {
-        properties: {
-          dir: {
-            properties: {
-              name: {
-                type: 'keyword',
-                fields: {
-                  text: {
-                    type: 'text',
-                    analyzer: 'kuromoji_analyzer',
-                  },
-                },
-              },
-              type: {
-                type: 'keyword',
-              },
-              sortOrder: {
-                type: 'long',
-              },
-            },
-          },
-          file: {
-            properties: {
-              type: {
-                type: 'keyword',
-              },
-            },
-          },
-          textContent: {
-            type: 'text',
-            analyzer: 'kuromoji_analyzer',
-          },
-        },
-      },
-    },
-  },
-})
 
 //========================================================================
 //
@@ -212,7 +163,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       const id = StorageService.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
-        index: CoreStorageService.IndexAlias,
+        index: StorageSchema.IndexAlias,
         id,
         body: {
           doc: {
@@ -260,7 +211,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     this.m_validateArticleRootUnder(dirPath)
 
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
@@ -322,7 +273,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 引数ノードリストの親が持つ子ノードの数と引数ノードリストが一致するか検証
     const countResponse = await this.client.count({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       body: {
         query: {
           bool: {
@@ -350,7 +301,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }, {} as { [nodePath: string]: number })
 
     await this.client.updateByQuery({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       body: {
         query: { term: { dir: parentNode.path } },
         script: {
@@ -380,7 +331,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 全文検索用のテキストコンテンツを設定
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       id: masterNode.id,
       body: {
         doc: {
@@ -427,7 +378,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const from = pagination?.pageToken ? Number(pagination.pageToken) : 0
 
     const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       size: maxChunk,
       from,
       body: {
@@ -563,7 +514,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (fromArticleDirType === StorageArticleDirType.Category || fromArticleDirType === StorageArticleDirType.Article) {
       const sortOrder = await this.m_getNewArticleSortOrder({ path: toDirPath })
       await this.client.update({
-        index: CoreStorageService.IndexAlias,
+        index: StorageSchema.IndexAlias,
         id: fromDirNode.id,
         body: {
           doc: {
@@ -784,7 +735,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       [masterFileItem, draftFileItem].map(async item => {
         const fileNode = await this.saveGCSFileAndFileNode(item.path, '', { contentType: 'text/markdown' })
         await this.client.update({
-          index: CoreStorageService.IndexAlias,
+          index: StorageSchema.IndexAlias,
           id: fileNode.id,
           body: {
             doc: {
@@ -882,7 +833,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const id = dirNode.name
     const now = dayjs().toISOString()
     await this.client.update({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       id,
       body: {
         doc: {
@@ -970,7 +921,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     const res = await this.client.search({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       size: 0,
       body: {
         query: {
@@ -1015,7 +966,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     const res = await this.client.search({
-      index: CoreStorageService.IndexAlias,
+      index: StorageSchema.IndexAlias,
       size: 0,
       body: {
         query: {
@@ -1037,8 +988,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //  Static
   //
   //----------------------------------------------------------------------
-
-  static readonly IndexDefinition = IndexDefinition
 
   /**
    * ユーザーの記事ルートのパスを取得します。
