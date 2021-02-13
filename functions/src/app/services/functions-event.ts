@@ -1,4 +1,4 @@
-import { FunctionsEventLoggingServiceDI, LoggingServiceModule } from './base/logging'
+import { FunctionsEventLoggingServiceDI, LoggingServiceModule } from './base-services/logging'
 import { Inject, Module } from '@nestjs/common'
 import { StorageServiceDI, StorageServiceModule } from './storage'
 import { UserServiceDI, UserServiceModule } from './user'

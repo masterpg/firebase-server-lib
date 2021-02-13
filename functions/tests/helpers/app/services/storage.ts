@@ -182,12 +182,12 @@ class CoreStorageTestHelper {
     const name = _path.basename(dirPath)
     const dir = removeStartDirChars(_path.dirname(dirPath))
     const result: CoreStorageNode = {
-      id: data.id || CoreStorageService.generateNodeId(),
+      id: data.id || CoreStorageSchema.generateNodeId(),
       nodeType: StorageNodeType.Dir,
       name,
       dir,
       path: dirPath,
-      level: CoreStorageService.getNodeLevel(dirPath),
+      level: CoreStorageSchema.getNodeLevel(dirPath),
       contentType: data.contentType || '',
       size: data.size || 0,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
@@ -204,12 +204,12 @@ class CoreStorageTestHelper {
     const name = _path.basename(filePath)
     const dir = removeStartDirChars(_path.dirname(filePath))
     const result: CoreStorageNode = {
-      id: data.id || CoreStorageService.generateNodeId(),
+      id: data.id || CoreStorageSchema.generateNodeId(),
       nodeType: StorageNodeType.File,
       name,
       dir,
       path: filePath,
-      level: CoreStorageService.getNodeLevel(filePath),
+      level: CoreStorageSchema.getNodeLevel(filePath),
       contentType: data.contentType || 'text/plain; charset=utf-8',
       size: data.size || 5,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },

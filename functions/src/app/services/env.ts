@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { IdToken } from './base/types'
+import { IdToken } from './base'
 import { Module } from '@nestjs/common'
 
 //========================================================================

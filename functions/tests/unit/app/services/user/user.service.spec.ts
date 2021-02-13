@@ -1,4 +1,3 @@
-import * as admin from 'firebase-admin'
 import * as td from 'testdouble'
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
@@ -9,6 +8,7 @@ import {
   TestUserInput,
   User,
   UserClaims,
+  UserHelper,
   UserSchema,
   UserService,
   UserServiceDI,
@@ -152,7 +152,7 @@ describe('UserService', () => {
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
 
-      const userRecord = await admin.auth().getUser(NotVerifiedUser.uid)
+      const userRecord = await UserHelper.getUserRecord(NotVerifiedUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
       expect(userClaims.authStatus).toBe(AuthStatus.WaitForEmailVerified)
     })
@@ -164,7 +164,7 @@ describe('UserService', () => {
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
 
-      const userRecord = await admin.auth().getUser(VerifiedUser.uid)
+      const userRecord = await UserHelper.getUserRecord(VerifiedUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
       expect(userClaims.authStatus).toBe(AuthStatus.WaitForEntry)
     })
@@ -184,7 +184,7 @@ describe('UserService', () => {
         isAppAdmin: AvailableUser.isAppAdmin,
       } as User)
 
-      const userRecord = await admin.auth().getUser(AvailableUser.uid)
+      const userRecord = await UserHelper.getUserRecord(AvailableUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
       expect(userClaims.authStatus).toBe(AuthStatus.Available)
     })
@@ -210,7 +210,7 @@ describe('UserService', () => {
 
       // 戻り値の検証
       expect(actual.status).toBe(SetUserInfoResultStatus.Success)
-      const fetched = (await userService.getUser(VerifiedUser.uid))!
+      const fetched = (await userService.getUser({ id: VerifiedUser.uid }))!
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
         id: VerifiedUser.uid,
@@ -241,7 +241,7 @@ describe('UserService', () => {
 
       // 戻り値の検証
       expect(actual.status).toBe(SetUserInfoResultStatus.Success)
-      const fetched = await userService.getUser(VerifiedUser.uid)
+      const fetched = await userService.getUser({ id: VerifiedUser.uid })
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
         userName: 'Jiro.Suzuki', // 変更されている
@@ -267,7 +267,7 @@ describe('UserService', () => {
 
       // 戻り値の検証
       expect(actual.status).toBe(SetUserInfoResultStatus.Success)
-      const fetched = await userService.getUser(VerifiedUser.uid)
+      const fetched = await userService.getUser({ id: VerifiedUser.uid })
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
         userName: VerifiedUser.userName, // 変更されていない
@@ -331,9 +331,9 @@ describe('UserService', () => {
       await userService.deleteUser(DeleteUser1.uid)
 
       // Firebaseのユーザーが削除されたことを検証
-      await expect(admin.auth().getUser(DeleteUser1.uid)).rejects.toThrow('There is no user record corresponding to the provided identifier.')
+      await expect(UserHelper.getUserRecord(DeleteUser1.uid)).rejects.toThrow(new AppError(`There is no user.`, { uid: DeleteUser1.uid }))
       // データベースのユーザー情報が削除されたことを検証
-      const dbUser = await userService.getUser(DeleteUser1.uid)
+      const dbUser = await userService.getUser({ id: DeleteUser1.uid })
       expect(dbUser).toBeUndefined()
     })
 

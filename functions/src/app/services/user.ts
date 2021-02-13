@@ -1,19 +1,11 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base/types'
-import {
-  ElasticSearchAPIResponse,
-  ElasticSearchResponse,
-  ElasticTimestampEntity,
-  newElasticClient,
-  toElasticTimestamp,
-  toEntityTimestamp,
-} from '../base/elastic'
+import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base'
+import { UserHelper, UserSchema } from './base'
 import { AppError } from '../base'
 import { Module } from '@nestjs/common'
 import dayjs = require('dayjs')
+import { newElasticClient } from '../base/elastic'
 import UserRecord = admin.auth.UserRecord
-import { UserSchema } from './base/schema'
-import DBUser = UserSchema.DBUser
 
 //========================================================================
 //
@@ -43,6 +35,8 @@ class UserService {
 
   protected readonly client = newElasticClient()
 
+  protected readonly userHelper = new UserHelper(this.client)
+
   //----------------------------------------------------------------------
   //
   //  Methods
@@ -53,14 +47,14 @@ class UserService {
     let status = AuthStatus.WaitForEntry
     let userRecord!: UserRecord
     try {
-      userRecord = await admin.auth().getUser(uid)
+      userRecord = await UserHelper.getUserRecord(uid)
     } catch (err) {
       const detail = JSON.stringify({ uid })
       throw new Error(`There is no user: ${detail}`)
     }
 
     // ユーザー情報の取得
-    const user = await this.getUser(uid)
+    const user = await this.getUser({ id: uid })
 
     // アカウントが持つ認証プロバイダの中にパスワード認証があるか調べる
     const passwordProviderExists = userRecord.providerData.some(provider => provider.providerId === AuthProviderType.Password)
@@ -98,12 +92,12 @@ class UserService {
 
     let userRecord!: UserRecord
     try {
-      userRecord = await admin.auth().getUser(uid)
+      userRecord = await UserHelper.getUserRecord(uid)
     } catch (err) {
       throw new AppError(`There is no user.`, { uid })
     }
 
-    let user = await this.getUser(userRecord.uid)
+    let user = await this.getUser({ id: userRecord.uid })
 
     // 同じ名前のユーザー名がないことを検証
     const countResponse = await this.client.count({
@@ -134,7 +128,7 @@ class UserService {
       id: userRecord.uid,
       body: {
         doc: {
-          ...this.toDBUser({
+          ...UserSchema.toDBEntity({
             id: userRecord.uid,
             email: userRecord.email!,
             userName: input.userName,
@@ -151,24 +145,15 @@ class UserService {
       refresh: true,
     })
 
-    user = (await this.getUser(userRecord.uid))!
+    user = (await this.getUser({ id: userRecord.uid }))!
     return { status: SetUserInfoResultStatus.Success, user }
   }
 
-  async getUser(uid: string): Promise<User | undefined> {
-    const response = await this.client.search<ElasticSearchResponse<DBUser>>({
-      index: UserSchema.IndexAlias,
-      body: {
-        query: {
-          term: { id: uid },
-        },
-      },
-    })
-    const users = this.responseToUsers(response)
-    if (!users.length) return
+  async getUser(key: { id?: string; userName?: string }): Promise<User | undefined> {
+    const user = await this.userHelper.getUser(key)
+    if (!user) return
 
-    const user = users[0]
-    const userRecord = await admin.auth().getUser(uid)
+    const userRecord = await UserHelper.getUserRecord(user.id)
 
     return {
       ...user,
@@ -180,7 +165,7 @@ class UserService {
     // Firebaseユーザーを取得
     let userRecord: UserRecord | undefined
     try {
-      userRecord = await admin.auth().getUser(uid)
+      userRecord = await UserHelper.getUserRecord(uid)
     } catch (e) {
       // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
     }
@@ -200,62 +185,6 @@ class UserService {
       },
       refresh: true,
     })
-  }
-
-  //----------------------------------------------------------------------
-  //
-  //  Internal methods
-  //
-  //----------------------------------------------------------------------
-
-  /**
-   * データベースのレスポンスデータからユーザーを取得します。
-   * @param apiResponse
-   */
-  protected responseToUsers(apiResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'emailVerified'>[] {
-    if (!apiResponse.body.hits.hits.length) return []
-    return apiResponse.body.hits.hits.map(hit => this.toUser(hit._source)!)
-  }
-
-  /**
-   * データベースから取得したユーザーをアプリケーションで扱われる形式へ変換します。
-   * @param dbUser
-   */
-  protected toUser(dbUser: DBUser): Omit<User, 'emailVerified'> {
-    return {
-      ...toEntityTimestamp({
-        id: dbUser.id,
-        email: dbUser.email,
-        userName: dbUser.userName,
-        fullName: dbUser.fullName,
-        isAppAdmin: dbUser.isAppAdmin,
-        photoURL: dbUser.photoURL,
-        version: dbUser.version,
-        createdAt: dbUser.createdAt,
-        updatedAt: dbUser.updatedAt,
-      }),
-    }
-  }
-
-  /**
-   * ユーザーをデータベースの格納形式に変換します。
-   * @param user
-   */
-  protected toDBUser(user: Omit<User, 'emailVerified'>): ElasticTimestampEntity<Omit<User, 'emailVerified'>> {
-    return {
-      ...toElasticTimestamp({
-        id: user.id,
-        email: user.email,
-        userName: user.userName,
-        userNameLower: user.userName.toLowerCase(),
-        fullName: user.fullName,
-        isAppAdmin: user.isAppAdmin,
-        photoURL: user.photoURL,
-        version: user.version,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      }),
-    }
   }
 
   //----------------------------------------------------------------------

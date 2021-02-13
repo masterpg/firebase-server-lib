@@ -1,5 +1,5 @@
 import * as _path from 'path'
-import { AuthServiceDI, AuthServiceModule } from './base/auth'
+import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
@@ -14,14 +14,22 @@ import {
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
-} from './base/types'
+} from './base'
+import { ElasticMSearchAPIResponse, ElasticMSearchResponse, ElasticSearchAPIResponse, ElasticSearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
-import { RequiredAre, arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitHierarchicalPaths } from 'web-base-lib'
+import {
+  RequiredAre,
+  arrayToDict,
+  pickProps,
+  removeBothEndsSlash,
+  removeStartDirChars,
+  splitHierarchicalPaths,
+  summarizeFamilyPaths,
+} from 'web-base-lib'
 import { AppError } from '../base'
 import { CoreStorageService } from './core-storage'
-import { ElasticSearchResponse } from '../base/elastic'
 import { File } from '@google-cloud/storage'
-import { StorageSchema } from './base/schema'
+import { StorageSchema } from './base'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import DBStorageNode = StorageSchema.DBStorageNode
@@ -160,7 +168,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 引数ディレクトリがまだ存在しない場合
     if (!dirNode.exists) {
       // ディレクトリを作成
-      const id = StorageService.generateNodeId()
+      const id = StorageSchema.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
         index: StorageSchema.IndexAlias,
@@ -392,7 +400,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       _source_includes: this.includeNodeFields,
       _source_excludes: this.excludeNodeFields,
     })
-    const nodes = this.responseToNodes(response)
+    const nodes = this.dbResponseToNodes(response)
 
     let nextPageToken: string | undefined
     if (nodes.length === 0 || nodes.length < maxChunk) {
@@ -530,30 +538,16 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
   }
 
-  protected dirPathToStorageNode(dirPath: string): StorageNode {
-    return {
-      ...super.dirPathToStorageNode(dirPath),
-    }
+  protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>): StorageNode[] {
+    return StorageSchema.dbResponseToAppEntities(dbResponse)
   }
 
   protected toStorageNode(dbNode: DBStorageNode): StorageNode {
-    const result: StorageNode = { ...super.toStorageNode(dbNode) }
-    if (dbNode.article?.dir) {
-      result.article = {
-        dir: {
-          name: dbNode.article.dir.name,
-          type: dbNode.article.dir.type,
-          sortOrder: dbNode.article.dir.sortOrder ?? null,
-        },
-      }
-    } else if (dbNode.article?.file) {
-      result.article = {
-        file: {
-          type: dbNode.article.file.type,
-        },
-      }
-    }
-    return result
+    return StorageSchema.toAppEntity(dbNode)
+  }
+
+  protected toDBStorageNode(node: StorageNode): DBStorageNode {
+    return StorageSchema.toDBEntity(node)
   }
 
   protected toBaseDBStorageNode(
@@ -575,16 +569,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           type: existing.article.file.type,
         },
       }
-    }
-    return result
-  }
-
-  protected toDBStorageNode(node: StorageNode): DBStorageNode {
-    const result = { ...super.toDBStorageNode(node) }
-    if (node.article?.dir) {
-      result.article = { dir: pickProps(node.article.dir, ['name', 'type', 'sortOrder']) }
-    } else if (node.article?.file) {
-      result.article = { file: pickProps(node.article.file, ['type']) }
     }
     return result
   }
@@ -623,7 +607,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     // バンドルを作成
-    const dirPath = _path.join(input.dir, StorageService.generateNodeId())
+    const dirPath = _path.join(input.dir, StorageSchema.generateNodeId())
     return this.m_createArticleTypeDir(dirPath, input, options)
   }
 
@@ -654,11 +638,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     // カテゴリを作成
-    const dirPath = _path.join(input.dir, StorageService.generateNodeId())
-    return this.m_createArticleTypeDir(dirPath, {
-      ...input,
-      type: StorageArticleDirType.Category,
-    })
+    const dirPath = _path.join(input.dir, StorageSchema.generateNodeId())
+    return this.m_createArticleTypeDir(
+      dirPath,
+      {
+        ...input,
+        type: StorageArticleDirType.Category,
+      },
+      options
+    )
   }
 
   /**
@@ -672,7 +660,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
     StorageService.validateArticleDirName(input.name)
-    const dirPath = _path.join(input.dir, StorageService.generateNodeId())
+    const dirPath = _path.join(input.dir, StorageSchema.generateNodeId())
     const parentPath = removeBothEndsSlash(input.dir)
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
@@ -709,10 +697,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     // 記事ディレクトリを作成
-    const result = await this.m_createArticleTypeDir(hierarchicalDirNodes, {
-      ...input,
-      type: StorageArticleDirType.Article,
-    })
+    const result = await this.m_createArticleTypeDir(
+      hierarchicalDirNodes,
+      {
+        ...input,
+        type: StorageArticleDirType.Article,
+      },
+      options
+    )
 
     // 記事ディレクトリに記事ソースと下書きファイルを配置
     const masterFileItem = {

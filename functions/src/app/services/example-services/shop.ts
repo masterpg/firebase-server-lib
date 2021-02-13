@@ -1,7 +1,7 @@
 import { AppError, WriteReadyObserver, validate } from '../../base'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../base/types'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../base'
 import { Inject, Module } from '@nestjs/common'
-import { StoreServiceDI, StoreServiceModule } from '../base/store'
+import { StoreServiceDI, StoreServiceModule } from '../base-services/store'
 import { findDuplicateItems, findDuplicateValues } from 'web-base-lib'
 import { Transaction } from '../../../firestore-ex'
 

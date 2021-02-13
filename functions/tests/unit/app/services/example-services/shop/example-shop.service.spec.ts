@@ -11,7 +11,7 @@ import {
 } from '../../../../../../src/app/services'
 import { GeneralUser } from '../../../../../helpers/app'
 import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
-import { StoreServiceDI } from '../../../../../../src/app/services/base/store'
+import { StoreServiceDI } from '../../../../../../src/app/services/base-services/store'
 import { Test } from '@nestjs/testing'
 import dayjs = require('dayjs')
 

@@ -27,6 +27,7 @@ import {
   StorageNodeKeyInput,
   StorageNodeShareSettings,
   StoragePaginationResult,
+  StorageSchema,
   StorageService,
   StorageServiceDI,
   UserIdClaims,
@@ -98,7 +99,7 @@ describe('Lv1 Storage Resolver', () => {
     describe('ベーシックケース', () => {
       it('疎通確認', async () => {
         const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-        const bundle = h.newDirNode(`${articleRootPath}/${StorageService.generateNodeId()}`, {
+        const bundle = h.newDirNode(`${articleRootPath}/${StorageSchema.generateNodeId()}`, {
           article: {
             dir: {
               name: `リストバンドル`,
@@ -107,7 +108,7 @@ describe('Lv1 Storage Resolver', () => {
             },
           },
         })
-        const art1 = h.newDirNode(`${bundle.path}/${StorageService.generateNodeId()}`, {
+        const art1 = h.newDirNode(`${bundle.path}/${StorageSchema.generateNodeId()}`, {
           article: {
             dir: {
               name: '記事1',
@@ -1954,7 +1955,7 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認 - アプリケーションノード', async () => {
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageService.generateNodeId(),
+          id: StorageSchema.generateNodeId(),
           path: `d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -1978,7 +1979,7 @@ describe('Lv1 Storage Resolver', () => {
       const userRootPath = StorageService.toUserRootPath(StorageUserToken())
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageService.generateNodeId(),
+          id: StorageSchema.generateNodeId(),
           path: `${userRootPath}/d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -2001,7 +2002,7 @@ describe('Lv1 Storage Resolver', () => {
     it('サインインしていない場合', async () => {
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageService.generateNodeId(),
+          id: StorageSchema.generateNodeId(),
           path: `d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -2018,7 +2019,7 @@ describe('Lv1 Storage Resolver', () => {
     it('アクセス権限がない場合 - アプリケーションノード', async () => {
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageService.generateNodeId(),
+          id: StorageSchema.generateNodeId(),
           path: `d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -2040,7 +2041,7 @@ describe('Lv1 Storage Resolver', () => {
       const userRootPath = StorageService.toUserRootPath(StorageUserToken())
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageService.generateNodeId(),
+          id: StorageSchema.generateNodeId(),
           path: `${userRootPath}/d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -2078,7 +2079,7 @@ describe('Lv1 Storage Resolver', () => {
         name: 'バンドル',
         type: StorageArticleDirType.ListBundle,
       }
-      const bundle = h.newDirNode(`${input.dir}/${StorageService.generateNodeId()}`, {
+      const bundle = h.newDirNode(`${input.dir}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: input.name,
@@ -2217,8 +2218,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2245,8 +2246,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2266,8 +2267,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2301,8 +2302,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2311,7 +2312,7 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
-      const cat2 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ2',
@@ -2342,8 +2343,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2352,7 +2353,7 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
-      const cat2 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ2',
@@ -2373,8 +2374,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('アクセス権限がない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ1',
@@ -2383,7 +2384,7 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
-      const cat2 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: 'カテゴリ2',
@@ -2426,8 +2427,8 @@ describe('Lv1 Storage Resolver', () => {
 
     function newArticleNodes(user: UserIdClaims) {
       const articleRootPath = StorageService.toArticleRootPath(user)
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: '記事1',
@@ -2518,8 +2519,8 @@ describe('Lv1 Storage Resolver', () => {
 
     function newArticleNodes(user: UserIdClaims) {
       const articleRootPath = StorageService.toArticleRootPath(user)
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: '記事1',
@@ -2608,8 +2609,8 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageService.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageService.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
         article: {
           dir: {
             name: '記事1',

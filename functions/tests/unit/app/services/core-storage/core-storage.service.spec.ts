@@ -15,6 +15,7 @@ import {
   StorageNodeType,
   StorageUploadDataItem,
   UserClaims,
+  UserHelper,
 } from '../../../../../src/app/services'
 import { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule, StorageFileNode } from '../../../../../src/app/services/core-storage'
 import { Test, TestingModule } from '@nestjs/testing'
@@ -2578,7 +2579,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2597,7 +2598,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+        const userRecord = await UserHelper.getUserRecord(StorageUserToken().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2616,7 +2617,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userRecord = await UserHelper.getUserRecord(AppAdminUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2635,7 +2636,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(StorageUser().uid)
+        const userRecord = await UserHelper.getUserRecord(StorageUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2654,7 +2655,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2674,7 +2675,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2693,7 +2694,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2717,7 +2718,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2742,7 +2743,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2768,7 +2769,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         // 上位ディレクトリに設定した読み込み権限ではなく、
         // ファイルに設定した読み込み権限が適用されるため、アクセス不可
@@ -2792,7 +2793,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(StorageUser().uid)
+        const userRecord = await UserHelper.getUserRecord(StorageUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeX.id)
         expect(userClaims.writableNodeId).toBe(fileNodeX.id)
@@ -2814,7 +2815,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2839,7 +2840,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeX.id)
         expect(userClaims.writableNodeId).toBe(fileNodeX.id)
@@ -2874,7 +2875,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2893,7 +2894,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userRecord = await UserHelper.getUserRecord(AppAdminUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2912,7 +2913,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2931,7 +2932,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userRecord = await UserHelper.getUserRecord(AppAdminUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2950,7 +2951,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -2970,7 +2971,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -2994,7 +2995,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -3018,7 +3019,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -3044,7 +3045,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeA.id)
         expect(userClaims.writableNodeId).toBe(fileNodeA.id)
@@ -3070,7 +3071,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -3091,7 +3092,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(AppAdminUser().uid)
+        const userRecord = await UserHelper.getUserRecord(AppAdminUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeX.id)
         expect(userClaims.writableNodeId).toBe(fileNodeX.id)
@@ -3112,7 +3113,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBeUndefined()
         expect(userClaims.writableNodeId).toBeUndefined()
@@ -3136,7 +3137,7 @@ describe('CoreStorageService', () => {
 
         expect(actual.length).toBeGreaterThan(0)
 
-        const userRecord = await admin.auth().getUser(GeneralUser().uid)
+        const userRecord = await UserHelper.getUserRecord(GeneralUser().uid)
         const userClaims = userRecord.customClaims as UserClaims
         expect(userClaims.readableNodeId).toBe(fileNodeX.id)
         expect(userClaims.writableNodeId).toBe(fileNodeX.id)
@@ -3180,7 +3181,7 @@ describe('CoreStorageService', () => {
 
       expect(actual.length).toBeGreaterThan(0)
 
-      const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+      const userRecord = await UserHelper.getUserRecord(StorageUserToken().uid)
       const userClaims = userRecord.customClaims as UserClaims
       expect(userClaims.readableNodeId).toBeUndefined()
       expect(userClaims.writableNodeId).toBeUndefined()
@@ -3195,7 +3196,7 @@ describe('CoreStorageService', () => {
 
       expect(actual.length).toBeGreaterThan(0)
 
-      const userRecord = await admin.auth().getUser(StorageUserToken().uid)
+      const userRecord = await UserHelper.getUserRecord(StorageUserToken().uid)
       const userClaims = userRecord.customClaims as UserClaims
       expect(userClaims.readableNodeId).toBeUndefined()
       expect(userClaims.writableNodeId).toBeUndefined()
@@ -3644,7 +3645,7 @@ describe('CoreStorageService', () => {
 
     it('存在しないファイルを指定した場合', async () => {
       const fileA = {
-        id: CoreStorageService.generateNodeId(),
+        id: CoreStorageSchema.generateNodeId(),
         path: `d1/fileA.txt`,
       }
 
@@ -3661,7 +3662,7 @@ describe('CoreStorageService', () => {
 
     it('ファイルの祖先が存在しない場合', async () => {
       const fileA = {
-        id: CoreStorageService.generateNodeId(),
+        id: CoreStorageSchema.generateNodeId(),
         path: `d1/fileA.txt`,
       }
 
@@ -3691,8 +3692,8 @@ describe('CoreStorageService', () => {
     it('ベーシックケース', async () => {
       const requestOrigin = config.cors.whitelist[0]
       const inputs: SignedUploadUrlInput[] = [
-        { id: CoreStorageService.generateNodeId(), path: `fileA.txt`, contentType: 'text/plain' },
-        { id: CoreStorageService.generateNodeId(), path: `fileB.txt`, contentType: 'text/plain' },
+        { id: CoreStorageSchema.generateNodeId(), path: `fileA.txt`, contentType: 'text/plain' },
+        { id: CoreStorageSchema.generateNodeId(), path: `fileB.txt`, contentType: 'text/plain' },
       ]
 
       const actual = await storageService.getSignedUploadUrls(requestOrigin, inputs)

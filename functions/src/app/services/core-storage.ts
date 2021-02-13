@@ -1,6 +1,6 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import { AppError, generateEntityId, validateUID } from '../base'
+import { AppError, validateUID } from '../base'
 import {
   AuthRoleType,
   CoreStorageNode,
@@ -16,8 +16,9 @@ import {
   StoragePaginationInput,
   StoragePaginationResult,
   UserIdClaims,
-} from './base/types'
-import { AuthServiceDI, AuthServiceModule } from './base/auth'
+} from './base'
+import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
+import { CoreStorageSchema, UserHelper } from './base'
 import {
   ElasticMSearchAPIResponse,
   ElasticPageToken,
@@ -31,15 +32,12 @@ import {
   newElasticClient,
   openPointInTime,
   toElasticTimestamp,
-  toEntityTimestamp,
   validateBulkResponse,
 } from '../base/elastic'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { arrayToDict, pickProps, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
-import { CoreStorageSchema } from './base/schema'
-import { ServiceHelper } from './base/helper'
+import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import DBStorageNode = CoreStorageSchema.DBStorageNode
@@ -149,7 +147,7 @@ class CoreStorageService<
       _source_excludes: this.excludeNodeFields,
     })
 
-    const nodes = this.responseToNodes(response)
+    const nodes = this.dbResponseToNodes(response)
     return nodes.length ? nodes[0] : undefined
   }
 
@@ -186,7 +184,7 @@ class CoreStorageService<
         _source_includes: this.includeNodeFields,
         _source_excludes: this.excludeNodeFields,
       })
-      nodes.push(...this.responseToNodes(response))
+      nodes.push(...this.dbResponseToNodes(response))
     }
     for (const chunk of splitArrayChunk(paths, size)) {
       const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
@@ -198,7 +196,7 @@ class CoreStorageService<
         _source_includes: this.includeNodeFields,
         _source_excludes: this.excludeNodeFields,
       })
-      nodes.push(...this.responseToNodes(response))
+      nodes.push(...this.dbResponseToNodes(response))
     }
 
     const nodeIdDict: { [id: string]: NODE } = {}
@@ -358,7 +356,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.responseToNodes(response)
+    const nodes = this.dbResponseToNodes(response)
 
     // 引数ディレクトリを含む検索の初回検索だった場合
     if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
@@ -540,7 +538,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.responseToNodes(response)
+    const nodes = this.dbResponseToNodes(response)
 
     // 引数ディレクトリを含む検索の初回検索だった場合
     if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
@@ -712,7 +710,7 @@ class CoreStorageService<
     // 引数ディレクトリがまだ存在しない場合
     if (!dirNode.exists) {
       // ディレクトリを作成し、データベースに追加
-      const id = CoreStorageService.generateNodeId()
+      const id = CoreStorageSchema.generateNodeId()
       const now = dayjs().toISOString()
       await this.client.update({
         index: CoreStorageSchema.IndexAlias,
@@ -772,7 +770,7 @@ class CoreStorageService<
       // ディレクトリが存在する場合はディレクトリを作成しない
       if (dirNode.exists) continue
 
-      const id = CoreStorageService.generateNodeId()
+      const id = CoreStorageSchema.generateNodeId()
       const now = dayjs().toISOString()
       body.push({ index: { _index: CoreStorageSchema.IndexAlias, _id: id } })
       body.push({
@@ -970,7 +968,7 @@ class CoreStorageService<
             name: _path.basename(toNodePath),
             dir: _path.dirname(toNodePath),
             path: toNodePath,
-            level: CoreStorageService.getNodeLevel(toNodePath),
+            level: CoreStorageSchema.getNodeLevel(toNodePath),
             version: node.version + 1,
           }
           if (toNode.nodeType === StorageNodeType.File) {
@@ -1097,7 +1095,7 @@ class CoreStorageService<
       id: fileNode.id,
       body: {
         doc: {
-          ...CoreStorageService.toPathData(toFilePath),
+          ...CoreStorageSchema.toPathData(toFilePath),
           version,
         },
       },
@@ -1197,7 +1195,7 @@ class CoreStorageService<
       id: dirNode.id,
       body: {
         doc: {
-          ...CoreStorageService.toPathData(dirPath),
+          ...CoreStorageSchema.toPathData(dirPath),
           share,
           version: dirNode.version + 1,
         },
@@ -1229,7 +1227,7 @@ class CoreStorageService<
       id: fileNode.id,
       body: {
         doc: {
-          ...CoreStorageService.toPathData(filePath),
+          ...CoreStorageSchema.toPathData(filePath),
           share,
           version: fileNode.version + 1,
         },
@@ -1328,7 +1326,7 @@ class CoreStorageService<
 
     // ユーザークレイムに指定ノードのアクセス権限を設定
     await admin.auth().setCustomUserClaims(user.uid, {
-      ...ServiceHelper.pickUserClaims(user),
+      ...UserHelper.pickUserClaims(user),
       readableNodeId,
       writableNodeId,
     })
@@ -1344,7 +1342,7 @@ class CoreStorageService<
    */
   async removeFileAccessAuthClaims(user: UserIdClaims): Promise<string> {
     // ユーザークレイムからアクセス権限を削除
-    const userClaims = ServiceHelper.pickUserClaims(user)
+    const userClaims = UserHelper.pickUserClaims(user)
     delete userClaims?.readableNodeId
     delete userClaims?.writableNodeId
     await admin.auth().setCustomUserClaims(user.uid, userClaims)
@@ -1580,7 +1578,7 @@ class CoreStorageService<
       await Promise.all(
         chunk.map(async uploadItem => {
           const { localFilePath, fileNodePath } = uploadItem
-          const nodeId = CoreStorageService.generateNodeId()
+          const nodeId = CoreStorageSchema.generateNodeId()
           const response = await bucket.upload(localFilePath, { destination: nodeId })
           const [file, metadata] = response
           const fileNode = await this.saveFileNode(uploadItem.fileNodePath, file)
@@ -1730,7 +1728,7 @@ class CoreStorageService<
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const existingFileNode = await this.getNode({ path: fileNodePath })
-    const nodeId = existingFileNode?.id || CoreStorageService.generateNodeId()
+    const nodeId = existingFileNode?.id || CoreStorageSchema.generateNodeId()
 
     //
     // ストレージファイルのコンテンツデータを保存
@@ -1778,48 +1776,10 @@ class CoreStorageService<
 
   /**
    * データベースのレスポンスデータからノードリストを取得します。
-   * @param apiResponse
+   * @param dbResponse
    */
-  protected responseToNodes(apiResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
-    // Multi search APIのレスポンスの場合
-    if ((apiResponse as ElasticMSearchAPIResponse<DB_NODE>).body.responses) {
-      const mAPIResponse = apiResponse as ElasticMSearchAPIResponse<DB_NODE>
-      const nodes: NODE[] = []
-      for (const response of mAPIResponse.body.responses) {
-        if (!response.hits.hits.length) continue
-        nodes.push(...response.hits.hits.map(hit => this.toStorageNode(hit._source)))
-      }
-      return nodes
-    }
-    // Single search APIのレスポンスの場合
-    else {
-      const sAPIResponse = apiResponse as ElasticSearchAPIResponse<DB_NODE>
-      if (!sAPIResponse.body.hits.hits.length) return []
-      return sAPIResponse.body.hits.hits.map(hit => this.toStorageNode(hit._source))
-    }
-  }
-
-  /**
-   * 指定された`dirPath`を`CoreStorageNode`へ変換します。
-   * @param dirPath
-   */
-  protected dirPathToStorageNode(dirPath: string): NODE {
-    dirPath = removeBothEndsSlash(dirPath)
-    const name = _path.basename(dirPath)
-    const dir = removeStartDirChars(_path.dirname(dirPath))
-
-    return {
-      id: '',
-      nodeType: StorageNodeType.Dir,
-      ...CoreStorageService.toPathData(dirPath),
-      level: CoreStorageService.getNodeLevel(dirPath),
-      contentType: '',
-      size: 0,
-      share: { isPublic: null, readUIds: null, writeUIds: null },
-      version: 0,
-      createdAt: dayjs(0),
-      updatedAt: dayjs(0),
-    } as NODE
+  protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
+    return CoreStorageSchema.dbResponseToAppEntities(dbResponse) as NODE[]
   }
 
   /**
@@ -1828,18 +1788,36 @@ class CoreStorageService<
    * @protected
    */
   protected toStorageNode(dbNode: DB_NODE): NODE {
-    return toEntityTimestamp({
-      id: dbNode.id,
-      nodeType: dbNode.nodeType,
-      ...CoreStorageService.toPathData(dbNode.path),
-      level: CoreStorageService.getNodeLevel(dbNode.path),
-      contentType: dbNode.contentType,
-      size: dbNode.size,
-      share: dbNode.share || CoreStorageService.EmptyShareSettings(),
-      version: dbNode.version,
-      createdAt: dbNode.createdAt,
-      updatedAt: dbNode.updatedAt,
-    }) as NODE
+    return CoreStorageSchema.toAppEntity(dbNode) as NODE
+  }
+
+  /**
+   * ノードをデータベースへ保存するプロパティのみに絞り込みます。
+   * @param node
+   */
+  protected toDBStorageNode(node: NODE): DB_NODE {
+    return CoreStorageSchema.toDBEntity(node) as DB_NODE
+  }
+
+  /**
+   * 指定された`dirPath`を`CoreStorageNode`へ変換します。
+   * @param dirPath
+   */
+  protected dirPathToStorageNode(dirPath: string): NODE {
+    dirPath = removeBothEndsSlash(dirPath)
+
+    return {
+      id: '',
+      nodeType: StorageNodeType.Dir,
+      ...CoreStorageSchema.toPathData(dirPath),
+      level: CoreStorageSchema.getNodeLevel(dirPath),
+      contentType: '',
+      size: 0,
+      share: { isPublic: null, readUIds: null, writeUIds: null },
+      version: 0,
+      createdAt: dayjs(0),
+      updatedAt: dayjs(0),
+    } as NODE
   }
 
   /**
@@ -1853,7 +1831,7 @@ class CoreStorageService<
   ): DB_NODE {
     const now = dayjs()
     return toElasticTimestamp({
-      ...CoreStorageService.toPathData(input.path),
+      ...CoreStorageSchema.toPathData(input.path),
       id: input.id,
       nodeType: input.nodeType,
       contentType: existing?.contentType ?? '',
@@ -1866,16 +1844,6 @@ class CoreStorageService<
   }
 
   /**
-   * ノードをデータベースへ保存するプロパティのみに絞り込みます。
-   * @param node
-   */
-  protected toDBStorageNode(node: NODE): DB_NODE {
-    return toElasticTimestamp(
-      pickProps(node, ['id', 'nodeType', 'name', 'dir', 'path', 'level', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
-    ) as DB_NODE
-  }
-
-  /**
    * 共有設定の入力値をデータベースの格納形式に変換します。
    * @param input
    * @param existing
@@ -1884,9 +1852,9 @@ class CoreStorageService<
     let share!: StorageNodeShareSettings
 
     if (input === null) {
-      share = CoreStorageService.EmptyShareSettings()
+      share = CoreStorageSchema.EmptyShareSettings()
     } else {
-      share = { ...CoreStorageService.EmptyShareSettings(), ...existing }
+      share = { ...CoreStorageSchema.EmptyShareSettings(), ...existing }
 
       if (typeof input?.isPublic !== 'undefined') {
         share.isPublic = input.isPublic
@@ -1974,21 +1942,6 @@ class CoreStorageService<
   //----------------------------------------------------------------------
 
   static readonly MaxChunk = 50
-
-  static EmptyShareSettings(): StorageNodeShareSettings {
-    return {
-      isPublic: null,
-      readUIds: null,
-      writeUIds: null,
-    }
-  }
-
-  /**
-   * ノードIDを生成します。
-   */
-  static generateNodeId(): string {
-    return generateEntityId(CoreStorageSchema.IndexAlias)
-  }
 
   /**
    * ノードパスの検証を行います。
@@ -2138,29 +2091,6 @@ class CoreStorageService<
     const reg = new RegExp(`^${config.storage.user.rootName}/(?<uid>[^/]+)`)
     const execArray = reg.exec(nodePath)
     return execArray?.groups?.uid ?? ''
-  }
-
-  /**
-   * ストアノードレベルを取得します。
-   * @param nodePath
-   */
-  static getNodeLevel(nodePath: string | null): number {
-    nodePath = removeBothEndsSlash(nodePath)
-    return nodePath.split('/').length
-  }
-
-  /**
-   * 指定されたノードパスをノードデータに変換します。
-   * @param nodePath
-   */
-  static toPathData(nodePath: string): { name: string; dir: string; path: string; level: number } {
-    nodePath = removeBothEndsSlash(nodePath)
-    return {
-      name: _path.basename(nodePath),
-      dir: removeStartDirChars(_path.dirname(nodePath)),
-      path: nodePath,
-      level: CoreStorageService.getNodeLevel(nodePath),
-    }
   }
 }
 

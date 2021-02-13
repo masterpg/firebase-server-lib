@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin'
 import * as path from 'path'
 import { AppError, generateEntityId } from '../base'
 import { DocumentReference, Timestamp, Transaction } from '@google-cloud/firestore'
-import { FirestoreServiceDI, FirestoreServiceModule } from './base/firestore'
+import { FirestoreServiceDI, FirestoreServiceModule } from './base-services/firestore'
 import { Inject, Module } from '@nestjs/common'
 import {
   PutTestIndexDataInput,
@@ -12,7 +12,8 @@ import {
   TestSignedUploadUrlInput,
   TestUserInput,
   User,
-} from './base/types'
+  UserHelper,
+} from './base'
 import { UserServiceDI, UserServiceModule } from './user'
 import { newElasticClient, validateBulkResponse } from '../base/elastic'
 import { pickProps, removeBothEndsSlash, splitFilePath } from 'web-base-lib'
@@ -273,7 +274,7 @@ class DevUtilsService {
   private async m_setTestFirebaseUser(input: TestFirebaseUserInput): Promise<UserRecord> {
     let userRecord: UserRecord | undefined = undefined
     try {
-      userRecord = await admin.auth().getUser(input.uid)
+      userRecord = await UserHelper.getUserRecord(input.uid)
     } catch (e) {
       // 存在しないuidでgetUser()するとエラーが発生するのでtry-catchしている
     }
@@ -293,7 +294,7 @@ class DevUtilsService {
       await admin.auth().setCustomUserClaims(input.uid, customClaims)
     }
 
-    return await admin.auth().getUser(input.uid)
+    return await UserHelper.getUserRecord(input.uid)
   }
 
   private m_isArray(value: any) {

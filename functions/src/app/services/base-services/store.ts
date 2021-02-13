@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { CartItem, Product } from './types'
+import { CartItem, Product } from '../base'
 import {
   Collection,
   CollectionFactory,

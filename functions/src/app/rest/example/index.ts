@@ -3,7 +3,7 @@ import { AuthServiceModule, CORSServiceModule } from '../../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { ExampleShopRESTModule } from './shop'
 import KeepAliveRESTModule from '../base/keepalive'
-import { LoggingServiceModule } from '../../services/base/logging'
+import { LoggingServiceModule } from '../../services/base-services/logging'
 
 //========================================================================
 //
