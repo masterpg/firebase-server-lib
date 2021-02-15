@@ -68,9 +68,6 @@ namespace UserSchema {
     mappings: {
       properties: {
         ...TimestampEntityProps,
-        email: {
-          type: 'keyword',
-        },
         userName: {
           type: 'keyword',
         },
@@ -98,24 +95,24 @@ namespace UserSchema {
 
   export interface DBUser extends ElasticTimestampEntity<User> {}
 
-  export function toAppEntity(dbEntity: DBUser): Omit<User, 'emailVerified'> {
+  export function toAppEntity(dbEntity: DBUser): Omit<User, 'email' | 'emailVerified'> {
     return {
       ...toEntityTimestamp({
-        ...pickProps(dbEntity, ['id', 'email', 'userName', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
+        ...pickProps(dbEntity, ['id', 'userName', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
       }),
     }
   }
 
-  export function toDBEntity(appEntity: Omit<User, 'emailVerified'>): ElasticTimestampEntity<Omit<User, 'emailVerified'>> {
+  export function toDBEntity(appEntity: Omit<User, 'email' | 'emailVerified'>): ElasticTimestampEntity<Omit<User, 'email' | 'emailVerified'>> {
     return {
       ...toElasticTimestamp({
-        ...pickProps(appEntity, ['id', 'email', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
+        ...pickProps(appEntity, ['id', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
         userNameLower: appEntity.userName.toLowerCase(),
       }),
     }
   }
 
-  export function dbResponseToAppEntities(dbResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'emailVerified'>[] {
+  export function dbResponseToAppEntities(dbResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'email' | 'emailVerified'>[] {
     return _dbResponseToAppEntities(dbResponse, toAppEntity)
   }
 }

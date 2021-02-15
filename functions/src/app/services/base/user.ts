@@ -33,7 +33,7 @@ class UserHelper {
    * 指定されたキーのユーザーをデータベースから取得します。
    * @param key
    */
-  async getUser(key: { id?: string; userName?: string }): Promise<Omit<User, 'emailVerified'> | undefined> {
+  async getUser(key: { id?: string; userName?: string }): Promise<Omit<User, 'email' | 'emailVerified'> | undefined> {
     const { id, userName } = key
     if (!id && !userName) {
       throw new AppError(`Neither "id" nor "userName" is specified.`)

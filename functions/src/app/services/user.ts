@@ -130,7 +130,6 @@ class UserService {
         doc: {
           ...UserSchema.toDBEntity({
             id: userRecord.uid,
-            email: userRecord.email!,
             userName: input.userName,
             fullName: input.fullName,
             isAppAdmin,
@@ -157,6 +156,7 @@ class UserService {
 
     return {
       ...user,
+      email: userRecord.email!,
       emailVerified: userRecord.emailVerified,
     }
   }
