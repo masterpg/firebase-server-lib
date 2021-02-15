@@ -1,6 +1,6 @@
 import * as _path from 'path'
-import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
+  ArticleTableOfContentsNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
@@ -14,7 +14,9 @@ import {
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
+  StorageSchema,
 } from './base'
+import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import { ElasticMSearchAPIResponse, ElasticMSearchResponse, ElasticSearchAPIResponse, ElasticSearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import {
@@ -29,7 +31,6 @@ import {
 import { AppError } from '../base'
 import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
-import { StorageSchema } from './base'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import DBStorageNode = StorageSchema.DBStorageNode
@@ -410,6 +411,156 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     return { nextPageToken, list: nodes }
+  }
+
+  /**
+   * 記事の目次を取得します。
+   * - ツリーバンドル配下のカテゴリと記事は目次として取得されます。
+   * - リストバンドル配下の記事は目次として取得されません。
+   * @param userName
+   * @param requester
+   */
+  async getArticleTableOfContents(userName: string, requester?: { uid: string }): Promise<ArticleTableOfContentsNode[]> {
+    // ユーザー名をキーにしてユーザーを取得
+    const user = await this.userHelper.getUser({ userName })
+    if (!user) {
+      throw new AppError(`The user with the specified 'userName' does not exist.`, { userName })
+    }
+    // ユーザーの記事ルートとその祖先ノードを取得
+    const articleRootPath = StorageService.toArticleRootPath({ uid: user.id })
+
+    /**
+     * ユーザーの記事ルート配下のノードか否かを判定する関数です。
+     * @param path
+     */
+    const isArticleRootUnder = (path: string) => path.startsWith(`${articleRootPath}/`)
+
+    /**
+     * 指定されたノードとノードの階層構造を形成するディレクトリを取得する関数です。
+     * @param nodeMap
+     * @param nodePath
+     */
+    const getHierarchicalNodes = (nodeMap: Record<string, StorageNode>, nodePath: string) => {
+      const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+      return hierarchicalPaths.reduce<StorageNode[]>((result, path) => {
+        isArticleRootUnder(path) && result.push(nodeMap[path]!)
+        return result
+      }, [])
+    }
+
+    /**
+     * 指定されたノードを目次ノードに変換します。
+     * @param nodes
+     */
+    const toArticleTableOfContentsNodes = (nodes: StorageNode[]) => {
+      StorageService.sortNodes(nodes)
+      return nodes.map(node => {
+        const result: ArticleTableOfContentsNode = {
+          ...pickProps(node, ['id', 'name', 'version', 'createdAt', 'updatedAt']),
+          dir: removeBothEndsSlash(node.dir.replace(articleRootPath, '')),
+          path: removeBothEndsSlash(node.path.replace(articleRootPath, '')),
+          label: node.article!.dir!.name,
+          type: node.article!.dir!.type,
+        }
+        return result
+      })
+    }
+
+    //
+    // バンドルディレクトリのみを取得
+    //
+    const response1 = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+      index: StorageSchema.IndexAlias,
+      size: 10000,
+      body: {
+        query: {
+          bool: {
+            must: [
+              { term: { dir: articleRootPath } },
+              {
+                terms: { 'article.dir.type': [StorageArticleDirType.ListBundle, StorageArticleDirType.TreeBundle] },
+              },
+            ],
+          },
+        },
+      },
+      _source_includes: this.includeNodeFields,
+      _source_excludes: this.excludeNodeFields,
+    })
+    const bundleDirs = this.dbResponseToNodes(response1)
+
+    //
+    // バンドルディレクトリ配下の「カテゴリディレクトリ」「記事ディレクトリ」を取得
+    // ・ツリーバンドル配下のカテゴリディレクトリ、記事ディレクトリは全て取得する
+    // ・リストバンドル配下の記事ディレクトリは取得しない
+    //
+    const queryBody: string[] = []
+    for (const bundleNode of bundleDirs) {
+      if (bundleNode.article?.dir?.type === StorageArticleDirType.ListBundle) continue
+      const header = { index: StorageSchema.IndexAlias }
+      const body = {
+        size: 10000,
+        query: {
+          bool: {
+            must: [
+              { wildcard: { path: `${bundleNode.path}/*` } },
+              {
+                terms: { 'article.dir.type': [StorageArticleDirType.Category, StorageArticleDirType.Article] },
+              },
+            ],
+          },
+        },
+        _source: {
+          includes: this.includeNodeFields,
+          excludes: this.excludeNodeFields,
+        },
+      }
+      queryBody.push(JSON.stringify(header))
+      queryBody.push(JSON.stringify(body))
+    }
+
+    // バンドルディレクトリ配下に記事系ディレクトリがない場合、ここまでの検索結果を返す
+    if (!queryBody.length) {
+      return toArticleTableOfContentsNodes(bundleDirs)
+    }
+
+    const response2 = await this.client.msearch<ElasticMSearchResponse<DBStorageNode>, string[]>({
+      body: queryBody,
+    })
+    const bundleUnderDirs = this.dbResponseToNodes(response2)
+    const allNodeMap = [...bundleDirs, ...bundleUnderDirs].reduce<{ [path: string]: StorageNode }>((result, node) => {
+      result[node.path] = node
+      return result
+    }, {})
+
+    // リクエスターが自身の場合、検索結果の全てを返す
+    if (user.id === requester?.uid) {
+      return toArticleTableOfContentsNodes(Object.values(allNodeMap))
+    }
+
+    //
+    // リクエスターがアクセス可能な記事ディレクトリに絞り込み
+    //
+    const accessibleArticleDirs = bundleUnderDirs.filter(node => {
+      if (node.article?.dir?.type !== StorageArticleDirType.Article) return false
+      const hierarchicalNodes = getHierarchicalNodes(allNodeMap, node.path)
+      const share = this.getInheritedShareSettings(hierarchicalNodes)
+      if (requester) {
+        return share.isPublic || share.readUIds?.includes(requester.uid)
+      } else {
+        return share.isPublic
+      }
+    })
+
+    //
+    // 取得した記事ディレクトリを階層構造化
+    //
+    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.dir?.type === StorageArticleDirType.ListBundle), ...accessibleArticleDirs]
+    const summarizedPaths = summarizeFamilyPaths(accessibleDirNodes.map(node => node.path))
+    const allAccessiblePaths = splitHierarchicalPaths(...summarizedPaths).filter(isArticleRootUnder)
+    const allAccessibleNodes = allAccessiblePaths.map(path => allNodeMap[path])
+
+    return toArticleTableOfContentsNodes(allAccessibleNodes)
   }
 
   //--------------------------------------------------

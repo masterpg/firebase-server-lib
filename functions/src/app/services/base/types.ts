@@ -107,6 +107,14 @@ interface StorageNode extends CoreStorageNode {
   article?: StorageArticleSettings
 }
 
+interface ArticleTableOfContentsNode extends TimestampEntity {
+  type: StorageArticleDirType
+  name: string
+  dir: string
+  path: string
+  label: string
+}
+
 enum StorageNodeType {
   File = 'File',
   Dir = 'Dir',
@@ -282,6 +290,7 @@ export { JSON, JSONObject }
 export { Entity, EntityTimestamp, OmitTimestamp, TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
+  ArticleTableOfContentsNode,
   CoreStorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,

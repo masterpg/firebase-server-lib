@@ -1,5 +1,7 @@
+import { AppAdminUser, GeneralUser, StorageTestHelper, StorageTestService, StorageUser, StorageUserToken } from '../../../../helpers/app'
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
+  ArticleTableOfContentsNode,
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
@@ -12,9 +14,8 @@ import {
   StorageServiceModule,
   StorageUploadDataItem,
 } from '../../../../../src/app/services'
-import { StorageTestHelper, StorageTestService, StorageUserToken } from '../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
-import { pickProps, shuffleArray } from 'web-base-lib'
+import { pickProps, removeBothEndsSlash, shuffleArray } from 'web-base-lib'
 import { config } from '../../../../../src/config'
 
 jest.setTimeout(30000)
@@ -1697,6 +1698,270 @@ describe('StorageService', () => {
       expect(actual[8].article?.dir?.name).toBe(`art02`)
       expect(actual[9].article?.dir?.name).toBe(`art01`)
       await h.existsNodes(actual)
+    })
+  })
+
+  describe('getArticleTableOfContents', () => {
+    let articleRootPath: string
+    let users: StorageNode
+    let userRoot: StorageNode
+    let articleRoot: StorageNode
+    let blog: StorageNode
+    let blogArt1: StorageNode
+    let blogArt1_master: StorageNode
+    let programming: StorageNode
+    let introduction: StorageNode
+    let introduction_master: StorageNode
+    let js: StorageNode
+    let variable: StorageNode
+    let variable_master: StorageNode
+    let ts: StorageNode
+    let clazz: StorageNode
+    let clazz_master: StorageNode
+    let generics: StorageNode
+    let generics_master: StorageNode
+    let secret: StorageNode
+    let secretArt1: StorageNode
+    let secretArt1_master: StorageNode
+    let secretArt2: StorageNode
+    let secretArt2_master: StorageNode
+
+    beforeAll(async () => {
+      await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    async function setupArticleTypeNodes(): Promise<void> {
+      const { srcMasterFileName } = config.storage.article
+
+      // users
+      // └test.storage
+      //   └articles
+      //     ├blog ← 公開
+      //     │└blog-art1
+      //     │  └index.md
+      //     ├programming ← 公開
+      //     │├introduction
+      //     ││└index.md
+      //     │├js
+      //     ││└variable ← 非公開
+      //     ││  └index.md
+      //     │└ts
+      //     │  ├class
+      //     │  │└index.md
+      //     │  └generics ← 非公開
+      //     │    └index.md
+      //     └secret ← 非公開
+      //       ├secret-art1
+      //       │└index.md
+      //       └secret-art2 ← 指定ユーザーにのみ公開
+      //         └index.md
+
+      // users/test.storage/articles
+      articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
+
+      // blog
+      blog = await storageService.createArticleTypeDir(
+        {
+          dir: `${articleRootPath}`,
+          name: 'blog',
+          type: StorageArticleDirType.ListBundle,
+          sortOrder: 3,
+        },
+        { share: { isPublic: true } }
+      )
+
+      // blog-art1
+      blogArt1 = await storageService.createArticleTypeDir({
+        dir: `${blog.path}`,
+        name: 'blog-art1',
+        type: StorageArticleDirType.Article,
+        sortOrder: 2,
+      })
+      // blog-art1/index.md
+      blogArt1_master = await storageService.sgetNode({ path: `${blogArt1.path}/${srcMasterFileName}` })
+
+      // programming
+      programming = await storageService.createArticleTypeDir(
+        {
+          dir: `${articleRootPath}`,
+          name: 'programming',
+          type: StorageArticleDirType.TreeBundle,
+          sortOrder: 2,
+        },
+        { share: { isPublic: true } }
+      )
+
+      // introduction
+      introduction = await storageService.createArticleTypeDir({
+        dir: `${programming.path}`,
+        name: 'introduction',
+        type: StorageArticleDirType.Article,
+        sortOrder: 4,
+      })
+      // introduction/index.md
+      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${srcMasterFileName}` })
+
+      // js
+      js = await storageService.createArticleTypeDir({
+        dir: `${programming.path}`,
+        name: 'js',
+        type: StorageArticleDirType.Category,
+        sortOrder: 3,
+      })
+      // js/variable
+      variable = await storageService.createArticleTypeDir(
+        {
+          dir: `${js.path}`,
+          name: 'variable',
+          type: StorageArticleDirType.Article,
+          sortOrder: 1,
+        },
+        { share: { isPublic: false } }
+      )
+      // js/variable/index.md
+      variable_master = await storageService.sgetNode({ path: `${variable.path}/${srcMasterFileName}` })
+
+      // ts
+      ts = await storageService.createArticleTypeDir({
+        dir: `${programming.path}`,
+        name: 'ts',
+        type: StorageArticleDirType.Category,
+        sortOrder: 2,
+      })
+      // ts/class
+      clazz = await storageService.createArticleTypeDir({
+        dir: `${ts.path}`,
+        name: 'class',
+        type: StorageArticleDirType.Article,
+        sortOrder: 1,
+      })
+      // ts/class/index.md
+      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${srcMasterFileName}` })
+      // ts/generics
+      generics = await storageService.createArticleTypeDir(
+        {
+          dir: `${ts.path}`,
+          name: 'generics',
+          type: StorageArticleDirType.Article,
+          sortOrder: 1,
+        },
+        { share: { isPublic: false } }
+      )
+      // ts/generics/index.md
+      generics_master = await storageService.sgetNode({ path: `${generics.path}/${srcMasterFileName}` })
+
+      // secret
+      secret = await storageService.createArticleTypeDir(
+        {
+          dir: `${articleRootPath}`,
+          name: 'secret',
+          type: StorageArticleDirType.TreeBundle,
+          sortOrder: 1,
+        },
+        { share: { isPublic: false } }
+      )
+
+      // secret-art1
+      secretArt1 = await storageService.createArticleTypeDir({
+        dir: `${secret.path}`,
+        name: 'secret-art1',
+        type: StorageArticleDirType.Article,
+        sortOrder: 2,
+      })
+      // secret-art1/index.md
+      secretArt1_master = await storageService.sgetNode({ path: `${secretArt1.path}/${srcMasterFileName}` })
+
+      // secret-art2
+      secretArt2 = await storageService.createArticleTypeDir(
+        {
+          dir: `${secret.path}`,
+          name: 'secret-art2',
+          type: StorageArticleDirType.Article,
+          sortOrder: 2,
+        },
+        { share: { readUIds: [GeneralUser().uid] } }
+      )
+      // secret-art2/index.md
+      secretArt2_master = await storageService.sgetNode({ path: `${secretArt2.path}/${srcMasterFileName}` })
+    }
+
+    function verifyArticleTableOfContentsNode(actual: ArticleTableOfContentsNode, expected: StorageNode): void {
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRootPath, '')))
+      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRootPath, '')))
+      expect(actual.label).toBe(expected.article?.dir?.name)
+      expect(actual.type).toBe(expected.article?.dir?.type)
+      expect(actual.version).toBe(expected.version)
+      expect(actual.createdAt).toEqual(expected.createdAt)
+      expect(actual.updatedAt).toEqual(expected.updatedAt)
+    }
+
+    it('ベーシックケース', async () => {
+      await setupArticleTypeNodes()
+
+      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, StorageUser())
+
+      expect(actual.length).toBe(11)
+      verifyArticleTableOfContentsNode(actual[0], blog)
+      verifyArticleTableOfContentsNode(actual[1], programming)
+      verifyArticleTableOfContentsNode(actual[2], introduction)
+      verifyArticleTableOfContentsNode(actual[3], js)
+      verifyArticleTableOfContentsNode(actual[4], variable)
+      verifyArticleTableOfContentsNode(actual[5], ts)
+      verifyArticleTableOfContentsNode(actual[6], clazz)
+      verifyArticleTableOfContentsNode(actual[7], generics)
+      verifyArticleTableOfContentsNode(actual[8], secret)
+      verifyArticleTableOfContentsNode(actual[9], secretArt1)
+      verifyArticleTableOfContentsNode(actual[10], secretArt2)
+    })
+
+    it('他ユーザーによる目次取得', async () => {
+      await setupArticleTypeNodes()
+
+      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
+
+      expect(actual.length).toBe(7)
+      verifyArticleTableOfContentsNode(actual[0], blog)
+      verifyArticleTableOfContentsNode(actual[1], programming)
+      verifyArticleTableOfContentsNode(actual[2], introduction)
+      verifyArticleTableOfContentsNode(actual[3], ts)
+      verifyArticleTableOfContentsNode(actual[4], clazz)
+      verifyArticleTableOfContentsNode(actual[5], secret)
+      verifyArticleTableOfContentsNode(actual[6], secretArt2)
+    })
+
+    it('サインインしていないユーザーによる目次取得', async () => {
+      await setupArticleTypeNodes()
+
+      const actual = await storageService.getArticleTableOfContents(StorageUser().userName)
+
+      expect(actual.length).toBe(5)
+      verifyArticleTableOfContentsNode(actual[0], blog)
+      verifyArticleTableOfContentsNode(actual[1], programming)
+      verifyArticleTableOfContentsNode(actual[2], introduction)
+      verifyArticleTableOfContentsNode(actual[3], ts)
+      verifyArticleTableOfContentsNode(actual[4], clazz)
+    })
+
+    it('目次がない場合', async () => {
+      // 記事ルートを作成
+      articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
+
+      expect(actual.length).toBe(0)
+    })
+
+    it('記事ルートがまだ存在しない場合', async () => {
+      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
+
+      expect(actual.length).toBe(0)
     })
   })
 

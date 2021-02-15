@@ -2,16 +2,20 @@ import * as td from 'testdouble'
 import {
   AppAdminUser,
   AppAdminUserHeader,
+  ArticleTableOfContentsNodeFields,
+  ArticleTableOfContentsNodeFieldsName,
   GeneralUser,
   GeneralUserHeader,
   StorageNodeFields,
   StorageNodeFieldsName,
   StorageTestHelper,
   StorageTestService,
+  StorageUser,
   StorageUserHeader,
   StorageUserToken,
   getGQLErrorStatus,
   requestGQL,
+  toGQLResponseArticleTableOfContentsNodes,
   toGQLResponseStorageNode,
   toGQLResponseStorageNodes,
 } from '../../../../../../helpers/app'
@@ -1878,9 +1882,7 @@ describe('Lv1 Storage Resolver', () => {
       const input: StorageNodeKeyInput = pickProps(d1, ['id', 'path'])
 
       const setFileAccessAuthClaims = td.replace(storageService, 'setFileAccessAuthClaims')
-      td.when(setFileAccessAuthClaims(td.matchers.contains({ uid: StorageUserToken().uid }), td.matchers.contains({ path: input.path }))).thenResolve(
-        `xxx`
-      )
+      td.when(setFileAccessAuthClaims(StorageUserToken(), input)).thenResolve(`xxx`)
 
       const response = await requestGQL(
         app,
@@ -1919,7 +1921,7 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const removeFileAccessAuthClaims = td.replace(storageService, 'removeFileAccessAuthClaims')
-      td.when(removeFileAccessAuthClaims(td.matchers.contains({ uid: StorageUserToken().uid }))).thenResolve(`xxx`)
+      td.when(removeFileAccessAuthClaims(StorageUserToken())).thenResolve(`xxx`)
 
       const response = await requestGQL(
         app,
@@ -2588,6 +2590,68 @@ describe('Lv1 Storage Resolver', () => {
       )
 
       expect(getGQLErrorStatus(response)).toBe(403)
+    })
+  })
+
+  describe('articleTableOfContents', () => {
+    const gql = {
+      query: `
+        query GetArticleTableOfContents($userName: String!) {
+          articleTableOfContents(userName: $userName) {
+            ...${ArticleTableOfContentsNodeFieldsName}
+          }
+        }
+        ${ArticleTableOfContentsNodeFields}
+      `,
+    }
+
+    function createTestData() {
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const treeBundle = h.newTableOfContentsNode(`${articleRootPath}/${StorageSchema.generateNodeId()}`, {
+        type: StorageArticleDirType.TreeBundle,
+        label: 'ツリーバンドル1',
+      })
+      const cat1 = h.newTableOfContentsNode(`${treeBundle}/${StorageSchema.generateNodeId()}`, {
+        type: StorageArticleDirType.Category,
+        label: 'カテゴリ1',
+      })
+      const art1 = h.newTableOfContentsNode(`${cat1}/${StorageSchema.generateNodeId()}`, {
+        type: StorageArticleDirType.Article,
+        label: '記事1',
+      })
+      return { treeBundle, cat1, art1 }
+    }
+
+    it('疎通確認', async () => {
+      const { treeBundle, cat1, art1 } = createTestData()
+
+      const getArticleTableOfContents = td.replace(storageService, 'getArticleTableOfContents')
+      td.when(getArticleTableOfContents(StorageUser().userName, StorageUserToken())).thenResolve([treeBundle, cat1, art1])
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { userName: StorageUser().userName },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.articleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsNodes([treeBundle, cat1, art1]))
+    })
+
+    it('サインインしていない場合', async () => {
+      const { treeBundle, cat1, art1 } = createTestData()
+
+      const getArticleTableOfContents = td.replace(storageService, 'getArticleTableOfContents')
+      td.when(getArticleTableOfContents(StorageUser().userName, undefined)).thenResolve([treeBundle, cat1, art1])
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { userName: StorageUser().userName },
+      })
+
+      expect(response.body.data.articleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsNodes([treeBundle, cat1, art1]))
     })
   })
 

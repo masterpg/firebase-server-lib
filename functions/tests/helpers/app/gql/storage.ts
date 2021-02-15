@@ -1,4 +1,4 @@
-import { StorageArticleDirSettings, StorageArticleFileSettings, StorageNode } from '../../../../src/app/services'
+import { ArticleTableOfContentsNode, StorageArticleDirSettings, StorageArticleFileSettings, StorageNode } from '../../../../src/app/services'
 
 //========================================================================
 //
@@ -47,16 +47,33 @@ const StorageNodeFields = `
   }
 `
 
+interface ResponseArticleTableOfContentsNode extends Omit<ArticleTableOfContentsNode, 'createdAt' | 'updatedAt'> {
+  createdAt: string
+  updatedAt: string
+}
+
+const ArticleTableOfContentsNodeFieldsName = 'ArticleTableOfContentsNodeFields'
+
+const ArticleTableOfContentsNodeFields = `
+  fragment ${ArticleTableOfContentsNodeFieldsName} on ArticleTableOfContentsNode {
+    id
+    type
+    name
+    dir
+    path
+    label
+    version
+    createdAt
+    updatedAt
+  }
+`
+
 //========================================================================
 //
 //  Implements
 //
 //========================================================================
 
-/**
- * `StorageNode`をGraphQLの実行結果となるHTTPレスポンス形式へ変換します。
- * @param node
- */
 function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
   return {
     id: node.id,
@@ -84,12 +101,26 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
   }
 }
 
-/**
- * `StorageNode`をGraphQLを叩いた結果であるHTTPレスポンス形式へ変換します。
- * @param nodes
- */
 function toGQLResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] {
   return nodes.map(node => toGQLResponseStorageNode(node))
+}
+
+function toGQLResponseArticleTableOfContentsNode(node: ArticleTableOfContentsNode): ResponseArticleTableOfContentsNode {
+  return {
+    id: node.id,
+    type: node.type,
+    name: node.name,
+    dir: node.dir,
+    path: node.path,
+    label: node.label,
+    version: node.version,
+    createdAt: node.createdAt.toISOString(),
+    updatedAt: node.updatedAt.toISOString(),
+  }
+}
+
+function toGQLResponseArticleTableOfContentsNodes(nodes: ArticleTableOfContentsNode[]): ResponseArticleTableOfContentsNode[] {
+  return nodes.map(node => toGQLResponseArticleTableOfContentsNode(node))
 }
 
 //========================================================================
@@ -98,4 +129,13 @@ function toGQLResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] 
 //
 //========================================================================
 
-export { StorageNodeFieldsName, StorageNodeFields, toGQLResponseStorageNode, toGQLResponseStorageNodes }
+export {
+  ArticleTableOfContentsNodeFields,
+  ArticleTableOfContentsNodeFieldsName,
+  StorageNodeFields,
+  StorageNodeFieldsName,
+  toGQLResponseArticleTableOfContentsNode,
+  toGQLResponseArticleTableOfContentsNodes,
+  toGQLResponseStorageNode,
+  toGQLResponseStorageNodes,
+}

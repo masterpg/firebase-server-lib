@@ -36,6 +36,7 @@ type Query {
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
   articleChildren(input: GetArticleChildrenInput!, pagination: StoragePaginationInput): StoragePaginationResult!
+  articleTableOfContents(userName: String!): [ArticleTableOfContentsNode!]!
 }
 
 #--------------------------------------------------

@@ -1,6 +1,6 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { AuthGuard, GQLContext, GQLContextArg, UserArg } from '../../../nest'
 import {
+  ArticleTableOfContentsNode,
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleTypeDirInput,
@@ -19,6 +19,7 @@ import {
   StorageServiceDI,
   StorageServiceModule,
 } from '../../../services'
+import { AuthGuard, GQLContext, GQLContextArg, UserArg } from '../../../nest'
 import { Inject, Module, UseGuards } from '@nestjs/common'
 import { AppError } from '../../../base'
 
@@ -284,6 +285,11 @@ class StorageResolver {
   ): Promise<StoragePaginationResult<StorageNode>> {
     await this.storageService.validateBrowsableNodes(user, { dirPath: input.dirPath })
     return this.storageService.getArticleChildren(input, pagination)
+  }
+
+  @Query()
+  async articleTableOfContents(@UserArg() user: IdToken, @Args('userName') userName: string): Promise<ArticleTableOfContentsNode[]> {
+    return this.storageService.getArticleTableOfContents(userName, user)
   }
 
   //----------------------------------------------------------------------

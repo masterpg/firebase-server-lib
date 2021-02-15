@@ -1,7 +1,15 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import { CoreStorageNode, StorageNode, StorageNodeType, StorageService, StorageServiceDI } from '../../../../src/app/services'
-import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
+import {
+  ArticleTableOfContentsNode,
+  CoreStorageNode,
+  StorageNode,
+  StorageNodeType,
+  StorageSchema,
+  StorageService,
+  StorageServiceDI,
+} from '../../../../src/app/services'
+import { RequiredAre, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
@@ -179,19 +187,15 @@ class CoreStorageTestHelper {
   newDirNode(dirPath: string, data?: Partial<Omit<CoreStorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): CoreStorageNode {
     dirPath = removeBothEndsSlash(dirPath)
     data = data || {}
-    const name = _path.basename(dirPath)
-    const dir = removeStartDirChars(_path.dirname(dirPath))
     const result: CoreStorageNode = {
       id: data.id || CoreStorageSchema.generateNodeId(),
       nodeType: StorageNodeType.Dir,
-      name,
-      dir,
-      path: dirPath,
+      ...CoreStorageSchema.toPathData(dirPath),
       level: CoreStorageSchema.getNodeLevel(dirPath),
       contentType: data.contentType || '',
       size: data.size || 0,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-      version: 1,
+      version: data.version || 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
     }
@@ -206,14 +210,12 @@ class CoreStorageTestHelper {
     const result: CoreStorageNode = {
       id: data.id || CoreStorageSchema.generateNodeId(),
       nodeType: StorageNodeType.File,
-      name,
-      dir,
-      path: filePath,
+      ...CoreStorageSchema.toPathData(filePath),
       level: CoreStorageSchema.getNodeLevel(filePath),
       contentType: data.contentType || 'text/plain; charset=utf-8',
       size: data.size || 5,
       share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
-      version: 1,
+      version: data.version || 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
     }
@@ -247,6 +249,21 @@ class StorageTestHelper extends CoreStorageTestHelper {
     data.article && (result.article = data.article)
 
     return result
+  }
+
+  newTableOfContentsNode(dirPath: string, data: RequiredAre<Partial<ArticleTableOfContentsNode>, 'type' | 'label'>): ArticleTableOfContentsNode {
+    dirPath = removeBothEndsSlash(dirPath)
+    data = data || {}
+
+    return {
+      id: data.id || CoreStorageSchema.generateNodeId(),
+      type: data.type,
+      ...StorageSchema.toPathData(dirPath),
+      label: data.label,
+      version: data.version || 1,
+      createdAt: data.createdAt || dayjs(),
+      updatedAt: data.updatedAt || dayjs(),
+    }
   }
 }
 

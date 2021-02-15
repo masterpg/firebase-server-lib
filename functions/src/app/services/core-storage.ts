@@ -102,6 +102,8 @@ class CoreStorageService<
 
   protected readonly client = newElasticClient()
 
+  protected readonly userHelper = new UserHelper(this.client)
+
   /**
    * データベースからの取得ノードに含めるフィールドを指定します。
    */
