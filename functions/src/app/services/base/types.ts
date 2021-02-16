@@ -29,11 +29,7 @@ type TimestampEntity<T = unknown> = Entity & OmitTimestamp<T> & EntityTimestamp
 //  Auth
 //--------------------------------------------------
 
-enum AuthStatus {
-  WaitForEmailVerified = 'WaitForEmailVerified',
-  WaitForEntry = 'WaitForEntry',
-  Available = 'Available',
-}
+type AuthStatus = 'WaitForEmailVerified' | 'WaitForEntry' | 'Available'
 
 enum AuthRoleType {
   AppAdmin = 'AppAdmin',
@@ -76,10 +72,7 @@ interface SetUserInfoResult {
   user?: User
 }
 
-enum SetUserInfoResultStatus {
-  AlreadyExists = 'AlreadyExists',
-  Success = 'Success',
-}
+type SetUserInfoResultStatus = 'AlreadyExists' | 'Success'
 
 interface AuthDataResult {
   status: AuthStatus
@@ -115,22 +108,11 @@ interface ArticleTableOfContentsNode extends TimestampEntity {
   label: string
 }
 
-enum StorageNodeType {
-  File = 'File',
-  Dir = 'Dir',
-}
+type StorageNodeType = 'File' | 'Dir'
 
-enum StorageArticleDirType {
-  ListBundle = 'ListBundle',
-  TreeBundle = 'TreeBundle',
-  Category = 'Category',
-  Article = 'Article',
-}
+type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
 
-enum StorageArticleFileType {
-  Master = 'Master',
-  Draft = 'Draft',
-}
+type StorageArticleFileType = 'Master' | 'Draft'
 
 interface StorageNodeShareSettings {
   isPublic: boolean | null

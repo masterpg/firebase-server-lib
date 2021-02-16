@@ -68,7 +68,7 @@ abstract class AuthService {
       idToken = validated.idToken!
     }
 
-    if (idToken.authStatus !== AuthStatus.Available) {
+    if (idToken.authStatus !== 'Available') {
       res && res.setHeader('WWW-Authenticate', 'Bearer error="insufficient_scope"')
       return {
         result: false,

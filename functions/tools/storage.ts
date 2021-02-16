@@ -150,10 +150,10 @@ function formatSize(node: StorageNode, sizeLength: number): string {
   const padNum = sizeLength + suffix.length
 
   switch (node.nodeType) {
-    case StorageNodeType.Dir: {
+    case 'Dir': {
       return ``.padStart(padNum, ' ')
     }
-    case StorageNodeType.File: {
+    case 'File': {
       const sizeStr = `${node.size}${suffix}`
       return sizeStr.padStart(padNum, ' ')
     }
@@ -254,7 +254,7 @@ program
 
     // 指定されたノードのパスとタイプを取得
     const nodePath = node?.path ?? ''
-    const nodeType = node?.nodeType ?? StorageNodeType.Dir
+    const nodeType = node?.nodeType ?? 'Dir'
 
     // 祖先ノードの取得
     const ancestors = await storageService.getAncestorDirs(nodePath)
@@ -262,7 +262,7 @@ program
     console.log() // 改行
 
     // 取得されたノードがディレクトリの場合
-    if (nodeType === StorageNodeType.Dir) {
+    if (nodeType === 'Dir') {
       const count = (await storageService.getDirDescendantCount(nodePath)) + ancestors.length
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
@@ -272,7 +272,7 @@ program
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
     // 取得されたノードがファイルの場合
-    else if (nodeType === StorageNodeType.File) {
+    else if (nodeType === 'File') {
       print([...ancestors, node!], cmdObj.format, nodePath)
     }
 
@@ -304,7 +304,7 @@ program
 
     // 指定されたノードのパスとタイプを取得
     const nodePath = node?.path ?? ''
-    const nodeType = node?.nodeType ?? StorageNodeType.Dir
+    const nodeType = node?.nodeType ?? 'Dir'
 
     // 祖先ノードの取得
     const ancestors = await storageService.getAncestorDirs(nodePath)
@@ -312,7 +312,7 @@ program
     console.log() // 改行
 
     // 取得されたノードがディレクトリの場合
-    if (nodeType === StorageNodeType.Dir) {
+    if (nodeType === 'Dir') {
       const count = (await storageService.getDirChildCount(nodePath)) + ancestors.length
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
@@ -322,7 +322,7 @@ program
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
     // 取得されたノードがファイルの場合
-    else if (nodeType === StorageNodeType.File) {
+    else if (nodeType === 'File') {
       print([...ancestors, node!], cmdObj.format, nodePath)
     }
 
@@ -355,11 +355,11 @@ program
 
     // ノードを削除
     switch (node.nodeType) {
-      case StorageNodeType.Dir: {
+      case 'Dir': {
         await storageService.removeDir(node.path)
         break
       }
-      case StorageNodeType.File: {
+      case 'File': {
         await storageService.removeFile(node.path)
         break
       }

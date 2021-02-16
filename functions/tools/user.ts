@@ -31,7 +31,7 @@ const users: TestUserInput[] = [
     userName: 'keepalive',
     fullName: '生存 太郎',
     disabled: false,
-    authStatus: AuthStatus.Available,
+    authStatus: 'Available',
     isAppAdmin: true,
   },
 ]

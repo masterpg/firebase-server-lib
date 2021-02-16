@@ -44,7 +44,7 @@ class UserService {
   //----------------------------------------------------------------------
 
   async getAuthData(uid: string): Promise<AuthDataResult> {
-    let status = AuthStatus.WaitForEntry
+    let status: AuthStatus = 'WaitForEntry'
     let userRecord!: UserRecord
     try {
       userRecord = await UserHelper.getUserRecord(uid)
@@ -63,12 +63,12 @@ class UserService {
     // その認証でメールアドレス確認が行われていない場合
     if (passwordProviderExists && !userRecord.emailVerified) {
       // ユーザーに送信した確認メールの回答待ち
-      status = AuthStatus.WaitForEmailVerified
+      status = 'WaitForEmailVerified'
     }
     // 上記以外の場合
     else {
       // ユーザー情報があれば有効なユーザー、なければユーザー情報登録待ち
-      status = user ? AuthStatus.Available : AuthStatus.WaitForEntry
+      status = user ? 'Available' : 'WaitForEntry'
     }
 
     // 認証ステータスをトークンに設定
@@ -117,7 +117,7 @@ class UserService {
     })
     const alreadyExist = countResponse.body.count > 0
     if (alreadyExist) {
-      return { status: SetUserInfoResultStatus.AlreadyExists }
+      return { status: 'AlreadyExists' }
     }
 
     // ユーザー情報の登録
@@ -145,7 +145,7 @@ class UserService {
     })
 
     user = (await this.getUser({ id: userRecord.uid }))!
-    return { status: SetUserInfoResultStatus.Success, user }
+    return { status: 'Success', user }
   }
 
   async getUser(key: { id?: string; userName?: string }): Promise<User | undefined> {

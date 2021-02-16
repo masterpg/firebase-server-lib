@@ -321,7 +321,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { wildcard: { path: `${dirPath}/*` } },
@@ -417,7 +417,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { wildcard: { path: `${dirPath}/*` } },
@@ -499,7 +499,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { term: { dir: dirPath } },
@@ -599,7 +599,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: StorageNodeType.Dir } }],
+                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { term: { dir: dirPath } },
@@ -833,7 +833,7 @@ class CoreStorageService<
                     should: [{ term: { path: dirPath } }, { wildcard: { path: `${dirPath}/*` } }],
                   },
                 },
-                { term: { nodeType: StorageNodeType.File } },
+                { term: { nodeType: 'File' } },
               ],
             },
           },
@@ -973,7 +973,7 @@ class CoreStorageService<
             level: CoreStorageSchema.getNodeLevel(toNodePath),
             version: node.version + 1,
           }
-          if (toNode.nodeType === StorageNodeType.File) {
+          if (toNode.nodeType === 'File') {
             result.toFileNodes.push(toNode)
           }
           result.toNodes.push(toNode)
@@ -1688,7 +1688,7 @@ class CoreStorageService<
             {
               id: nodeId,
               path: fileNodePath,
-              nodeType: StorageNodeType.File,
+              nodeType: 'File',
               share: options?.share,
             },
             existingFileNode
@@ -1753,7 +1753,7 @@ class CoreStorageService<
             {
               id: nodeId,
               path: fileNodePath,
-              nodeType: StorageNodeType.File,
+              nodeType: 'File',
               share: options?.share,
             },
             existingFileNode
@@ -1810,7 +1810,7 @@ class CoreStorageService<
 
     return {
       id: '',
-      nodeType: StorageNodeType.Dir,
+      nodeType: 'Dir',
       ...CoreStorageSchema.toPathData(dirPath),
       level: CoreStorageSchema.getNodeLevel(dirPath),
       contentType: '',
@@ -2016,10 +2016,10 @@ class CoreStorageService<
 
       let strA = a.path
       let strB = b.path
-      if (a.nodeType === StorageNodeType.File) {
+      if (a.nodeType === 'File') {
         strA = `${a.dir}${String.fromCodePoint(0xffff)}${a.name}`
       }
-      if (b.nodeType === StorageNodeType.File) {
+      if (b.nodeType === 'File') {
         strB = `${b.dir}${String.fromCodePoint(0xffff)}${b.name}`
       }
 

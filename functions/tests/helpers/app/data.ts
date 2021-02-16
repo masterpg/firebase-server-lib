@@ -10,7 +10,7 @@ export function GeneralUser(): Required<Omit<TestUserInput, 'readableNodeId' | '
     disabled: false,
     userName: 'test.general',
     fullName: '一般 太郎',
-    authStatus: AuthStatus.Available,
+    authStatus: 'Available',
     isAppAdmin: false,
     photoURL: 'https://example.com/test.general/user.png',
   }
@@ -39,7 +39,7 @@ export function AppAdminUser(): Required<Omit<TestUserInput, 'readableNodeId' | 
     disabled: false,
     userName: 'test.app.admin',
     fullName: '管理 太郎',
-    authStatus: AuthStatus.Available,
+    authStatus: 'Available',
     isAppAdmin: true,
     photoURL: 'https://example.com/test.app.admin/user.png',
   }
@@ -68,7 +68,7 @@ export function StorageUser(): Required<Omit<TestUserInput, 'readableNodeId' | '
     disabled: false,
     userName: 'test.storage',
     fullName: '貯蔵 太郎',
-    authStatus: AuthStatus.Available,
+    authStatus: 'Available',
     isAppAdmin: false,
     photoURL: 'https://example.com/test.storage/user.png',
   }

@@ -148,31 +148,31 @@ describe('UserService', () => {
     it('メールアドレス確認待ちユーザーの場合', async () => {
       const actual = await userService.getAuthData(NotVerifiedUser.uid)
 
-      expect(actual.status).toBe(AuthStatus.WaitForEmailVerified)
+      expect(actual.status).toBe<AuthStatus>('WaitForEmailVerified')
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
 
       const userRecord = await UserHelper.getUserRecord(NotVerifiedUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
-      expect(userClaims.authStatus).toBe(AuthStatus.WaitForEmailVerified)
+      expect(userClaims.authStatus).toBe<AuthStatus>('WaitForEmailVerified')
     })
 
     it('メールアドレス確認済みユーザーの場合', async () => {
       const actual = await userService.getAuthData(VerifiedUser.uid)
 
-      expect(actual.status).toBe(AuthStatus.WaitForEntry)
+      expect(actual.status).toBe<AuthStatus>('WaitForEntry')
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toBeUndefined()
 
       const userRecord = await UserHelper.getUserRecord(VerifiedUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
-      expect(userClaims.authStatus).toBe(AuthStatus.WaitForEntry)
+      expect(userClaims.authStatus).toBe<AuthStatus>('WaitForEntry')
     })
 
     it('登録済みユーザーの場合', async () => {
       const actual = await userService.getAuthData(AvailableUser.uid)
 
-      expect(actual.status).toBe(AuthStatus.Available)
+      expect(actual.status).toBe<AuthStatus>('Available')
       expect(actual.token.length > 0).toBeTruthy()
       expect(actual.user).toMatchObject({
         id: AvailableUser.uid,
@@ -186,7 +186,7 @@ describe('UserService', () => {
 
       const userRecord = await UserHelper.getUserRecord(AvailableUser.uid)
       const userClaims = userRecord.customClaims as UserClaims
-      expect(userClaims.authStatus).toBe(AuthStatus.Available)
+      expect(userClaims.authStatus).toBe<AuthStatus>('Available')
     })
 
     it('存在しないユーザーを指定した場合', async () => {
@@ -209,7 +209,7 @@ describe('UserService', () => {
       })
 
       // 戻り値の検証
-      expect(actual.status).toBe(SetUserInfoResultStatus.Success)
+      expect(actual.status).toBe<SetUserInfoResultStatus>('Success')
       const fetched = (await userService.getUser({ id: VerifiedUser.uid }))!
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
@@ -240,7 +240,7 @@ describe('UserService', () => {
       })
 
       // 戻り値の検証
-      expect(actual.status).toBe(SetUserInfoResultStatus.Success)
+      expect(actual.status).toBe<SetUserInfoResultStatus>('Success')
       const fetched = await userService.getUser({ id: VerifiedUser.uid })
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
@@ -266,7 +266,7 @@ describe('UserService', () => {
       })
 
       // 戻り値の検証
-      expect(actual.status).toBe(SetUserInfoResultStatus.Success)
+      expect(actual.status).toBe<SetUserInfoResultStatus>('Success')
       const fetched = await userService.getUser({ id: VerifiedUser.uid })
       expect(actual.user).toEqual(fetched)
       expect(actual.user).toMatchObject({
@@ -292,7 +292,7 @@ describe('UserService', () => {
       })
 
       // 戻り値の検証
-      expect(actual.status).toBe(SetUserInfoResultStatus.AlreadyExists)
+      expect(actual.status).toBe<SetUserInfoResultStatus>('AlreadyExists')
       expect(actual.user).toBeUndefined()
     })
 

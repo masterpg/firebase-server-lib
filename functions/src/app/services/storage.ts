@@ -102,14 +102,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // ディレクトリ作成
     let result!: StorageNode
     switch (input.type) {
-      case StorageArticleDirType.ListBundle:
-      case StorageArticleDirType.TreeBundle:
+      case 'ListBundle':
+      case 'TreeBundle':
         result = await this.m_createArticleBundle({ ...input, sortOrder }, options)
         break
-      case StorageArticleDirType.Category:
+      case 'Category':
         result = await this.m_createArticleCategory({ ...input, sortOrder }, options)
         break
-      case StorageArticleDirType.Article:
+      case 'Article':
         result = await this.m_createArticle({ ...input, sortOrder }, options)
         break
     }
@@ -160,7 +160,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           break
         }
       }
-      if (nearestArticleDirType !== StorageArticleDirType.Article) {
+      if (nearestArticleDirType !== 'Article') {
         throw new AppError(`The specified path is not under article: '${dirPath}'`)
       }
     }
@@ -212,7 +212,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 引数ディレクトリのパスが実際にディレクトリか検証
     const dirNode = await this.sgetNode({ path: dirPath })
-    if (dirNode.nodeType !== StorageNodeType.Dir) {
+    if (dirNode.nodeType !== 'Dir') {
       throw new AppError(`The specified path is not a directory.`, { specifiedPath: dirPath })
     }
 
@@ -270,9 +270,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (
       !(
         parentNode.path === StorageService.toArticleRootPath(user) ||
-        parentArticleDirType === StorageArticleDirType.ListBundle ||
-        parentArticleDirType === StorageArticleDirType.TreeBundle ||
-        parentArticleDirType === StorageArticleDirType.Category
+        parentArticleDirType === 'ListBundle' ||
+        parentArticleDirType === 'TreeBundle' ||
+        parentArticleDirType === 'Category'
       )
     ) {
       throw new AppError(`It is not possible to set the sort order for child nodes.`, {
@@ -478,7 +478,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             must: [
               { term: { dir: articleRootPath } },
               {
-                terms: { 'article.dir.type': [StorageArticleDirType.ListBundle, StorageArticleDirType.TreeBundle] },
+                terms: { 'article.dir.type': ['ListBundle', 'TreeBundle'] },
               },
             ],
           },
@@ -496,7 +496,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     const queryBody: string[] = []
     for (const bundleNode of bundleDirs) {
-      if (bundleNode.article?.dir?.type === StorageArticleDirType.ListBundle) continue
+      if (bundleNode.article?.dir?.type === 'ListBundle') continue
       const header = { index: StorageSchema.IndexAlias }
       const body = {
         size: 10000,
@@ -505,7 +505,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             must: [
               { wildcard: { path: `${bundleNode.path}/*` } },
               {
-                terms: { 'article.dir.type': [StorageArticleDirType.Category, StorageArticleDirType.Article] },
+                terms: { 'article.dir.type': ['Category', 'Article'] },
               },
             ],
           },
@@ -542,7 +542,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // リクエスターがアクセス可能な記事ディレクトリに絞り込み
     //
     const accessibleArticleDirs = bundleUnderDirs.filter(node => {
-      if (node.article?.dir?.type !== StorageArticleDirType.Article) return false
+      if (node.article?.dir?.type !== 'Article') return false
       const hierarchicalNodes = getHierarchicalNodes(allNodeMap, node.path)
       const share = this.getInheritedShareSettings(hierarchicalNodes)
       if (requester) {
@@ -555,7 +555,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     // 取得した記事ディレクトリを階層構造化
     //
-    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.dir?.type === StorageArticleDirType.ListBundle), ...accessibleArticleDirs]
+    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.dir?.type === 'ListBundle'), ...accessibleArticleDirs]
     const summarizedPaths = summarizeFamilyPaths(accessibleDirNodes.map(node => node.path))
     const allAccessiblePaths = splitHierarchicalPaths(...summarizedPaths).filter(isArticleRootUnder)
     const allAccessibleNodes = allAccessiblePaths.map(path => allNodeMap[path])
@@ -600,19 +600,19 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     switch (fromDirNode.article?.dir?.type) {
       // 移動ノードがバンドルの場合
       // ※バンドルは移動不可
-      case StorageArticleDirType.ListBundle:
-      case StorageArticleDirType.TreeBundle: {
+      case 'ListBundle':
+      case 'TreeBundle': {
         throw new AppError('Article bundles cannot be moved.', {
           movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
         })
       }
       // 移動ノードが｢カテゴリ｣の場合
       // ※カテゴリは｢ツリーバンドル、カテゴリ｣へのみ移動可能
-      case StorageArticleDirType.Category: {
+      case 'Category': {
         const toParentNode = await this.sgetNode({ path: _path.dirname(toDirPath) })
         const toParentArticleDirType = toParentNode.article?.dir?.type
         // カテゴリは｢ツリーバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
-        if (!(toParentArticleDirType === StorageArticleDirType.TreeBundle || toParentArticleDirType === StorageArticleDirType.Category)) {
+        if (!(toParentArticleDirType === 'TreeBundle' || toParentArticleDirType === 'Category')) {
           throw new AppError('Categories can only be moved to category bundles or categories.', {
             movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
             toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
@@ -622,16 +622,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       }
       // 移動ノードが記事ディレクトリの場合
       // ※記事ディレクトリは｢リストバンドル、ツリーバンドル、カテゴリ｣へのみ移動可能
-      case StorageArticleDirType.Article: {
+      case 'Article': {
         const toParentNode = await this.sgetNode({ path: _path.dirname(toDirPath) })
         const toParentArticleDirType = toParentNode.article?.dir?.type
-        if (
-          !(
-            toParentArticleDirType === StorageArticleDirType.ListBundle ||
-            toParentArticleDirType === StorageArticleDirType.TreeBundle ||
-            toParentArticleDirType === StorageArticleDirType.Category
-          )
-        ) {
+        if (!(toParentArticleDirType === 'ListBundle' || toParentArticleDirType === 'TreeBundle' || toParentArticleDirType === 'Category')) {
           throw new AppError('Articles can only be moved to list bundles or category bundles or categories.', {
             movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
             toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
@@ -648,7 +642,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           const toParentNode = await this.sgetNode({ path: toParentPath })
           const toParentArticleDirType = toParentNode.article?.dir?.type
           // 移動先が｢一般ディレクトリ、記事ディレクトリ｣以外の場合
-          if (!(!toParentArticleDirType || toParentArticleDirType === StorageArticleDirType.Article)) {
+          if (!(!toParentArticleDirType || toParentArticleDirType === 'Article')) {
             throw new AppError('The general directory can only be moved to the general directory or articles.', {
               movingNode: pickProps(fromDirNode, ['id', 'path', 'article']),
               toParentNode: pickProps(toParentNode, ['id', 'path', 'article']),
@@ -670,7 +664,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 移動ディレクトリが｢カテゴリディレクトリ、記事ディレクトリ｣の場合
     // ※1 バンドルは移動できないので対象外
     // ※2 記事系ディレクトリ以外のディレクトリにソート順は設定されないので対象外
-    if (fromArticleDirType === StorageArticleDirType.Category || fromArticleDirType === StorageArticleDirType.Article) {
+    if (fromArticleDirType === 'Category' || fromArticleDirType === 'Article') {
       const sortOrder = await this.m_getNewArticleSortOrder({ path: toDirPath })
       await this.client.update({
         index: StorageSchema.IndexAlias,
@@ -782,7 +776,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (!parentNode) {
       throw new AppError(`There is no parent directory for the category to be created.`, { parentPath })
     }
-    if (!(parentArticleDirType === StorageArticleDirType.TreeBundle || parentArticleDirType === StorageArticleDirType.Category)) {
+    if (!(parentArticleDirType === 'TreeBundle' || parentArticleDirType === 'Category')) {
       throw new AppError(`Categories cannot be created under the specified parent.`, {
         parentNode: pickProps(parentNode, ['id', 'path', 'article']),
       })
@@ -794,7 +788,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       dirPath,
       {
         ...input,
-        type: StorageArticleDirType.Category,
+        type: 'Category',
       },
       options
     )
@@ -825,13 +819,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (!parentNode.exists) {
       throw new AppError(`There is no parent directory for the article to be created.`, { parentPath })
     }
-    if (
-      !(
-        parentArticleDirType === StorageArticleDirType.ListBundle ||
-        parentArticleDirType === StorageArticleDirType.TreeBundle ||
-        parentArticleDirType === StorageArticleDirType.Category
-      )
-    ) {
+    if (!(parentArticleDirType === 'ListBundle' || parentArticleDirType === 'TreeBundle' || parentArticleDirType === 'Category')) {
       throw new AppError(`Articles cannot be created under the specified parent.`, {
         parentNode: pickProps(parentNode, ['id', 'path', 'article']),
       })
@@ -839,7 +827,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 祖先に記事ディレクトリが存在しないことをチェック
     for (const iDirNode of hierarchicalDirNodes.filter(node => node.path !== dirPath)) {
-      if (iDirNode.article?.dir?.type === StorageArticleDirType.Article) {
+      if (iDirNode.article?.dir?.type === 'Article') {
         throw new AppError(`The article cannot be created under article.`, {
           specifiedDirPath: dirPath,
           ancestorDirPath: iDirNode.path,
@@ -852,7 +840,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       hierarchicalDirNodes,
       {
         ...input,
-        type: StorageArticleDirType.Article,
+        type: 'Article',
       },
       options
     )
@@ -862,7 +850,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       path: _path.join(dirPath, config.storage.article.srcMasterFileName),
       article: {
         file: {
-          type: StorageArticleFileType.Master,
+          type: 'Master',
         },
       } as StorageArticleSettings,
     }
@@ -870,7 +858,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       path: _path.join(dirPath, config.storage.article.srcDraftFileName),
       article: {
         file: {
-          type: StorageArticleFileType.Draft,
+          type: 'Draft',
         },
       } as StorageArticleSettings,
     }
@@ -1036,7 +1024,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const bundle = await this.getNode({ path: bundlePath })
     const bundleArticleDirTyp = bundle?.article?.dir?.type
     if (!bundle) return undefined
-    if (!(bundleArticleDirTyp === StorageArticleDirType.ListBundle || bundleArticleDirTyp === StorageArticleDirType.TreeBundle)) {
+    if (!(bundleArticleDirTyp === 'ListBundle' || bundleArticleDirTyp === 'TreeBundle')) {
       return undefined
     }
 
@@ -1100,7 +1088,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     let dirPath: string
     if (dirKey.id) {
       const dirNode = await this.sgetNode({ id: dirKey.id })
-      if (dirNode.nodeType !== StorageNodeType.Dir) {
+      if (dirNode.nodeType !== 'Dir') {
         throw new AppError(`The specified node is not a directory.`, { input: dirKey })
       }
       dirPath = dirNode.path
@@ -1210,10 +1198,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const a = treeNodeA.item
         const b = treeNodeB.item
 
-        if (a.article?.file?.type === StorageArticleFileType.Master) return -1
-        if (b.article?.file?.type === StorageArticleFileType.Master) return 1
-        if (a.article?.file?.type === StorageArticleFileType.Draft) return -1
-        if (b.article?.file?.type === StorageArticleFileType.Draft) return 1
+        if (a.article?.file?.type === 'Master') return -1
+        if (b.article?.file?.type === 'Master') return 1
+        if (a.article?.file?.type === 'Draft') return -1
+        if (b.article?.file?.type === 'Draft') return 1
 
         if (a.nodeType === b.nodeType) {
           const orderA = a.article?.dir?.sortOrder ?? 0
@@ -1226,7 +1214,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             return orderB - orderA
           }
         } else {
-          return a.nodeType === StorageNodeType.Dir ? -1 : 1
+          return a.nodeType === 'Dir' ? -1 : 1
         }
       })
     }

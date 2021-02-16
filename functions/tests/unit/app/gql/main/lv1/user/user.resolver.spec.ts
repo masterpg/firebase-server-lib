@@ -42,7 +42,7 @@ const Ichiro: User = {
 
 const IchiroToken: UserIdClaims = {
   uid: Ichiro.id,
-  authStatus: AuthStatus.WaitForEmailVerified,
+  authStatus: 'WaitForEmailVerified',
   isAppAdmin: Ichiro.isAppAdmin,
 }
 
@@ -104,7 +104,7 @@ describe('Lv1 User Resolver', () => {
     it('疎通確認', async () => {
       const getAuthData = td.replace(userService, 'getAuthData')
       const authDataResult: AuthDataResult = {
-        status: AuthStatus.WaitForEntry,
+        status: 'WaitForEntry',
         token: 'abcdefghijklmnopqrstuvwxyz',
         user: Ichiro,
       }
@@ -152,14 +152,14 @@ describe('Lv1 User Resolver', () => {
 
     it('疎通確認', async () => {
       const setUserInfo = td.replace(userService, 'setUserInfo')
-      td.when(setUserInfo(Ichiro.id, td.matchers.contains(IchiroInput))).thenResolve({ status: SetUserInfoResultStatus.Success, user: Ichiro })
+      td.when(setUserInfo(Ichiro.id, td.matchers.contains(IchiroInput))).thenResolve({ status: 'Success', user: Ichiro })
 
       const response = await requestGQL(app, gql, {
         headers: { ...IchiroHeader },
       })
 
       expect(response.body.data.setOwnUserInfo).toEqual({
-        status: SetUserInfoResultStatus.Success,
+        status: 'Success' as SetUserInfoResultStatus,
         user: toResponseUser(Ichiro),
       })
     })

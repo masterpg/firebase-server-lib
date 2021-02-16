@@ -86,7 +86,7 @@ class CoreStorageTestHelper {
         expect(node).toMatchObject(await this.storageService.sgetNode({ path: node.path }))
         expect(node).toMatchObject(await this.storageService.sgetNode({ id: node.id }))
         // ノードがファイルの場合
-        if (node.nodeType === StorageNodeType.File) {
+        if (node.nodeType === 'File') {
           // ストレージに対象ファイルが存在することを検証
           const { exists } = await this.storageService.getStorageFile(node.id)
           expect(exists).toBeTruthy()
@@ -113,7 +113,7 @@ class CoreStorageTestHelper {
         expect(await this.storageService.getNode({ path: node.path })).toBeUndefined()
         expect(await this.storageService.getNode({ id: node.id })).toBeUndefined()
         // ノードがファイルの場合
-        if (node.nodeType === StorageNodeType.File) {
+        if (node.nodeType === 'File') {
           // ストレージに対象ファイルが存在しないことを検証
           const fileDetail = await this.storageService.getStorageFile(node.id)
           expect(fileDetail.exists).toBeFalsy()
@@ -142,7 +142,7 @@ class CoreStorageTestHelper {
         if (!toNode) {
           throw new Error(`The destination node does not exist: '${newNodePath}'`)
         }
-        if (toNode.nodeType === StorageNodeType.File) {
+        if (toNode.nodeType === 'File') {
           const { exists, file } = await this.storageService.getStorageFile(toNode.id)
           expect(exists).toBeTruthy()
         }
@@ -189,7 +189,7 @@ class CoreStorageTestHelper {
     data = data || {}
     const result: CoreStorageNode = {
       id: data.id || CoreStorageSchema.generateNodeId(),
-      nodeType: StorageNodeType.Dir,
+      nodeType: 'Dir',
       ...CoreStorageSchema.toPathData(dirPath),
       level: CoreStorageSchema.getNodeLevel(dirPath),
       contentType: data.contentType || '',
@@ -209,7 +209,7 @@ class CoreStorageTestHelper {
     const dir = removeStartDirChars(_path.dirname(filePath))
     const result: CoreStorageNode = {
       id: data.id || CoreStorageSchema.generateNodeId(),
-      nodeType: StorageNodeType.File,
+      nodeType: 'File',
       ...CoreStorageSchema.toPathData(filePath),
       level: CoreStorageSchema.getNodeLevel(filePath),
       contentType: data.contentType || 'text/plain; charset=utf-8',

@@ -77,7 +77,7 @@ describe('AuthService', () => {
     it('認証ユーザーがまだ利用可能でない場合', async () => {
       const token: UserIdClaims = {
         uid: AppAdminUser().uid,
-        authStatus: AuthStatus.WaitForEntry,
+        authStatus: 'WaitForEntry',
         isAppAdmin: AppAdminUser().isAppAdmin,
       }
       return (
@@ -163,7 +163,7 @@ describe('AuthService', () => {
     it('認証ユーザーがまだ利用可能でない場合', async () => {
       const token: UserIdClaims = {
         uid: AppAdminUser().uid,
-        authStatus: AuthStatus.WaitForEntry,
+        authStatus: 'WaitForEntry',
         isAppAdmin: AppAdminUser().isAppAdmin,
       }
       return (

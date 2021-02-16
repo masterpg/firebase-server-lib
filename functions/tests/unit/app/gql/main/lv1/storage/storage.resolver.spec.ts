@@ -107,7 +107,7 @@ describe('Lv1 Storage Resolver', () => {
           article: {
             dir: {
               name: `リストバンドル`,
-              type: StorageArticleDirType.ListBundle,
+              type: 'ListBundle',
               sortOrder: 1,
             },
           },
@@ -116,16 +116,16 @@ describe('Lv1 Storage Resolver', () => {
           article: {
             dir: {
               name: '記事1',
-              type: StorageArticleDirType.Article,
+              type: 'Article',
               sortOrder: 1,
             },
           },
         })
         const art1_master = h.newDirNode(`${art1.path}/${config.storage.article.srcMasterFileName}`, {
-          article: { file: { type: StorageArticleFileType.Master } },
+          article: { file: { type: 'Master' } },
         })
         const art1_draft = h.newDirNode(`${art1.path}/${config.storage.article.srcDraftFileName}`, {
-          article: { file: { type: StorageArticleFileType.Draft } },
+          article: { file: { type: 'Draft' } },
         })
 
         const input: StorageNodeGetKeysInput = { ids: [bundle.id, art1.id, art1_master.id, art1_draft.id] }
@@ -2079,7 +2079,7 @@ describe('Lv1 Storage Resolver', () => {
       const input: CreateArticleTypeDirInput = {
         dir: `${articleRootPath}`,
         name: 'バンドル',
-        type: StorageArticleDirType.ListBundle,
+        type: 'ListBundle',
       }
       const bundle = h.newDirNode(`${input.dir}/${StorageSchema.generateNodeId()}`, {
         article: {
@@ -2111,7 +2111,7 @@ describe('Lv1 Storage Resolver', () => {
       const input: CreateArticleTypeDirInput = {
         dir: `${articleRootPath}`,
         name: 'バンドル',
-        type: StorageArticleDirType.ListBundle,
+        type: 'ListBundle',
       }
 
       const response = await requestGQL(app, {
@@ -2127,7 +2127,7 @@ describe('Lv1 Storage Resolver', () => {
       const input: CreateArticleTypeDirInput = {
         dir: `${articleRootPath}`,
         name: 'バンドル',
-        type: StorageArticleDirType.ListBundle,
+        type: 'ListBundle',
       }
 
       const response = await requestGQL(
@@ -2225,7 +2225,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2253,7 +2253,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2274,7 +2274,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2309,7 +2309,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 2,
           },
         },
@@ -2318,7 +2318,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ2',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2350,7 +2350,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 2,
           },
         },
@@ -2359,7 +2359,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ2',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2381,7 +2381,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ1',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 2,
           },
         },
@@ -2390,7 +2390,7 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: 'カテゴリ2',
-            type: StorageArticleDirType.Category,
+            type: 'Category',
             sortOrder: 1,
           },
         },
@@ -2434,16 +2434,16 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: '記事1',
-            type: StorageArticleDirType.Article,
+            type: 'Article',
             sortOrder: 1,
           },
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: StorageArticleFileType.Master } },
+        article: { file: { type: 'Master' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: StorageArticleFileType.Master } },
+        article: { file: { type: 'Master' } },
       })
       return { art1, art1_master, art1_draft }
     }
@@ -2526,16 +2526,16 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: '記事1',
-            type: StorageArticleDirType.Article,
+            type: 'Article',
             sortOrder: 1,
           },
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: StorageArticleFileType.Master } },
+        article: { file: { type: 'Master' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(art1.path), {
-        article: { file: { type: StorageArticleFileType.Draft } },
+        article: { file: { type: 'Draft' } },
       })
       return { art1, art1_master, art1_draft }
     }
@@ -2608,15 +2608,15 @@ describe('Lv1 Storage Resolver', () => {
     function createTestData() {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const treeBundle = h.newTableOfContentsNode(`${articleRootPath}/${StorageSchema.generateNodeId()}`, {
-        type: StorageArticleDirType.TreeBundle,
+        type: 'TreeBundle',
         label: 'ツリーバンドル1',
       })
       const cat1 = h.newTableOfContentsNode(`${treeBundle}/${StorageSchema.generateNodeId()}`, {
-        type: StorageArticleDirType.Category,
+        type: 'Category',
         label: 'カテゴリ1',
       })
       const art1 = h.newTableOfContentsNode(`${cat1}/${StorageSchema.generateNodeId()}`, {
-        type: StorageArticleDirType.Article,
+        type: 'Article',
         label: '記事1',
       })
       return { treeBundle, cat1, art1 }
@@ -2678,13 +2678,13 @@ describe('Lv1 Storage Resolver', () => {
         article: {
           dir: {
             name: '記事1',
-            type: StorageArticleDirType.Article,
+            type: 'Article',
             sortOrder: 1,
           },
         },
       })
 
-      const input = { dirPath: bundlePath, types: [StorageArticleDirType.Article] }
+      const input = { dirPath: bundlePath, types: ['Article'] }
       const pagination = { maxChunk: 3 }
       const getArticleChildren = td.replace(storageService, 'getArticleChildren')
       td.when(getArticleChildren(input, pagination)).thenResolve({
@@ -2712,7 +2712,7 @@ describe('Lv1 Storage Resolver', () => {
       const response = await requestGQL(app, {
         ...gql,
         variables: {
-          input: { dirPath: bundlePath, types: [StorageArticleDirType.Article] },
+          input: { dirPath: bundlePath, types: ['Article'] },
           pagination: { maxChunk: 3 },
         },
       })
@@ -2729,7 +2729,7 @@ describe('Lv1 Storage Resolver', () => {
         {
           ...gql,
           variables: {
-            input: { dirPath: bundlePath, types: [StorageArticleDirType.Article] },
+            input: { dirPath: bundlePath, types: ['Article'] },
             pagination: { maxChunk: 3 },
           },
         },

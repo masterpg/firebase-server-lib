@@ -159,7 +159,7 @@ class DevUtilsService {
       inputs.map(async input => {
         await this.setTestFirebaseUsers(input)
         const { status, user } = await this.userService.setUserInfo(input.uid, input)
-        if (status === SetUserInfoResultStatus.AlreadyExists) {
+        if (status === 'AlreadyExists') {
           throw new AppError(`A user with the same user name already exists.`, { userName: input.userName })
         }
         dict[user!.id] = user!

@@ -3974,7 +3974,7 @@ describe('大量データのテスト', () => {
       body: {
         query: {
           bool: {
-            must: [{ wildcard: { path: `${dirPath}/*` } }, { term: { nodeType: StorageNodeType.File } }],
+            must: [{ wildcard: { path: `${dirPath}/*` } }, { term: { nodeType: 'File' } }],
           },
         },
       },
