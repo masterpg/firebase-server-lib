@@ -4,9 +4,9 @@ import {
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
+  IdToken,
   SaveArticleSrcMasterFileResult,
   StorageArticleDirType,
-  StorageArticleFileType,
   StorageArticleSettings,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -29,6 +29,7 @@ import {
   summarizeFamilyPaths,
 } from 'web-base-lib'
 import { AppError } from '../base'
+import { AuthHelper } from './base/auth'
 import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
 import { config } from '../../config'
@@ -84,10 +85,50 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
   /**
    * 記事系ディレクトリを作成します。
+   * @param idToken
    * @param input
    * @param options
    */
-  async createArticleTypeDir(input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode> {
+  createArticleTypeDir(idToken: IdToken, input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode>
+
+  /**
+   * @see createOwnArticleTypeDir
+   * @param input
+   * @param options
+   */
+  createArticleTypeDir(input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode>
+
+  async createArticleTypeDir(
+    arg1: IdToken | CreateArticleTypeDirInput,
+    arg2?: CreateArticleTypeDirInput | CreateStorageNodeOptions,
+    arg3?: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
+    let idToken: IdToken | undefined
+    let input: CreateArticleTypeDirInput
+    let options: CreateStorageNodeOptions | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as CreateArticleTypeDirInput
+      options = arg3
+    } else {
+      input = arg1
+      options = arg2 as CreateStorageNodeOptions | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, input.dir)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, input.dir) || idToken.isAppAdmin) {
+        return this.createOwnArticleTypeDir(input, options)
+      } else {
+        return this.createOtherArticleTypeDir(input, options)
+      }
+    } else {
+      return this.createOwnArticleTypeDir(input, options)
+    }
+  }
+
+  async createOwnArticleTypeDir(input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode> {
     // 作成するノードのソート順を取得
     let sortOrder: number
     if (typeof input.sortOrder === 'number') {
@@ -116,12 +157,56 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return result
   }
 
+  async createOtherArticleTypeDir(input: CreateArticleTypeDirInput, options?: CreateStorageNodeOptions): Promise<StorageNode> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 記事ルート配下に一般ディレクトリを作成します。
+   * @param idToken
    * @param dirPath
    * @param options
    */
-  async createArticleGeneralDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode> {
+  createArticleGeneralDir(idToken: IdToken, dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode>
+
+  /**
+   * @see createArticleGeneralDir
+   * @param dirPath
+   * @param options
+   */
+  createArticleGeneralDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode>
+
+  async createArticleGeneralDir(
+    arg1: IdToken | string,
+    arg2?: string | CreateStorageNodeOptions,
+    arg3?: CreateStorageNodeOptions
+  ): Promise<StorageNode> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let options: CreateStorageNodeOptions | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2 as string
+      options = arg3
+    } else {
+      dirPath = arg1
+      options = arg2 as CreateStorageNodeOptions | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.createOwnArticleGeneralDir(dirPath, options)
+      } else {
+        return this.createOtherArticleGeneralDir(dirPath, options)
+      }
+    } else {
+      return this.createOwnArticleGeneralDir(dirPath, options)
+    }
+  }
+
+  async createOwnArticleGeneralDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode> {
     StorageService.validateNodePath(dirPath)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
@@ -200,14 +285,53 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
   }
 
+  protected async createOtherArticleGeneralDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<StorageNode> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 記事系ディレクトリの名前変更を行います。
+   * @param idToken
    * @param dirPath
    * @param newName
    */
-  async renameArticleDir(dirPath: string, newName: string): Promise<StorageNode> {
-    dirPath = removeBothEndsSlash(dirPath)
+  renameArticleDir(idToken: IdToken, dirPath: string, newName: string): Promise<StorageNode>
 
+  /**
+   * @see renameArticleDir
+   * @param dirPath
+   * @param newName
+   */
+  renameArticleDir(dirPath: string, newName: string): Promise<StorageNode>
+
+  async renameArticleDir(arg1: IdToken | string, arg2: string, arg3?: string): Promise<StorageNode> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let newName: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2
+      newName = arg3 as string
+    } else {
+      dirPath = arg1
+      newName = arg2
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.renameOwnArticleDir(dirPath, newName)
+      } else {
+        return this.renameOtherArticleDir(dirPath, newName)
+      }
+    } else {
+      return this.renameOwnArticleDir(dirPath, newName)
+    }
+  }
+
+  protected async renameOwnArticleDir(dirPath: string, newName: string): Promise<StorageNode> {
+    dirPath = removeBothEndsSlash(dirPath)
     StorageService.validateNodeName(newName)
 
     // 引数ディレクトリのパスが実際にディレクトリか検証
@@ -238,15 +362,33 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return this.sgetNode({ id: dirNode.id })
   }
 
+  async renameOtherArticleDir(dirPath: string, newName: string): Promise<StorageNode> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 指定されたノードパスのノードにソート順を設定します。
-   * @param user
+   * @param idToken
    * @param orderNodePaths
    *   ソート順を設定するノードパスを順番に指定します。指定するノードはみな同じ親の子でなければ
    *   なりません。指定された配列の最後尾ノードのソート順には「1」が設定され、ここから先頭に向か
    *   ってソート順の値がインクリメントされます。
    */
-  async setArticleSortOrder(user: { uid: string }, orderNodePaths: string[]): Promise<void> {
+  async setArticleSortOrder(idToken: IdToken, orderNodePaths: string[]): Promise<void> {
+    if (idToken) {
+      await this.validateBrowsable(idToken, orderNodePaths)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, orderNodePaths[0]) || idToken.isAppAdmin) {
+        return this.setOwnArticleSortOrder(idToken, orderNodePaths)
+      } else {
+        return this.setOtherArticleSortOrder(idToken, orderNodePaths)
+      }
+    } else {
+      return this.setOwnArticleSortOrder(idToken, orderNodePaths)
+    }
+  }
+
+  protected async setOwnArticleSortOrder(idToken: { uid: string }, orderNodePaths: string[]): Promise<void> {
     if (!orderNodePaths.length) return
 
     // 指定されたパスのバリデーションチェック
@@ -269,7 +411,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 子ノードにソート順を設定することはできない。
     if (
       !(
-        parentNode.path === StorageService.toArticleRootPath(user) ||
+        parentNode.path === StorageService.toArticleRootPath(idToken) ||
         parentArticleDirType === 'ListBundle' ||
         parentArticleDirType === 'TreeBundle' ||
         parentArticleDirType === 'Category'
@@ -327,13 +469,61 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     })
   }
 
+  protected async setOtherArticleSortOrder(idToken: IdToken, orderNodePaths: string[]): Promise<void> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 記事ソースを保存します。
+   * @param idToken
    * @param articleDirPath
    * @param srcContent
    * @param textContent
    */
-  async saveArticleSrcMasterFile(articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult> {
+  saveArticleSrcMasterFile(idToken: IdToken, articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult>
+
+  /**
+   * @see saveArticleSrcMasterFile
+   * @param articleDirPath
+   * @param srcContent
+   * @param textContent
+   */
+  saveArticleSrcMasterFile(articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult>
+
+  async saveArticleSrcMasterFile(arg1: IdToken | string, arg2: string, arg3: string, arg4?: string): Promise<SaveArticleSrcMasterFileResult> {
+    let idToken: IdToken | undefined
+    let articleDirPath: string
+    let srcContent: string
+    let textContent: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      articleDirPath = arg2
+      srcContent = arg3
+      textContent = arg4 as string
+    } else {
+      articleDirPath = arg1
+      srcContent = arg2
+      textContent = arg3
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, articleDirPath)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, articleDirPath) || idToken.isAppAdmin) {
+        return this.saveOwnArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+      } else {
+        return this.saveOtherArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+      }
+    } else {
+      return this.saveOwnArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+    }
+  }
+
+  protected async saveOwnArticleSrcMasterFile(
+    articleDirPath: string,
+    srcContent: string,
+    textContent: string
+  ): Promise<SaveArticleSrcMasterFileResult> {
     const draftNode = await this.saveArticleSrcDraftFile(articleDirPath, '')
     const masterNodePath = StorageService.toArticleSrcMasterPath(articleDirPath)
     let masterNode: StorageNode = await this.saveGCSFileAndFileNode(masterNodePath, srcContent, undefined, { idempotent: true })
@@ -358,14 +548,62 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return { master: masterNode, draft: draftNode }
   }
 
+  protected async saveOtherArticleSrcMasterFile(
+    articleDirPath: string,
+    srcContent: string,
+    textContent: string
+  ): Promise<SaveArticleSrcMasterFileResult> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 記事ソースの下書きファイルを保存します。
+   * @param idToken
    * @param articleDirPath
    * @param srcContent
    */
-  async saveArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
+  saveArticleSrcDraftFile(idToken: IdToken, articleDirPath: string, srcContent: string): Promise<StorageNode>
+
+  /**
+   * @see saveArticleSrcDraftFile
+   * @param articleDirPath
+   * @param srcContent
+   */
+  saveArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode>
+
+  async saveArticleSrcDraftFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<StorageNode> {
+    let idToken: IdToken | undefined
+    let articleDirPath: string
+    let srcContent: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      articleDirPath = arg2
+      srcContent = arg3 as string
+    } else {
+      articleDirPath = arg1
+      srcContent = arg2
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, articleDirPath)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, articleDirPath) || idToken.isAppAdmin) {
+        return this.saveOwnArticleSrcDraftFile(articleDirPath, srcContent)
+      } else {
+        return this.saveOtherArticleSrcDraftFile(articleDirPath, srcContent)
+      }
+    } else {
+      return this.saveOwnArticleSrcDraftFile(articleDirPath, srcContent)
+    }
+  }
+
+  async saveOwnArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
     const draftNodePath = await StorageService.toArticleSrcDraftPath(articleDirPath)
     return this.saveGCSFileAndFileNode(draftNodePath, srcContent)
+  }
+
+  async saveOtherArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
@@ -567,17 +805,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //  Overridden
   //--------------------------------------------------
 
-  async createDir(dirPath: string, input?: CreateStorageNodeOptions): Promise<StorageNode> {
+  protected async createOwnDir(dirPath: string, input?: CreateStorageNodeOptions): Promise<StorageNode> {
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     if (StorageService.isArticleRootUnder(dirPath)) {
       throw new AppError(`This method 'createDir()' cannot create an article under directory '${dirPath}'.`)
     }
 
-    return super.createDir(dirPath, input)
+    return super.createOwnDir(dirPath, input)
   }
 
-  async createHierarchicalDirs(dirPaths: string[]): Promise<StorageNode[]> {
+  protected async createOwnHierarchicalDirs(dirPaths: string[]): Promise<StorageNode[]> {
     // このメソッドでは記事ルート配下にディレクトリを作成できない。
     // 例: 'users/xxx/articles'配下にディレクトリを作成できない。
     for (const dirPath of splitHierarchicalPaths(...dirPaths)) {
@@ -586,10 +824,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       }
     }
 
-    return super.createHierarchicalDirs(dirPaths)
+    return super.createOwnHierarchicalDirs(dirPaths)
   }
 
-  async moveDir(fromDirPath: string, toDirPath: string, input?: { maxChunk?: number }): Promise<void> {
+  protected async moveOwnDir(fromDirPath: string, toDirPath: string, input?: { maxChunk?: number }): Promise<void> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
 
@@ -656,7 +894,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     // ディレクトリの移動を実行
     //
-    await super.moveDir(fromDirPath, toDirPath, input)
+    await super.moveOwnDir(fromDirPath, toDirPath, input)
 
     //
     // 移動ディレクトリにソート順を設定

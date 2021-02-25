@@ -263,11 +263,11 @@ program
 
     // 取得されたノードがディレクトリの場合
     if (nodeType === 'Dir') {
-      const count = (await storageService.getDirDescendantCount(nodePath)) + ancestors.length
+      const count = (await storageService.getDescendantsCount({ path: nodePath, includeBase: true })) + ancestors.length
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
-      const { list } = await storageService.getDirDescendants(nodePath, { maxChunk: count })
+      const { list } = await storageService.getDescendants({ path: nodePath, includeBase: true }, { maxChunk: count })
       StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
@@ -313,11 +313,11 @@ program
 
     // 取得されたノードがディレクトリの場合
     if (nodeType === 'Dir') {
-      const count = (await storageService.getDirChildCount(nodePath)) + ancestors.length
+      const count = (await storageService.getChildrenCount({ path: nodePath, includeBase: true })) + ancestors.length
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
-      const { list } = await storageService.getDirChildren(nodePath, { maxChunk: count })
+      const { list } = await storageService.getChildren({ path: nodePath, includeBase: true }, { maxChunk: count })
       StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }

@@ -6,8 +6,6 @@ import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   GetArticleChildrenInput,
-  StorageArticleDirType,
-  StorageArticleFileType,
   StorageNode,
   StorageSchema,
   StorageService,
@@ -1159,7 +1157,7 @@ describe('StorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(StorageUserToken(), [art3.path, art2.path, art1.path])
 
-      const nodes = (await storageService.getChildren(bundle.path)).list
+      const nodes = (await storageService.getChildren({ path: bundle.path })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
       expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
@@ -1204,7 +1202,7 @@ describe('StorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(StorageUserToken(), [art3.path, art2.path, art1.path])
 
-      const nodes = (await storageService.getChildren(cat1.path)).list
+      const nodes = (await storageService.getChildren({ path: cat1.path })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
       expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
@@ -1243,7 +1241,7 @@ describe('StorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(StorageUserToken(), [bundle3.path, bundle2.path, bundle1.path])
 
-      const nodes = (await storageService.getChildren(`${articleRootPath}`)).list.filter(node => Boolean(node.article))
+      const nodes = (await storageService.getChildren({ path: `${articleRootPath}` })).list.filter(node => Boolean(node.article))
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle2.path, bundle1.path])
       expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
@@ -1284,7 +1282,7 @@ describe('StorageService', () => {
       // テスト対象実行
       await storageService.setArticleSortOrder(StorageUserToken(), [cat1.path, art2.path, art1.path])
 
-      const nodes = (await storageService.getChildren(`${bundle.path}`)).list
+      const nodes = (await storageService.getChildren({ path: `${bundle.path}` })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([cat1.path, art2.path, art1.path])
       expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
@@ -2500,7 +2498,7 @@ describe('StorageService', () => {
         await storageService.moveDir(`${ts.path}`, toNodePath)
 
         // 移動後の'programming/js/ts'＋配下ノードを検証
-        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
         StorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(4)
         expect(toNodes[0].path).toBe(`${js.path}/${ts.name}`)
@@ -2542,7 +2540,7 @@ describe('StorageService', () => {
         await storageService.moveDir(`${variable.path}`, toNodePath)
 
         // 移動後の'programming/ts/variable'＋配下ノードを検証
-        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
         StorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(3)
         expect(toNodes[0].path).toBe(`${ts.path}/${variable.name}`)
@@ -2580,7 +2578,7 @@ describe('StorageService', () => {
         await storageService.moveDir(`${tmp.path}`, toNodePath)
 
         // 移動後の'programming/js/variable/tmp'＋配下ノードを検証
-        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
         StorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(1)
         expect(toNodes[0].path).toBe(`${variable.path}/${tmp.name}`)
@@ -2593,7 +2591,7 @@ describe('StorageService', () => {
         const actual = await storageService.moveDir(`${tmp.path}`, toNodePath)
 
         // 移動後の'tmp'＋配下ノードを検証
-        const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+        const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
         StorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(1)
         expect(toNodes[0].path).toBe(`${tmp.name}`)
@@ -2640,7 +2638,7 @@ describe('StorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 移動前のノードを取得
-      const fromNodes = (await storageService.getDirDescendants(`d1`)).list
+      const fromNodes = (await storageService.getDescendants({ path: `d1`, includeBase: true })).list
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
@@ -2648,7 +2646,7 @@ describe('StorageService', () => {
       await storageService.moveDir(`d1`, toNodePath, { maxChunk: 3 })
 
       // 移動後の'dA/d1'＋配下ノードを検証
-      const { list: toNodes } = await storageService.getDirDescendants(toNodePath)
+      const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
       StorageService.sortNodes(toNodes)
       expect(toNodes.length).toBe(14)
       expect(toNodes[0].path).toBe(`dA/d1`)

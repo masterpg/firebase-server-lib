@@ -1,9 +1,10 @@
 import * as admin from 'firebase-admin'
-import { AuthRoleType, AuthStatus, IdToken } from '../base'
+import { AuthRoleType, IdToken } from '../base'
 import { ForbiddenException, HttpException, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { HTTPLoggingServiceDI } from './logging'
 import { config } from '../../../config'
+import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -186,11 +187,30 @@ class DevAuthService extends AuthService {
     try {
       decodedIdToken = await admin.auth().verifyIdToken(idToken)
     } catch (err) {
+      const now = dayjs()
       // 開発環境用コード(主に単体テスト用)
       // 単体テストでは認証状態をつくり出すのが難しく、暗号化されたIDトークンを生成できないため、
       // JSON形式のIDトークンが送られることを許容している。
       // ここでは送られてきたJSON文字列のIDトークンをパースしている。
-      decodedIdToken = JSON.parse(idToken)
+      const devIdToken = JSON.parse(idToken)
+      decodedIdToken = {
+        aud: 'my-app-1234',
+        auth_time: now.unix(),
+        email: devIdToken.email,
+        email_verified: devIdToken.email_verified,
+        exp: now.add(1, 'hour').unix(),
+        firebase: {
+          identities: {
+            email: devIdToken.email ? [devIdToken.email] : [],
+          },
+          sign_in_provider: 'custom',
+        },
+        iat: now.unix(),
+        iss: 'https://securetoken.google.com/my-app-1234',
+        sub: devIdToken.uid,
+        uid: devIdToken.uid,
+        ...devIdToken,
+      }
     }
     return decodedIdToken
   }

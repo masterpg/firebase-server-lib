@@ -1,8 +1,4 @@
 #--------------------------------------------------
-#  Env
-#--------------------------------------------------
-
-#--------------------------------------------------
 #  Storage
 #--------------------------------------------------
 
@@ -28,10 +24,8 @@ type Mutation {
 type Query {
   storageNode(input: StorageNodeGetKeyInput!): StorageNode
   storageNodes(input: StorageNodeGetKeysInput!): [StorageNode!]!
-  storageDirDescendants(dirPath: String, pagination: StoragePaginationInput): StoragePaginationResult!
-  storageDescendants(dirPath: String, pagination: StoragePaginationInput): StoragePaginationResult!
-  storageDirChildren(dirPath: String, pagination: StoragePaginationInput): StoragePaginationResult!
-  storageChildren(dirPath: String, pagination: StoragePaginationInput): StoragePaginationResult!
+  storageDescendants(input: StorageNodeGetUnderInput!, pagination: StoragePaginationInput): StoragePaginationResult!
+  storageChildren(input: StorageNodeGetUnderInput!, pagination: StoragePaginationInput): StoragePaginationResult!
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
@@ -44,8 +38,8 @@ type Query {
 #--------------------------------------------------
 
 type Mutation {
-  setOwnUserInfo(input: UserInput!): SetOwnUserResult!
-  deleteOwnUser: Boolean!
+  setUserInfo(uid: String!, input: UserInput!): SetUserInfoResult!
+  deleteUser(uid: String!): Boolean!
 }
 
 type Query {

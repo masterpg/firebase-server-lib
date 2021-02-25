@@ -1,9 +1,9 @@
 import * as chalk from 'chalk'
 import * as program from 'commander'
-import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, TestUserInput } from '../src/app/services'
 import { createNestApplication, initFirebaseApp } from '../src/app/base'
 
-const users: TestUserInput[] = [
+const testUsers: TestUserInput[] = [
   {
     uid: 'general',
     email: 'general@example.com',
@@ -43,7 +43,7 @@ program
     initFirebaseApp()
     const nestApp = await createNestApplication(DevUtilsServiceModule)
     const devUtilsService = nestApp.get(DevUtilsServiceDI.symbol) as DevUtilsServiceDI.type
-    await devUtilsService.setTestUsers(...users)
+    await devUtilsService.setTestUsers(...testUsers)
     console.log(chalk.green(`\nThe test users have been successfully set up. Press 'Ctrl+C' to exit.`))
   })
 

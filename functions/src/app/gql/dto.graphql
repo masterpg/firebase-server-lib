@@ -31,12 +31,12 @@ input UserInput {
   photoURL: String
 }
 
-type SetOwnUserResult {
-  status: SetOwnUserResultStatus!
+type SetUserInfoResult {
+  status: SetUserInfoResultStatus!
   user: User
 }
 
-enum SetOwnUserResultStatus {
+enum SetUserInfoResultStatus {
   AlreadyExists
   Success
 }
@@ -141,6 +141,12 @@ input StorageNodeGetKeyInput {
 input StorageNodeGetKeysInput {
   ids: [String!]
   paths: [String!]
+}
+
+input StorageNodeGetUnderInput {
+  id: String
+  path: String
+  includeBase: Boolean
 }
 
 input SignedUploadUrlInput {

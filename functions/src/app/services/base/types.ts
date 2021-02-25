@@ -167,6 +167,12 @@ interface StorageNodeGetKeysInput {
   paths?: string[]
 }
 
+interface StorageNodeGetUnderInput {
+  id?: string
+  path?: string
+  includeBase?: boolean
+}
+
 interface SignedUploadUrlInput {
   id: string
   path: string
@@ -287,6 +293,7 @@ export {
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
+  StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,

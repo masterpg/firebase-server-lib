@@ -23,7 +23,6 @@ import { newElasticClient } from '../../../../src/app/base/elastic'
 
 type CoreStorageTestService = CoreStorageService & {
   client: CoreStorageService['client']
-  m_validateBrowsableNodesTargetToNodePaths: StorageServiceDI.type['m_validateBrowsableNodesTargetToNodePaths']
 }
 
 type StorageTestService = StorageService &

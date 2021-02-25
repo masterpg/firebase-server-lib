@@ -1,14 +1,15 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
 import { AppError, validateUID } from '../base'
+import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
-  AuthRoleType,
   CoreStorageNode,
   CreateStorageNodeOptions,
   IdToken,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
+  StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareSettings,
   StorageNodeShareSettingsInput,
@@ -17,7 +18,6 @@ import {
   StoragePaginationResult,
   UserIdClaims,
 } from './base'
-import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import { CoreStorageSchema, UserHelper } from './base'
 import {
   ElasticMSearchAPIResponse,
@@ -37,7 +37,8 @@ import {
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths } from 'web-base-lib'
+import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths, summarizeFamilyPaths } from 'web-base-lib'
+import { AuthHelper } from './base/auth'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import DBStorageNode = CoreStorageSchema.DBStorageNode
@@ -126,107 +127,216 @@ class CoreStorageService<
 
   /**
    * 指定されたノードを取得します。
+   * @param idToken
    * @param input
    */
-  async getNode(input: StorageNodeGetKeyInput): Promise<NODE | undefined> {
+  getNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<NODE | undefined>
+
+  /**
+   * @see getNode
+   * @param input
+   */
+  getNode(input: StorageNodeGetKeyInput): Promise<NODE | undefined>
+
+  async getNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<NODE | undefined> {
+    const getNode_ = async (input: StorageNodeGetKeyInput) => {
+      const id = input.id
+      const path = removeBothEndsSlash(input.path)
+
+      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+        index: CoreStorageSchema.IndexAlias,
+        body: {
+          query: {
+            term: id ? { id } : { path },
+          },
+        },
+        _source_includes: this.includeNodeFields,
+        _source_excludes: this.excludeNodeFields,
+      })
+
+      const nodes = this.dbResponseToNodes(response)
+      return nodes.length ? nodes[0] : undefined
+    }
+
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetKeyInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2!
+    } else {
+      input = arg1
+    }
+
     if (!input.id && !input.path) {
       return undefined
     }
 
-    const id = input.id ?? ''
-    const path = removeBothEndsSlash(input.path)
-
-    const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-      index: CoreStorageSchema.IndexAlias,
-      body: {
-        query: {
-          bool: {
-            should: [{ term: { id } }, { term: { path } }],
-          },
-        },
-      },
-      _source_includes: this.includeNodeFields,
-      _source_excludes: this.excludeNodeFields,
-    })
-
-    const nodes = this.dbResponseToNodes(response)
-    return nodes.length ? nodes[0] : undefined
+    if (input.id) {
+      const node = await getNode_({ id: input.id })
+      if (!node) return
+      idToken && (await this.validateBrowsable(idToken, node.path))
+      return node
+    } else {
+      idToken && (await this.validateBrowsable(idToken, input.path))
+      return getNode_({ path: input.path })
+    }
   }
 
   /**
    * 指定されたノードを取得します。
    * 指定されたノードが見つからなかった場合、例外がスローされます。
+   * @param idToken
    * @param input
    */
-  async sgetNode(input: StorageNodeGetKeyInput): Promise<NODE> {
+  sgetNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<NODE>
+
+  /**
+   * @see sgetNode
+   * @param input
+   */
+  sgetNode(input: StorageNodeGetKeyInput): Promise<NODE>
+
+  async sgetNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<NODE> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetKeyInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2!
+    } else {
+      input = arg1
+    }
+
+    if (!input.id && !input.path) {
+      throw new AppError(`Either 'id' or 'path' must be specified.`)
+    }
+
     const node = await this.getNode(input)
     if (!node) {
       throw new AppError(`There is no node in the specified key.`, { key: input })
     }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, node.path)
+    }
+
     return node
   }
 
   /**
    * 指定されたノードリストを取得します。
+   * @param idToken
    * @param input
    */
-  async getNodes(input: StorageNodeGetKeysInput): Promise<NODE[]> {
-    const ids = input.ids || []
-    const paths = input.paths || []
-    const size = 1000
+  getNodes(idToken: IdToken, input: StorageNodeGetKeysInput): Promise<NODE[]>
 
-    const nodes: NODE[] = []
-    for (const chunk of splitArrayChunk(ids, size)) {
-      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        index: CoreStorageSchema.IndexAlias,
-        size,
-        body: {
-          query: { terms: { id: chunk } },
-        },
-        _source_includes: this.includeNodeFields,
-        _source_excludes: this.excludeNodeFields,
-      })
-      nodes.push(...this.dbResponseToNodes(response))
-    }
-    for (const chunk of splitArrayChunk(paths, size)) {
-      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        index: CoreStorageSchema.IndexAlias,
-        size,
-        body: {
-          query: { terms: { path: chunk } },
-        },
-        _source_includes: this.includeNodeFields,
-        _source_excludes: this.excludeNodeFields,
-      })
-      nodes.push(...this.dbResponseToNodes(response))
+  /**
+   * @see getNodes
+   * @param input
+   */
+  getNodes(input: StorageNodeGetKeysInput): Promise<NODE[]>
+
+  async getNodes(arg1: IdToken | StorageNodeGetKeysInput, arg2?: StorageNodeGetKeysInput): Promise<NODE[]> {
+    const getNodes_ = async (input: StorageNodeGetKeysInput) => {
+      const ids = input.ids || []
+      const paths = input.paths || []
+      const size = 1000
+
+      const nodes: NODE[] = []
+      for (const chunk of splitArrayChunk(ids, size)) {
+        const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+          index: CoreStorageSchema.IndexAlias,
+          size,
+          body: {
+            query: { terms: { id: chunk } },
+          },
+          _source_includes: this.includeNodeFields,
+          _source_excludes: this.excludeNodeFields,
+        })
+        nodes.push(...this.dbResponseToNodes(response))
+      }
+      for (const chunk of splitArrayChunk(paths, size)) {
+        const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+          index: CoreStorageSchema.IndexAlias,
+          size,
+          body: {
+            query: { terms: { path: chunk } },
+          },
+          _source_includes: this.includeNodeFields,
+          _source_excludes: this.excludeNodeFields,
+        })
+        nodes.push(...this.dbResponseToNodes(response))
+      }
+
+      const nodeIdDict: { [id: string]: NODE } = {}
+      const nodePathDict: { [id: string]: NODE } = {}
+      for (const node of nodes) {
+        nodeIdDict[node.id] = node
+        nodePathDict[node.path] = node
+      }
+
+      const result: NODE[] = []
+      for (const id of ids) {
+        const node = nodeIdDict[id]
+        node && result.push(node)
+      }
+      for (const path of paths) {
+        const node = nodePathDict[path]
+        node && result.push(node)
+      }
+
+      return result
     }
 
-    const nodeIdDict: { [id: string]: NODE } = {}
-    const nodePathDict: { [id: string]: NODE } = {}
-    for (const node of nodes) {
-      nodeIdDict[node.id] = node
-      nodePathDict[node.path] = node
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetKeysInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2!
+    } else {
+      input = arg1
     }
 
-    const result: NODE[] = []
-    for (const id of ids) {
-      const node = nodeIdDict[id]
-      node && result.push(node)
-    }
-    for (const path of paths) {
-      const node = nodePathDict[path]
-      node && result.push(node)
+    const nodes = await getNodes_(input)
+
+    if (idToken) {
+      await this.validateBrowsable(
+        idToken,
+        nodes.map(node => node.path)
+      )
     }
 
-    return result
+    return nodes
   }
 
   /**
    * 指定されたファイルノードを取得します。
+   * @param idToken
    * @param input
    */
-  async getFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
-    const fileNode = await this.getNode(input)
+  getFileNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
+
+  /**
+   * @see getFileNode
+   * @param input
+   */
+  getFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
+
+  async getFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetKeyInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2!
+    } else {
+      input = arg1
+    }
+
+    let fileNode: NODE | undefined
+    if (idToken) {
+      fileNode = await this.getNode(idToken, input)
+    } else {
+      fileNode = await this.getNode(input)
+    }
     if (!fileNode) return undefined
 
     const { file, exists } = await this.getStorageFile(fileNode.id)
@@ -236,15 +346,40 @@ class CoreStorageService<
   }
 
   /**
+   * @see sgetFileNode
+   * @param idToken
+   * @param input
+   */
+  sgetFileNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<FILE_NODE>
+
+  /**
    * 指定されたファイルノードを取得します。
    * 指定されたファイルノードが見つからなかった場合、例外がスローされます。
    * @param input
    */
-  async sgetFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE> {
-    const node = await this.getFileNode(input)
+  sgetFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE>
+
+  async sgetFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetKeyInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2!
+    } else {
+      input = arg1
+    }
+
+    let node: FILE_NODE | undefined
+    if (idToken) {
+      node = await this.getFileNode(idToken, input)
+    } else {
+      node = await this.getFileNode(input)
+    }
+
     if (!node) {
       throw new AppError(`There is no node in the specified key.`, { key: input })
     }
+
     return node
   }
 
@@ -261,51 +396,74 @@ class CoreStorageService<
   }
 
   /**
-   * 指定されたディレクトリ＋配下のノードを取得します。
-   *
-   * 引数が次のように指定された場合、
-   *   + dirPath: 'archives/photos'
-   *
-   * 次のようなノードが取得されます。
-   *   + 'archives/photos'
-   *   + 'archives/photos/travel'
-   *   + 'archives/photos/travel/tokyo.png'
-   *   + 'archives/photos/children.png'
-   *   + 'archives/photos/family.png'
-   *
-   * @param dirPath
+   * 指定されたディレクトリ配下のノードを取得します。
+   * @param idToken
+   * @param input
    * @param pagination
    */
-  async getDirDescendants(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getDescendants(dirPath, { ...pagination, includeSpecifiedDir: true })
-  }
+  async getDescendants(idToken: IdToken, input: StorageNodeGetUnderInput, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>>
 
   /**
-   * 指定されたディレクトリ配下のノードを取得します。
-   *
-   * 引数が次のように指定された場合、
-   *   + dirPath: 'archives/photos'
-   *
-   * 次のようなノードが取得されます。
-   *   + 'archives/photos/travel'
-   *   + 'archives/photos/travel/tokyo.png'
-   *   + 'archives/photos/children.png'
-   *   + 'archives/photos/family.png'
-   *
-   * @param dirPath
+   * @see getDescendants
+   * @param input
    * @param pagination
    */
-  async getDescendants(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getDescendants(dirPath, { ...pagination, includeSpecifiedDir: false })
+  async getDescendants(input: StorageNodeGetUnderInput, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>>
+
+  async getDescendants(
+    arg1: IdToken | StorageNodeGetUnderInput,
+    arg2?: StorageNodeGetUnderInput | StoragePaginationInput,
+    arg3?: StoragePaginationInput
+  ): Promise<StoragePaginationResult<NODE>> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetUnderInput
+    let pagination: StoragePaginationInput | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as StorageNodeGetUnderInput
+      pagination = arg3
+    } else {
+      input = arg1
+      pagination = arg2 as StoragePaginationInput | undefined
+    }
+
+    let path: string
+    const includeBase = input.includeBase
+
+    if (input.id) {
+      const node = await this.getNode({ id: input.id })
+      if (!node) return { list: [] }
+      path = node.path
+    } else {
+      path = input.path!
+    }
+
+    if (!input.id && typeof input.path !== 'string') {
+      throw new AppError(`Either 'id' or 'path' must be specified.`)
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, path)
+
+      // 自身が保持するノードを検索しようとしている場合
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+        return this.getOwnDescendants({ path: path, includeBase }, pagination)
+      }
+      // 他ユーザーが保持するノードを検索しようとしている場合
+      else {
+        return this.getOtherDescendants({ path, includeBase }, pagination)
+      }
+    } else {
+      return this.getOwnDescendants({ path, includeBase }, pagination)
+    }
   }
 
-  private async m_getDescendants(
-    dirPath?: string,
-    pagination?: StoragePaginationInput & { includeSpecifiedDir: boolean }
+  protected async getOwnDescendants(
+    { path, includeBase }: { path: string; includeBase?: boolean },
+    pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<NODE>> {
-    dirPath = removeBothEndsSlash(dirPath)
     const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
-    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
@@ -313,29 +471,35 @@ class CoreStorageService<
     }
 
     let query: any
-    // 引数ディレクトリが指定された場合
-    if (dirPath) {
-      if (includeSpecifiedDir) {
+
+    // 指定ディレクトリパスがバケットの場合
+    if (path === '') {
+      // バケット配下を検索 (全ノード検索)
+      query = { match_all: {} }
+    }
+    // 指定ディレクトリパスがバケット配下の場合
+    else {
+      // 指定ディレクトリを含む場合
+      if (includeBase) {
+        // 指定パスディレクトリ含め配下のノードを取得
         query = {
           bool: {
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
+                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
-              { wildcard: { path: `${dirPath}/*` } },
+              { wildcard: { path: `${path}/*` } },
             ],
           },
         }
-      } else {
-        query = { wildcard: { path: `${dirPath}/*` } }
       }
-    }
-    // 引数ディレクトリが指定されなかった場合
-    else {
-      // バケット配下を検索 (全ノード検索)
-      query = { match_all: {} }
+      // 指定ディレクトリパスを含まない場合
+      else {
+        // 指定ディレクトリパス配下のノードを取得
+        query = { wildcard: { path: `${path}/*` } }
+      }
     }
 
     // データベースからノードを取得
@@ -360,10 +524,10 @@ class CoreStorageService<
     }
     const nodes = this.dbResponseToNodes(response)
 
-    // 引数ディレクトリを含む検索の初回検索だった場合
-    if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
-      // 引数で指定されたパスのノードが存在しない場合
-      if (!nodes.some(node => node.path === dirPath)) {
+    // 指定ディレクトリを含む検索の、初回検索だった場合
+    if (includeBase && path && !pagination?.pageToken) {
+      // 指定ディレクトリパスのノードが存在しない場合
+      if (!nodes.some(node => node.path === path)) {
         // 検索結果なしで終了
         return { list: [] }
       }
@@ -386,104 +550,167 @@ class CoreStorageService<
     return { nextPageToken, list: nodes }
   }
 
-  /**
-   * 指定されたディレクトリ＋配下のノードの数を取得します。
-   *
-   * @param dirPath
-   */
-  async getDirDescendantCount(dirPath?: string): Promise<number> {
-    return this.m_getDescendantCount(dirPath, { includeSpecifiedDir: true })
+  protected async getOtherDescendants(
+    { path, includeBase }: { path: string; includeBase?: boolean },
+    pagination?: StoragePaginationInput
+  ): Promise<StoragePaginationResult<NODE>> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
-   * 指定されたディレクトリ配下のノードの数を取得します。
-   *
-   * @param dirPath
-   * @param pagination
+   * 指定されたディレクトリ配下のノード数を取得します。
+   * @param idToken
+   * @param input
    */
-  async getDescendantCount(dirPath?: string, pagination?: StoragePaginationInput): Promise<number> {
-    return this.m_getDescendantCount(dirPath, { includeSpecifiedDir: false })
-  }
+  getDescendantsCount(idToken: IdToken, input: StorageNodeGetUnderInput): Promise<number>
 
-  private async m_getDescendantCount(dirPath?: string, pagination?: { includeSpecifiedDir: boolean }): Promise<number> {
-    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
+  /**
+   * @see getDescendantsCount
+   * @param input
+   */
+  getDescendantsCount(input: StorageNodeGetUnderInput): Promise<number>
 
-    let query: any
-    // 引数ディレクトリが指定された場合
-    if (dirPath) {
-      if (includeSpecifiedDir) {
-        query = {
-          bool: {
-            should: [
-              {
-                bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
-                },
-              },
-              { wildcard: { path: `${dirPath}/*` } },
-            ],
-          },
-        }
-      } else {
-        query = { wildcard: { path: `${dirPath}/*` } }
+  async getDescendantsCount(arg1: IdToken | StorageNodeGetUnderInput, arg2?: StorageNodeGetUnderInput): Promise<number> {
+    const getDescendantsCount_ = async ({ path, includeBase }: { path: string; includeBase?: boolean }) => {
+      let query: any
+
+      // 指定ディレクトリパスがバケットの場合
+      if (path === '') {
+        // バケット配下を検索 (全ノード検索)
+        query = { match_all: {} }
       }
+      // 指定ディレクトリパスがバケット配下の場合
+      else {
+        // 指定ディレクトリを含む場合
+        if (includeBase) {
+          // 指定パスディレクトリ含め配下のノードを取得
+          query = {
+            bool: {
+              should: [
+                {
+                  bool: {
+                    must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  },
+                },
+                { wildcard: { path: `${path}/*` } },
+              ],
+            },
+          }
+        }
+        // 指定ディレクトリパスを含まない場合
+        else {
+          // 指定ディレクトリパス配下のノードを取得
+          query = { wildcard: { path: `${path}/*` } }
+        }
+      }
+
+      // データベースからカウントを取得
+      const response = await this.client.count({
+        index: CoreStorageSchema.IndexAlias,
+        body: { query },
+      })
+
+      return response.body.count
     }
-    // 引数ディレクトリが指定されなかった場合
-    else {
-      // バケット配下を検索 (全ノード検索)
-      query = { match_all: {} }
+
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetUnderInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as StorageNodeGetUnderInput
+    } else {
+      input = arg1
     }
 
-    // データベースからカウントを取得
-    const response = await this.client.count({
-      index: CoreStorageSchema.IndexAlias,
-      body: { query },
-    })
+    let path: string
+    const includeBase = input.includeBase
 
-    return response.body.count
-  }
+    if (input.id) {
+      const node = await this.getNode({ id: input.id })
+      if (!node) return 0
+      path = node.path
+    } else {
+      path = input.path!
+    }
 
-  /**
-   * 指定されたディレクトリ＋直下のノードを取得します。
-   *
-   * 引数が次のように指定された場合、
-   *   + dirPath: 'archives/photos'
-   *
-   * 次のようなノードが取得されます。
-   *   + 'archives/photos'
-   *   + 'archives/photos/family.png'
-   *   + 'archives/photos/children.png'
-   *
-   * @param dirPath
-   * @param pagination
-   */
-  async getDirChildren(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getChildren(dirPath, { ...pagination, includeSpecifiedDir: true })
+    if (!input.id && typeof input.path !== 'string') {
+      throw new AppError(`Either 'id' or 'path' must be specified.`)
+    }
+
+    idToken && (await this.validateBrowsable(idToken, path))
+
+    return getDescendantsCount_({ path, includeBase })
   }
 
   /**
    * 指定されたディレクトリ直下のノードを取得します。
-   *
-   * 引数が次のように指定された場合、
-   *   + dirPath: 'archives/photos'
-   *
-   * 次のようなノードが取得されます。
-   *   + 'archives/photos/family.png'
-   *   + 'archives/photos/children.png'
-   *
-   * @param dirPath
+   * @param idToken
+   * @param input
    * @param pagination
    */
-  async getChildren(dirPath?: string, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>> {
-    return this.m_getChildren(dirPath, { ...pagination, includeSpecifiedDir: false })
+  async getChildren(idToken: IdToken, input: StorageNodeGetUnderInput, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>>
+
+  /**
+   * @see getChildren
+   * @param input
+   * @param pagination
+   */
+  async getChildren(input: StorageNodeGetUnderInput, pagination?: StoragePaginationInput): Promise<StoragePaginationResult<NODE>>
+
+  async getChildren(
+    arg1: IdToken | StorageNodeGetUnderInput,
+    arg2?: StorageNodeGetUnderInput | StoragePaginationInput,
+    arg3?: StoragePaginationInput
+  ): Promise<StoragePaginationResult<NODE>> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetUnderInput
+    let pagination: StoragePaginationInput | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as StorageNodeGetUnderInput
+      pagination = arg3
+    } else {
+      input = arg1
+      pagination = arg2 as StoragePaginationInput | undefined
+    }
+
+    let path: string
+    const includeBase = input.includeBase
+
+    if (input.id) {
+      const node = await this.getNode({ id: input.id })
+      if (!node) return { list: [] }
+      path = node.path
+    } else {
+      path = input.path!
+    }
+
+    if (!input.id && typeof input.path !== 'string') {
+      throw new AppError(`Either 'id' or 'path' must be specified.`)
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, path)
+
+      // 自身が保持するノードを検索しようとしている場合
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+        return this.getOwnChildren({ path, includeBase }, pagination)
+      }
+      // 他ユーザーが保持するノードを検索しようとしている場合
+      else {
+        return this.getOtherChildren({ path, includeBase }, pagination)
+      }
+    } else {
+      return this.getOwnChildren({ path, includeBase }, pagination)
+    }
   }
 
-  private async m_getChildren(
-    dirPath?: string,
-    pagination?: StoragePaginationInput & { includeSpecifiedDir: boolean }
+  protected async getOwnChildren(
+    { path, includeBase }: { path: string; includeBase?: boolean },
+    pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<NODE>> {
     const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
-    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
@@ -491,32 +718,33 @@ class CoreStorageService<
     }
 
     let query: any
-    // 引数ディレクトリが指定された場合
-    if (dirPath) {
-      if (includeSpecifiedDir) {
+
+    // 指定ディレクトリパスがバケットの場合
+    if (path === '') {
+      // バケット直下を検索
+      query = { term: { dir: '' } }
+    }
+    // 指定ディレクトリパスがバケット配下の場合
+    else {
+      // 指定パスディレクトリを含む場合
+      if (includeBase) {
+        // 指定パスディレクトリ含め直下のノードを取得
         query = {
           bool: {
             should: [
               {
                 bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
+                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
-              { term: { dir: dirPath } },
+              { term: { dir: path } },
             ],
           },
         }
+        // 指定ディレクトリパスを含まない場合
       } else {
-        query = {
-          term: { dir: dirPath },
-        }
-      }
-    }
-    // 引数ディレクトリが指定されなかった場合
-    else {
-      // バケット直下を検索
-      query = {
-        term: { dir: '' },
+        // 指定ディレクトリパス直下のノードを取得
+        query = { term: { dir: path } }
       }
     }
 
@@ -542,10 +770,10 @@ class CoreStorageService<
     }
     const nodes = this.dbResponseToNodes(response)
 
-    // 引数ディレクトリを含む検索の初回検索だった場合
-    if (includeSpecifiedDir && dirPath && !pagination?.pageToken) {
-      // 引数で指定されたパスのノードが存在しない場合
-      if (!nodes.some(node => node.path === dirPath)) {
+    // 指定ディレクトリを含む検索の、初回検索だった場合
+    if (includeBase && path && !pagination?.pageToken) {
+      // 指定ディレクトリパスのノードが存在しない場合
+      if (!nodes.some(node => node.path === path)) {
         // 検索結果なしで終了
         return { list: [] }
       }
@@ -568,73 +796,125 @@ class CoreStorageService<
     return { nextPageToken, list: nodes }
   }
 
-  /**
-   * 指定されたディレクトリ＋直下のノードの数を取得します。
-   *
-   * @param dirPath
-   */
-  async getDirChildCount(dirPath?: string): Promise<number> {
-    return this.m_getChildCount(dirPath, { includeSpecifiedDir: true })
+  protected async getOtherChildren(
+    { path, includeBase }: { path: string; includeBase?: boolean },
+    pagination?: StoragePaginationInput
+  ): Promise<StoragePaginationResult<NODE>> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
-   * 指定されたディレクトリ直下のノードの数を取得します。
-   *
-   * @param dirPath
-   * @param pagination
+   * 指定されたディレクトリ直下のノード数を取得します。
+   * @param idToken
+   * @param input
    */
-  async getChildCount(dirPath?: string, pagination?: StoragePaginationInput): Promise<number> {
-    return this.m_getChildCount(dirPath, { includeSpecifiedDir: false })
-  }
+  getChildrenCount(idToken: IdToken, input: StorageNodeGetUnderInput): Promise<number>
 
-  private async m_getChildCount(dirPath?: string, pagination?: { includeSpecifiedDir: boolean }): Promise<number> {
-    const includeSpecifiedDir = Boolean(pagination?.includeSpecifiedDir)
+  /**
+   * @see getChildrenCount
+   * @param input
+   */
+  getChildrenCount(input: StorageNodeGetUnderInput): Promise<number>
 
-    let query: any
-    // 引数ディレクトリが指定された場合
-    if (dirPath) {
-      if (includeSpecifiedDir) {
-        query = {
-          bool: {
-            should: [
-              {
-                bool: {
-                  must: [{ term: { path: dirPath } }, { term: { nodeType: 'Dir' } }],
+  async getChildrenCount(arg1: IdToken | StorageNodeGetUnderInput, arg2?: StorageNodeGetUnderInput): Promise<number> {
+    const getChildrenCount_ = async ({ path, includeBase }: { path: string; includeBase?: boolean }) => {
+      let query: any
+
+      // 指定ディレクトリパスがバケットの場合
+      if (path === '') {
+        // バケット直下を検索
+        query = { term: { dir: '' } }
+      }
+      // 指定ディレクトリパスがバケット配下の場合
+      else {
+        // 指定パスディレクトリを含む場合
+        if (includeBase) {
+          // 指定パスディレクトリ含め直下のノードを取得
+          query = {
+            bool: {
+              should: [
+                {
+                  bool: {
+                    must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  },
                 },
-              },
-              { term: { dir: dirPath } },
-            ],
-          },
+                { term: { dir: path } },
+              ],
+            },
+          }
         }
-      } else {
-        query = {
-          term: { dir: dirPath },
+        // 指定ディレクトリパスを含まない場合
+        else {
+          // 指定ディレクトリパス直下のノードを取得
+          query = { term: { dir: path } }
         }
       }
-    }
-    // 引数ディレクトリが指定されなかった場合
-    else {
-      // バケット直下を検索
-      query = {
-        term: { dir: '' },
-      }
+
+      // データベースからカウントを取得
+      const response = await this.client.count({
+        index: CoreStorageSchema.IndexAlias,
+        body: { query },
+      })
+
+      return response.body.count
     }
 
-    // データベースからカウントを取得
-    const response = await this.client.count({
-      index: CoreStorageSchema.IndexAlias,
-      body: { query },
-    })
+    let idToken: IdToken | undefined
+    let input: StorageNodeGetUnderInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as StorageNodeGetUnderInput
+    } else {
+      input = arg1
+    }
 
-    return response.body.count
+    let path: string
+    const includeBase = input.includeBase
+
+    if (input.id) {
+      const node = await this.getNode({ id: input.id })
+      if (!node) return 0
+      path = node.path
+    } else {
+      path = input.path!
+    }
+
+    if (!input.id && typeof input.path !== 'string') {
+      throw new AppError(`Either 'id' or 'path' must be specified.`)
+    }
+
+    idToken && (await this.validateBrowsable(idToken, path))
+
+    return getChildrenCount_({ path, includeBase })
   }
 
   /**
    * 指定されたノードとノードの階層構造を形成するディレクトリを取得します。
+   * @param idToken
    * @param nodePath
    */
-  async getHierarchicalNodes(nodePath: string): Promise<NODE[]> {
+  getHierarchicalNodes(idToken: IdToken, nodePath: string): Promise<NODE[]>
+
+  /**
+   * @see getHierarchicalNodes
+   * @param nodePath
+   */
+  getHierarchicalNodes(nodePath: string): Promise<NODE[]>
+
+  async getHierarchicalNodes(arg1: IdToken | string, arg2?: string): Promise<NODE[]> {
+    let idToken: IdToken | undefined
+    let nodePath: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      nodePath = arg2!
+    } else {
+      nodePath = arg1
+    }
+    nodePath = removeBothEndsSlash(nodePath)
+
     if (!nodePath) return []
+
+    idToken && (await this.validateBrowsable(idToken, nodePath))
 
     // 引数ノードの祖先ディレクトリを取得
     const ancestorDirPaths = splitHierarchicalPaths(nodePath)
@@ -651,10 +931,12 @@ class CoreStorageService<
     // ※引数ノードが存在するので、祖先ディレクトリも存在しなくてはならない
     if (node) {
       const ancestorDirNodes = await this.getNodes({ paths: ancestorDirPaths })
-      // 欠けているディレクトリがあった場合は穴埋めする
+      // 欠けているディレクトリがあった場合
       if (ancestorDirNodes.length !== ancestorDirPaths.length) {
-        const addedNodes = await this.createHierarchicalDirs(ancestorDirPaths)
-        ancestorDirNodes.push(...addedNodes)
+        throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
+          nodePath,
+          ancestorPaths: ancestorDirNodes.map(node => node.path),
+        })
       }
       nodes = [...ancestorDirNodes, node]
     }
@@ -669,26 +951,81 @@ class CoreStorageService<
 
   /**
    * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
+   * @param idToken
    * @param nodePath
    */
-  async getAncestorDirs(nodePath: string): Promise<NODE[]> {
-    if (!nodePath) return []
+  getAncestorDirs(idToken: IdToken, nodePath: string): Promise<NODE[]>
 
-    nodePath = removeBothEndsSlash(nodePath)
+  /**
+   * @see getAncestorDirs
+   * @param nodePath
+   */
+  getAncestorDirs(nodePath: string): Promise<NODE[]>
 
-    const result = await this.getHierarchicalNodes(nodePath)
+  async getAncestorDirs(arg1: IdToken | string, arg2?: string): Promise<NODE[]> {
+    let result: NODE[]
+    let nodePath: string
+    if (AuthHelper.isIdToken(arg1)) {
+      nodePath = arg2!
+      result = await this.getHierarchicalNodes(arg1, nodePath)
+    } else {
+      nodePath = arg1
+      result = await this.getHierarchicalNodes(nodePath)
+    }
     return result.filter(node => node.path !== nodePath)
   }
 
   /**
    * ディレクトリを作成します。
+   * @param idToken
    * @param dirPath
    * @param options
    */
-  async createDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE> {
+  createDir(idToken: IdToken, dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE>
+
+  /**
+   * @see createDir
+   * @param dirPath
+   * @param options
+   */
+  createDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE>
+
+  async createDir(arg1: IdToken | string, arg2?: string | CreateStorageNodeOptions, arg3?: CreateStorageNodeOptions): Promise<NODE> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let options: CreateStorageNodeOptions | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2 as string
+      options = arg3
+    } else {
+      dirPath = arg1
+      options = arg2 as CreateStorageNodeOptions | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.createOwnDir(dirPath, options)
+      } else {
+        return this.createOtherDir(dirPath, options)
+      }
+    } else {
+      return this.createOwnDir(dirPath, options)
+    }
+  }
+
+  /**
+   * 自ユーザーのディレクトリを作成します。
+   * @param dirPath
+   * @param options
+   */
+  protected async createOwnDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE> {
     // 指定されたパスのバリデーションチェック
-    CoreStorageService.validateNodePath(dirPath)
     dirPath = removeBothEndsSlash(dirPath)
+    CoreStorageService.validateNodePath(dirPath)
 
     // 共有設定の入力値を検証
     CoreStorageService.validateShareSettingInput(options?.share)
@@ -736,7 +1073,7 @@ class CoreStorageService<
     // 引数ディレクトリが既に存在する場合
     else {
       if (options?.share) {
-        return await this.setDirShareSettings(dirPath, options.share)
+        return await this.setOwnDirShareSettings(dirPath, options.share)
       } else {
         return (await this.getNode({ path: dirPath }))!
       }
@@ -744,7 +1081,16 @@ class CoreStorageService<
   }
 
   /**
-   * ディレクトリを作成します。
+   * 他ユーザーのディレクトリを作成します。
+   * @param dirPath
+   * @param options
+   */
+  protected async createOtherDir(dirPath: string, options?: CreateStorageNodeOptions): Promise<NODE> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
+  /**
+   * 指定されたディレクトリの階層構造を形成するのに必要なディレクトリを作成します。
    *
    * 引数が次のように指定された場合、
    *   + dirPaths[0]: 'home/photos'
@@ -755,9 +1101,58 @@ class CoreStorageService<
    *   + 'home/photos'
    *   + 'home/docs'
    *
+   * @param idToken
    * @param dirPaths
    */
-  async createHierarchicalDirs(dirPaths: string[]): Promise<NODE[]> {
+  createHierarchicalDirs(idToken: IdToken, dirPaths: string[]): Promise<NODE[]>
+
+  /**
+   * @see createHierarchicalDirs
+   * @param dirPaths
+   */
+  createHierarchicalDirs(dirPaths: string[]): Promise<NODE[]>
+
+  async createHierarchicalDirs(arg1: IdToken | string[], arg2?: string[]): Promise<NODE[]> {
+    let idToken: IdToken | undefined
+    let dirPaths: string[]
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPaths = arg2 as string[]
+    } else {
+      dirPaths = arg1
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPaths)
+
+      const ownDirPaths: string[] = []
+      const otherDirPaths: string[] = []
+      for (const dirPath of dirPaths) {
+        // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+        if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+          ownDirPaths.push(dirPath)
+        } else {
+          otherDirPaths.push(dirPath)
+        }
+      }
+
+      const result: NODE[] = []
+      if (ownDirPaths.length) {
+        const nodes = await this.createOwnHierarchicalDirs(ownDirPaths)
+        result.push(...nodes)
+      }
+      if (otherDirPaths.length) {
+        const nodes = await this.createOtherHierarchicalDirs(otherDirPaths)
+        result.push(...nodes)
+      }
+
+      return result
+    } else {
+      return this.createOwnHierarchicalDirs(dirPaths)
+    }
+  }
+
+  protected async createOwnHierarchicalDirs(dirPaths: string[]): Promise<NODE[]> {
     // 指定されたパスのバリデーションチェック
     dirPaths.forEach(dirPath => CoreStorageService.validateNodePath(dirPath))
     dirPaths = dirPaths.map(dirPath => removeBothEndsSlash(dirPath))
@@ -794,6 +1189,10 @@ class CoreStorageService<
     return CoreStorageService.sortNodes(dirNodes) as NODE[]
   }
 
+  protected async createOtherHierarchicalDirs(dirPaths: string[]): Promise<NODE[]> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * 指定されたディレクトリを含め配下のノードを削除します。
    *
@@ -805,10 +1204,52 @@ class CoreStorageService<
    *   + 'home/photos/family.png'
    *   + 'home/photos/children.png'
    *
+   * @param idToken
    * @param dirPath
    * @param pagination
    */
-  async removeDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
+  removeDir(idToken: IdToken, dirPath: string, pagination?: { maxChunk?: number }): Promise<void>
+
+  /**
+   * @see removeDir
+   * @param dirPath
+   * @param pagination
+   */
+  removeDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void>
+
+  async removeDir(arg1: IdToken | string, arg2?: string | { maxChunk?: number }, arg3?: { maxChunk?: number }): Promise<void> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let pagination: { maxChunk?: number } | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2 as string
+      pagination = arg3
+    } else {
+      dirPath = arg1
+      pagination = arg2 as { maxChunk?: number } | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.removeOwnDir(dirPath, pagination)
+      } else {
+        return this.removeOtherDir(dirPath, pagination)
+      }
+    } else {
+      return this.removeOwnDir(dirPath, pagination)
+    }
+  }
+
+  /**
+   * 自ユーザーのディレクトリを削除します。
+   * @param dirPath
+   * @param pagination
+   */
+  protected async removeOwnDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
     if (!dirPath) {
       throw new AppError(`The argument 'dirPath' is empty.`)
     }
@@ -877,10 +1318,51 @@ class CoreStorageService<
   }
 
   /**
+   * 他ユーザーのディレクトリを削除します。
+   * @param dirPath
+   * @param pagination
+   */
+  protected async removeOtherDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
+  /**
+   * ファイルを削除します。
+   * @param idToken
+   * @param filePath
+   */
+  removeFile(idToken: IdToken, filePath: string): Promise<FILE_NODE | undefined>
+
+  /**
    * ファイルを削除します。
    * @param filePath
    */
-  async removeFile(filePath: string): Promise<FILE_NODE | undefined> {
+  removeFile(filePath: string): Promise<FILE_NODE | undefined>
+
+  async removeFile(arg1: IdToken | string, arg2?: string): Promise<FILE_NODE | undefined> {
+    let idToken: IdToken | undefined
+    let filePath: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      filePath = arg2 as string
+    } else {
+      filePath = arg1
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, filePath)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, filePath) || idToken.isAppAdmin) {
+        return this.removeOwnFile(filePath)
+      } else {
+        return this.removeOtherFile(filePath)
+      }
+    } else {
+      return this.removeOwnFile(filePath)
+    }
+  }
+
+  protected async removeOwnFile(filePath: string): Promise<FILE_NODE | undefined> {
     if (!filePath) {
       throw new AppError(`The argument 'filePath' is empty.`)
     }
@@ -898,6 +1380,10 @@ class CoreStorageService<
     })
 
     return fileNode
+  }
+
+  protected async removeOtherFile(filePath: string): Promise<FILE_NODE | undefined> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
@@ -918,11 +1404,51 @@ class CoreStorageService<
    *
    * 移動元ディレクトリまたは移動先ディレクトリがない場合は例外がスローされます。
    *
+   * @param idToken
    * @param fromDirPath
    * @param toDirPath
    * @param options
    */
-  async moveDir(fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void> {
+  moveDir(idToken: IdToken, fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void>
+
+  /**
+   * @see moveDir
+   * @param fromDirPath
+   * @param toDirPath
+   * @param options
+   */
+  moveDir(fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void>
+
+  async moveDir(arg1: IdToken | string, arg2: string, arg3?: string | { maxChunk?: number }, arg4?: { maxChunk?: number }): Promise<void> {
+    let idToken: IdToken | undefined
+    let fromDirPath: string
+    let toDirPath: string
+    let options: { maxChunk?: number } | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      fromDirPath = arg2
+      toDirPath = arg3 as string
+      options = arg4
+    } else {
+      fromDirPath = arg1
+      toDirPath = arg2
+      options = arg3 as { maxChunk?: number } | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, [fromDirPath, toDirPath])
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, fromDirPath) || idToken.isAppAdmin) {
+        return this.moveOwnDir(fromDirPath, toDirPath, options)
+      } else {
+        return this.moveOtherDir(fromDirPath, toDirPath, options)
+      }
+    } else {
+      return this.moveOwnDir(fromDirPath, toDirPath, options)
+    }
+  }
+
+  protected async moveOwnDir(fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void> {
     fromDirPath = removeBothEndsSlash(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     const maxChunk = options?.maxChunk ?? 1000
@@ -953,10 +1479,13 @@ class CoreStorageService<
 
     let pagination: StoragePaginationResult<NODE> = { nextPageToken: undefined, list: [] }
     do {
-      pagination = await this.getDirDescendants(fromDirPath, {
-        maxChunk,
-        pageToken: pagination.nextPageToken,
-      })
+      pagination = await this.getOwnDescendants(
+        { path: fromDirPath, includeBase: true },
+        {
+          maxChunk,
+          pageToken: pagination.nextPageToken,
+        }
+      )
 
       // 移動元ノードのパスを移動先のパスへ変換するための正規表現
       const reg = new RegExp(`^${fromDirPath}`)
@@ -1036,6 +1565,10 @@ class CoreStorageService<
     } while (pagination.nextPageToken)
   }
 
+  protected async moveOtherDir(fromDirPath: string, toDirPath: string, options?: { maxChunk?: number }): Promise<void> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * ファイルを指定されたディレクトリへ移動します。
    *
@@ -1049,10 +1582,47 @@ class CoreStorageService<
    *
    * 移動元ファイルまたは移動先ディレクトリがない場合、移動は行われず、戻り値は何も返しません。
    *
+   * @param idToken
    * @param fromFilePath
    * @param toFilePath
    */
-  async moveFile(fromFilePath: string, toFilePath: string): Promise<FILE_NODE> {
+  moveFile(idToken: IdToken, fromFilePath: string, toFilePath: string): Promise<FILE_NODE>
+
+  /**
+   * @see moveFile
+   * @param fromFilePath
+   * @param toFilePath
+   */
+  moveFile(fromFilePath: string, toFilePath: string): Promise<FILE_NODE>
+
+  async moveFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<FILE_NODE> {
+    let idToken: IdToken | undefined
+    let fromFilePath: string
+    let toFilePath: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      fromFilePath = arg2
+      toFilePath = arg3 as string
+    } else {
+      fromFilePath = arg1
+      toFilePath = arg2
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, [fromFilePath, toFilePath])
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, fromFilePath) || idToken.isAppAdmin) {
+        return this.moveOwnFile(fromFilePath, toFilePath)
+      } else {
+        return this.moveOtherFile(fromFilePath, toFilePath)
+      }
+    } else {
+      return this.moveOwnFile(fromFilePath, toFilePath)
+    }
+  }
+
+  protected async moveOwnFile(fromFilePath: string, toFilePath: string): Promise<FILE_NODE> {
     fromFilePath = removeBothEndsSlash(fromFilePath)
     toFilePath = removeBothEndsSlash(toFilePath)
 
@@ -1107,6 +1677,10 @@ class CoreStorageService<
     return this.sgetFileNode({ id: fileNode.id })
   }
 
+  protected async moveOtherFile(fromFilePath: string, toFilePath: string): Promise<FILE_NODE> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * ディレクトリの名前変更を行います。
    *
@@ -1120,11 +1694,52 @@ class CoreStorageService<
    *
    * リネームするディレクトリがない場合、リネームは行われず、空配列が返されます。
    *
+   * @param idToken
    * @param dirPath
    * @param newName
    * @param options
    */
-  async renameDir(dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void> {
+  renameDir(idToken: IdToken, dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void>
+
+  /**
+   * @see renameDir
+   * @param dirPath
+   * @param newName
+   * @param options
+   */
+  renameDir(dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void>
+
+  async renameDir(arg1: IdToken | string, arg2: string, arg3?: string | { maxChunk?: number }, arg4?: { maxChunk?: number }): Promise<void> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let newName: string
+    let options: { maxChunk?: number } | undefined
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2
+      newName = arg3 as string
+      options = arg4
+    } else {
+      dirPath = arg1
+      newName = arg2
+      options = arg3 as { maxChunk?: number } | undefined
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.renameOwnDir(dirPath, newName, options)
+      } else {
+        return this.renameOtherDir(dirPath, newName, options)
+      }
+    } else {
+      return this.renameOwnDir(dirPath, newName, options)
+    }
+  }
+
+  protected async renameOwnDir(dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void> {
     dirPath = removeBothEndsSlash(dirPath)
 
     CoreStorageService.validateNodeName(newName)
@@ -1139,7 +1754,11 @@ class CoreStorageService<
       throw new AppError(`The specified directory name already exists: '${dirPath}' -> '${toDirPath}'`)
     }
 
-    return await this.moveDir(dirPath, toDirPath, options)
+    return await this.moveOwnDir(dirPath, toDirPath, options)
+  }
+
+  protected async renameOtherDir(dirPath: string, newName: string, options?: { maxChunk?: number }): Promise<void> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
@@ -1155,10 +1774,47 @@ class CoreStorageService<
    *
    * リネームするファイルがない場合、移動行われず、戻り値は何も返しません。
    *
+   * @param idToken
    * @param filePath
    * @param newName
    */
-  async renameFile(filePath: string, newName: string): Promise<FILE_NODE> {
+  renameFile(idToken: IdToken, filePath: string, newName: string): Promise<FILE_NODE>
+
+  /**
+   * @see renameFile
+   * @param filePath
+   * @param newName
+   */
+  renameFile(filePath: string, newName: string): Promise<FILE_NODE>
+
+  async renameFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<FILE_NODE> {
+    let idToken: IdToken | undefined
+    let filePath: string
+    let newName: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      filePath = arg2
+      newName = arg3 as string
+    } else {
+      filePath = arg1
+      newName = arg2
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, filePath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, filePath) || idToken.isAppAdmin) {
+        return this.renameOwnFile(filePath, newName)
+      } else {
+        return this.renameOtherFile(filePath, newName)
+      }
+    } else {
+      return this.renameOwnFile(filePath, newName)
+    }
+  }
+
+  protected async renameOwnFile(filePath: string, newName: string): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
     CoreStorageService.validateNodeName(newName)
@@ -1173,15 +1829,60 @@ class CoreStorageService<
       throw new AppError(`The specified file name already exists: '${filePath}' -> '${toFilePath}'`)
     }
 
-    return await this.moveFile(filePath, toFilePath)
+    return await this.moveOwnFile(filePath, toFilePath)
+  }
+
+  protected async renameOtherFile(filePath: string, newName: string): Promise<FILE_NODE> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
    * ディレクトリに対して共有設定を行います。
+   * @param idToken
    * @param dirPath
    * @param input
    */
-  async setDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
+  setDirShareSettings(idToken: IdToken, dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE>
+
+  /**
+   * @see setDirShareSettings
+   * @param dirPath
+   * @param input
+   */
+  setDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE>
+
+  async setDirShareSettings(
+    arg1: IdToken | string,
+    arg2: string | StorageNodeShareSettingsInput | null,
+    arg3?: StorageNodeShareSettingsInput | null
+  ): Promise<NODE> {
+    let idToken: IdToken | undefined
+    let dirPath: string
+    let input: StorageNodeShareSettingsInput | null
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      dirPath = arg2 as string
+      input = arg3 as StorageNodeShareSettingsInput | null
+    } else {
+      dirPath = arg1
+      input = arg2 as StorageNodeShareSettingsInput | null
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, dirPath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
+        return this.setOwnDirShareSettings(dirPath, input)
+      } else {
+        return this.setOtherDirShareSettings(dirPath, input)
+      }
+    } else {
+      return this.setOwnDirShareSettings(dirPath, input)
+    }
+  }
+
+  protected async setOwnDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
     dirPath = removeBothEndsSlash(dirPath)
 
     CoreStorageService.validateShareSettingInput(input)
@@ -1208,12 +1909,57 @@ class CoreStorageService<
     return await this.sgetNode({ id: dirNode.id })
   }
 
+  protected async setOtherDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * ファイルに対して共有設定を行います。
+   * @param idToken
    * @param filePath
    * @param input
    */
-  async setFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
+  setFileShareSettings(idToken: IdToken, filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE>
+
+  /**
+   * @see setFileShareSettings
+   * @param filePath
+   * @param input
+   */
+  setFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE>
+
+  async setFileShareSettings(
+    arg1: IdToken | string,
+    arg2: string | StorageNodeShareSettingsInput | null,
+    arg3?: StorageNodeShareSettingsInput | null
+  ): Promise<FILE_NODE> {
+    let idToken: IdToken | undefined
+    let filePath: string
+    let input: StorageNodeShareSettingsInput | null
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      filePath = arg2 as string
+      input = arg3 as StorageNodeShareSettingsInput | null
+    } else {
+      filePath = arg1
+      input = arg2 as StorageNodeShareSettingsInput | null
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, filePath)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, filePath) || idToken.isAppAdmin) {
+        return this.setOwnFileShareSettings(filePath, input)
+      } else {
+        return this.setOtherFileShareSettings(filePath, input)
+      }
+    } else {
+      return this.setOwnFileShareSettings(filePath, input)
+    }
+  }
+
+  protected async setOwnFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
     filePath = removeBothEndsSlash(filePath)
 
     CoreStorageService.validateShareSettingInput(input)
@@ -1241,11 +1987,48 @@ class CoreStorageService<
     return fileNode
   }
 
+  protected async setOtherFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
   /**
    * ファイルアップロードの後に必要な処理を行います。
+   * @param idToken
    * @param input
    */
-  async handleUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE> {
+  handleUploadedFile(idToken: IdToken, input: StorageNodeKeyInput): Promise<FILE_NODE>
+
+  /**
+   * @see handleUploadedFile
+   * @param input
+   */
+  handleUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE>
+
+  async handleUploadedFile(arg1: IdToken | StorageNodeKeyInput, arg2?: StorageNodeKeyInput): Promise<FILE_NODE> {
+    let idToken: IdToken | undefined
+    let input: StorageNodeKeyInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      input = arg2 as StorageNodeKeyInput
+    } else {
+      input = arg1
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(idToken, input.path)
+
+      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+      if (CoreStorageService.isOwnUserRootUnder(idToken, input.path) || idToken.isAppAdmin) {
+        return this.handleOwnUploadedFile(input)
+      } else {
+        return this.handleOtherUploadedFile(input)
+      }
+    } else {
+      return this.handleOwnUploadedFile(input)
+    }
+  }
+
+  protected async handleOwnUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE> {
     const { id: nodeId, path: nodePath } = input
 
     // 指定されたパスの検証
@@ -1275,6 +2058,99 @@ class CoreStorageService<
 
     // データベースのファイルノード作成/更新
     return await this.saveFileNode(nodePath, file)
+  }
+
+  protected async handleOtherUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE> {
+    throw new AppError(`Not implemented yet.`)
+  }
+
+  /**
+   * 署名付きのアップロードURLを取得します。
+   * @param idToken
+   * @param requestOrigin
+   * @param inputs
+   */
+  getSignedUploadUrls(idToken: IdToken, requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]>
+
+  /**
+   * @see getSignedUploadUrls
+   * @param requestOrigin
+   * @param inputs
+   */
+  getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]>
+
+  async getSignedUploadUrls(arg1: IdToken | string, arg2: string | SignedUploadUrlInput[], arg3?: SignedUploadUrlInput[]): Promise<string[]> {
+    let idToken: IdToken | undefined
+    let requestOrigin: string
+    let inputs: SignedUploadUrlInput[]
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      requestOrigin = arg2 as string
+      inputs = arg3 as SignedUploadUrlInput[]
+    } else {
+      requestOrigin = arg1
+      inputs = arg2 as SignedUploadUrlInput[]
+    }
+
+    if (idToken) {
+      await this.validateBrowsable(
+        idToken,
+        inputs.map(input => input.path)
+      )
+
+      const ownInputs: SignedUploadUrlInput[] = []
+      const otherInputs: SignedUploadUrlInput[] = []
+      for (const input of inputs) {
+        // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
+        if (CoreStorageService.isOwnUserRootUnder(idToken, input.path) || idToken.isAppAdmin) {
+          ownInputs.push(input)
+        } else {
+          otherInputs.push(input)
+        }
+      }
+
+      const result: string[] = []
+      if (ownInputs.length) {
+        const nodes = await this.getOwnSignedUploadUrls(requestOrigin, inputs)
+        result.push(...nodes)
+      }
+      if (otherInputs.length) {
+        const nodes = await this.getOtherSignedUploadUrls(requestOrigin, inputs)
+        result.push(...nodes)
+      }
+
+      return result
+    } else {
+      return this.getOwnSignedUploadUrls(requestOrigin, inputs)
+    }
+  }
+
+  protected async getOwnSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
+    const bucket = admin.storage().bucket()
+    const urlDict: { [id: string]: string } = {}
+
+    for (const input of inputs) {
+      const { id: nodeId, path: nodePath, contentType } = input
+
+      // ファイルノードを取得
+      const fileNode = await this.getNode({ id: nodeId })
+
+      // アップロードURLを発行
+      const gcsFileNode = bucket.file(nodeId)
+      const [url] = await gcsFileNode.createResumableUpload({
+        origin: requestOrigin,
+        metadata: {
+          contentType,
+        },
+      })
+      urlDict[nodeId] = url
+    }
+
+    return inputs.map(input => urlDict[input.id])
+  }
+
+  protected async getOtherSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
+    throw new AppError(`Not implemented yet.`)
   }
 
   /**
@@ -1353,35 +2229,6 @@ class CoreStorageService<
     return await admin.auth().createCustomToken(user.uid, {})
   }
 
-  /**
-   * 署名付きのアップロードURLを取得します。
-   * @param requestOrigin
-   * @param inputs
-   */
-  async getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]> {
-    const bucket = admin.storage().bucket()
-    const urlDict: { [id: string]: string } = {}
-
-    for (const input of inputs) {
-      const { id: nodeId, path: nodePath, contentType } = input
-
-      // ファイルノードを取得
-      const fileNode = await this.getNode({ id: nodeId })
-
-      // アップロードURLを発行
-      const gcsFileNode = bucket.file(nodeId)
-      const [url] = await gcsFileNode.createResumableUpload({
-        origin: requestOrigin,
-        metadata: {
-          contentType,
-        },
-      })
-      urlDict[nodeId] = url
-    }
-
-    return inputs.map(input => urlDict[input.id])
-  }
-
   //--------------------------------------------------
   //  Utilities
   //--------------------------------------------------
@@ -1394,42 +2241,83 @@ class CoreStorageService<
    */
   async deleteUserDir(uid: string, maxChunk = CoreStorageService.MaxChunk): Promise<void> {
     const userRootPath = CoreStorageService.toUserRootPath({ uid })
-    await this.removeDir(userRootPath)
+    await this.removeOwnDir(userRootPath)
   }
 
   /**
-   * 指定されたノードパスへリクエストユーザーが閲覧可能か検証します。
+   * リクエスターが自身のノード情報を閲覧しようとしているか検証します。
    * @param idToken
-   * @param target
+   * @param nodePath
    */
-  async validateBrowsableNodes(idToken: IdToken, target: ValidateBrowsableTarget): Promise<void> {
-    const nodePaths = await this.m_validateBrowsableNodesTargetToNodePaths(target)
-    const roles: AuthRoleType[] = []
+  async validateBrowsable(idToken: IdToken, nodePath: string | undefined): Promise<void>
+
+  /**
+   * @see validateBrowsable
+   * @param idToken
+   * @param nodePaths
+   */
+  async validateBrowsable(idToken: IdToken, nodePaths: string[]): Promise<void>
+
+  async validateBrowsable(idToken: IdToken, nodePath_or_nodePaths: string | undefined | string[]): Promise<void> {
+    /**
+     * 指定されたノードとノードの階層構造を形成するディレクトリを取得する関数です。
+     * @param nodeMap
+     * @param nodePath
+     */
+    const extractHierarchicalNodes = (nodeMap: Record<string, NODE>, nodePath: string) => {
+      const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+      return hierarchicalPaths.reduce<NODE[]>((result, path) => {
+        const node = nodeMap[path]
+        node && result.push(node)
+        return result
+      }, [])
+    }
 
     if (!idToken) {
       throw new UnauthorizedException('Authentication failed because no ID token was specified in the argument.')
     }
 
-    // ノードパスの中に管理者権限が必要なノードがあるか調べる
-    const needIsAppAdmin = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
-    needIsAppAdmin && roles.push(AuthRoleType.AppAdmin)
+    let nodePaths: string[] = []
+    if (Array.isArray(nodePath_or_nodePaths)) {
+      nodePaths.push(...nodePath_or_nodePaths)
+    } else {
+      if (typeof nodePath_or_nodePaths !== 'string') return
+      nodePaths.push(nodePath_or_nodePaths)
+    }
+    nodePaths = nodePaths.map(nodePath => {
+      nodePath = removeBothEndsSlash(nodePath)
+      CoreStorageService.validateNodePath(nodePath)
+      return nodePath
+    })
+    nodePaths = summarizeFamilyPaths(nodePaths)
 
-    // アプリケーション管理者以外の場合
-    // ※アプリケーション管理者は全ユーザーノードを閲覧可能
-    //   ただしファイルの中身を読み込むことはできない
-    if (!idToken.isAppAdmin) {
-      // ノードパスをリクエストユーザーが閲覧可能か検証
-      for (const nodePath of nodePaths) {
-        // 指定ノードがリクエストユーザーの所有物でない場合
-        if (!CoreStorageService.isOwnUserRootFamily(idToken, nodePath)) {
+    let nodeMap: { [path: string]: NODE }
+
+    // アプリケーションノードパスを含んでいるか取得
+    const hasAppNodePath = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
+
+    // 他ユーザーのノードパスを含んでいるか取得
+    const hasOtherNodePath = nodePaths.some(nodePath => CoreStorageService.isOtherUserRootUnder(idToken, nodePath))
+
+    // ユーザーがアプリケーション管理者でなく、
+    // かつアプリケーションノードまたは他ユーザーノードのパスを含んでいる場合
+    if (!idToken.isAppAdmin && (hasAppNodePath || hasOtherNodePath)) {
+      const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
+      const nodes = await this.getNodes({ paths: hierarchicalPaths })
+      nodeMap = arrayToDict(nodes, 'path')
+    }
+
+    for (const nodePath of nodePaths) {
+      if (idToken.isAppAdmin) continue
+      // ノードパスがアプリケーションノードまたは他ユーザーノードの場合
+      if (CoreStorageService.isAppNode(nodePath) || CoreStorageService.isOtherUserRootFamily(idToken, nodePath)) {
+        const hierarchicalNodes = extractHierarchicalNodes(nodeMap!, nodePath)
+        const share = this.getInheritedShareSettings(hierarchicalNodes)
+        if (!share.readUIds?.includes(idToken.uid)) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
         }
       }
     }
-
-    // IDトークンをロールを含めて検証
-    const validated = await this.authService.validate(idToken, roles)
-    if (!validated.result) throw validated.error
   }
 
   /**
@@ -1882,61 +2770,6 @@ class CoreStorageService<
     return share
   }
 
-  /**
-   * `validateBrowsableNodes()`の引数で指定される`target`にはノードパス、ノード、ノードリストが含まれます。
-   * targetがノードまたはノードリストの場合はこれらをノードパスに変換し、全てをノードパスとして返します。
-   * @param target
-   */
-  protected async m_validateBrowsableNodesTargetToNodePaths(target: ValidateBrowsableTarget): Promise<string[]> {
-    const nodePaths: string[] = []
-
-    // ノードパスの取得
-    for (const key of Object.keys(target)) {
-      if (/Path$|Paths$/.test(key)) {
-        const value = (target as any)[key] as string | undefined | (string | undefined)[]
-        if (Array.isArray(value)) {
-          const values = value.filter(value => Boolean(value)) as string[]
-          nodePaths.push(...values)
-        } else if (value) {
-          nodePaths.push(value)
-        }
-      }
-    }
-
-    // ノードIDをノードパスに変換
-    const nodeIds: string[] = []
-    for (const key of Object.keys(target)) {
-      if (/Id$|Ids$/.test(key)) {
-        const value = (target as any)[key] as string | undefined | (string | undefined)[]
-        if (Array.isArray(value)) {
-          const values = value.filter(value => Boolean(value)) as string[]
-          nodeIds.push(...values)
-        } else if (value) {
-          nodeIds.push(value)
-        }
-      }
-    }
-    if (nodeIds.length) {
-      const nodes = await this.getNodes({ ids: nodeIds })
-      nodePaths.push(...nodes.map(node => node.path))
-    }
-
-    // ノードリストをノードパスに変換
-    for (const key of Object.keys(target)) {
-      if (/node$|nodes$/.test(key)) {
-        const value = (target as any)[key] as NODE | NODE[]
-        if (Array.isArray(value)) {
-          const values = value.map(node => node.path)
-          nodePaths.push(...values)
-        } else if (value) {
-          nodePaths.push(value.path)
-        }
-      }
-    }
-
-    return nodePaths
-  }
-
   //----------------------------------------------------------------------
   //
   //  Static
@@ -1950,7 +2783,7 @@ class CoreStorageService<
    * @param nodePath
    */
   static validateNodePath(nodePath?: string): void {
-    if (!nodePath) {
+    if (typeof nodePath !== 'string') {
       throw new AppError('The specified path is empty.')
     }
 
@@ -2039,6 +2872,24 @@ class CoreStorageService<
 
   /**
    * 指定されたパスがユーザールートを含めたファミリーノードか否かを取得します。
+   * @param nodePath
+   */
+  static isUserRootFamily(nodePath: string): boolean {
+    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+`)
+    return reg.test(nodePath)
+  }
+
+  /**
+   * 指定されたパスがユーザールート配下のノードか否かを取得します。
+   * @param nodePath
+   */
+  static isUserRootUnder(nodePath: string): boolean {
+    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+/`)
+    return reg.test(nodePath)
+  }
+
+  /**
+   * 指定されたパスがユーザールートを含めたファミリーノードか否かを取得します。
    * @param user
    * @param nodePath
    */
@@ -2060,21 +2911,27 @@ class CoreStorageService<
   }
 
   /**
-   * 指定されたパスがユーザールートを含めたファミリーノードか否かを取得します。
+   * 指定されたパスが他ユーザールートを含めたファミリーノードか否かを取得します。
+   * @param user
    * @param nodePath
    */
-  static isUserRootFamily(nodePath: string): boolean {
-    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+`)
-    return reg.test(nodePath)
+  static isOtherUserRootFamily(user: { uid: string }, nodePath: string): boolean {
+    if (this.isUserRootFamily(nodePath)) {
+      return !this.isOwnUserRootFamily(user, nodePath)
+    }
+    return false
   }
 
   /**
-   * 指定されたパスがユーザールート配下のノードか否かを取得します。
+   * 指定されたパスが他ユーザールート配下のノードか否かを取得します。
+   * @param user
    * @param nodePath
    */
-  static isUserRootUnder(nodePath: string): boolean {
-    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+/`)
-    return reg.test(nodePath)
+  static isOtherUserRootUnder(user: { uid: string }, nodePath: string): boolean {
+    if (this.isUserRootFamily(nodePath)) {
+      return !this.isOwnUserRootUnder(user, nodePath)
+    }
+    return false
   }
 
   /**

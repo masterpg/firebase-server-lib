@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base'
+import { AuthDataResult, AuthStatus, IdToken, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base'
+import { Module, UnauthorizedException } from '@nestjs/common'
 import { UserHelper, UserSchema } from './base'
 import { AppError } from '../base'
-import { Module } from '@nestjs/common'
+import { AuthHelper } from './base/auth'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../base/elastic'
 import UserRecord = admin.auth.UserRecord
@@ -86,7 +87,36 @@ class UserService {
     return { status, token, user }
   }
 
-  async setUserInfo(uid: string, input: UserInput): Promise<SetUserInfoResult> {
+  setUserInfo(idToken: IdToken, uid: string, input: UserInput): Promise<SetUserInfoResult>
+
+  setUserInfo(uid: string, input: UserInput): Promise<SetUserInfoResult>
+
+  async setUserInfo(arg1: IdToken | string, arg2: string | UserInput, arg3?: UserInput): Promise<SetUserInfoResult> {
+    // サインインされずにこのメソッドが実行されると第一引数は空になるので、その場合はエラー
+    if (!arg1) {
+      throw new UnauthorizedException(`An attempt was made to edit user information without signing in.`)
+    }
+
+    let idToken: IdToken | undefined
+    let uid: string
+    let input: UserInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      uid = arg2 as string
+      input = arg3 as UserInput
+    } else {
+      uid = arg1
+      input = arg2 as UserInput
+    }
+
+    // アプリケーション管理者以外が他ユーザー情報を編集しようとしている場合
+    if (idToken && !idToken.isAppAdmin && idToken.uid !== uid) {
+      throw new AppError(`An unauthorized user attempted to edit another user.`, {
+        executor: { uid: idToken.uid, email: idToken.email, isAppAdmin: idToken.isAppAdmin },
+        target: { uid },
+      })
+    }
+
     UserService.validateUserName(input.userName)
     UserService.validateFullName(input.fullName)
 
@@ -161,7 +191,33 @@ class UserService {
     }
   }
 
-  async deleteUser(uid: string): Promise<void> {
+  deleteUser(idToken: IdToken, uid: string): Promise<void>
+
+  deleteUser(uid: string): Promise<void>
+
+  async deleteUser(arg1: IdToken | string, arg2?: string): Promise<void> {
+    // サインインされずにこのメソッドが実行されると第一引数は空になるので、その場合はエラー
+    if (!arg1) {
+      throw new UnauthorizedException(`An attempt was made to edit user information without signing in.`)
+    }
+
+    let idToken: IdToken | undefined
+    let uid: string
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      uid = arg2 as string
+    } else {
+      uid = arg1
+    }
+
+    // アプリケーション管理者以外が他ユーザーを削除しようとしている場合
+    if (idToken && !idToken.isAppAdmin && idToken.uid !== uid) {
+      throw new AppError(`An unauthorized user attempted to delete another user.`, {
+        executor: { uid: idToken.uid, email: idToken.email, isAppAdmin: idToken.isAppAdmin },
+        target: { uid },
+      })
+    }
+
     // Firebaseユーザーを取得
     let userRecord: UserRecord | undefined
     try {

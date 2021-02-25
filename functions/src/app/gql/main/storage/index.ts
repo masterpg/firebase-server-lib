@@ -12,6 +12,7 @@ import {
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
+  StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareSettingsInput,
   StoragePaginationInput,
@@ -21,7 +22,6 @@ import {
 } from '../../../services'
 import { AuthGuard, GQLContext, GQLContextArg, UserArg } from '../../../nest'
 import { Inject, Module, UseGuards } from '@nestjs/common'
-import { AppError } from '../../../base'
 
 //========================================================================
 //
@@ -51,245 +51,203 @@ class StorageResolver {
   ) {}
 
   @Query()
-  async storageNode(@UserArg() user: IdToken, @Args('input') input: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
-    return this.getAccessibleNode(user, input)
+  @UseGuards(AuthGuard)
+  async storageNode(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
+    return this.storageService.getNode(idToken, input)
   }
 
   @Query()
-  async storageNodes(@UserArg() user: IdToken, @Args('input') input: StorageNodeGetKeysInput): Promise<StorageNode[]> {
-    // 引数指定なしエラー
-    if (!input.ids && !input.paths) {
-      throw new AppError(`Both 'ids' and 'paths' are not specified.`)
-    }
-
-    const result: StorageNode[] = []
-
-    // ID検索
-    if (input.ids?.length) {
-      // 引数IDでノードを検索
-      result.push(...(await this.storageService.getNodes({ ids: input.ids })))
-      // 検索されたノードに閲覧可能か検証
-      await this.storageService.validateBrowsableNodes(user, { nodes: result })
-    }
-
-    // パス検索
-    if (input.paths?.length) {
-      // 引数パスのノードに閲覧可能か検証
-      await this.storageService.validateBrowsableNodes(user, { nodePaths: input.paths })
-      // 引数パスでノード検索
-      result.push(...(await this.storageService.getNodes({ paths: input.paths })))
-    }
-
-    return result
+  @UseGuards(AuthGuard)
+  async storageNodes(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeGetKeysInput): Promise<StorageNode[]> {
+    return this.storageService.getNodes(idToken, input)
   }
 
   @Query()
-  async storageDirDescendants(
-    @UserArg() user: IdToken,
-    @Args('dirPath') dirPath?: string,
-    @Args('pagination') pagination?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDirDescendants(dirPath, pagination)
-  }
-
-  @Query()
+  @UseGuards(AuthGuard)
   async storageDescendants(
-    @UserArg() user: IdToken,
-    @Args('dirPath') dirPath?: string,
+    @UserArg() idToken: IdToken,
+    @Args('input') input: StorageNodeGetUnderInput,
     @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDescendants(dirPath, pagination)
+    return this.storageService.getDescendants(idToken, input, pagination)
   }
 
   @Query()
-  async storageDirChildren(
-    @UserArg() user: IdToken,
-    @Args('dirPath') dirPath?: string,
-    @Args('pagination') pagination?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getDirChildren(dirPath, pagination)
-  }
-
-  @Query()
+  @UseGuards(AuthGuard)
   async storageChildren(
-    @UserArg() user: IdToken,
-    @Args('dirPath') dirPath?: string,
+    @UserArg() idToken: IdToken,
+    @Args('input') input: StorageNodeGetUnderInput,
     @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.getChildren(dirPath, pagination)
+    return this.storageService.getChildren(idToken, input, pagination)
   }
 
   @Query()
-  async storageHierarchicalNodes(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    await this.storageService.validateBrowsableNodes(user, { nodePath })
-    return this.storageService.getHierarchicalNodes(nodePath)
+  @UseGuards(AuthGuard)
+  async storageHierarchicalNodes(@UserArg() idToken: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+    return this.storageService.getHierarchicalNodes(idToken, nodePath)
   }
 
   @Query()
-  async storageAncestorDirs(@UserArg() user: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
-    await this.storageService.validateBrowsableNodes(user, { nodePath })
-    return this.storageService.getAncestorDirs(nodePath)
+  @UseGuards(AuthGuard)
+  async storageAncestorDirs(@UserArg() idToken: IdToken, @Args('nodePath') nodePath: string): Promise<StorageNode[]> {
+    return this.storageService.getAncestorDirs(idToken, nodePath)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async createStorageDir(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('options') options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.createDir(dirPath, options)
+    return this.storageService.createDir(idToken, dirPath, options)
   }
 
   @Mutation()
-  async createStorageHierarchicalDirs(@UserArg() user: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    await this.storageService.validateBrowsableNodes(user, { dirPaths })
-    return this.storageService.createHierarchicalDirs(dirPaths)
+  @UseGuards(AuthGuard)
+  async createStorageHierarchicalDirs(@UserArg() idToken: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
+    return this.storageService.createHierarchicalDirs(idToken, dirPaths)
   }
 
   @Mutation()
-  async removeStorageFile(@UserArg() user: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
-    await this.storageService.validateBrowsableNodes(user, { filePath })
-    return await this.storageService.removeFile(filePath)
+  @UseGuards(AuthGuard)
+  async removeStorageFile(@UserArg() idToken: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
+    return await this.storageService.removeFile(idToken, filePath)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async moveStorageFile(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('fromFilePath') fromFilePath: string,
     @Args('toFilePath') toFilePath: string
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { nodePaths: [fromFilePath, toFilePath] })
-    return await this.storageService.moveFile(fromFilePath, toFilePath)
+    return await this.storageService.moveFile(idToken, fromFilePath, toFilePath)
   }
 
   @Mutation()
-  async renameStorageFile(@UserArg() user: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { filePath })
-    return await this.storageService.renameFile(filePath, newName)
+  @UseGuards(AuthGuard)
+  async renameStorageFile(@UserArg() idToken: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
+    return await this.storageService.renameFile(idToken, filePath, newName)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async setStorageDirShareSettings(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('input') input: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.setDirShareSettings(dirPath, input)
+    return this.storageService.setDirShareSettings(idToken, dirPath, input)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async setStorageFileShareSettings(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('filePath') filePath: string,
     @Args('input') input: StorageNodeShareSettingsInput
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { filePath })
-    return this.storageService.setFileShareSettings(filePath, input)
-  }
-
-  @Mutation()
-  async handleUploadedFile(@UserArg() user: IdToken, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { nodePath: input.path })
-    return await this.storageService.handleUploadedFile(input)
+    return this.storageService.setFileShareSettings(idToken, filePath, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async setFileAccessAuthClaims(@UserArg() user: IdToken, @Args('input') input: StorageNodeKeyInput): Promise<string> {
-    return this.storageService.setFileAccessAuthClaims(user, input)
-  }
-
-  @Mutation()
-  @UseGuards(AuthGuard)
-  async removeFileAccessAuthClaims(@UserArg() user: IdToken): Promise<string> {
-    return this.storageService.removeFileAccessAuthClaims(user)
+  async handleUploadedFile(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeKeyInput): Promise<StorageNode> {
+    return await this.storageService.handleUploadedFile(idToken, input)
   }
 
   @Query()
+  @UseGuards(AuthGuard)
   async signedUploadUrls(
     @GQLContextArg() ctx: GQLContext,
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('inputs') inputs: SignedUploadUrlInput[]
   ): Promise<string[]> {
-    const nodePaths = inputs.map(input => input.path)
-    await this.storageService.validateBrowsableNodes(user, { nodePaths })
     const requestOrigin = (ctx.req.headers.origin as string) || ''
-    return this.storageService.getSignedUploadUrls(requestOrigin, inputs)
+    return this.storageService.getSignedUploadUrls(idToken, requestOrigin, inputs)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
+  async setFileAccessAuthClaims(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeKeyInput): Promise<string> {
+    return this.storageService.setFileAccessAuthClaims(idToken, input)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
+  async removeFileAccessAuthClaims(@UserArg() idToken: IdToken): Promise<string> {
+    return this.storageService.removeFileAccessAuthClaims(idToken)
+  }
+
+  @Mutation()
+  @UseGuards(AuthGuard)
   async createArticleTypeDir(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('input') input: CreateArticleTypeDirInput,
     @Args('options') options: CreateStorageNodeOptions
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath: input.dir })
-    return this.storageService.createArticleTypeDir(input, options)
+    return this.storageService.createArticleTypeDir(idToken, input, options)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async createArticleGeneralDir(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('dirPath') dirPath: string,
     @Args('options') options?: CreateStorageNodeOptions
   ): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.createArticleGeneralDir(dirPath, options)
+    return this.storageService.createArticleGeneralDir(idToken, dirPath, options)
   }
 
   @Mutation()
-  async renameArticleDir(@UserArg() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    return this.storageService.renameArticleDir(dirPath, newName)
+  @UseGuards(AuthGuard)
+  async renameArticleDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode> {
+    return this.storageService.renameArticleDir(idToken, dirPath, newName)
   }
 
   @Mutation()
-  async setArticleSortOrder(@UserArg() user: IdToken, @Args('orderNodePaths') orderNodePaths: string[]): Promise<boolean> {
-    await this.storageService.validateBrowsableNodes(user, { nodePaths: orderNodePaths })
-    await this.storageService.setArticleSortOrder(user, orderNodePaths)
+  @UseGuards(AuthGuard)
+  async setArticleSortOrder(@UserArg() idToken: IdToken, @Args('orderNodePaths') orderNodePaths: string[]): Promise<boolean> {
+    await this.storageService.setArticleSortOrder(idToken, orderNodePaths)
     return true
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async saveArticleSrcMasterFile(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('articleDirPath') articleDirPath: string,
     @Args('srcContent') srcContent: string,
     @Args('textContent') textContent: string
   ): Promise<SaveArticleSrcMasterFileResult> {
-    await this.sgetAccessibleNode(user, { path: articleDirPath })
-    return this.storageService.saveArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+    return this.storageService.saveArticleSrcMasterFile(idToken, articleDirPath, srcContent, textContent)
   }
 
   @Mutation()
+  @UseGuards(AuthGuard)
   async saveArticleSrcDraftFile(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('articleDirPath') articleDirPath: string,
     @Args('srcContent') srcContent: string
   ): Promise<StorageNode> {
-    await this.sgetAccessibleNode(user, { path: articleDirPath })
-    return this.storageService.saveArticleSrcDraftFile(articleDirPath, srcContent)
+    return this.storageService.saveArticleSrcDraftFile(idToken, articleDirPath, srcContent)
   }
 
   @Query()
+  @UseGuards(AuthGuard)
   async articleChildren(
-    @UserArg() user: IdToken,
+    @UserArg() idToken: IdToken,
     @Args('input') input: GetArticleChildrenInput,
     @Args('pagination') pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<StorageNode>> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath: input.dirPath })
     return this.storageService.getArticleChildren(input, pagination)
   }
 
   @Query()
-  async articleTableOfContents(@UserArg() user: IdToken, @Args('userName') userName: string): Promise<ArticleTableOfContentsNode[]> {
-    return this.storageService.getArticleTableOfContents(userName, user)
+  async articleTableOfContents(@UserArg() idToken: IdToken, @Args('userName') userName: string): Promise<ArticleTableOfContentsNode[]> {
+    return this.storageService.getArticleTableOfContents(userName, idToken)
   }
 
   //----------------------------------------------------------------------
@@ -297,40 +255,6 @@ class StorageResolver {
   //  Internal methods
   //
   //----------------------------------------------------------------------
-
-  protected async getAccessibleNode(user: IdToken, key: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
-    // ID検索
-    if (key.id) {
-      // 引数IDでノードを検索
-      const node = await this.storageService.getNode({ id: key.id })
-      if (node) {
-        // 検索されたノードに閲覧可能な権限があるか検証
-        await this.storageService.validateBrowsableNodes(user, { node })
-        return node
-      } else {
-        return undefined
-      }
-    }
-    // パス検索
-    else if (key.path) {
-      // 引数パスのノードに閲覧可能か検証
-      await this.storageService.validateBrowsableNodes(user, { nodePath: key.path })
-      // 引数パスでノード検索
-      return this.storageService.getNode({ path: key.path })
-    }
-    // 引数指定なしエラー
-    else {
-      throw new AppError(`Both 'id' and 'path' are not specified.`)
-    }
-  }
-
-  protected async sgetAccessibleNode(user: IdToken, key: StorageNodeGetKeyInput): Promise<StorageNode> {
-    const node = await this.getAccessibleNode(user, key)
-    if (!node) {
-      throw new AppError(`There is no node in the specified key.`, { key })
-    }
-    return node
-  }
 }
 
 @Module({
@@ -351,9 +275,9 @@ class RemoveStorageDirResolver {
   ) {}
 
   @Mutation()
-  async removeStorageDir(@UserArg() user: IdToken, @Args('dirPath') dirPath: string): Promise<boolean> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    await this.storageService.removeDir(dirPath)
+  @UseGuards(AuthGuard)
+  async removeStorageDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string): Promise<boolean> {
+    await this.storageService.removeDir(idToken, dirPath)
     return true
   }
 }
@@ -376,9 +300,13 @@ class MoveStorageDirResolver {
   ) {}
 
   @Mutation()
-  async moveStorageDir(@UserArg() user: IdToken, @Args('fromDirPath') fromDirPath: string, @Args('toDirPath') toDirPath: string): Promise<boolean> {
-    await this.storageService.validateBrowsableNodes(user, { nodePaths: [fromDirPath, toDirPath] })
-    await this.storageService.moveDir(fromDirPath, toDirPath)
+  @UseGuards(AuthGuard)
+  async moveStorageDir(
+    @UserArg() idToken: IdToken,
+    @Args('fromDirPath') fromDirPath: string,
+    @Args('toDirPath') toDirPath: string
+  ): Promise<boolean> {
+    await this.storageService.moveDir(idToken, fromDirPath, toDirPath)
     return true
   }
 }
@@ -401,9 +329,9 @@ class RenameStorageDirResolver {
   ) {}
 
   @Mutation()
-  async renameStorageDir(@UserArg() user: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.validateBrowsableNodes(user, { dirPath })
-    await this.storageService.renameDir(dirPath, newName)
+  @UseGuards(AuthGuard)
+  async renameStorageDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
+    await this.storageService.renameDir(idToken, dirPath, newName)
     return true
   }
 }

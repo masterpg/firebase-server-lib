@@ -9,7 +9,7 @@ import {
   UserServiceDI,
   UserServiceModule,
 } from '../../../services'
-import { GQLContext, GQLContextArg } from '../../../nest'
+import { GQLContext, GQLContextArg, UserArg } from '../../../nest'
 import { Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
 
@@ -39,15 +39,13 @@ export class UserResolver {
   }
 
   @Mutation()
-  async setOwnUserInfo(@GQLContextArg() context: GQLContext, @Args('input') input: UserInput): Promise<SetUserInfoResult> {
-    const idToken = await this.m_getIdToken(context.req)
-    return this.userService.setUserInfo(idToken.uid, input)
+  async setUserInfo(@UserArg() idToken: IdToken, @Args('uid') uid: string, @Args('input') input: UserInput): Promise<SetUserInfoResult> {
+    return this.userService.setUserInfo(idToken, uid, input)
   }
 
   @Mutation()
-  async deleteOwnUser(@GQLContextArg() context: GQLContext): Promise<boolean> {
-    const user = await this.m_getIdToken(context.req)
-    await this.userService.deleteUser(user.uid)
+  async deleteUser(@UserArg() idToken: IdToken, @Args('uid') uid: string): Promise<boolean> {
+    await this.userService.deleteUser(idToken, uid)
     return true
   }
 
