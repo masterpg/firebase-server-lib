@@ -19,9 +19,14 @@ import KeepAliveRESTModule from '../base/keepalive'
 class StorageController {
   constructor(@Inject(StorageServiceDI.symbol) protected readonly storageService: StorageServiceDI.type) {}
 
-  @Get(':nodeId')
+  @Get('nodes/:nodeId')
   async serveFile(@Req() req: Request, @Res() res: Response, @Param('nodeId') nodeId: string): Promise<Response> {
-    return this.storageService.serveFile(req, res, nodeId)
+    return this.storageService.serveFile(req, res, { id: nodeId })
+  }
+
+  @Get('articles/:articleId')
+  async serveArticle(@Req() req: Request, @Res() res: Response, @Param('articleId') articleId: string): Promise<Response> {
+    return this.storageService.serveArticle(req, res, articleId)
   }
 }
 

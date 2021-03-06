@@ -147,7 +147,7 @@ class CoreStorageService<
         index: CoreStorageSchema.IndexAlias,
         body: {
           query: {
-            term: id ? { id } : { path },
+            term: id ? { _id: id } : { path },
           },
         },
         _source_includes: this.includeNodeFields,
@@ -243,6 +243,7 @@ class CoreStorageService<
 
       const nodes: NODE[] = []
       for (const chunk of splitArrayChunk(ids, size)) {
+        if (!chunk.length) break
         const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
           index: CoreStorageSchema.IndexAlias,
           size,
@@ -255,6 +256,7 @@ class CoreStorageService<
         nodes.push(...this.dbResponseToNodes(response))
       }
       for (const chunk of splitArrayChunk(paths, size)) {
+        if (!chunk.length) break
         const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
           index: CoreStorageSchema.IndexAlias,
           size,
@@ -2324,11 +2326,11 @@ class CoreStorageService<
    * クライアントから指定されたファイルをサーブします。
    * @param req
    * @param res
-   * @param nodeId
+   * @param input
    */
-  async serveFile(req: Request, res: Response, nodeId: string): Promise<Response> {
+  async serveFile(req: Request, res: Response, input: StorageNodeGetKeyInput): Promise<Response> {
     // 引数のファイルノードを取得
-    const fileNode = await this.getFileNode({ id: nodeId })
+    const fileNode = await this.getFileNode(input)
     if (!fileNode) {
       return res.sendStatus(404)
     }

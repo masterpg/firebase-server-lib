@@ -217,7 +217,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         // Authorizationヘッダーを設定しない
         return request(app.getHttpServer())
-          .get(`/${fileNode.id}`)
+          .get(`/nodes/${fileNode.id}`)
           .expect(200)
           .then((res: Response) => {
             expect(res.text).toEqual(fileData)
@@ -241,7 +241,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 自ユーザーを設定
             .set({ ...StorageUserHeader() })
             .expect(200)
@@ -268,7 +268,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 他ユーザーを設定
             .set({ ...AppAdminUserHeader() })
             .expect(403)
@@ -292,7 +292,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 自ユーザーを設定
             .set({ ...StorageUserHeader() })
             .expect(200)
@@ -319,7 +319,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 他ユーザーを設定
             .set({ ...GeneralUserHeader() })
             .expect(403)
@@ -343,7 +343,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 読み込み権限に設定した他ユーザーを設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -370,7 +370,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 他ユーザーを設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -399,7 +399,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 他ユーザーを設定
             .set({ ...GeneralUserHeader() })
             .expect(403)
@@ -423,7 +423,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 読み込み権限に設定した他ユーザーを設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -433,7 +433,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         )
       })
 
-      it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
+      it('ファイルに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
         const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
         await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
         const fileData = 'test'
@@ -452,7 +452,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 上位ディレクトリに設定した読み込み権限ではなく、
             // ファイルに設定した読み込み権限が適用されるため、アクセス不可
             .set({ ...GeneralUserHeader() })
@@ -478,7 +478,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         // Authorizationヘッダーを設定しない
         return request(app.getHttpServer())
-          .get(`/${fileNode.id}`)
+          .get(`/nodes/${fileNode.id}`)
           .expect(200)
           .then((res: Response) => {
             expect(res.text).toEqual(fileData)
@@ -501,7 +501,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者を設定
             .set({ ...AppAdminUserHeader() })
             .expect(200)
@@ -527,7 +527,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(403)
@@ -550,7 +550,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者を設定
             .set({ ...AppAdminUserHeader() })
             .expect(200)
@@ -576,7 +576,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(403)
@@ -599,7 +599,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 読み込み権限に設定したアプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -625,7 +625,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -653,7 +653,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // アプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(403)
@@ -676,7 +676,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 読み込み権限に設定したアプリケーション管理者以外を設定
             .set({ ...GeneralUserHeader() })
             .expect(200)
@@ -704,7 +704,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
         return (
           request(app.getHttpServer())
-            .get(`/${fileNode.id}`)
+            .get(`/nodes/${fileNode.id}`)
             // 上位ディレクトリに設定した読み込み権限ではなく、
             // ファイルに設定した読み込み権限が適用されるため、アクセス不可
             .set({ ...GeneralUserHeader() })
@@ -729,7 +729,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
       const [fileNode] = await storageService.uploadLocalFiles([{ localFilePath, fileNodePath }])
 
       return request(app.getHttpServer())
-        .get(`/${fileNode.id}`)
+        .get(`/nodes/${fileNode.id}`)
         .set({ ...AppAdminUserHeader() })
         .expect(200)
         .then((res: Response) => {
@@ -750,7 +750,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
       ])
 
       return request(app.getHttpServer())
-        .get(`/${fileNode.id}`)
+        .get(`/nodes/${fileNode.id}`)
         .set({ ...AppAdminUserHeader() })
         .expect(200)
         .then((res: Response) => {
@@ -769,7 +769,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
       ])
 
       return request(app.getHttpServer())
-        .get(`/${fileNode.id}`)
+        .get(`/nodes/${fileNode.id}`)
         .set({ ...AppAdminUserHeader() })
         .set('If-Modified-Since', fileNode.updatedAt.toString())
         .expect(304)
@@ -777,7 +777,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
 
     it('存在しないファイルを指定', async () => {
       return request(app.getHttpServer())
-        .get(`/12345678901234567890`)
+        .get(`/nodes/12345678901234567890`)
         .set({ ...AppAdminUserHeader() })
         .expect(404)
     })

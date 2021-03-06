@@ -19,6 +19,7 @@ import {
 import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import { ElasticMSearchAPIResponse, ElasticMSearchResponse, ElasticSearchAPIResponse, ElasticSearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
+import { Request, Response } from 'express'
 import {
   RequiredAre,
   arrayToDict,
@@ -799,6 +800,22 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const allAccessibleNodes = allAccessiblePaths.map(path => allNodeMap[path])
 
     return toArticleTableOfContentsNodes(allAccessibleNodes)
+  }
+
+  /**
+   * クライアントから指定された記事のソースファイルをサーブします。
+   * @param req
+   * @param res
+   * @param articleId
+   */
+  async serveArticle(req: Request, res: Response, articleId: string): Promise<Response> {
+    const articleDirNode = await this.getNode({ id: articleId })
+    if (!articleDirNode) {
+      return res.sendStatus(404)
+    }
+
+    const articleFilePath = StorageService.toArticleSrcMasterPath(articleDirNode.path)
+    return this.serveFile(req, res, { path: articleFilePath })
   }
 
   //--------------------------------------------------
