@@ -28,7 +28,7 @@ import {
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeKeyInput,
-  StorageNodeShareSettings,
+  StorageNodeShareDetail,
   StoragePaginationResult,
   StorageSchema,
   StorageService,
@@ -50,7 +50,7 @@ initApp()
 //
 //========================================================================
 
-const InitialShareSettings: StorageNodeShareSettings = {
+const InitialShareDetail: StorageNodeShareDetail = {
   isPublic: false,
   readUIds: ['ichiro', 'jiro'],
   writeUIds: [],
@@ -120,10 +120,10 @@ describe('Lv1 Storage Resolver', () => {
             },
           },
         })
-        const art1_master = h.newDirNode(`${art1.path}/${config.storage.article.srcMasterFileName}`, {
+        const art1_master = h.newDirNode(`${art1.path}/${config.storage.article.masterSrcFileName}`, {
           article: { file: { type: 'Master' } },
         })
-        const art1_draft = h.newDirNode(`${art1.path}/${config.storage.article.srcDraftFileName}`, {
+        const art1_draft = h.newDirNode(`${art1.path}/${config.storage.article.draftSrcFileName}`, {
           article: { file: { type: 'Draft' } },
         })
 
@@ -474,16 +474,16 @@ describe('Lv1 Storage Resolver', () => {
     }
 
     it('疎通確認', async () => {
-      const d1 = h.newDirNode(`d1`, { share: InitialShareSettings })
+      const d1 = h.newDirNode(`d1`, { share: InitialShareDetail })
 
       const createDir = td.replace(storageService, 'createDir')
-      td.when(createDir(AppAdminUserToken(), d1.path, { share: InitialShareSettings })).thenResolve(d1)
+      td.when(createDir(AppAdminUserToken(), d1.path, { share: InitialShareDetail })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { share: InitialShareSettings } },
+          variables: { dirPath: d1.path, options: { share: InitialShareDetail } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -669,11 +669,11 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('setStorageDirShareSettings', () => {
+  describe('setStorageDirShareDetail', () => {
     const gql = {
       query: `
-        mutation SetStorageDirShareSettings($dirPath: String!, $input: StorageNodeShareSettingsInput!) {
-          setStorageDirShareSettings(dirPath: $dirPath, input: $input) {
+        mutation SetStorageDirShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) {
+          setStorageDirShareDetail(key: $key, input: $input) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -684,19 +684,22 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const d1 = h.newDirNode(`d1`)
 
-      const setDirShareSettings = td.replace(storageService, 'setDirShareSettings')
-      td.when(setDirShareSettings(AppAdminUserToken(), d1.path, InitialShareSettings)).thenResolve(d1)
+      const setDirShareDetail = td.replace(storageService, 'setDirShareDetail')
+      td.when(setDirShareDetail(AppAdminUserToken(), { path: d1.path }, InitialShareDetail)).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, input: InitialShareSettings },
+          variables: {
+            key: { path: d1.path },
+            input: InitialShareDetail,
+          },
         },
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.setStorageDirShareSettings).toEqual(toGQLResponseStorageNode(d1))
+      expect(response.body.data.setStorageDirShareDetail).toEqual(toGQLResponseStorageNode(d1))
     })
 
     it('サインインしていない場合', async () => {
@@ -704,18 +707,18 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path, input: InitialShareSettings },
+        variables: { key: { path: d1.path }, input: InitialShareDetail },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
     })
   })
 
-  describe('setStorageFileShareSettings', () => {
+  describe('setStorageFileShareDetail', () => {
     const gql = {
       query: `
-        mutation SetFileShareSettings($filePath: String!, $input: StorageNodeShareSettingsInput!) {
-          setStorageFileShareSettings(filePath: $filePath, input: $input) {
+        mutation SetStorageFileShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) {
+          setStorageFileShareDetail(key: $key, input: $input) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -726,19 +729,22 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const fileA = h.newFileNode(`d1/d11/fileA.txt`)
 
-      const setFileShareSettings = td.replace(storageService, 'setFileShareSettings')
-      td.when(setFileShareSettings(AppAdminUserToken(), fileA.path, InitialShareSettings)).thenResolve(fileA)
+      const setFileShareDetail = td.replace(storageService, 'setFileShareDetail')
+      td.when(setFileShareDetail(AppAdminUserToken(), { path: fileA.path }, InitialShareDetail)).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path, input: InitialShareSettings },
+          variables: {
+            key: { path: fileA.path },
+            input: InitialShareDetail,
+          },
         },
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.setStorageFileShareSettings).toEqual(toGQLResponseStorageNode(fileA))
+      expect(response.body.data.setStorageFileShareDetail).toEqual(toGQLResponseStorageNode(fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -746,7 +752,10 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { filePath: fileA.path, input: InitialShareSettings },
+        variables: {
+          key: { path: fileA.path },
+          input: InitialShareDetail,
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -956,13 +965,13 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       const createArticleTypeDir = td.replace(storageService, 'createArticleTypeDir')
-      td.when(createArticleTypeDir(StorageUserToken(), input, { share: InitialShareSettings })).thenResolve(bundle)
+      td.when(createArticleTypeDir(StorageUserToken(), input, { share: InitialShareDetail })).thenResolve(bundle)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input, options: { share: InitialShareSettings } },
+          variables: { input, options: { share: InitialShareDetail } },
         },
         { headers: StorageUserHeader() }
       )
@@ -1005,13 +1014,13 @@ describe('Lv1 Storage Resolver', () => {
       const d1 = h.newDirNode(`${assetsPath}/d1`)
 
       const createArticleGeneralDir = td.replace(storageService, 'createArticleGeneralDir')
-      td.when(createArticleGeneralDir(StorageUserToken(), d1.path, { share: InitialShareSettings })).thenResolve(d1)
+      td.when(createArticleGeneralDir(StorageUserToken(), d1.path, { share: InitialShareDetail })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { share: InitialShareSettings } },
+          variables: { dirPath: d1.path, options: { share: InitialShareDetail } },
         },
         { headers: StorageUserHeader() }
       )
@@ -1177,11 +1186,11 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('saveArticleSrcMasterFile', () => {
+  describe('saveArticleMasterSrcFile', () => {
     const gql = {
       query: `
-        mutation SaveArticleSrcMasterFile($articleDirPath: String!, $srcContent: String!, $textContent: String!) {
-          saveArticleSrcMasterFile(articleDirPath: $articleDirPath, srcContent: $srcContent, textContent: $textContent) {
+        mutation SaveArticleMasterSrcFile($articleDirPath: String!, $srcContent: String!, $textContent: String!) {
+          saveArticleMasterSrcFile(articleDirPath: $articleDirPath, srcContent: $srcContent, textContent: $textContent) {
             master {
               ...${StorageNodeFieldsName}
             }
@@ -1221,8 +1230,8 @@ describe('Lv1 Storage Resolver', () => {
       const srcContent = '#header1'
       const textContent = 'header1'
 
-      const saveArticleSrcMasterFile = td.replace(storageService, 'saveArticleSrcMasterFile')
-      td.when(saveArticleSrcMasterFile(StorageUserToken(), articleDirPath, srcContent, textContent)).thenResolve({
+      const saveArticleMasterSrcFile = td.replace(storageService, 'saveArticleMasterSrcFile')
+      td.when(saveArticleMasterSrcFile(StorageUserToken(), articleDirPath, srcContent, textContent)).thenResolve({
         master: art1_master,
         draft: art1_draft,
       })
@@ -1236,7 +1245,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleSrcMasterFile).toEqual({
+      expect(response.body.data.saveArticleMasterSrcFile).toEqual({
         master: toGQLResponseStorageNode(art1_master),
         draft: toGQLResponseStorageNode(art1_draft),
       })
@@ -1257,11 +1266,11 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('saveArticleSrcDraftFile', () => {
+  describe('saveArticleDraftSrcFile', () => {
     const gql = {
       query: `
-        mutation SaveArticleSrcDraftFile($articleDirPath: String!, $srcContent: String!) {
-          saveArticleSrcDraftFile(articleDirPath: $articleDirPath, srcContent: $srcContent) {
+        mutation SaveArticleDraftSrcFile($articleDirPath: String!, $srcContent: String!) {
+          saveArticleDraftSrcFile(articleDirPath: $articleDirPath, srcContent: $srcContent) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -1295,8 +1304,8 @@ describe('Lv1 Storage Resolver', () => {
       const articleDirPath = art1_draft.dir
       const srcContent = 'test'
 
-      const saveArticleSrcDraftFile = td.replace(storageService, 'saveArticleSrcDraftFile')
-      td.when(saveArticleSrcDraftFile(StorageUserToken(), articleDirPath, srcContent)).thenResolve(art1_draft)
+      const saveArticleDraftSrcFile = td.replace(storageService, 'saveArticleDraftSrcFile')
+      td.when(saveArticleDraftSrcFile(StorageUserToken(), articleDirPath, srcContent)).thenResolve(art1_draft)
 
       const response = await requestGQL(
         app,
@@ -1307,7 +1316,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleSrcDraftFile).toEqual(toGQLResponseStorageNode(art1_draft))
+      expect(response.body.data.saveArticleDraftSrcFile).toEqual(toGQLResponseStorageNode(art1_draft))
     })
 
     it('サインインしていない場合', async () => {

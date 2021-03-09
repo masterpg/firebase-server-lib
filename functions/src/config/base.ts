@@ -91,8 +91,8 @@ interface StorageUserConfig {
 interface StorageArticleConfig {
   rootName: string
   assetsName: string
-  srcMasterFileName: string
-  srcDraftFileName: string
+  masterSrcFileName: string
+  draftSrcFileName: string
 }
 
 //--------------------------------------------------
@@ -147,8 +147,8 @@ class StorageConfigImpl implements StorageConfig {
     this.article = {
       rootName: StorageArticleConfig.RootName,
       assetsName: StorageArticleConfig.AssetsName,
-      srcMasterFileName: StorageArticleConfig.SrcMasterFileName,
-      srcDraftFileName: StorageArticleConfig.SrcDraftFileName,
+      masterSrcFileName: StorageArticleConfig.MasterSrcFileName,
+      draftSrcFileName: StorageArticleConfig.DraftSrcFileName,
     }
   }
 

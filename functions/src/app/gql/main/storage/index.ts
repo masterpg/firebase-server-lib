@@ -7,14 +7,14 @@ import {
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
   IdToken,
-  SaveArticleSrcMasterFileResult,
+  SaveArticleMasterSrcFileResult,
+  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
-  StorageNodeShareSettingsInput,
   StoragePaginationInput,
   StoragePaginationResult,
   StorageServiceDI,
@@ -134,22 +134,22 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async setStorageDirShareSettings(
+  async setStorageDirShareDetail(
     @UserArg() idToken: IdToken,
-    @Args('dirPath') dirPath: string,
-    @Args('input') input: StorageNodeShareSettingsInput
+    @Args('key') key: StorageNodeGetKeyInput,
+    @Args('input') input: SetShareDetailInput
   ): Promise<StorageNode> {
-    return this.storageService.setDirShareSettings(idToken, dirPath, input)
+    return this.storageService.setDirShareDetail(idToken, key, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async setStorageFileShareSettings(
+  async setStorageFileShareDetail(
     @UserArg() idToken: IdToken,
-    @Args('filePath') filePath: string,
-    @Args('input') input: StorageNodeShareSettingsInput
+    @Args('key') key: StorageNodeGetKeyInput,
+    @Args('input') input: SetShareDetailInput
   ): Promise<StorageNode> {
-    return this.storageService.setFileShareSettings(idToken, filePath, input)
+    return this.storageService.setFileShareDetail(idToken, key, input)
   }
 
   @Mutation()
@@ -216,23 +216,23 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async saveArticleSrcMasterFile(
+  async saveArticleMasterSrcFile(
     @UserArg() idToken: IdToken,
     @Args('articleDirPath') articleDirPath: string,
     @Args('srcContent') srcContent: string,
     @Args('textContent') textContent: string
-  ): Promise<SaveArticleSrcMasterFileResult> {
-    return this.storageService.saveArticleSrcMasterFile(idToken, articleDirPath, srcContent, textContent)
+  ): Promise<SaveArticleMasterSrcFileResult> {
+    return this.storageService.saveArticleMasterSrcFile(idToken, articleDirPath, srcContent, textContent)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async saveArticleSrcDraftFile(
+  async saveArticleDraftSrcFile(
     @UserArg() idToken: IdToken,
     @Args('articleDirPath') articleDirPath: string,
     @Args('srcContent') srcContent: string
   ): Promise<StorageNode> {
-    return this.storageService.saveArticleSrcDraftFile(idToken, articleDirPath, srcContent)
+    return this.storageService.saveArticleDraftSrcFile(idToken, articleDirPath, srcContent)
   }
 
   @Query()

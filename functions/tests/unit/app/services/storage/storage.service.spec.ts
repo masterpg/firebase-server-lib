@@ -1118,7 +1118,7 @@ describe('StorageService', () => {
       }
 
       expect(actual.cause).toBe(`There is no node in the specified key.`)
-      expect(actual.data).toEqual({ key: { path: `${articleRootPath}/xxx` } })
+      expect(actual.data).toEqual({ path: `${articleRootPath}/xxx` })
     })
   })
 
@@ -1422,7 +1422,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('saveArticleSrcMasterFile', () => {
+  describe('saveArticleMasterSrcFile', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -1447,7 +1447,7 @@ describe('StorageService', () => {
       // テスト対象実行
       const srcContent = '#header1'
       const textContent = 'header1'
-      const actual = await storageService.saveArticleSrcMasterFile(art1.path, srcContent, textContent)
+      const actual = await storageService.saveArticleMasterSrcFile(art1.path, srcContent, textContent)
 
       // 戻り値の検証
       {
@@ -1492,7 +1492,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('saveArticleSrcDraftFile', () => {
+  describe('saveArticleDraftSrcFile', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -1514,7 +1514,7 @@ describe('StorageService', () => {
 
       // テスト対象実行
       const srcContent = '#header1'
-      const actual = await storageService.saveArticleSrcDraftFile(art1.path, srcContent)
+      const actual = await storageService.saveArticleDraftSrcFile(art1.path, srcContent)
 
       // 戻り値の検証
       expect(actual.id).toBe(art1_draft.id)
@@ -1551,20 +1551,20 @@ describe('StorageService', () => {
     let tmp: StorageNode
 
     beforeEach(async () => {
-      const { srcMasterFileName } = config.storage.article
+      const { masterSrcFileName } = config.storage.article
 
       // users
       // └test.storage
       //   ├articles
       //   │└programming
       //   │  ├introduction
-      //   │  │└index.md
+      //   │  │└master.src.md
       //   │  ├js
       //   │  │└variable
-      //   │  │  └index.md
+      //   │  │  └master.src.md
       //   │  └ts
       //   │  │└class
-      //   │  │  └index.md
+      //   │  │  └master.src.md
       //   │  └py
       //   └tmp
 
@@ -1587,8 +1587,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 4,
       })
-      // introduction/index.md
-      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${srcMasterFileName}` })
+      // introduction/master.src.md
+      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${masterSrcFileName}` })
 
       // js
       js = await storageService.createArticleTypeDir({
@@ -1604,8 +1604,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       })
-      // js/variable/index.md
-      variable_master = await storageService.sgetNode({ path: `${variable.path}/${srcMasterFileName}` })
+      // js/variable/master.src.md
+      variable_master = await storageService.sgetNode({ path: `${variable.path}/${masterSrcFileName}` })
 
       // ts
       ts = await storageService.createArticleTypeDir({
@@ -1621,8 +1621,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       })
-      // ts/class/index.md
-      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${srcMasterFileName}` })
+      // ts/class/master.src.md
+      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${masterSrcFileName}` })
 
       // py
       py = await storageService.createArticleTypeDir({
@@ -1730,30 +1730,30 @@ describe('StorageService', () => {
     })
 
     async function setupArticleTypeNodes(): Promise<void> {
-      const { srcMasterFileName } = config.storage.article
+      const { masterSrcFileName } = config.storage.article
 
       // users
       // └test.storage
       //   └articles
       //     ├blog ← 公開
       //     │└blog-art1
-      //     │  └index.md
+      //     │  └master.src.md
       //     ├programming ← 公開
       //     │├introduction
-      //     ││└index.md
+      //     ││└master.src.md
       //     │├js
       //     ││└variable ← 非公開
-      //     ││  └index.md
+      //     ││  └master.src.md
       //     │└ts
       //     │  ├class
-      //     │  │└index.md
+      //     │  │└master.src.md
       //     │  └generics ← 非公開
-      //     │    └index.md
+      //     │    └master.src.md
       //     └secret ← 非公開
       //       ├secret-art1
-      //       │└index.md
+      //       │└master.src.md
       //       └secret-art2 ← 指定ユーザーにのみ公開
-      //         └index.md
+      //         └master.src.md
 
       // users/test.storage/articles
       articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -1780,8 +1780,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       })
-      // blog-art1/index.md
-      blogArt1_master = await storageService.sgetNode({ path: `${blogArt1.path}/${srcMasterFileName}` })
+      // blog-art1/master.src.md
+      blogArt1_master = await storageService.sgetNode({ path: `${blogArt1.path}/${masterSrcFileName}` })
 
       // programming
       programming = await storageService.createArticleTypeDir(
@@ -1801,8 +1801,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 4,
       })
-      // introduction/index.md
-      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${srcMasterFileName}` })
+      // introduction/master.src.md
+      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${masterSrcFileName}` })
 
       // js
       js = await storageService.createArticleTypeDir({
@@ -1821,8 +1821,8 @@ describe('StorageService', () => {
         },
         { share: { isPublic: false } }
       )
-      // js/variable/index.md
-      variable_master = await storageService.sgetNode({ path: `${variable.path}/${srcMasterFileName}` })
+      // js/variable/master.src.md
+      variable_master = await storageService.sgetNode({ path: `${variable.path}/${masterSrcFileName}` })
 
       // ts
       ts = await storageService.createArticleTypeDir({
@@ -1838,8 +1838,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       })
-      // ts/class/index.md
-      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${srcMasterFileName}` })
+      // ts/class/master.src.md
+      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${masterSrcFileName}` })
       // ts/generics
       generics = await storageService.createArticleTypeDir(
         {
@@ -1850,8 +1850,8 @@ describe('StorageService', () => {
         },
         { share: { isPublic: false } }
       )
-      // ts/generics/index.md
-      generics_master = await storageService.sgetNode({ path: `${generics.path}/${srcMasterFileName}` })
+      // ts/generics/master.src.md
+      generics_master = await storageService.sgetNode({ path: `${generics.path}/${masterSrcFileName}` })
 
       // secret
       secret = await storageService.createArticleTypeDir(
@@ -1871,8 +1871,8 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       })
-      // secret-art1/index.md
-      secretArt1_master = await storageService.sgetNode({ path: `${secretArt1.path}/${srcMasterFileName}` })
+      // secret-art1/master.src.md
+      secretArt1_master = await storageService.sgetNode({ path: `${secretArt1.path}/${masterSrcFileName}` })
 
       // secret-art2
       secretArt2 = await storageService.createArticleTypeDir(
@@ -1884,8 +1884,8 @@ describe('StorageService', () => {
         },
         { share: { readUIds: [GeneralUser().uid] } }
       )
-      // secret-art2/index.md
-      secretArt2_master = await storageService.sgetNode({ path: `${secretArt2.path}/${srcMasterFileName}` })
+      // secret-art2/master.src.md
+      secretArt2_master = await storageService.sgetNode({ path: `${secretArt2.path}/${masterSrcFileName}` })
     }
 
     function verifyArticleTableOfContentsNode(actual: ArticleTableOfContentsNode, expected: StorageNode): void {
@@ -1971,25 +1971,25 @@ describe('StorageService', () => {
       //   ├articles
       //   │├blog
       //   ││├artA
-      //   │││├index.md
-      //   │││├index.draft.md
+      //   │││├master.src.md
+      //   │││├draft.src.md
       //   │││├images
       //   ││││├picA.png
       //   ││││└picB.png
       //   │││└memo.txt
       //   ││└artB
-      //   ││  ├index.md
-      //   ││  └index.draft.md
+      //   ││  ├master.src.md
+      //   ││  └draft.src.md
       //   │├programming
       //   ││├artC
       //   ││├artD
       //   ││├TypeScript
       //   │││├artE
-      //   ││││├index.md
-      //   ││││└index.draft.md
+      //   ││││├master.src.md
+      //   ││││└draft.src.md
       //   │││└artF
-      //   │││  ├index.md
-      //   │││  └index.draft.md
+      //   │││  ├master.src.md
+      //   │││  └draft.src.md
       //   ││└JavaScript
       //   │└assets
       //   │  ├picC.png
@@ -2388,13 +2388,13 @@ describe('StorageService', () => {
       //   ├articles
       //   │└programming
       //   │  ├introduction
-      //   │  │└index.md
+      //   │  │└master.src.md
       //   │  ├js
       //   │  │└variable
-      //   │  │  └index.md
+      //   │  │  └master.src.md
       //   │  ├ts
       //   │  │└class
-      //   │  │  └index.md
+      //   │  │  └master.src.md
       //   │  └py
       //   └tmp
 
@@ -2417,7 +2417,7 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 4,
       })
-      // introduction/index.md
+      // introduction/master.src.md
       introduction_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(introduction.path) })
 
       // ts
@@ -2433,9 +2433,9 @@ describe('StorageService', () => {
         name: 'class',
         type: 'Article',
       })
-      // ts/class/index.md
+      // ts/class/master.src.md
       clazz_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(clazz.path) })
-      // ts/class/index.draft.md
+      // ts/class/draft.src.md
       clazz_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(clazz.path) })
 
       // js
@@ -2451,9 +2451,9 @@ describe('StorageService', () => {
         name: 'variable',
         type: 'Article',
       })
-      // js/variable/index.md
+      // js/variable/master.src.md
       variable_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(variable.path) })
-      // js/variable/index.md
+      // js/variable/master.src.md
       variable_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(variable.path) })
 
       // py

@@ -8,8 +8,8 @@ type Mutation {
   removeStorageFile(filePath: String!): StorageNode
   moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
-  setStorageDirShareSettings(dirPath: String!, input: StorageNodeShareSettingsInput): StorageNode!
-  setStorageFileShareSettings(filePath: String!, input: StorageNodeShareSettingsInput): StorageNode!
+  setStorageDirShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
+  setStorageFileShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
   handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!
   setFileAccessAuthClaims(input: StorageNodeKeyInput!): String!
   removeFileAccessAuthClaims: String!
@@ -17,8 +17,8 @@ type Mutation {
   createArticleGeneralDir(dirPath: String!, options: CreateStorageNodeOptions): StorageNode!
   renameArticleDir(dirPath: String!, newName: String!): StorageNode!
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
-  saveArticleSrcMasterFile(articleDirPath: String!, srcContent: String!, textContent: String!): SaveArticleSrcMasterFileResult!
-  saveArticleSrcDraftFile(articleDirPath: String!, srcContent: String!): StorageNode!
+  saveArticleMasterSrcFile(articleDirPath: String!, srcContent: String!, textContent: String!): SaveArticleMasterSrcFileResult!
+  saveArticleDraftSrcFile(articleDirPath: String!, srcContent: String!): StorageNode!
 }
 
 type Query {

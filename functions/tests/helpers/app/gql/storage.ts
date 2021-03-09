@@ -1,4 +1,4 @@
-import { ArticleTableOfContentsNode, StorageArticleDirSettings, StorageArticleFileSettings, StorageNode } from '../../../../src/app/services'
+import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleFileDetail, StorageNode } from '../../../../src/app/services'
 
 //========================================================================
 //
@@ -8,8 +8,8 @@ import { ArticleTableOfContentsNode, StorageArticleDirSettings, StorageArticleFi
 
 interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'article' | 'createdAt' | 'updatedAt'> {
   article: {
-    dir: StorageArticleDirSettings | null
-    file: StorageArticleFileSettings | null
+    dir: StorageArticleDirDetail | null
+    file: StorageArticleFileDetail | null
   } | null
   createdAt: string
   updatedAt: string

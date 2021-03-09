@@ -23,6 +23,31 @@ interface EntityTimestamp {
 
 type OmitTimestamp<T = unknown> = Omit<T, 'createdAt' | 'updatedAt'>
 
+type ToEntityTimestamp<T = unknown> = {
+  [K in keyof T]: K extends 'createdAt'
+    ? T[K] extends string
+      ? Dayjs
+      : T[K] extends string | undefined
+      ? Dayjs | undefined
+      : T[K] extends string | null
+      ? Dayjs | null
+      : T[K]
+    : K extends 'updatedAt'
+    ? T[K] extends string
+      ? Dayjs
+      : T[K] extends string | undefined
+      ? Dayjs | undefined
+      : T[K] extends string | null
+      ? Dayjs | null
+      : T[K]
+    : T[K]
+}
+
+interface EntityTimestamp {
+  createdAt: Dayjs
+  updatedAt: Dayjs
+}
+
 type TimestampEntity<T = unknown> = Entity & OmitTimestamp<T> & EntityTimestamp
 
 //--------------------------------------------------
@@ -92,12 +117,12 @@ interface CoreStorageNode extends TimestampEntity {
   level: number
   contentType: string
   size: number
-  share: StorageNodeShareSettings
+  share: StorageNodeShareDetail
   version: number
 }
 
 interface StorageNode extends CoreStorageNode {
-  article?: StorageArticleSettings
+  article?: StorageArticleDetail
 }
 
 interface ArticleTableOfContentsNode extends TimestampEntity {
@@ -114,24 +139,24 @@ type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article
 
 type StorageArticleFileType = 'Master' | 'Draft'
 
-interface StorageNodeShareSettings {
+interface StorageNodeShareDetail {
   isPublic: boolean | null
   readUIds: string[] | null
   writeUIds: string[] | null
 }
 
-interface StorageArticleSettings {
-  dir?: StorageArticleDirSettings
-  file?: StorageArticleFileSettings
+interface StorageArticleDetail {
+  dir?: StorageArticleDirDetail
+  file?: StorageArticleFileDetail
 }
 
-interface StorageArticleDirSettings {
+interface StorageArticleDirDetail {
   name: string
   type: StorageArticleDirType
   sortOrder: number
 }
 
-interface StorageArticleFileSettings {
+interface StorageArticleFileDetail {
   type: StorageArticleFileType
 }
 
@@ -146,7 +171,7 @@ interface StoragePaginationResult<T extends CoreStorageNode = CoreStorageNode> {
   isPaginationTimeout?: boolean
 }
 
-interface StorageNodeShareSettingsInput {
+interface SetShareDetailInput {
   isPublic?: boolean | null
   readUIds?: string[] | null
   writeUIds?: string[] | null
@@ -180,7 +205,7 @@ interface SignedUploadUrlInput {
 }
 
 interface CreateStorageNodeOptions {
-  share?: StorageNodeShareSettingsInput
+  share?: SetShareDetailInput
 }
 
 interface CreateArticleTypeDirInput {
@@ -190,7 +215,7 @@ interface CreateArticleTypeDirInput {
   sortOrder?: number
 }
 
-interface SaveArticleSrcMasterFileResult {
+interface SaveArticleMasterSrcFileResult {
   master: StorageNode
   draft: StorageNode
 }
@@ -283,23 +308,24 @@ export {
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
-  SaveArticleSrcMasterFileResult,
+  SaveArticleMasterSrcFileResult,
+  SetShareDetailInput,
   SignedUploadUrlInput,
-  StorageArticleDirSettings,
+  StorageArticleDetail,
+  StorageArticleDirDetail,
   StorageArticleDirType,
-  StorageArticleFileSettings,
+  StorageArticleFileDetail,
   StorageArticleFileType,
-  StorageArticleSettings,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
-  StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
+  StorageNodeShareDetail,
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
+  ToEntityTimestamp,
 }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }

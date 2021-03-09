@@ -5,12 +5,12 @@ import {
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
   IdToken,
-  SaveArticleSrcMasterFileResult,
+  SaveArticleMasterSrcFileResult,
+  SetShareDetailInput,
+  StorageArticleDetail,
   StorageArticleDirType,
-  StorageArticleSettings,
   StorageNode,
   StorageNodeGetKeyInput,
-  StorageNodeShareSettingsInput,
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -71,7 +71,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //----------------------------------------------------------------------
 
   protected get excludeNodeFields(): string[] {
-    return [...super.excludeNodeFields, 'article.textContent']
+    return [...super.excludeNodeFields, 'article.file.textContent']
   }
 
   //----------------------------------------------------------------------
@@ -264,7 +264,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           doc: {
             ...this.toDBStorageNode(dirNode),
             id,
-            share: this.toDBShareSettings(options?.share),
+            share: this.toDBShareDetail(options?.share),
             version: 1,
             createdAt: now,
             updatedAt: now,
@@ -279,7 +279,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 引数ディレクトリが既に存在する場合
     else {
       if (options?.share) {
-        return await this.setDirShareSettings(dirPath, options.share)
+        return await this.setDirShareDetail({ path: dirPath }, options.share)
       } else {
         return await this.sgetNode({ path: dirPath })
       }
@@ -481,17 +481,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * @param srcContent
    * @param textContent
    */
-  saveArticleSrcMasterFile(idToken: IdToken, articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult>
+  saveArticleMasterSrcFile(idToken: IdToken, articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleMasterSrcFileResult>
 
   /**
-   * @see saveArticleSrcMasterFile
+   * @see saveArticleMasterSrcFile
    * @param articleDirPath
    * @param srcContent
    * @param textContent
    */
-  saveArticleSrcMasterFile(articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleSrcMasterFileResult>
+  saveArticleMasterSrcFile(articleDirPath: string, srcContent: string, textContent: string): Promise<SaveArticleMasterSrcFileResult>
 
-  async saveArticleSrcMasterFile(arg1: IdToken | string, arg2: string, arg3: string, arg4?: string): Promise<SaveArticleSrcMasterFileResult> {
+  async saveArticleMasterSrcFile(arg1: IdToken | string, arg2: string, arg3: string, arg4?: string): Promise<SaveArticleMasterSrcFileResult> {
     let idToken: IdToken | undefined
     let articleDirPath: string
     let srcContent: string
@@ -511,21 +511,21 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       await this.validateBrowsable(idToken, articleDirPath)
 
       if (CoreStorageService.isOwnUserRootUnder(idToken, articleDirPath) || idToken.isAppAdmin) {
-        return this.saveOwnArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+        return this.saveOwnArticleMasterSrcFile(articleDirPath, srcContent, textContent)
       } else {
-        return this.saveOtherArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+        return this.saveOtherArticleMasterSrcFile(articleDirPath, srcContent, textContent)
       }
     } else {
-      return this.saveOwnArticleSrcMasterFile(articleDirPath, srcContent, textContent)
+      return this.saveOwnArticleMasterSrcFile(articleDirPath, srcContent, textContent)
     }
   }
 
-  protected async saveOwnArticleSrcMasterFile(
+  protected async saveOwnArticleMasterSrcFile(
     articleDirPath: string,
     srcContent: string,
     textContent: string
-  ): Promise<SaveArticleSrcMasterFileResult> {
-    const draftNode = await this.saveArticleSrcDraftFile(articleDirPath, '')
+  ): Promise<SaveArticleMasterSrcFileResult> {
+    const draftNode = await this.saveArticleDraftSrcFile(articleDirPath, '')
     const masterNodePath = StorageService.toArticleSrcMasterPath(articleDirPath)
     let masterNode: StorageNode = await this.saveGCSFileAndFileNode(masterNodePath, srcContent, undefined, { idempotent: true })
 
@@ -536,7 +536,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         doc: {
           article: {
-            textContent,
+            file: {
+              textContent,
+            },
           },
           updatedAt: dayjs().toISOString(),
           version: masterNode.version + 1,
@@ -549,11 +551,11 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return { master: masterNode, draft: draftNode }
   }
 
-  protected async saveOtherArticleSrcMasterFile(
+  protected async saveOtherArticleMasterSrcFile(
     articleDirPath: string,
     srcContent: string,
     textContent: string
-  ): Promise<SaveArticleSrcMasterFileResult> {
+  ): Promise<SaveArticleMasterSrcFileResult> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -563,16 +565,16 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * @param articleDirPath
    * @param srcContent
    */
-  saveArticleSrcDraftFile(idToken: IdToken, articleDirPath: string, srcContent: string): Promise<StorageNode>
+  saveArticleDraftSrcFile(idToken: IdToken, articleDirPath: string, srcContent: string): Promise<StorageNode>
 
   /**
-   * @see saveArticleSrcDraftFile
+   * @see saveArticleDraftSrcFile
    * @param articleDirPath
    * @param srcContent
    */
-  saveArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode>
+  saveArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode>
 
-  async saveArticleSrcDraftFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<StorageNode> {
+  async saveArticleDraftSrcFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<StorageNode> {
     let idToken: IdToken | undefined
     let articleDirPath: string
     let srcContent: string
@@ -589,21 +591,21 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       await this.validateBrowsable(idToken, articleDirPath)
 
       if (CoreStorageService.isOwnUserRootUnder(idToken, articleDirPath) || idToken.isAppAdmin) {
-        return this.saveOwnArticleSrcDraftFile(articleDirPath, srcContent)
+        return this.saveOwnArticleDraftSrcFile(articleDirPath, srcContent)
       } else {
-        return this.saveOtherArticleSrcDraftFile(articleDirPath, srcContent)
+        return this.saveOtherArticleDraftSrcFile(articleDirPath, srcContent)
       }
     } else {
-      return this.saveOwnArticleSrcDraftFile(articleDirPath, srcContent)
+      return this.saveOwnArticleDraftSrcFile(articleDirPath, srcContent)
     }
   }
 
-  async saveOwnArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
+  async saveOwnArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
     const draftNodePath = await StorageService.toArticleSrcDraftPath(articleDirPath)
     return this.saveGCSFileAndFileNode(draftNodePath, srcContent)
   }
 
-  async saveOtherArticleSrcDraftFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
+  async saveOtherArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -783,7 +785,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const accessibleArticleDirs = bundleUnderDirs.filter(node => {
       if (node.article?.dir?.type !== 'Article') return false
       const hierarchicalNodes = getHierarchicalNodes(allNodeMap, node.path)
-      const share = this.getInheritedShareSettings(hierarchicalNodes)
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
       if (requester) {
         return share.isPublic || share.readUIds?.includes(requester.uid)
       } else {
@@ -951,7 +953,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   protected toBaseDBStorageNode(
-    input: { id: string; nodeType: StorageNodeType; path: string; share?: StorageNodeShareSettingsInput | null },
+    input: { id: string; nodeType: StorageNodeType; path: string; share?: SetShareDetailInput | null },
     existing?: StorageNode
   ): DBStorageNode {
     const result: DBStorageNode = { ...super.toBaseDBStorageNode(input, existing) }
@@ -1102,20 +1104,20 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 記事ディレクトリに記事ソースと下書きファイルを配置
     const masterFileItem = {
-      path: _path.join(dirPath, config.storage.article.srcMasterFileName),
+      path: _path.join(dirPath, config.storage.article.masterSrcFileName),
       article: {
         file: {
           type: 'Master',
         },
-      } as StorageArticleSettings,
+      } as StorageArticleDetail,
     }
     const draftFileItem = {
-      path: _path.join(dirPath, config.storage.article.srcDraftFileName),
+      path: _path.join(dirPath, config.storage.article.draftSrcFileName),
       article: {
         file: {
           type: 'Draft',
         },
-      } as StorageArticleSettings,
+      } as StorageArticleDetail,
     }
     await Promise.all(
       [masterFileItem, draftFileItem].map(async item => {
@@ -1225,7 +1227,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         doc: {
           ...this.toDBStorageNode(dirNode),
           id,
-          share: this.toDBShareSettings(options?.share),
+          share: this.toDBShareDetail(options?.share),
           version: 1,
           createdAt: now,
           updatedAt: now,
@@ -1397,7 +1399,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    */
   static toArticleSrcMasterPath(articleDirPath: string): string {
     articleDirPath = removeStartDirChars(articleDirPath)
-    return _path.join(articleDirPath, config.storage.article.srcMasterFileName)
+    return _path.join(articleDirPath, config.storage.article.masterSrcFileName)
   }
 
   /**
@@ -1406,7 +1408,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    */
   static toArticleSrcDraftPath(articleDirPath: string): string {
     articleDirPath = removeStartDirChars(articleDirPath)
-    return _path.join(articleDirPath, config.storage.article.srcDraftFileName)
+    return _path.join(articleDirPath, config.storage.article.draftSrcFileName)
   }
 
   /**

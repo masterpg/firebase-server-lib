@@ -6,13 +6,13 @@ import {
   CoreStorageNode,
   CreateStorageNodeOptions,
   IdToken,
+  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
-  StorageNodeShareSettings,
-  StorageNodeShareSettingsInput,
+  StorageNodeShareDetail,
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
@@ -62,7 +62,7 @@ interface StorageUploadDataItem {
   data: string | Buffer
   path: string
   contentType: string
-  share?: StorageNodeShareSettingsInput
+  share?: SetShareDetailInput
 }
 
 interface ValidateBrowsableTarget {
@@ -212,7 +212,7 @@ class CoreStorageService<
 
     const node = await this.getNode(input)
     if (!node) {
-      throw new AppError(`There is no node in the specified key.`, { key: input })
+      throw new AppError(`There is no node in the specified key.`, input)
     }
 
     if (idToken) {
@@ -462,7 +462,7 @@ class CoreStorageService<
   }
 
   protected async getOwnDescendants(
-    { path, includeBase }: { path: string; includeBase?: boolean },
+    { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
     pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<NODE>> {
     const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
@@ -709,7 +709,7 @@ class CoreStorageService<
   }
 
   protected async getOwnChildren(
-    { path, includeBase }: { path: string; includeBase?: boolean },
+    { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
     pagination?: StoragePaginationInput
   ): Promise<StoragePaginationResult<NODE>> {
     const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
@@ -1030,7 +1030,7 @@ class CoreStorageService<
     CoreStorageService.validateNodePath(dirPath)
 
     // 共有設定の入力値を検証
-    CoreStorageService.validateShareSettingInput(options?.share)
+    CoreStorageService.validateShareDetailInput(options?.share)
 
     // 引数ディレクトリの階層構造形成に必要なノードを取得
     const hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
@@ -1060,7 +1060,7 @@ class CoreStorageService<
           doc: {
             ...this.toDBStorageNode(dirNode),
             id,
-            share: this.toDBShareSettings(options?.share),
+            share: this.toDBShareDetail(options?.share),
             version: 1,
             createdAt: now,
             updatedAt: now,
@@ -1075,7 +1075,7 @@ class CoreStorageService<
     // 引数ディレクトリが既に存在する場合
     else {
       if (options?.share) {
-        return await this.setOwnDirShareSettings(dirPath, options.share)
+        return await this.setDirShareDetail({ path: dirPath }, options.share)
       } else {
         return (await this.getNode({ path: dirPath }))!
       }
@@ -1841,66 +1841,61 @@ class CoreStorageService<
   /**
    * ディレクトリに対して共有設定を行います。
    * @param idToken
-   * @param dirPath
+   * @param key
    * @param input
    */
-  setDirShareSettings(idToken: IdToken, dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE>
+  setDirShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<NODE>
 
   /**
-   * @see setDirShareSettings
-   * @param dirPath
+   * @see setDirShareDetail
+   * @param key
    * @param input
    */
-  setDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE>
+  setDirShareDetail(key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<NODE>
 
-  async setDirShareSettings(
-    arg1: IdToken | string,
-    arg2: string | StorageNodeShareSettingsInput | null,
-    arg3?: StorageNodeShareSettingsInput | null
+  async setDirShareDetail(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2: StorageNodeGetKeyInput | (SetShareDetailInput | null),
+    arg3?: SetShareDetailInput | null
   ): Promise<NODE> {
     let idToken: IdToken | undefined
-    let dirPath: string
-    let input: StorageNodeShareSettingsInput | null
+    let key: StorageNodeGetKeyInput
+    let input: SetShareDetailInput | null
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      dirPath = arg2 as string
-      input = arg3 as StorageNodeShareSettingsInput | null
+      key = arg2 as StorageNodeGetKeyInput
+      input = arg3 as SetShareDetailInput | null
     } else {
-      dirPath = arg1
-      input = arg2 as StorageNodeShareSettingsInput | null
+      key = arg1
+      input = arg2 as SetShareDetailInput | null
     }
 
+    const dirNode = await this.sgetNode(key)
+
     if (idToken) {
-      await this.validateBrowsable(idToken, dirPath)
+      await this.validateBrowsable(idToken, dirNode.path)
 
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
-        return this.setOwnDirShareSettings(dirPath, input)
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirNode.path!) || idToken.isAppAdmin) {
+        return this.setOwnDirShareDetail(dirNode, input)
       } else {
-        return this.setOtherDirShareSettings(dirPath, input)
+        return this.setOtherDirShareDetail(dirNode, input)
       }
     } else {
-      return this.setOwnDirShareSettings(dirPath, input)
+      return this.setOwnDirShareDetail(dirNode, input)
     }
   }
 
-  protected async setOwnDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
-    dirPath = removeBothEndsSlash(dirPath)
+  protected async setOwnDirShareDetail(dirNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<NODE> {
+    CoreStorageService.validateShareDetailInput(input)
 
-    CoreStorageService.validateShareSettingInput(input)
-
-    const dirNode = await this.getNode({ path: dirPath })
-    if (!dirNode) {
-      throw new AppError(`The specified directory does not exist: '${dirPath}'`)
-    }
-
-    const share: StorageNodeShareSettings = this.toDBShareSettings(input, dirNode.share)
+    const share: StorageNodeShareDetail = this.toDBShareDetail(input, dirNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: dirNode.id,
       body: {
         doc: {
-          ...CoreStorageSchema.toPathData(dirPath),
+          ...CoreStorageSchema.toPathData(dirNode.path),
           share,
           version: dirNode.version + 1,
         },
@@ -1911,85 +1906,79 @@ class CoreStorageService<
     return await this.sgetNode({ id: dirNode.id })
   }
 
-  protected async setOtherDirShareSettings(dirPath: string, input: StorageNodeShareSettingsInput | null): Promise<NODE> {
+  protected async setOtherDirShareDetail(dirNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<NODE> {
     throw new AppError(`Not implemented yet.`)
   }
 
   /**
    * ファイルに対して共有設定を行います。
    * @param idToken
-   * @param filePath
+   * @param key
    * @param input
    */
-  setFileShareSettings(idToken: IdToken, filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE>
+  setFileShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<FILE_NODE>
 
   /**
-   * @see setFileShareSettings
-   * @param filePath
+   * @see setFileShareDetail
+   * @param key
    * @param input
    */
-  setFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE>
+  setFileShareDetail(key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<FILE_NODE>
 
-  async setFileShareSettings(
-    arg1: IdToken | string,
-    arg2: string | StorageNodeShareSettingsInput | null,
-    arg3?: StorageNodeShareSettingsInput | null
+  async setFileShareDetail(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2: StorageNodeGetKeyInput | SetShareDetailInput | null,
+    arg3?: SetShareDetailInput | null
   ): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
-    let filePath: string
-    let input: StorageNodeShareSettingsInput | null
+    let key: StorageNodeGetKeyInput
+    let input: SetShareDetailInput | null
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      filePath = arg2 as string
-      input = arg3 as StorageNodeShareSettingsInput | null
+      key = arg2 as StorageNodeGetKeyInput
+      input = arg3 as SetShareDetailInput | null
     } else {
-      filePath = arg1
-      input = arg2 as StorageNodeShareSettingsInput | null
+      key = arg1
+      input = arg2 as SetShareDetailInput | null
     }
 
+    const fileNode = await this.sgetNode(key)
+
     if (idToken) {
-      await this.validateBrowsable(idToken, filePath)
+      await this.validateBrowsable(idToken, fileNode.path)
 
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, filePath) || idToken.isAppAdmin) {
-        return this.setOwnFileShareSettings(filePath, input)
+      if (CoreStorageService.isOwnUserRootUnder(idToken, fileNode.path) || idToken.isAppAdmin) {
+        return this.setOwnFileShareDetail(fileNode, input)
       } else {
-        return this.setOtherFileShareSettings(filePath, input)
+        return this.setOtherFileShareDetail(fileNode, input)
       }
     } else {
-      return this.setOwnFileShareSettings(filePath, input)
+      return this.setOwnFileShareDetail(fileNode, input)
     }
   }
 
-  protected async setOwnFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
-    filePath = removeBothEndsSlash(filePath)
+  protected async setOwnFileShareDetail(fileNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<FILE_NODE> {
+    CoreStorageService.validateShareDetailInput(input)
 
-    CoreStorageService.validateShareSettingInput(input)
-
-    let fileNode = await this.getFileNode({ path: filePath })
-    if (!fileNode) {
-      throw new AppError(`The specified file does not exist: '${filePath}'`)
-    }
-
-    const share: StorageNodeShareSettings = this.toDBShareSettings(input, fileNode.share)
+    const share: StorageNodeShareDetail = this.toDBShareDetail(input, fileNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
       body: {
         doc: {
-          ...CoreStorageSchema.toPathData(filePath),
+          ...CoreStorageSchema.toPathData(fileNode.path),
           share,
           version: fileNode.version + 1,
         },
       },
       refresh: true,
     })
-    fileNode = await this.sgetFileNode({ id: fileNode.id })
 
-    return fileNode
+    return await this.sgetFileNode({ id: fileNode.id })
   }
 
-  protected async setOtherFileShareSettings(filePath: string, input: StorageNodeShareSettingsInput | null): Promise<FILE_NODE> {
+  protected async setOtherFileShareDetail(fileNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<FILE_NODE> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -2164,7 +2153,7 @@ class CoreStorageService<
   async setFileAccessAuthClaims(user: UserIdClaims, input: StorageNodeKeyInput): Promise<string> {
     // ファイルの共有設定を取得
     const hierarchicalNodes = await this.getHierarchicalNodes(input.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
+    const share = this.getInheritedShareDetail(hierarchicalNodes)
 
     //
     // 読み込み権限
@@ -2314,7 +2303,7 @@ class CoreStorageService<
       // ノードパスがアプリケーションノードまたは他ユーザーノードの場合
       if (CoreStorageService.isAppNode(nodePath) || CoreStorageService.isOtherUserRootFamily(idToken, nodePath)) {
         const hierarchicalNodes = extractHierarchicalNodes(nodeMap!, nodePath)
-        const share = this.getInheritedShareSettings(hierarchicalNodes)
+        const share = this.getInheritedShareDetail(hierarchicalNodes)
         if (!share.readUIds?.includes(idToken.uid)) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
         }
@@ -2337,7 +2326,7 @@ class CoreStorageService<
 
     // ファイルの共有設定を取得
     const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareSettings(hierarchicalNodes)
+    const share = this.getInheritedShareDetail(hierarchicalNodes)
 
     // ファイルの公開フラグがオンの場合
     if (share.isPublic) {
@@ -2526,10 +2515,10 @@ class CoreStorageService<
    * @param hierarchicalNodes
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
    */
-  protected getInheritedShareSettings(hierarchicalNodes: NODE[]): Required<StorageNodeShareSettings> {
+  protected getInheritedShareDetail(hierarchicalNodes: NODE[]): Required<StorageNodeShareDetail> {
     hierarchicalNodes = CoreStorageService.sortNodes([...hierarchicalNodes]) as NODE[]
 
-    const result: Required<StorageNodeShareSettings> = { isPublic: false, readUIds: null, writeUIds: null }
+    const result: Required<StorageNodeShareDetail> = { isPublic: false, readUIds: null, writeUIds: null }
     for (const node of hierarchicalNodes) {
       if (typeof node.share.isPublic === 'boolean') {
         result.isPublic = node.share.isPublic
@@ -2557,7 +2546,7 @@ class CoreStorageService<
     fileNodePath: string,
     file: File,
     options?: {
-      share?: StorageNodeShareSettingsInput
+      share?: SetShareDetailInput
       idempotent?: boolean
     }
   ): Promise<FILE_NODE> {
@@ -2615,7 +2604,7 @@ class CoreStorageService<
     saveOptions?: SaveOptions,
     options?: {
       idempotent?: boolean
-      share?: StorageNodeShareSettingsInput
+      share?: SetShareDetailInput
     }
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
@@ -2718,7 +2707,7 @@ class CoreStorageService<
    * @param existing
    */
   protected toBaseDBStorageNode(
-    input: { id: string; nodeType: StorageNodeType; path: string; share?: StorageNodeShareSettingsInput | null },
+    input: { id: string; nodeType: StorageNodeType; path: string; share?: SetShareDetailInput | null },
     existing?: NODE
   ): DB_NODE {
     const now = dayjs()
@@ -2728,7 +2717,7 @@ class CoreStorageService<
       nodeType: input.nodeType,
       contentType: existing?.contentType ?? '',
       size: existing?.size ?? 0,
-      share: this.toDBShareSettings(input.share, existing?.share),
+      share: this.toDBShareDetail(input.share, existing?.share),
       version: existing?.version ?? 1,
       createdAt: existing?.createdAt ?? now,
       updatedAt: existing?.updatedAt ?? now,
@@ -2740,13 +2729,13 @@ class CoreStorageService<
    * @param input
    * @param existing
    */
-  protected toDBShareSettings(input?: StorageNodeShareSettingsInput | null, existing?: StorageNodeShareSettings): StorageNodeShareSettings {
-    let share!: StorageNodeShareSettings
+  protected toDBShareDetail(input?: SetShareDetailInput | null, existing?: StorageNodeShareDetail): StorageNodeShareDetail {
+    let share!: StorageNodeShareDetail
 
     if (input === null) {
-      share = CoreStorageSchema.EmptyShareSettings()
+      share = CoreStorageSchema.EmptyShareDetail()
     } else {
-      share = { ...CoreStorageSchema.EmptyShareSettings(), ...existing }
+      share = { ...CoreStorageSchema.EmptyShareDetail(), ...existing }
 
       if (typeof input?.isPublic !== 'undefined') {
         share.isPublic = input.isPublic
@@ -2823,7 +2812,7 @@ class CoreStorageService<
    * 共有設定の入力値を検証します。
    * @param input
    */
-  static validateShareSettingInput(input?: StorageNodeShareSettingsInput | null): void {
+  static validateShareDetailInput(input?: SetShareDetailInput | null): void {
     input?.readUIds?.forEach(uid => {
       if (!validateUID(uid)) {
         throw new AppError(`The specified 'readUIds' had an incorrect value: '${uid}'`)

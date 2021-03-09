@@ -213,7 +213,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: true })
+        await storageService.setFileShareDetail(fileNode, { isPublic: true })
 
         // Authorizationヘッダーを設定しない
         return request(app.getHttpServer())
@@ -237,7 +237,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
 
         return (
           request(app.getHttpServer())
@@ -264,7 +264,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
 
         return (
           request(app.getHttpServer())
@@ -288,7 +288,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開未設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: null })
+        await storageService.setFileShareDetail(fileNode, { isPublic: null })
 
         return (
           request(app.getHttpServer())
@@ -315,7 +315,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開未設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: null })
+        await storageService.setFileShareDetail(fileNode, { isPublic: null })
 
         return (
           request(app.getHttpServer())
@@ -339,7 +339,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(fileNode.path, { readUIds: [GeneralUser().uid] })
+        await storageService.setFileShareDetail(fileNode, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())
@@ -366,7 +366,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(`${userRootPath}/d1`, { isPublic: true })
+        await storageService.setDirShareDetail({ path: `${userRootPath}/d1` }, { isPublic: true })
 
         return (
           request(app.getHttpServer())
@@ -393,9 +393,9 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(`${userRootPath}/d1`, { isPublic: true })
+        await storageService.setDirShareDetail({ path: `${userRootPath}/d1` }, { isPublic: true })
 
         return (
           request(app.getHttpServer())
@@ -419,7 +419,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(`${userRootPath}/d1`, { readUIds: [GeneralUser().uid] })
+        await storageService.setDirShareDetail({ path: `${userRootPath}/d1` }, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())
@@ -446,9 +446,9 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(fileNode.path, { readUIds: ['ichiro'] })
+        await storageService.setFileShareDetail(fileNode, { readUIds: ['ichiro'] })
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(`${userRootPath}/d1`, { readUIds: [GeneralUser().uid] })
+        await storageService.setDirShareDetail({ path: `${userRootPath}/d1` }, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())
@@ -474,7 +474,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: true })
+        await storageService.setFileShareDetail(fileNode, { isPublic: true })
 
         // Authorizationヘッダーを設定しない
         return request(app.getHttpServer())
@@ -497,7 +497,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
 
         return (
           request(app.getHttpServer())
@@ -523,7 +523,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
 
         return (
           request(app.getHttpServer())
@@ -546,7 +546,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開未設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: null })
+        await storageService.setFileShareDetail(fileNode, { isPublic: null })
 
         return (
           request(app.getHttpServer())
@@ -572,7 +572,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルを公開未設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: null })
+        await storageService.setFileShareDetail(fileNode, { isPublic: null })
 
         return (
           request(app.getHttpServer())
@@ -595,7 +595,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(fileNode.path, { readUIds: [GeneralUser().uid] })
+        await storageService.setFileShareDetail(fileNode, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())
@@ -621,7 +621,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(`d1`, { isPublic: true })
+        await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true })
 
         return (
           request(app.getHttpServer())
@@ -647,9 +647,9 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNode.path, { isPublic: false })
+        await storageService.setFileShareDetail(fileNode, { isPublic: false })
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(`d1`, { isPublic: true })
+        await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true })
 
         return (
           request(app.getHttpServer())
@@ -672,7 +672,7 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(`d1`, { readUIds: [GeneralUser().uid] })
+        await storageService.setDirShareDetail({ path: `d1` }, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())
@@ -698,9 +698,9 @@ describe('CoreStorageService - HTTP関連のテスト', () => {
         ])
 
         // ファイルに読み込み権限設定
-        await storageService.setFileShareSettings(fileNode.path, { readUIds: ['ichiro'] })
+        await storageService.setFileShareDetail(fileNode, { readUIds: ['ichiro'] })
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(`d1`, { readUIds: [GeneralUser().uid] })
+        await storageService.setDirShareDetail({ path: `d1` }, { readUIds: [GeneralUser().uid] })
 
         return (
           request(app.getHttpServer())

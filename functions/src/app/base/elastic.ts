@@ -1,8 +1,9 @@
 import { ApiResponse, Client as ElasticClient } from '@elastic/elasticsearch'
-import { OmitTimestamp, TimestampEntity } from '../services'
 import { AppError } from './base'
 import { Context } from '@elastic/elasticsearch/lib/Transport'
+import { Dayjs } from 'dayjs'
 import { ResponseError } from '@elastic/elasticsearch/lib/errors'
+import { TimestampEntity } from '../services'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 
@@ -104,9 +105,13 @@ interface ElasticPageToken {
   search_after?: string[]
 }
 
+type ToElasticDate<T = unknown> = {
+  [K in keyof T]: T[K] extends Dayjs ? string : T[K] extends Dayjs | undefined ? string | undefined : T[K] extends Dayjs | null ? string | null : T[K]
+}
+
 type ElasticTimestamp = { createdAt: string; updatedAt: string }
 
-type ElasticTimestampEntity<T extends TimestampEntity = TimestampEntity> = OmitTimestamp<T> & ElasticTimestamp
+type ElasticTimestampEntity<T extends TimestampEntity = TimestampEntity> = ToElasticDate<T>
 
 //========================================================================
 //
@@ -182,12 +187,12 @@ function toEntityTimestamp<T extends ElasticTimestampEntity>(entity: T): Timesta
   }
 }
 
-function toElasticTimestamp<T extends TimestampEntity>(entity: T): ElasticTimestampEntity<T> {
+function toElasticTimestamp<T extends TimestampEntity>(entity: T): ToElasticDate<T> {
   return {
     ...entity,
     createdAt: entity.createdAt.toISOString(),
     updatedAt: entity.updatedAt.toISOString(),
-  }
+  } as ToElasticDate<T>
 }
 
 //========================================================================
@@ -198,16 +203,17 @@ function toElasticTimestamp<T extends TimestampEntity>(entity: T): ElasticTimest
 
 export {
   BaseIndexDefinitions,
-  ElasticSearchAPIResponse,
-  ElasticMSearchAPIResponse,
   ElasticBulkAPIResponse,
   ElasticClient,
-  ElasticPageToken,
-  ElasticSearchResponse,
+  ElasticMSearchAPIResponse,
   ElasticMSearchResponse,
+  ElasticPageToken,
+  ElasticSearchAPIResponse,
+  ElasticSearchResponse,
   ElasticTimestamp,
   ElasticTimestampEntity,
   SearchBody,
+  ToElasticDate,
   closePointInTime,
   decodePageToken,
   encodePageToken,

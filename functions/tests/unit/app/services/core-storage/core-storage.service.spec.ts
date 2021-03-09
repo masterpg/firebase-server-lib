@@ -19,7 +19,7 @@ import {
   DevUtilsServiceModule,
   SignedUploadUrlInput,
   StorageNode,
-  StorageNodeShareSettings,
+  StorageNodeShareDetail,
   StorageUploadDataItem,
   UserClaims,
   UserHelper,
@@ -219,7 +219,7 @@ describe('CoreStorageService', () => {
       }
 
       expect(actual.cause).toBe(`There is no node in the specified key.`)
-      expect(actual.data).toEqual({ key: { id: '12345678901234567890' } })
+      expect(actual.data).toEqual({ id: '12345678901234567890' })
     })
 
     it('IDとパス両方指定しなかった場合', async () => {
@@ -1505,7 +1505,7 @@ describe('CoreStorageService', () => {
       expect(actual.path).toBe(`d1`)
       expect(actual.contentType).toBe('')
       expect(actual.size).toBe(0)
-      expect(actual.share).toEqual<StorageNodeShareSettings>({
+      expect(actual.share).toEqual<StorageNodeShareDetail>({
         isPublic: null,
         readUIds: null,
         writeUIds: null,
@@ -1524,7 +1524,7 @@ describe('CoreStorageService', () => {
       })
 
       expect(actual.path).toBe(`d1`)
-      expect(actual.share).toEqual<StorageNodeShareSettings>({
+      expect(actual.share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['ichiro'],
         writeUIds: ['jiro'],
@@ -1556,7 +1556,7 @@ describe('CoreStorageService', () => {
       })
 
       expect(actual.path).toBe(`d1`)
-      expect(actual.share).toEqual<StorageNodeShareSettings>({
+      expect(actual.share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['ichiro'],
         writeUIds: ['jiro'],
@@ -1594,12 +1594,12 @@ describe('CoreStorageService', () => {
     })
 
     it('共有設定入力へのバリデーション実行確認', async () => {
-      const validateShareSettingInput = td.replace(CoreStorageService, 'validateShareSettingInput')
+      const validateShareDetailInput = td.replace(CoreStorageService, 'validateShareDetailInput')
 
       const options: CreateStorageNodeOptions = { share: { isPublic: null } }
       await storageService.createDir(`d1`, options)
 
-      const explanation = td.explain(validateShareSettingInput)
+      const explanation = td.explain(validateShareDetailInput)
       expect(explanation.calls.length).toBe(1)
       expect(explanation.calls[0].args[0]).toBe(options.share)
     })
@@ -1648,7 +1648,7 @@ describe('CoreStorageService', () => {
       for (const node of actual) {
         expect(node.contentType).toBe('')
         expect(node.size).toBe(0)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: null,
           readUIds: null,
           writeUIds: null,
@@ -2100,21 +2100,30 @@ describe('CoreStorageService', () => {
       ])
 
       // 共有設定
-      await storageService.setDirShareSettings(`dX/dA`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
-      await storageService.setDirShareSettings(`dX/dA/dB`, {
-        isPublic: true,
-        readUIds: ['jiro'],
-        writeUIds: ['jiro'],
-      })
-      await storageService.setFileShareSettings(`dX/dA/dB/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['saburo'],
-        writeUIds: ['saburo'],
-      })
+      await storageService.setDirShareDetail(
+        { path: `dX/dA` },
+        {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        }
+      )
+      await storageService.setDirShareDetail(
+        { path: `dX/dA/dB` },
+        {
+          isPublic: true,
+          readUIds: ['jiro'],
+          writeUIds: ['jiro'],
+        }
+      )
+      await storageService.setFileShareDetail(
+        { path: `dX/dA/dB/fileA.txt` },
+        {
+          isPublic: true,
+          readUIds: ['saburo'],
+          writeUIds: ['saburo'],
+        }
+      )
 
       // 移動前のノードを取得
       const { list: fromNodes } = await storageService.getDescendants({ path: `dX/dA`, includeBase: true })
@@ -2131,17 +2140,17 @@ describe('CoreStorageService', () => {
       await h.verifyMoveNodes(fromNodes, `dY/dA`)
 
       // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(toNodes[0].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[0].share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['ichiro'],
         writeUIds: ['ichiro'],
       })
-      expect(toNodes[1].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[1].share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['jiro'],
         writeUIds: ['jiro'],
       })
-      expect(toNodes[2].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[2].share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['saburo'],
         writeUIds: ['saburo'],
@@ -2166,23 +2175,38 @@ describe('CoreStorageService', () => {
 
       // 共有設定
       // 'dX'配下ノードの設定
-      await storageService.setDirShareSettings(`dX/dA`, {
-        isPublic: true,
-        readUIds: ['ichiro-X'],
-        writeUIds: ['ichiro-X'],
-      })
-      await storageService.setFileShareSettings(`dX/dA/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['jiro-X'],
-        writeUIds: ['jiro-X'],
-      })
+      await storageService.setDirShareDetail(
+        { path: `dX/dA` },
+        {
+          isPublic: true,
+          readUIds: ['ichiro-X'],
+          writeUIds: ['ichiro-X'],
+        }
+      )
+      await storageService.setFileShareDetail(
+        { path: `dX/dA/fileA.txt` },
+        {
+          isPublic: true,
+          readUIds: ['jiro-X'],
+          writeUIds: ['jiro-X'],
+        }
+      )
       // 'dY'配下ノードの設定
-      await storageService.setDirShareSettings(`dY/dA`, { isPublic: false, readUIds: ['ichiro-Y'] })
-      await storageService.setFileShareSettings(`dY/dA/fileA.txt`, {
-        isPublic: false,
-        readUIds: ['jiro-Y'],
-        writeUIds: ['jiro-Y'],
-      })
+      await storageService.setDirShareDetail(
+        { path: `dY/dA` },
+        {
+          isPublic: false,
+          readUIds: ['ichiro-Y'],
+        }
+      )
+      await storageService.setFileShareDetail(
+        { path: `dY/dA/fileA.txt` },
+        {
+          isPublic: false,
+          readUIds: ['jiro-Y'],
+          writeUIds: ['jiro-Y'],
+        }
+      )
 
       // 移動前のノードを取得
       const { list: fromNodes } = await storageService.getDescendants({ path: `dX/dA`, includeBase: true })
@@ -2198,12 +2222,12 @@ describe('CoreStorageService', () => {
       await h.verifyMoveNodes(fromNodes, `dY/dA`)
 
       // 移動後のノードに共有設定が引き継がれていることを検証
-      expect(toNodes[0].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[0].share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['ichiro-X'],
         writeUIds: ['ichiro-X'],
       })
-      expect(toNodes[1].share).toEqual<StorageNodeShareSettings>({
+      expect(toNodes[1].share).toEqual<StorageNodeShareDetail>({
         isPublic: true,
         readUIds: ['jiro-X'],
         writeUIds: ['jiro-X'],
@@ -2812,9 +2836,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開設定 -> 誰でも読み込み可能', async () => {
         // ファイルに公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: true,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2831,9 +2858,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 -> 自ユーザーは読み書き可能', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※自ユーザーに権限設定
@@ -2850,9 +2880,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 -> 他ユーザーは読み書き不可', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2869,9 +2902,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 -> 自ユーザーは読み書き可能', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※自ユーザーに権限設定
@@ -2888,9 +2924,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 -> 他ユーザーは読み書き不可', async () => {
         // ファイルを公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2907,10 +2946,13 @@ describe('CoreStorageService', () => {
 
       it('ファイルに読み書き権限設定 -> 他ユーザーも読み書き可能', async () => {
         // ファイルに読み書き権限設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2927,9 +2969,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーも読み込み可能', async () => {
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          isPublic: true,
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2946,14 +2991,20 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーは読み込み不可', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          isPublic: true,
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2970,15 +3021,21 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き可能', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // 上位ディレクトリに読み書き権限設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -2995,16 +3052,22 @@ describe('CoreStorageService', () => {
 
       it('ファイルに読み込み権限設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き不可', async () => {
         // ファイルに読み書き権限設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          readUIds: ['ichiro'],
-          writeUIds: ['ichiro'],
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            readUIds: ['ichiro'],
+            writeUIds: ['ichiro'],
+          }
+        )
 
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -3028,7 +3091,7 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
 
         // 上位ディレクトリは権限未設定
-        await storageService.setDirShareSettings(fileNodeA.dir, null)
+        await storageService.setDirShareDetail({ path: fileNodeA.dir }, null)
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※自ユーザーに権限設定
@@ -3050,7 +3113,7 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
 
         // 上位ディレクトリは権限未設定
-        await storageService.setDirShareSettings(fileNodeA.dir, null)
+        await storageService.setDirShareDetail({ path: fileNodeA.dir }, null)
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -3072,10 +3135,13 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`${userRootPath}/d1/fileX.txt`)
 
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -3108,9 +3174,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開設定 -> 誰でも読み込み可能', async () => {
         // ファイルに公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: true,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3127,9 +3196,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 -> アプリケーション管理者は読み書き可能', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者に権限設定
@@ -3146,9 +3218,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 -> アプリケーション管理者以外は読み書き不可', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3165,9 +3240,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 -> アプリケーション管理者は読み書き可能', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者に権限設定
@@ -3184,9 +3262,12 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 -> アプリケーション管理者以外は読み書き不可', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3203,10 +3284,13 @@ describe('CoreStorageService', () => {
 
       it('ファイルに読み書き権限設定 -> アプリケーション管理者以外も読み書き可能', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3223,14 +3307,20 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外も読み込み可能', async () => {
         // ファイルに公開未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: null,
+          }
+        )
 
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          isPublic: true,
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3247,14 +3337,20 @@ describe('CoreStorageService', () => {
 
       it('ファイルは非公開設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外は読み書き不可', async () => {
         // ファイルに非公開設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          isPublic: false,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            isPublic: false,
+          }
+        )
 
         // 上位ディレクトリに公開設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          isPublic: true,
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            isPublic: true,
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3271,16 +3367,22 @@ describe('CoreStorageService', () => {
 
       it('ファイルは公開未設定 + 上位ディレクトリに読み書き権限設定 -> アプリケーション管理者以外も読み書き可能', async () => {
         // ファイルに読み書き未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          readUIds: null,
-          writeUIds: null,
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            readUIds: null,
+            writeUIds: null,
+          }
+        )
 
         // 上位ディレクトリに読み書き設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3297,16 +3399,22 @@ describe('CoreStorageService', () => {
 
       it('ファイルに読み書き権限設定 + 上位ディレクトリに読み書き権限設定 -> 他ユーザーも読み書き不可', async () => {
         // ファイルに読み書き未設定
-        await storageService.setFileShareSettings(fileNodeA.path, {
-          readUIds: ['ichiro'],
-          writeUIds: ['ichiro'],
-        })
+        await storageService.setFileShareDetail(
+          { path: fileNodeA.path },
+          {
+            readUIds: ['ichiro'],
+            writeUIds: ['ichiro'],
+          }
+        )
 
         // 上位ディレクトリに読み書き設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※アプリケーション管理者以外に権限設定
@@ -3327,7 +3435,7 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`d1/fileX.txt`)
 
         // 上位ディレクトリは権限未設定
-        await storageService.setDirShareSettings(fileNodeA.dir, null)
+        await storageService.setDirShareDetail({ path: fileNodeA.dir }, null)
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※自ユーザーに権限設定
@@ -3348,7 +3456,7 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`d1/fileX.txt`)
 
         // 上位ディレクトリは権限未設定
-        await storageService.setDirShareSettings(fileNodeA.dir, null)
+        await storageService.setDirShareDetail({ path: fileNodeA.dir }, null)
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -3369,10 +3477,13 @@ describe('CoreStorageService', () => {
         const fileNodeX = h.newFileNode(`d1/fileX.txt`)
 
         // 上位ディレクトリに読み込み権限設定
-        await storageService.setDirShareSettings(fileNodeA.dir, {
-          readUIds: [GeneralUser().uid],
-          writeUIds: [GeneralUser().uid],
-        })
+        await storageService.setDirShareDetail(
+          { path: fileNodeA.dir },
+          {
+            readUIds: [GeneralUser().uid],
+            writeUIds: [GeneralUser().uid],
+          }
+        )
 
         // ユーザークレイムにノードアクセス権限を設定
         // ※他ユーザーに権限設定
@@ -3447,7 +3558,7 @@ describe('CoreStorageService', () => {
     })
   })
 
-  describe('setDirShareSettings', () => {
+  describe('setDirShareDetail', () => {
     async function setupAppNodes() {
       const [d1] = await storageService.createHierarchicalDirs([`d1`])
       const [fileA] = await storageService.uploadDataItems([
@@ -3466,14 +3577,40 @@ describe('CoreStorageService', () => {
       return { users, userRoot, d1 }
     }
 
-    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
-      await setupAppNodes()
+    it('ID指定', async () => {
+      const { d1 } = await setupAppNodes()
 
-      const actual = await storageService.setDirShareSettings(`d1`, { isPublic: true })
+      const actual = await storageService.setDirShareDetail({ id: d1.id }, { isPublic: true })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+      }
+      verify(actual)
+      verify(await storageService.sgetNode({ id: actual.id }))
+    })
+
+    it('パス指定', async () => {
+      const { d1 } = await setupAppNodes()
+
+      const actual = await storageService.setDirShareDetail({ path: d1.path }, { isPublic: true })
+
+      const verify = (node: CoreStorageNode) => {
+        expect(node.path).toBe(`d1`)
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+      }
+      verify(actual)
+      verify(await storageService.sgetNode({ path: actual.path }))
+    })
+
+    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
+      await setupAppNodes()
+
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true })
+
+      const verify = (node: CoreStorageNode) => {
+        expect(node.path).toBe(`d1`)
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -3482,11 +3619,11 @@ describe('CoreStorageService', () => {
     it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
       await setupAppNodes()
 
-      const actual = await storageService.setDirShareSettings(`d1`, { readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: null,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
@@ -3499,11 +3636,11 @@ describe('CoreStorageService', () => {
     it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
       await setupAppNodes()
 
-      const actual = await storageService.setDirShareSettings(`d1`, { readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: null,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
@@ -3517,14 +3654,14 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 公開フラグをオンに設定しておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       // 公開フラグをオフに設定
-      const actual = await storageService.setDirShareSettings(`d1`, { isPublic: false })
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { isPublic: false })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: false,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
@@ -3538,14 +3675,14 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 読み込み・書き込み権限を設定しておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setDirShareSettings(`d1`, { readUIds: [], writeUIds: [] })
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { readUIds: [], writeUIds: [] })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -3555,14 +3692,14 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 読み込み・書き込み権限を設定しておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setDirShareSettings(`d1`, { readUIds: null, writeUIds: null })
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, { readUIds: null, writeUIds: null })
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -3573,26 +3710,27 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.setDirShareSettings(`dXXX`, { isPublic: true })
+        await storageService.setDirShareDetail({ path: `dXXX` }, { isPublic: true })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.cause).toBe(`The specified directory does not exist: 'dXXX'`)
+      expect(actual.cause).toBe(`There is no node in the specified key.`)
+      expect(actual.data).toEqual({ path: `dXXX` })
     })
 
     it('inputにnullを指定した場合', async () => {
       await setupAppNodes()
 
       // 共有設定をしておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       // nullを指定
-      const actual = await storageService.setDirShareSettings(`d1`, null)
+      const actual = await storageService.setDirShareDetail({ path: `d1` }, null)
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: null, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -3605,7 +3743,7 @@ describe('CoreStorageService', () => {
       const fm_d1 = await storageService.sgetNode({ path: `d1` })
 
       // 共有設定を実行
-      const to_d1 = await storageService.setDirShareSettings(`d1`, { isPublic: true })
+      const to_d1 = await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true })
 
       // 作成日時の検証
       expect(to_d1.createdAt).toEqual(fm_d1.createdAt)
@@ -3619,7 +3757,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         // カンマを含んだユーザーIDを設定
-        await storageService.setDirShareSettings(`d1`, { readUIds: ['aaa', 'xxx,yyy'] })
+        await storageService.setDirShareDetail({ path: `d1` }, { readUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
@@ -3633,7 +3771,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         // カンマを含んだユーザーIDを設定
-        await storageService.setDirShareSettings(`d1`, { writeUIds: ['aaa', 'xxx,yyy'] })
+        await storageService.setDirShareDetail({ path: `d1` }, { writeUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
@@ -3644,9 +3782,9 @@ describe('CoreStorageService', () => {
     it('閲覧権限があるユーザーで実行した場合', async () => {
       const { d1 } = await setupUserNodes()
 
-      const actual = await storageService.setDirShareSettings(StorageUserToken(), d1.path, { isPublic: true })
+      const actual = await storageService.setDirShareDetail(StorageUserToken(), { path: d1.path }, { isPublic: true })
 
-      expect(actual.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+      expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
     })
 
     it('閲覧権限がないユーザーで実行した場合', async () => {
@@ -3654,7 +3792,7 @@ describe('CoreStorageService', () => {
 
       let actual!: HttpException
       try {
-        await storageService.setDirShareSettings(GeneralUserToken(), d1.path, { isPublic: true })
+        await storageService.setDirShareDetail(GeneralUserToken(), { path: d1.path }, { isPublic: true })
       } catch (err) {
         actual = err
       }
@@ -3663,7 +3801,7 @@ describe('CoreStorageService', () => {
     })
   })
 
-  describe('setFileShareSettings', () => {
+  describe('setFileShareDetail', () => {
     async function setupAppNodes() {
       const [d1] = await storageService.createHierarchicalDirs([`d1`])
       const [fileA] = await storageService.uploadDataItems([
@@ -3689,14 +3827,40 @@ describe('CoreStorageService', () => {
       return { users, userRoot, d1, fileA }
     }
 
-    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
-      await setupAppNodes()
+    it('ID指定', async () => {
+      const { fileA } = await setupAppNodes()
 
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+      const actual = await storageService.setFileShareDetail({ id: fileA.id }, { isPublic: true })
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ id: actual.id }))
+    })
+
+    it('パス指定', async () => {
+      const { fileA } = await setupAppNodes()
+
+      const actual = await storageService.setFileShareDetail({ path: fileA.path }, { isPublic: true })
+
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+      }
+      verify(actual)
+      verify(await storageService.sgetFileNode({ path: actual.path }))
+    })
+
+    it('共有設定 - 設定なしの状態から公開フラグを設定', async () => {
+      await setupAppNodes()
+
+      const actual = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { isPublic: true })
+
+      const verify = (node: StorageFileNode) => {
+        expect(node.path).toBe(`d1/fileA.txt`)
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3705,14 +3869,17 @@ describe('CoreStorageService', () => {
     it('共有設定 - 設定なしの状態から読み込み・書き込み権限を設定', async () => {
       await setupAppNodes()
 
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
+      const actual = await storageService.setFileShareDetail(
+        { path: `d1/fileA.txt` },
+        {
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        }
+      )
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: null,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
@@ -3726,18 +3893,21 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 公開フラグをオンに設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
+      await storageService.setFileShareDetail(
+        { path: `d1/fileA.txt` },
+        {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        }
+      )
 
       // 公開フラグをオフに設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: false })
+      const actual = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { isPublic: false })
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({
+        expect(node.share).toEqual<StorageNodeShareDetail>({
           isPublic: false,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
@@ -3751,18 +3921,21 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 読み込み・書き込み権限を設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
+      await storageService.setFileShareDetail(
+        { path: `d1/fileA.txt` },
+        {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        }
+      )
 
       // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: [], writeUIds: [] })
+      const actual = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { readUIds: [], writeUIds: [] })
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3772,18 +3945,21 @@ describe('CoreStorageService', () => {
       await setupAppNodes()
 
       // 読み込み・書き込み権限を設定しておく
-      await storageService.setFileShareSettings(`d1/fileA.txt`, {
-        isPublic: true,
-        readUIds: ['ichiro'],
-        writeUIds: ['ichiro'],
-      })
+      await storageService.setFileShareDetail(
+        { path: `d1/fileA.txt` },
+        {
+          isPublic: true,
+          readUIds: ['ichiro'],
+          writeUIds: ['ichiro'],
+        }
+      )
 
       // 読み込み・書き込み権限を空に設定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: null, writeUIds: null })
+      const actual = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { readUIds: null, writeUIds: null })
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3794,26 +3970,27 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.setFileShareSettings(`d1/zzz.txt`, { isPublic: true })
+        await storageService.setFileShareDetail({ path: `d1/zzz.txt` }, { isPublic: true })
       } catch (err) {
         actual = err
       }
 
-      expect(actual.cause).toBe(`The specified file does not exist: 'd1/zzz.txt'`)
+      expect(actual.cause).toBe(`There is no node in the specified key.`)
+      expect(actual.data).toEqual({ path: `d1/zzz.txt` })
     })
 
     it('inputにnullを指定した場合', async () => {
       await setupAppNodes()
 
       // 共有設定をしておく
-      await storageService.setDirShareSettings(`d1`, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
+      await storageService.setDirShareDetail({ path: `d1` }, { isPublic: true, readUIds: ['ichiro'], writeUIds: ['ichiro'] })
 
       // nullを指定
-      const actual = await storageService.setFileShareSettings(`d1/fileA.txt`, null)
+      const actual = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, null)
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareSettings>({ isPublic: null, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: null, readUIds: null, writeUIds: null })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -3826,7 +4003,7 @@ describe('CoreStorageService', () => {
       const fm_fileA = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 共有設定を実行
-      const to_fileA = await storageService.setFileShareSettings(`d1/fileA.txt`, { isPublic: true })
+      const to_fileA = await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { isPublic: true })
 
       // 作成日時の検証
       expect(to_fileA.createdAt).toEqual(fm_fileA.createdAt)
@@ -3839,7 +4016,7 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.setFileShareSettings(`d1/fileA.txt`, { readUIds: ['aaa', 'xxx,yyy'] })
+        await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { readUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
@@ -3852,7 +4029,7 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.setFileShareSettings(`d1/fileA.txt`, { writeUIds: ['aaa', 'xxx,yyy'] })
+        await storageService.setFileShareDetail({ path: `d1/fileA.txt` }, { writeUIds: ['aaa', 'xxx,yyy'] })
       } catch (err) {
         actual = err
       }
@@ -3863,9 +4040,9 @@ describe('CoreStorageService', () => {
     it('閲覧権限があるユーザーで実行した場合', async () => {
       const { fileA } = await setupUserNodes()
 
-      const actual = await storageService.setFileShareSettings(StorageUserToken(), fileA.path, { isPublic: true })
+      const actual = await storageService.setFileShareDetail(StorageUserToken(), { path: fileA.path }, { isPublic: true })
 
-      expect(actual.share).toEqual<StorageNodeShareSettings>({ isPublic: true, readUIds: null, writeUIds: null })
+      expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
     })
 
     it('閲覧権限がないユーザーで実行した場合', async () => {
@@ -3873,7 +4050,7 @@ describe('CoreStorageService', () => {
 
       let actual!: HttpException
       try {
-        await storageService.setDirShareSettings(GeneralUserToken(), fileA.path, { isPublic: true })
+        await storageService.setDirShareDetail(GeneralUserToken(), { path: fileA.path }, { isPublic: true })
       } catch (err) {
         actual = err
       }
@@ -4212,7 +4389,7 @@ describe('CoreStorageService', () => {
 
         it('アプリケーション管理者以外で閲覧 - 権限あり', async () => {
           const { d1, d11 } = await setupAppNodes()
-          await storageService.setDirShareSettings(d1.path, { readUIds: [GeneralUserToken().uid] })
+          await storageService.setDirShareDetail({ path: d1.path }, { readUIds: [GeneralUserToken().uid] })
 
           // アプリケーション管理者以外で検証
           await storageService.validateBrowsable(GeneralUserToken(), d11.path)
@@ -4264,7 +4441,7 @@ describe('CoreStorageService', () => {
 
         it('アプリケーション管理者以外で閲覧 - 権限あり', async () => {
           const { d1, d11, d12 } = await setupAppNodes()
-          await storageService.setDirShareSettings(d1.path, { readUIds: [GeneralUserToken().uid] })
+          await storageService.setDirShareDetail({ path: d1.path }, { readUIds: [GeneralUserToken().uid] })
 
           // アプリケーション管理者以外で検証
           await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
@@ -4317,7 +4494,7 @@ describe('CoreStorageService', () => {
 
         it('自ユーザー以外で閲覧 - 権限あり', async () => {
           const { d1, d11, d12 } = await setupUserNodes()
-          await storageService.setDirShareSettings(d1.path, { readUIds: [GeneralUserToken().uid] })
+          await storageService.setDirShareDetail({ path: d1.path }, { readUIds: [GeneralUserToken().uid] })
 
           // 自ユーザー者以外で検証
           await storageService.validateBrowsable(GeneralUserToken(), d11.path)
@@ -4362,7 +4539,7 @@ describe('CoreStorageService', () => {
 
         it('自ユーザー以外で閲覧 - 権限あり', async () => {
           const { d1, d11, d12 } = await setupUserNodes()
-          await storageService.setDirShareSettings(d1.path, { readUIds: [GeneralUserToken().uid] })
+          await storageService.setDirShareDetail({ path: d1.path }, { readUIds: [GeneralUserToken().uid] })
 
           // 自ユーザー者以外で検証
           await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])

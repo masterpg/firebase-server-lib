@@ -71,8 +71,8 @@ type StorageNode implements TimestampEntity {
   path: String!
   contentType: String!
   size: Int!
-  share: StorageNodeShareSettings!
-  article: StorageArticleSettings
+  share: StorageNodeShareDetail!
+  article: StorageArticleDetail
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -101,28 +101,28 @@ type StoragePaginationResult {
   isPaginationTimeout: Boolean
 }
 
-type StorageNodeShareSettings {
+type StorageNodeShareDetail {
   isPublic: Boolean
   readUIds: [String!]
   writeUIds: [String!]
 }
 
-type StorageArticleSettings {
-  dir: StorageArticleDirSettings
-  file: StorageArticleFileSettings
+type StorageArticleDetail {
+  dir: StorageArticleDirDetail
+  file: StorageArticleFileDetail
 }
 
-type StorageArticleDirSettings {
+type StorageArticleDirDetail {
   name: String!
   type: StorageArticleDirType!
   sortOrder: Long!
 }
 
-type StorageArticleFileSettings {
+type StorageArticleFileDetail {
   type: String!
 }
 
-input StorageNodeShareSettingsInput {
+input SetShareDetailInput {
   isPublic: Boolean
   readUIds: [String!]
   writeUIds: [String!]
@@ -156,7 +156,7 @@ input SignedUploadUrlInput {
 }
 
 input CreateStorageNodeOptions {
-  share: StorageNodeShareSettingsInput
+  share: SetShareDetailInput
 }
 
 input CreateArticleTypeDirInput {
@@ -165,7 +165,7 @@ input CreateArticleTypeDirInput {
   type: StorageArticleDirType
 }
 
-type SaveArticleSrcMasterFileResult {
+type SaveArticleMasterSrcFileResult {
   master: StorageNode!
   draft: StorageNode!
 }

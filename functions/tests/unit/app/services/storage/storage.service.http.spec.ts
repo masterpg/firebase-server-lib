@@ -86,7 +86,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         type: 'Article',
       })
       // 記事1のマスターファイル
-      await storageService.saveArticleSrcMasterFile(art1.path, '#header1', 'header1')
+      await storageService.saveArticleMasterSrcFile(art1.path, '#header1', 'header1')
       const art1_master = await storageService.sgetFileNode({
         path: StorageService.toArticleSrcMasterPath(art1.path),
       })
@@ -99,7 +99,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 記事を公開設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: true })
+      await storageService.setDirShareDetail(art1, { isPublic: true })
 
       // Authorizationヘッダーを設定しない
       return request(app.getHttpServer())
@@ -115,7 +115,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 記事を非公開設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: false })
+      await storageService.setDirShareDetail(art1, { isPublic: false })
 
       return (
         request(app.getHttpServer())
@@ -133,7 +133,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const { art1, art1_master } = await setupArticleNodes()
 
       // 記事を公開未設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: false })
+      await storageService.setDirShareDetail(art1, { isPublic: false })
 
       return (
         request(app.getHttpServer())
@@ -149,7 +149,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 記事を非公開設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: null })
+      await storageService.setDirShareDetail(art1, { isPublic: null })
 
       return (
         request(app.getHttpServer())
@@ -167,7 +167,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const { art1, art1_master } = await setupArticleNodes()
 
       // 記事を公開未設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: null })
+      await storageService.setDirShareDetail(art1, { isPublic: null })
 
       return (
         request(app.getHttpServer())
@@ -183,7 +183,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 記事に読み込み権限設定
-      await storageService.setDirShareSettings(art1.path, { readUIds: [GeneralUser().uid] })
+      await storageService.setDirShareDetail(art1, { readUIds: [GeneralUser().uid] })
 
       return (
         request(app.getHttpServer())
@@ -202,7 +202,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 上位ディレクトリに公開設定
-      await storageService.setDirShareSettings(bundle.path, { isPublic: true })
+      await storageService.setDirShareDetail(bundle, { isPublic: true })
 
       return (
         request(app.getHttpServer())
@@ -220,9 +220,9 @@ describe('StorageService - HTTP関連のテスト', () => {
       const { bundle, art1, art1_master } = await setupArticleNodes()
 
       // 記事に非公開設定
-      await storageService.setDirShareSettings(art1.path, { isPublic: false })
+      await storageService.setDirShareDetail(art1, { isPublic: false })
       // 上位ディレクトリに公開設定
-      await storageService.setDirShareSettings(bundle.path, { isPublic: true })
+      await storageService.setDirShareDetail(bundle, { isPublic: true })
 
       return (
         request(app.getHttpServer())
@@ -238,7 +238,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 上位ディレクトリに読み込み権限設定
-      await storageService.setDirShareSettings(bundle.path, { readUIds: [GeneralUser().uid] })
+      await storageService.setDirShareDetail(bundle, { readUIds: [GeneralUser().uid] })
 
       return (
         request(app.getHttpServer())
@@ -257,9 +257,9 @@ describe('StorageService - HTTP関連のテスト', () => {
       const art1_master_src = (await art1_master.file.download()).toString()
 
       // 記事に読み込み権限設定
-      await storageService.setDirShareSettings(art1.path, { readUIds: ['ichiro'] })
+      await storageService.setDirShareDetail(art1, { readUIds: ['ichiro'] })
       // 上位ディレクトリに読み込み権限設定
-      await storageService.setDirShareSettings(bundle.path, { readUIds: [GeneralUser().uid] })
+      await storageService.setDirShareDetail(bundle, { readUIds: [GeneralUser().uid] })
 
       return (
         request(app.getHttpServer())

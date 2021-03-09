@@ -8,7 +8,7 @@ import {
   toElasticTimestamp,
   toEntityTimestamp,
 } from '../../base/elastic'
-import { CoreStorageNode, StorageArticleDirSettings, StorageArticleFileSettings, StorageNode, StorageNodeShareSettings, User } from './index'
+import { CoreStorageNode, StorageArticleDirDetail, StorageArticleFileDetail, StorageNode, StorageNodeShareDetail, User } from './index'
 import { Entities, pickProps, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
@@ -197,7 +197,7 @@ namespace CoreStorageSchema {
     return toEntityTimestamp({
       ...pickProps(dbEntity, ['id', 'nodeType', 'contentType', 'size', 'version', 'createdAt', 'updatedAt']),
       ...toPathData(dbEntity.path),
-      share: dbEntity.share || EmptyShareSettings(),
+      share: dbEntity.share || EmptyShareDetail(),
     })
   }
 
@@ -246,7 +246,7 @@ namespace CoreStorageSchema {
   /**
    * 空の共有設定を生成します。
    */
-  export function EmptyShareSettings(): StorageNodeShareSettings {
+  export function EmptyShareDetail(): StorageNodeShareDetail {
     return {
       isPublic: null,
       readUIds: null,
@@ -289,11 +289,11 @@ namespace StorageSchema {
                 type: {
                   type: 'keyword',
                 },
+                textContent: {
+                  type: 'text',
+                  analyzer: 'kuromoji_analyzer',
+                },
               },
-            },
-            textContent: {
-              type: 'text',
-              analyzer: 'kuromoji_analyzer',
             },
           },
         },
@@ -303,8 +303,8 @@ namespace StorageSchema {
 
   export interface DBStorageNode extends Omit<StorageNode, 'article' | 'createdAt' | 'updatedAt'>, ElasticTimestamp {
     article?: {
-      dir?: StorageArticleDirSettings
-      file?: StorageArticleFileSettings
+      dir?: StorageArticleDirDetail
+      file?: StorageArticleFileDetail
     }
   }
 
@@ -350,7 +350,7 @@ namespace StorageSchema {
 
   export import toPathData = CoreStorageSchema.toPathData
 
-  export import EmptyShareSettings = CoreStorageSchema.EmptyShareSettings
+  export import EmptyShareDetail = CoreStorageSchema.EmptyShareDetail
 }
 
 //========================================================================
