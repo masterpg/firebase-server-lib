@@ -71,25 +71,25 @@ describe('StorageService', () => {
         name: '記事1',
         type: 'Article',
       })
-      // 記事1の本文ファイル
-      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
       // 記事1の下書きファイル
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+      // 記事1の本文ファイル
+      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
 
-      return { bundle, art1, art1_master, art1_draft }
+      return { bundle, art1, art1_draft, art1_master }
     }
 
     it('ベーシックケース', async () => {
-      const { art1, art1_master, art1_draft } = await setupArticleTypeNodes()
+      const { art1, art1_draft, art1_master } = await setupArticleTypeNodes()
 
       const actual = await storageService.getArticleSrcFiles(art1.path)
 
-      expect(actual.master).toEqual(art1_master)
       expect(actual.draft).toEqual(art1_draft)
+      expect(actual.master).toEqual(art1_master)
     })
 
     it('本文ファイルが存在しなかった場合', async () => {
-      const { art1, art1_master, art1_draft } = await setupArticleTypeNodes()
+      const { art1, art1_draft, art1_master } = await setupArticleTypeNodes()
 
       // 本文ファイルを強制的に削除
       await storageService.removeFile(art1_master)
@@ -107,7 +107,7 @@ describe('StorageService', () => {
     })
 
     it('下書きファイルが存在しなかった場合', async () => {
-      const { art1, art1_master, art1_draft } = await setupArticleTypeNodes()
+      const { art1, art1_draft, art1_master } = await setupArticleTypeNodes()
 
       // 下書きファイルを強制的に削除
       await storageService.removeFile(art1_draft)
@@ -631,17 +631,18 @@ describe('StorageService', () => {
         expect(actual.article?.dir?.sortOrder).toBe(1)
         await h.existsNodes([actual])
 
-        const art1MasterFileNodePath = StorageService.toArticleSrcMasterPath(actual.path)
-        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFileNodePath })
-        expect(art1MasterFileNode.path).toBe(art1MasterFileNodePath)
-        expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
-
         const art1DraftFileNodePath = StorageService.toArticleSrcDraftPath(actual.path)
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFileNodePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFileNodePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
         expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.share.isPublic).toBeFalsy()
+
+        const art1MasterFileNodePath = StorageService.toArticleSrcMasterPath(actual.path)
+        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFileNodePath })
+        expect(art1MasterFileNode.path).toBe(art1MasterFileNodePath)
+        expect(art1MasterFileNode.contentType).toBe('text/markdown')
+        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
       })
 
       it('ベーシックケース - カテゴリ直下に記事ディレクトリを作成', async () => {
@@ -677,17 +678,18 @@ describe('StorageService', () => {
         expect(actual.article?.dir!.sortOrder).toBe(1)
         await h.existsNodes([actual])
 
-        const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
-        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
-        expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
-        expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
-
         const art1DraftFilePath = StorageService.toArticleSrcDraftPath(actual.path)
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFilePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFilePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
         expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.share.isPublic).toBeFalsy()
+
+        const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
+        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
+        expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
+        expect(art1MasterFileNode.contentType).toBe('text/markdown')
+        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
       })
 
       it('オプションを指定した場合', async () => {
@@ -773,17 +775,18 @@ describe('StorageService', () => {
         expect(actual.article?.dir?.sortOrder).toBe(2)
         await h.existsNodes([actual])
 
-        const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
-        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
-        expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
-        expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
-
         const art1DraftFilePath = StorageService.toArticleSrcDraftPath(actual.path)
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFilePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFilePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
         expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.share.isPublic).toBeFalsy()
+
+        const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
+        const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
+        expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
+        expect(art1MasterFileNode.contentType).toBe('text/markdown')
+        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
       })
 
       it('バケット直下に記事ディレクトリを作成しようとした場合', async () => {
@@ -1510,16 +1513,16 @@ describe('StorageService', () => {
         name: '記事1',
         type: 'Article',
       })
-      // 記事1の本文ファイル
-      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
       // 記事1の下書きファイル
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+      // 記事1の本文ファイル
+      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
 
-      return { bundle, art1, art1_master, art1_draft }
+      return { bundle, art1, art1_draft, art1_master }
     }
 
     it('ベーシックケース', async () => {
-      const { art1, art1_master, art1_draft } = await setupArticleTypeNodes()
+      const { art1, art1_draft, art1_master } = await setupArticleTypeNodes()
 
       // テスト対象実行
       const srcContent = '# header1'
@@ -1528,34 +1531,26 @@ describe('StorageService', () => {
 
       // 戻り値の検証
       {
-        // 本文ファイル
         const { master: art1_master_, draft: art1_draft_ } = actual
-        expect(art1_master_.id).toBe(art1_master.id)
-        expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
-        expect(art1_master_.contentType).toBe('text/markdown')
-        expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
-        expect(art1_master_.version).toBe(art1_master.version + 1)
         // 下書きファイル
         expect(art1_draft_.id).toBe(art1_draft.id)
         expect(art1_draft_.size).toBe(0)
         expect(art1_draft_.contentType).toBe('text/markdown')
         expect(art1_draft_.updatedAt).toEqual(art1_master_.updatedAt) // 更新日は本文と同じ
         expect(art1_draft_.version).toBe(art1_draft.version + 1)
-      }
-
-      // 記事ファイルの検証
-      {
         // 本文ファイル
-        const art1_master_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
         expect(art1_master_.id).toBe(art1_master.id)
         expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
         expect(art1_master_.contentType).toBe('text/markdown')
         expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
         expect(art1_master_.version).toBe(art1_master.version + 1)
-        const art1_master_src = (await art1_master_.file.download()).toString()
-        expect(art1_master_src).toBe(srcContent)
-        // 下書きファイル
+      }
+
+      // 記事ファイルの検証
+      {
         const art1_draft_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+        const art1_master_ = await storageService.sgetFileNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
+        // 下書きファイル
         expect(art1_draft_.id).toBe(art1_draft.id)
         expect(art1_draft_.size).toBe(0)
         expect(art1_draft_.contentType).toBe('text/markdown')
@@ -1563,6 +1558,14 @@ describe('StorageService', () => {
         expect(art1_draft_.version).toBe(art1_draft.version + 1)
         const art1_draft_src = (await art1_draft_.file.download()).toString()
         expect(art1_draft_src).toBe('')
+        // 本文ファイル
+        expect(art1_master_.id).toBe(art1_master.id)
+        expect(art1_master_.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
+        expect(art1_master_.contentType).toBe('text/markdown')
+        expect(art1_master_.updatedAt.isAfter(art1_master.updatedAt))
+        expect(art1_master_.version).toBe(art1_master.version + 1)
+        const art1_master_src = (await art1_master_.file.download()).toString()
+        expect(art1_master_src).toBe(srcContent)
       }
 
       await h.existsNodes(Object.values(actual))
@@ -1586,12 +1589,12 @@ describe('StorageService', () => {
         name: '記事1',
         type: 'Article',
       })
-      // 記事1の本文ファイル
-      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
       // 記事1の下書きファイル
       const art1_draft = await storageService.sgetNode({ path: StorageService.toArticleSrcDraftPath(art1.path) })
+      // 記事1の本文ファイル
+      const art1_master = await storageService.sgetNode({ path: StorageService.toArticleSrcMasterPath(art1.path) })
 
-      return { bundle, art1, art1_master, art1_draft }
+      return { bundle, art1, art1_draft, art1_master }
     }
 
     it('ベーシックケース', async () => {
@@ -1621,7 +1624,7 @@ describe('StorageService', () => {
     })
 
     it('下書きを破棄した場合', async () => {
-      const { art1, art1_master, art1_draft } = await setupArticleTypeNodes()
+      const { art1, art1_draft, art1_master } = await setupArticleTypeNodes()
 
       // テスト対象実行
       const actual = await storageService.saveArticleDraftSrcFile(art1.path, null)
@@ -2081,25 +2084,25 @@ describe('StorageService', () => {
       //   ├articles
       //   │├blog
       //   ││├artA
-      //   │││├master.src.md
       //   │││├draft.src.md
+      //   │││├master.src.md
       //   │││├images
       //   ││││├picA.png
       //   ││││└picB.png
       //   │││└memo.txt
       //   ││└artB
-      //   ││  ├master.src.md
-      //   ││  └draft.src.md
+      //   ││  ├draft.src.md
+      //   ││  └master.src.md
       //   │├programming
       //   ││├artC
       //   ││├artD
       //   ││├TypeScript
       //   │││├artE
-      //   ││││├master.src.md
-      //   ││││└draft.src.md
+      //   ││││├draft.src.md
+      //   ││││└master.src.md
       //   │││└artF
-      //   │││  ├master.src.md
-      //   │││  └draft.src.md
+      //   ││││├draft.src.md
+      //   ││││└master.src.md
       //   ││└JavaScript
       //   │└assets
       //   │  ├picC.png
@@ -2123,11 +2126,11 @@ describe('StorageService', () => {
       const blog_artA = h.newDirNode(`${blog.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
       })
-      const blog_artA_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artA.path), {
-        article: { file: { type: 'Master' } },
-      })
       const blog_artA_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(blog_artA.path), {
         article: { file: { type: 'Draft' } },
+      })
+      const blog_artA_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artA.path), {
+        article: { file: { type: 'Master' } },
       })
       const blog_artA_images = h.newDirNode(`${blog_artA.path}/images`)
       const blog_artA_images_picA = h.newFileNode(`${blog_artA_images.path}/picA.png`)
@@ -2136,11 +2139,11 @@ describe('StorageService', () => {
       const blog_artB = h.newDirNode(`${blog.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
       })
-      const blog_artB_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artB.path), {
-        article: { file: { type: 'Master' } },
-      })
       const blog_artB_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(blog_artB.path), {
         article: { file: { type: 'Draft' } },
+      })
+      const blog_artB_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artB.path), {
+        article: { file: { type: 'Master' } },
       })
 
       const programming = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateNodeId()}`, {
@@ -2158,20 +2161,20 @@ describe('StorageService', () => {
       const programming_ts_artE = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
       })
-      const programming_ts_artE_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artE.path), {
-        article: { file: { type: 'Master' } },
-      })
       const programming_ts_artE_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(programming_ts_artE.path), {
         article: { file: { type: 'Draft' } },
+      })
+      const programming_ts_artE_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artE.path), {
+        article: { file: { type: 'Master' } },
       })
       const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
       })
-      const programming_ts_artF_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artF.path), {
-        article: { file: { type: 'Master' } },
-      })
       const programming_ts_artF_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(programming_ts_artF.path), {
         article: { file: { type: 'Draft' } },
+      })
+      const programming_ts_artF_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artF.path), {
+        article: { file: { type: 'Master' } },
       })
       const programming_js = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'JavaScript', type: 'Category', sortOrder: 1 } },
@@ -2194,25 +2197,25 @@ describe('StorageService', () => {
         articleRoot,
         blog,
         blog_artA,
-        blog_artA_master,
         blog_artA_draft,
+        blog_artA_master,
         blog_artA_images,
         blog_artA_images_picA,
         blog_artA_images_picB,
         blog_artA_memo,
         blog_artB,
-        blog_artB_master,
         blog_artB_draft,
+        blog_artB_master,
         programming,
         programming_artC,
         programming_artD,
         programming_ts,
         programming_ts_artE,
-        programming_ts_artE_master,
         programming_ts_artE_draft,
+        programming_ts_artE_master,
         programming_ts_artF,
-        programming_ts_artF_master,
         programming_ts_artF_draft,
+        programming_ts_artF_master,
         programming_js,
         assets,
         assets_picC,
@@ -2233,25 +2236,25 @@ describe('StorageService', () => {
       expect(nodes[2]).toBe(articleRoot)
       expect(nodes[3]).toBe(blog)
       expect(nodes[4]).toBe(blog_artA)
-      expect(nodes[5]).toBe(blog_artA_master)
-      expect(nodes[6]).toBe(blog_artA_draft)
+      expect(nodes[5]).toBe(blog_artA_draft)
+      expect(nodes[6]).toBe(blog_artA_master)
       expect(nodes[7]).toBe(blog_artA_images)
       expect(nodes[8]).toBe(blog_artA_images_picA)
       expect(nodes[9]).toBe(blog_artA_images_picB)
       expect(nodes[10]).toBe(blog_artA_memo)
       expect(nodes[11]).toBe(blog_artB)
-      expect(nodes[12]).toBe(blog_artB_master)
-      expect(nodes[13]).toBe(blog_artB_draft)
+      expect(nodes[12]).toBe(blog_artB_draft)
+      expect(nodes[13]).toBe(blog_artB_master)
       expect(nodes[14]).toBe(programming)
       expect(nodes[15]).toBe(programming_artC)
       expect(nodes[16]).toBe(programming_artD)
       expect(nodes[17]).toBe(programming_ts)
       expect(nodes[18]).toBe(programming_ts_artE)
-      expect(nodes[19]).toBe(programming_ts_artE_master)
-      expect(nodes[20]).toBe(programming_ts_artE_draft)
+      expect(nodes[19]).toBe(programming_ts_artE_draft)
+      expect(nodes[20]).toBe(programming_ts_artE_master)
       expect(nodes[21]).toBe(programming_ts_artF)
-      expect(nodes[22]).toBe(programming_ts_artF_master)
-      expect(nodes[23]).toBe(programming_ts_artF_draft)
+      expect(nodes[22]).toBe(programming_ts_artF_draft)
+      expect(nodes[23]).toBe(programming_ts_artF_master)
       expect(nodes[24]).toBe(programming_js)
       expect(nodes[25]).toBe(assets)
       expect(nodes[26]).toBe(assets_picC)
@@ -2613,8 +2616,8 @@ describe('StorageService', () => {
         expect(toNodes.length).toBe(4)
         expect(toNodes[0].path).toBe(`${js.path}/${ts.name}`)
         expect(toNodes[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
-        expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_master.name}`)
-        expect(toNodes[3].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_draft.name}`)
+        expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_draft.name}`)
+        expect(toNodes[3].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_master.name}`)
 
         // 移動後の'programming/js/ts'のソート順を検証
         const _ts = toNodes[0]
@@ -2654,8 +2657,8 @@ describe('StorageService', () => {
         StorageService.sortNodes(toNodes)
         expect(toNodes.length).toBe(3)
         expect(toNodes[0].path).toBe(`${ts.path}/${variable.name}`)
-        expect(toNodes[1].path).toBe(`${ts.path}/${variable.name}/${variable_master.name}`)
-        expect(toNodes[2].path).toBe(`${ts.path}/${variable.name}/${variable_draft.name}`)
+        expect(toNodes[1].path).toBe(`${ts.path}/${variable.name}/${variable_draft.name}`)
+        expect(toNodes[2].path).toBe(`${ts.path}/${variable.name}/${variable_master.name}`)
 
         // 移動後の'programming/ts/variable'のソート順を検証
         const _variable = toNodes[0]

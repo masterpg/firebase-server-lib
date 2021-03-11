@@ -96,7 +96,7 @@ describe('StorageService - HTTP関連のテスト', () => {
 
     it('記事は公開設定 -> 誰でもアクセス可能', async () => {
       const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 記事を公開設定
       await storageService.setDirShareDetail(art1, { isPublic: true })
@@ -106,13 +106,13 @@ describe('StorageService - HTTP関連のテスト', () => {
         .get(`/articles/${art1.id}`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.text).toEqual(art1_master_src)
+          expect(res.text).toEqual(art1_master_content)
         })
     })
 
     it('記事は非公開設定 -> 自ユーザーはアクセス可能', async () => {
       const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 記事を非公開設定
       await storageService.setDirShareDetail(art1, { isPublic: false })
@@ -124,7 +124,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...StorageUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_src)
+            expect(res.text).toEqual(art1_master_content)
           })
       )
     })
@@ -146,7 +146,7 @@ describe('StorageService - HTTP関連のテスト', () => {
 
     it('記事は公開未設定 -> 自ユーザーはアクセス可能', async () => {
       const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 記事を非公開設定
       await storageService.setDirShareDetail(art1, { isPublic: null })
@@ -158,7 +158,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...StorageUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_src)
+            expect(res.text).toEqual(art1_master_content)
           })
       )
     })
@@ -180,7 +180,7 @@ describe('StorageService - HTTP関連のテスト', () => {
 
     it('記事に読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
       const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 記事に読み込み権限設定
       await storageService.setDirShareDetail(art1, { readUIds: [GeneralUser().uid] })
@@ -192,14 +192,14 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_src)
+            expect(res.text).toEqual(art1_master_content)
           })
       )
     })
 
     it('記事は公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
       const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 上位ディレクトリに公開設定
       await storageService.setDirShareDetail(bundle, { isPublic: true })
@@ -211,7 +211,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_src)
+            expect(res.text).toEqual(art1_master_content)
           })
       )
     })
@@ -235,7 +235,7 @@ describe('StorageService - HTTP関連のテスト', () => {
 
     it('記事は公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
       const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 上位ディレクトリに読み込み権限設定
       await storageService.setDirShareDetail(bundle, { readUIds: [GeneralUser().uid] })
@@ -247,14 +247,14 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_src)
+            expect(res.text).toEqual(art1_master_content)
           })
       )
     })
 
     it('記事に読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
       const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_src = (await art1_master.file.download()).toString()
+      const art1_master_content = (await art1_master.file.download()).toString()
 
       // 記事に読み込み権限設定
       await storageService.setDirShareDetail(art1, { readUIds: ['ichiro'] })

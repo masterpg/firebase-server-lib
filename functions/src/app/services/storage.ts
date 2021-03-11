@@ -1163,6 +1163,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           type: 'Master',
         },
       } as StorageArticleDetail,
+      share: undefined as SetShareDetailInput | undefined,
     }
     const draftFileItem = {
       path: _path.join(dirPath, config.storage.article.draftSrcFileName),
@@ -1171,16 +1172,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           type: 'Draft',
         },
       } as StorageArticleDetail,
+      share: { isPublic: false } as SetShareDetailInput,
     }
     await Promise.all(
-      [masterFileItem, draftFileItem].map(async item => {
-        const fileNode = await this.saveGCSFileAndFileNode(item.path, '', { contentType: 'text/markdown' })
+      [masterFileItem, draftFileItem].map(async ({ path, article, share }) => {
+        const fileNode = await this.saveGCSFileAndFileNode(path, '', { contentType: 'text/markdown' }, { share })
         await this.client.update({
           index: StorageSchema.IndexAlias,
           id: fileNode.id,
           body: {
             doc: {
-              article: item.article,
+              article,
             },
           },
           refresh: true,
@@ -1508,10 +1510,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const a = treeNodeA.item
         const b = treeNodeB.item
 
-        if (a.article?.file?.type === 'Master') return -1
-        if (b.article?.file?.type === 'Master') return 1
         if (a.article?.file?.type === 'Draft') return -1
         if (b.article?.file?.type === 'Draft') return 1
+        if (a.article?.file?.type === 'Master') return -1
+        if (b.article?.file?.type === 'Master') return 1
 
         if (a.nodeType === b.nodeType) {
           const orderA = a.article?.dir?.sortOrder ?? 0
