@@ -356,11 +356,11 @@ program
     // ノードを削除
     switch (node.nodeType) {
       case 'Dir': {
-        await storageService.removeDir(node.path)
+        await storageService.removeDir(node)
         break
       }
       case 'File': {
-        await storageService.removeFile(node.path)
+        await storageService.removeFile(node)
         break
       }
     }

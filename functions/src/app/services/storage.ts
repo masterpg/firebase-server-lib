@@ -1,6 +1,7 @@
 import * as _path from 'path'
 import {
   ArticleTableOfContentsNode,
+  CoreStorageSchema,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
@@ -83,6 +84,42 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //--------------------------------------------------
   //  Article
   //--------------------------------------------------
+
+  /**
+   * 記事の本文ノードと下書きノードを取得します。
+   * @param articleDirPath
+   */
+  async getArticleSrcFiles(articleDirPath: string): Promise<{ master: StorageNode; draft: StorageNode }> {
+    const paths = [StorageService.toArticleSrcMasterPath(articleDirPath), StorageService.toArticleSrcDraftPath(articleDirPath)]
+
+    const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+      index: CoreStorageSchema.IndexAlias,
+      size: 2,
+      body: {
+        query: { terms: { path: paths } },
+      },
+      _source_includes: this.includeNodeFields,
+      _source_excludes: this.excludeNodeFields,
+    })
+
+    const result = this.dbResponseToNodes(response).reduce<{ master: StorageNode; draft: StorageNode }>((result, node) => {
+      if (node.article?.file?.type === 'Master') {
+        result.master = node
+      } else if (node.article?.file?.type === 'Draft') {
+        result.draft = node
+      }
+      return result
+    }, {} as any)
+
+    if (!result.master) {
+      throw new AppError(`The master file for the article could not be found.`, { articleDirPath })
+    }
+    if (!result.draft) {
+      throw new AppError(`The draft file for the article could not be found.`, { articleDirPath })
+    }
+
+    return result
+  }
 
   /**
    * 記事系ディレクトリを作成します。
@@ -475,7 +512,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   /**
-   * 記事ソースを保存します。
+   * 記事本文を保存します。
    * @param idToken
    * @param articleDirPath
    * @param srcContent
@@ -525,9 +562,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     srcContent: string,
     textContent: string
   ): Promise<SaveArticleMasterSrcFileResult> {
-    const draftNode = await this.saveArticleDraftSrcFile(articleDirPath, '')
-    const masterNodePath = StorageService.toArticleSrcMasterPath(articleDirPath)
-    let masterNode: StorageNode = await this.saveGCSFileAndFileNode(masterNodePath, srcContent, undefined, { idempotent: true })
+    let { master: masterNode, draft: draftNode } = await this.getArticleSrcFiles(articleDirPath)
+
+    masterNode = await this.saveGCSFileAndFileNode(masterNode.path, srcContent)
+    draftNode = await this.saveGCSFileAndFileNode(draftNode.path, '', undefined, {
+      timestamp: {
+        updatedAt: masterNode.updatedAt, // 更新日を本文に合わせる
+      },
+    })
 
     // 全文検索用のテキストコンテンツを設定
     await this.client.update({
@@ -540,8 +582,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
               textContent,
             },
           },
-          updatedAt: dayjs().toISOString(),
-          version: masterNode.version + 1,
         },
       },
       refresh: true,
@@ -560,28 +600,28 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   /**
-   * 記事ソースの下書きファイルを保存します。
+   * 記事下書きを保存します。
    * @param idToken
    * @param articleDirPath
    * @param srcContent
    */
-  saveArticleDraftSrcFile(idToken: IdToken, articleDirPath: string, srcContent: string): Promise<StorageNode>
+  saveArticleDraftSrcFile(idToken: IdToken, articleDirPath: string, srcContent: string | null): Promise<StorageNode>
 
   /**
    * @see saveArticleDraftSrcFile
    * @param articleDirPath
    * @param srcContent
    */
-  saveArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode>
+  saveArticleDraftSrcFile(articleDirPath: string, srcContent: string | null): Promise<StorageNode>
 
-  async saveArticleDraftSrcFile(arg1: IdToken | string, arg2: string, arg3?: string): Promise<StorageNode> {
+  async saveArticleDraftSrcFile(arg1: IdToken | string, arg2: string | null, arg3?: string | null): Promise<StorageNode> {
     let idToken: IdToken | undefined
     let articleDirPath: string
-    let srcContent: string
+    let srcContent: string | null
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      articleDirPath = arg2
-      srcContent = arg3 as string
+      articleDirPath = arg2 as string
+      srcContent = arg3 as string | null
     } else {
       articleDirPath = arg1
       srcContent = arg2
@@ -600,12 +640,25 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
   }
 
-  async saveOwnArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
-    const draftNodePath = await StorageService.toArticleSrcDraftPath(articleDirPath)
-    return this.saveGCSFileAndFileNode(draftNodePath, srcContent)
+  async saveOwnArticleDraftSrcFile(articleDirPath: string, srcContent: string | null): Promise<StorageNode> {
+    const draftNodePath = StorageService.toArticleSrcDraftPath(articleDirPath)
+
+    // 下書き破棄が指定されていた場合
+    if (srcContent === null) {
+      const { master } = await this.getArticleSrcFiles(articleDirPath)
+      return this.saveGCSFileAndFileNode(draftNodePath, srcContent, undefined, {
+        timestamp: {
+          updatedAt: master.updatedAt, // 更新日を本文に合わせる
+        },
+      })
+    }
+    // 下書きコンテンツが指定されていた場合
+    else {
+      return this.saveGCSFileAndFileNode(draftNodePath, srcContent)
+    }
   }
 
-  async saveOtherArticleDraftSrcFile(articleDirPath: string, srcContent: string): Promise<StorageNode> {
+  async saveOtherArticleDraftSrcFile(articleDirPath: string, srcContent: string | null): Promise<StorageNode> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -1394,7 +1447,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   /**
-   * 記事ソースのマスターファイルパスを取得します。
+   * 記事の本文ファイルパスを取得します。
    * @param articleDirPath 記事ディレクトリパス
    */
   static toArticleSrcMasterPath(articleDirPath: string): string {
@@ -1403,7 +1456,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   /**
-   * 記事ソースの下書きファイルパスを取得します。
+   * 記事の下書きファイルパスを取得します。
    * @param articleDirPath 記事ディレクトリパス
    */
   static toArticleSrcDraftPath(articleDirPath: string): string {

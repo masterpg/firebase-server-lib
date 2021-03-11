@@ -112,8 +112,8 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeStorageFile(@UserArg() idToken: IdToken, @Args('filePath') filePath: string): Promise<StorageNode | undefined> {
-    return await this.storageService.removeFile(idToken, filePath)
+  async removeStorageFile(@UserArg() idToken: IdToken, @Args('key') key: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
+    return await this.storageService.removeFile(idToken, key)
   }
 
   @Mutation()
@@ -276,8 +276,8 @@ class RemoveStorageDirResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async removeStorageDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string): Promise<boolean> {
-    await this.storageService.removeDir(idToken, dirPath)
+  async removeStorageDir(@UserArg() idToken: IdToken, @Args('key') key: StorageNodeGetKeyInput): Promise<boolean> {
+    await this.storageService.removeDir(idToken, key)
     return true
   }
 }

@@ -51,8 +51,8 @@ describe('Lv3 Storage Resolver', () => {
   describe('removeStorageDir', () => {
     const gql = {
       query: `
-        mutation RemoveStorageDir($dirPath: String!) {
-          removeStorageDir(dirPath: $dirPath)
+        mutation RemoveStorageDir($key: StorageNodeGetKeyInput!) {
+          removeStorageDir(key: $key)
         }
       `,
     }
@@ -65,7 +65,7 @@ describe('Lv3 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path },
+          variables: { key: { path: d1.path } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -74,7 +74,7 @@ describe('Lv3 Storage Resolver', () => {
 
       const exp = td.explain(removeDir)
       expect(exp.calls.length).toBe(1)
-      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), d1.path])
+      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), { path: d1.path }])
     })
 
     it('サインインしていない場合', async () => {
@@ -82,7 +82,7 @@ describe('Lv3 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path },
+        variables: { key: { path: d1.path } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)

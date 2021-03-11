@@ -5,7 +5,7 @@
 type Mutation {
   createStorageDir(dirPath: String!, options: CreateStorageNodeOptions): StorageNode!
   createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
-  removeStorageFile(filePath: String!): StorageNode
+  removeStorageFile(key: StorageNodeGetKeyInput!): StorageNode
   moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
   renameStorageFile(filePath: String!, newName: String!): StorageNode!
   setStorageDirShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
@@ -18,7 +18,7 @@ type Mutation {
   renameArticleDir(dirPath: String!, newName: String!): StorageNode!
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
   saveArticleMasterSrcFile(articleDirPath: String!, srcContent: String!, textContent: String!): SaveArticleMasterSrcFileResult!
-  saveArticleDraftSrcFile(articleDirPath: String!, srcContent: String!): StorageNode!
+  saveArticleDraftSrcFile(articleDirPath: String!, srcContent: String): StorageNode!
 }
 
 type Query {

@@ -550,8 +550,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('removeStorageFile', () => {
     const gql = {
       query: `
-        mutation RemoveStorageFile($filePath: String!) {
-          removeStorageFile(filePath: $filePath) {
+        mutation RemoveStorageFile($key: StorageNodeGetKeyInput!) {
+          removeStorageFile(key: $key) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -563,13 +563,13 @@ describe('Lv1 Storage Resolver', () => {
       const fileA = h.newFileNode(`d1/d11/fileA.txt`)
 
       const removeFile = td.replace(storageService, 'removeFile')
-      td.when(removeFile(AppAdminUserToken(), fileA.path)).thenResolve(fileA)
+      td.when(removeFile(AppAdminUserToken(), { path: fileA.path })).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: fileA.path },
+          variables: { key: { path: fileA.path } },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -582,7 +582,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { filePath: fileA.path },
+        variables: { key: { path: fileA.path } },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1227,7 +1227,7 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const { art1_master, art1_draft } = newArticleNodes(StorageUserToken())
       const articleDirPath = art1_draft.dir
-      const srcContent = '#header1'
+      const srcContent = '# header1'
       const textContent = 'header1'
 
       const saveArticleMasterSrcFile = td.replace(storageService, 'saveArticleMasterSrcFile')
@@ -1254,7 +1254,7 @@ describe('Lv1 Storage Resolver', () => {
     it('サインインしていない場合', async () => {
       const { art1_draft } = newArticleNodes(StorageUserToken())
       const articleDirPath = art1_draft.dir
-      const srcContent = '#header1'
+      const srcContent = '# header1'
       const textContent = 'header1'
 
       const response = await requestGQL(app, {
@@ -1269,7 +1269,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('saveArticleDraftSrcFile', () => {
     const gql = {
       query: `
-        mutation SaveArticleDraftSrcFile($articleDirPath: String!, $srcContent: String!) {
+        mutation SaveArticleDraftSrcFile($articleDirPath: String!, $srcContent: String) {
           saveArticleDraftSrcFile(articleDirPath: $articleDirPath, srcContent: $srcContent) {
             ...${StorageNodeFieldsName}
           }
@@ -1302,7 +1302,7 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const { art1_draft } = newArticleNodes(StorageUserToken())
       const articleDirPath = art1_draft.dir
-      const srcContent = 'test'
+      const srcContent = '# header1'
 
       const saveArticleDraftSrcFile = td.replace(storageService, 'saveArticleDraftSrcFile')
       td.when(saveArticleDraftSrcFile(StorageUserToken(), articleDirPath, srcContent)).thenResolve(art1_draft)
@@ -1312,6 +1312,26 @@ describe('Lv1 Storage Resolver', () => {
         {
           ...gql,
           variables: { articleDirPath, srcContent },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.saveArticleDraftSrcFile).toEqual(toGQLResponseStorageNode(art1_draft))
+    })
+
+    it('疎通確認 - srcContentにnullを指定した場合', async () => {
+      const { art1_draft } = newArticleNodes(StorageUserToken())
+      const articleDirPath = art1_draft.dir
+      const srcContent = null
+
+      const saveArticleDraftSrcFile = td.replace(storageService, 'saveArticleDraftSrcFile')
+      td.when(saveArticleDraftSrcFile(StorageUserToken(), articleDirPath, srcContent)).thenResolve(art1_draft)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { articleDirPath, srcContent: null },
         },
         { headers: StorageUserHeader() }
       )

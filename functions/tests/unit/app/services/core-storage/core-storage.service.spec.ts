@@ -1728,27 +1728,39 @@ describe('CoreStorageService', () => {
       ])
       const { list: beforeNodes } = await storageService.getDescendants({ path: `d1`, includeBase: true })
 
-      await storageService.removeDir(`d1`)
+      await storageService.removeDir({ path: `d1` })
 
       const removedNodes = await storageService.getDescendants({ path: `d1`, includeBase: true })
       expect(removedNodes.list.length).toBe(0)
       await h.notExistsNodes(beforeNodes)
     })
 
-    it('存在しないディレクトリを指定した場合', async () => {
-      // 何も行われない(エラーも発生しない)
-      await storageService.removeDir(`d1`)
+    it('ID指定', async () => {
+      const [d1] = await storageService.createHierarchicalDirs([`d1`])
+
+      await storageService.removeDir({ id: d1.id })
+
+      const d1_ = await storageService.getNode(d1)
+      expect(d1_).toBeUndefined()
     })
 
-    it('dirPathに空文字を指定した場合', async () => {
-      let actual!: AppError
-      try {
-        await storageService.removeDir(``)
-      } catch (err) {
-        actual = err
-      }
+    it('パス指定', async () => {
+      const [d1] = await storageService.createHierarchicalDirs([`d1`])
 
-      expect(actual.cause).toBe(`The argument 'dirPath' is empty.`)
+      await storageService.removeDir({ path: d1.path })
+
+      const d1_ = await storageService.getNode(d1)
+      expect(d1_).toBeUndefined()
+    })
+
+    it('存在しないディレクトリを指定した場合', async () => {
+      // 何も行われない(エラーも発生しない)
+      await storageService.removeDir({ path: `d1` })
+    })
+
+    it('パスに空文字を指定した場合', async () => {
+      // 何も行われない(エラーも発生しない)
+      await storageService.removeDir({ path: `` })
     })
 
     it('大量データの場合', async () => {
@@ -1797,7 +1809,7 @@ describe('CoreStorageService', () => {
 
       // テスト対象実行
       // 大量データを想定して分割で削除を行う
-      await storageService.removeDir(`d1`, { maxChunk: 3 })
+      await storageService.removeDir({ path: `d1` }, { maxChunk: 3 })
 
       // 削除後の対象ノードを検証
       const removedNodes = await storageService.getDescendants({ path: `d1`, includeBase: true })
@@ -1808,7 +1820,7 @@ describe('CoreStorageService', () => {
     it('閲覧権限があるユーザーで実行した場合', async () => {
       const { d1 } = await setupUserNodes()
 
-      await storageService.removeDir(StorageUserToken(), d1.path)
+      await storageService.removeDir(StorageUserToken(), d1)
 
       await h.notExistsNodes([d1])
     })
@@ -1818,7 +1830,7 @@ describe('CoreStorageService', () => {
 
       let actual!: HttpException
       try {
-        await storageService.removeDir(GeneralUserToken(), d1.path)
+        await storageService.removeDir(GeneralUserToken(), d1)
       } catch (err) {
         actual = err
       }
@@ -1851,33 +1863,58 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      const actual = (await storageService.removeFile(`d1/fileA.txt`))!
+      const actual = (await storageService.removeFile({ path: `d1/fileA.txt` }))!
 
       expect(actual.path).toBe(`d1/fileA.txt`)
       await h.notExistsNodes([actual])
     })
 
+    it('ID指定', async () => {
+      const [fileA] = await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileA.txt`,
+        },
+      ])
+
+      await storageService.removeFile({ id: fileA.id })
+
+      const fileA_ = await storageService.getNode(fileA)
+      expect(fileA_).toBeUndefined()
+    })
+
+    it('パス指定', async () => {
+      const [fileA] = await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `fileA.txt`,
+        },
+      ])
+
+      await storageService.removeFile({ path: fileA.path })
+
+      const fileA_ = await storageService.getNode(fileA)
+      expect(fileA_).toBeUndefined()
+    })
+
     it('存在しないファイルを指定', async () => {
-      const actual = await storageService.removeFile(`d1/fileXXX.txt`)
+      const actual = await storageService.removeFile({ path: `d1/fileXXX.txt` })
 
       expect(actual).toBeUndefined()
     })
 
     it('filePathに空文字を指定した場合', async () => {
-      let actual!: AppError
-      try {
-        await storageService.removeFile(``)
-      } catch (err) {
-        actual = err
-      }
+      const actual = await storageService.removeFile({ path: `` })
 
-      expect(actual.cause).toBe(`The argument 'filePath' is empty.`)
+      expect(actual).toBeUndefined()
     })
 
     it('閲覧権限があるユーザーで実行した場合', async () => {
       const { fileA } = await setupUserNodes()
 
-      await storageService.removeFile(StorageUserToken(), fileA.path)
+      await storageService.removeFile(StorageUserToken(), fileA)
 
       await h.notExistsNodes([fileA])
     })
@@ -1887,7 +1924,7 @@ describe('CoreStorageService', () => {
 
       let actual!: HttpException
       try {
-        await storageService.removeFile(GeneralUserToken(), fileA.path)
+        await storageService.removeFile(GeneralUserToken(), fileA)
       } catch (err) {
         actual = err
       }
@@ -4652,7 +4689,7 @@ describe('大量データのテスト', () => {
 
     it('テスト実行', async () => {
       const start = performance.now()
-      await storageService.removeDir(DirPath)
+      await storageService.removeDir({ path: DirPath })
       const end = performance.now()
       console.log(`removeDir: ${(end - start) / 1000}s`)
 

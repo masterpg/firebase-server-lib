@@ -5,6 +5,7 @@ import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
   CoreStorageNode,
   CreateStorageNodeOptions,
+  EntityTimestamp,
   IdToken,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -1207,55 +1208,58 @@ class CoreStorageService<
    *   + 'home/photos/children.png'
    *
    * @param idToken
-   * @param dirPath
+   * @param key
    * @param pagination
    */
-  removeDir(idToken: IdToken, dirPath: string, pagination?: { maxChunk?: number }): Promise<void>
+  removeDir(idToken: IdToken, key: StorageNodeGetKeyInput, pagination?: { maxChunk?: number }): Promise<void>
 
   /**
    * @see removeDir
-   * @param dirPath
+   * @param key
    * @param pagination
    */
-  removeDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void>
+  removeDir(key: StorageNodeGetKeyInput, pagination?: { maxChunk?: number }): Promise<void>
 
-  async removeDir(arg1: IdToken | string, arg2?: string | { maxChunk?: number }, arg3?: { maxChunk?: number }): Promise<void> {
+  async removeDir(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2?: StorageNodeGetKeyInput | { maxChunk?: number },
+    arg3?: { maxChunk?: number }
+  ): Promise<void> {
     let idToken: IdToken | undefined
-    let dirPath: string
+    let key: StorageNodeGetKeyInput
     let pagination: { maxChunk?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      dirPath = arg2 as string
+      key = arg2 as StorageNodeGetKeyInput
       pagination = arg3
     } else {
-      dirPath = arg1
+      key = arg1
       pagination = arg2 as { maxChunk?: number } | undefined
     }
 
+    const dirNode = await this.getNode(key)
+    if (!dirNode) return
+
     if (idToken) {
-      await this.validateBrowsable(idToken, dirPath)
+      await this.validateBrowsable(idToken, dirNode.path)
 
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, dirPath) || idToken.isAppAdmin) {
-        return this.removeOwnDir(dirPath, pagination)
+      if (CoreStorageService.isOwnUserRootUnder(idToken, dirNode.path) || idToken.isAppAdmin) {
+        return this.removeOwnDir(dirNode, pagination)
       } else {
-        return this.removeOtherDir(dirPath, pagination)
+        return this.removeOtherDir(dirNode, pagination)
       }
     } else {
-      return this.removeOwnDir(dirPath, pagination)
+      return this.removeOwnDir(dirNode, pagination)
     }
   }
 
   /**
    * 自ユーザーのディレクトリを削除します。
-   * @param dirPath
+   * @param dirNode
    * @param pagination
    */
-  protected async removeOwnDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
-    if (!dirPath) {
-      throw new AppError(`The argument 'dirPath' is empty.`)
-    }
-
+  protected async removeOwnDir(dirNode: NODE, pagination?: { maxChunk?: number }): Promise<void> {
     const bucket = admin.storage().bucket()
     const size = pagination?.maxChunk ?? 1000
     let nodes: { id: string; path: string }[]
@@ -1273,7 +1277,7 @@ class CoreStorageService<
               must: [
                 {
                   bool: {
-                    should: [{ term: { path: dirPath } }, { wildcard: { path: `${dirPath}/*` } }],
+                    should: [{ term: { path: dirNode.path } }, { wildcard: { path: `${dirNode.path}/*` } }],
                   },
                 },
                 { term: { nodeType: 'File' } },
@@ -1311,7 +1315,7 @@ class CoreStorageService<
       body: {
         query: {
           bool: {
-            should: [{ term: { path: dirPath } }, { wildcard: { path: `${dirPath}/*` } }],
+            should: [{ term: { path: dirNode.path } }, { wildcard: { path: `${dirNode.path}/*` } }],
           },
         },
       },
@@ -1321,57 +1325,53 @@ class CoreStorageService<
 
   /**
    * 他ユーザーのディレクトリを削除します。
-   * @param dirPath
+   * @param dirNode
    * @param pagination
    */
-  protected async removeOtherDir(dirPath: string, pagination?: { maxChunk?: number }): Promise<void> {
+  protected async removeOtherDir(dirNode: NODE, pagination?: { maxChunk?: number }): Promise<void> {
     throw new AppError(`Not implemented yet.`)
   }
 
   /**
    * ファイルを削除します。
    * @param idToken
-   * @param filePath
+   * @param key
    */
-  removeFile(idToken: IdToken, filePath: string): Promise<FILE_NODE | undefined>
+  removeFile(idToken: IdToken, key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
 
   /**
    * ファイルを削除します。
-   * @param filePath
+   * @param key
    */
-  removeFile(filePath: string): Promise<FILE_NODE | undefined>
+  removeFile(key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
 
-  async removeFile(arg1: IdToken | string, arg2?: string): Promise<FILE_NODE | undefined> {
+  async removeFile(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
     let idToken: IdToken | undefined
-    let filePath: string
+    let key: StorageNodeGetKeyInput
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      filePath = arg2 as string
+      key = arg2 as StorageNodeGetKeyInput
     } else {
-      filePath = arg1
+      key = arg1
     }
 
-    if (idToken) {
-      await this.validateBrowsable(idToken, filePath)
+    const fileNode = await this.getFileNode(key)
+    if (!fileNode) return
 
-      if (CoreStorageService.isOwnUserRootUnder(idToken, filePath) || idToken.isAppAdmin) {
-        return this.removeOwnFile(filePath)
+    if (idToken) {
+      await this.validateBrowsable(idToken, fileNode.path)
+
+      if (CoreStorageService.isOwnUserRootUnder(idToken, fileNode.path) || idToken.isAppAdmin) {
+        return this.removeOwnFile(fileNode)
       } else {
-        return this.removeOtherFile(filePath)
+        return this.removeOtherFile(fileNode)
       }
     } else {
-      return this.removeOwnFile(filePath)
+      return this.removeOwnFile(fileNode)
     }
   }
 
-  protected async removeOwnFile(filePath: string): Promise<FILE_NODE | undefined> {
-    if (!filePath) {
-      throw new AppError(`The argument 'filePath' is empty.`)
-    }
-
-    const fileNode = await this.getFileNode({ path: filePath })
-    if (!fileNode) return undefined
-
+  protected async removeOwnFile(fileNode: FILE_NODE): Promise<FILE_NODE | undefined> {
     // ストレージからファイルを削除
     await fileNode.file.delete()
     // ストアからファイルを削除
@@ -1384,7 +1384,7 @@ class CoreStorageService<
     return fileNode
   }
 
-  protected async removeOtherFile(filePath: string): Promise<FILE_NODE | undefined> {
+  protected async removeOtherFile(fileNode: FILE_NODE): Promise<FILE_NODE | undefined> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -1886,7 +1886,7 @@ class CoreStorageService<
     }
   }
 
-  protected async setOwnDirShareDetail(dirNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<NODE> {
+  protected async setOwnDirShareDetail(dirNode: NODE, input: SetShareDetailInput | null): Promise<NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
     const share: StorageNodeShareDetail = this.toDBShareDetail(input, dirNode.share)
@@ -1906,7 +1906,7 @@ class CoreStorageService<
     return await this.sgetNode({ id: dirNode.id })
   }
 
-  protected async setOtherDirShareDetail(dirNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<NODE> {
+  protected async setOtherDirShareDetail(dirNode: NODE, input: SetShareDetailInput | null): Promise<NODE> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -1958,7 +1958,7 @@ class CoreStorageService<
     }
   }
 
-  protected async setOwnFileShareDetail(fileNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<FILE_NODE> {
+  protected async setOwnFileShareDetail(fileNode: NODE, input: SetShareDetailInput | null): Promise<FILE_NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
     const share: StorageNodeShareDetail = this.toDBShareDetail(input, fileNode.share)
@@ -1978,7 +1978,7 @@ class CoreStorageService<
     return await this.sgetFileNode({ id: fileNode.id })
   }
 
-  protected async setOtherFileShareDetail(fileNode: CoreStorageNode, input: SetShareDetailInput | null): Promise<FILE_NODE> {
+  protected async setOtherFileShareDetail(fileNode: NODE, input: SetShareDetailInput | null): Promise<FILE_NODE> {
     throw new AppError(`Not implemented yet.`)
   }
 
@@ -2232,7 +2232,7 @@ class CoreStorageService<
    */
   async deleteUserDir(uid: string, maxChunk = CoreStorageService.MaxChunk): Promise<void> {
     const userRootPath = CoreStorageService.toUserRootPath({ uid })
-    await this.removeOwnDir(userRootPath)
+    await this.removeDir({ path: userRootPath })
   }
 
   /**
@@ -2547,17 +2547,33 @@ class CoreStorageService<
     file: File,
     options?: {
       share?: SetShareDetailInput
+      timestamp?: Partial<EntityTimestamp> & { version?: number }
       idempotent?: boolean
     }
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
 
     const nodeId = file.name
-    const existingFileNode = await this.getNode({ id: nodeId })
+    const existingNode = await this.getNode({ id: nodeId })
+
+    //
+    // ファイルノードに設定するタイムスタンプ+バージョンを取得
+    //
+    let createdAt: string | undefined
+    let updatedAt: string | undefined
+    let version: number | undefined
+    if (!options?.idempotent) {
+      const now = dayjs().toISOString()
+      createdAt = options?.timestamp?.createdAt?.toISOString() ?? existingNode?.createdAt.toISOString() ?? now
+      updatedAt = options?.timestamp?.updatedAt?.toISOString() ?? now
+      if (options?.timestamp?.version) {
+        version = options.timestamp.version
+      } else {
+        version = existingNode?.version ? existingNode.version + 1 : 1
+      }
+    }
 
     // データベースにファイルノードを作成/更新
-    const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
-    const now = dayjs().toISOString()
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
@@ -2570,13 +2586,13 @@ class CoreStorageService<
               nodeType: 'File',
               share: options?.share,
             },
-            existingFileNode
+            existingNode
           ),
           contentType: file.metadata.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
-          ...(() => {
-            return !options?.idempotent ? { updatedAt: now, version } : {}
-          })(),
+          createdAt,
+          updatedAt,
+          version,
         },
         doc_as_upsert: true,
       },
@@ -2603,13 +2619,14 @@ class CoreStorageService<
     data: any,
     saveOptions?: SaveOptions,
     options?: {
-      idempotent?: boolean
       share?: SetShareDetailInput
+      timestamp?: Partial<EntityTimestamp> & { version?: number }
+      idempotent?: boolean
     }
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
-    const existingFileNode = await this.getNode({ path: fileNodePath })
-    const nodeId = existingFileNode?.id || CoreStorageSchema.generateNodeId()
+    const existingNode = await this.getNode({ path: fileNodePath })
+    const nodeId = existingNode?.id || CoreStorageSchema.generateNodeId()
 
     //
     // ストレージファイルのコンテンツデータを保存
@@ -2619,10 +2636,25 @@ class CoreStorageService<
     await file.save(data, saveOptions)
 
     //
+    // ストアにノードに設定するタイムスタンプ+バージョンを取得
+    //
+    let createdAt: string | undefined
+    let updatedAt: string | undefined
+    let version: number | undefined
+    if (!options?.idempotent) {
+      const now = dayjs().toISOString()
+      createdAt = options?.timestamp?.createdAt?.toISOString() ?? existingNode?.createdAt.toISOString() ?? now
+      updatedAt = options?.timestamp?.updatedAt?.toISOString() ?? now
+      if (options?.timestamp?.version) {
+        version = options.timestamp.version
+      } else {
+        version = existingNode?.version ? existingNode.version + 1 : 1
+      }
+    }
+
+    //
     // ストアにノードデータを保存
     //
-    const version = typeof existingFileNode?.version === 'number' ? existingFileNode.version + 1 : 1
-    const now = dayjs().toISOString()
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
@@ -2635,13 +2667,13 @@ class CoreStorageService<
               nodeType: 'File',
               share: options?.share,
             },
-            existingFileNode
+            existingNode
           ),
-          contentType: saveOptions?.contentType ?? existingFileNode?.contentType ?? '',
+          contentType: saveOptions?.contentType ?? existingNode?.contentType ?? '',
           size: file.metadata.size ? Number(file.metadata.size) : 0,
-          ...(() => {
-            return !options?.idempotent ? { updatedAt: now, version } : {}
-          })(),
+          createdAt,
+          updatedAt,
+          version,
         },
         doc_as_upsert: true,
       },
