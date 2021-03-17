@@ -121,10 +121,10 @@ describe('Lv1 Storage Resolver', () => {
           },
         })
         const art1_master = h.newDirNode(`${art1.path}/${config.storage.article.masterSrcFileName}`, {
-          article: { file: { type: 'Master' } },
+          article: { src: { type: 'Master' } },
         })
         const art1_draft = h.newDirNode(`${art1.path}/${config.storage.article.draftSrcFileName}`, {
-          article: { file: { type: 'Draft' } },
+          article: { src: { type: 'Draft' } },
         })
 
         const input: StorageNodeGetKeysInput = { ids: [bundle.id, art1.id, art1_master.id, art1_draft.id] }
@@ -1216,10 +1216,10 @@ describe('Lv1 Storage Resolver', () => {
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       return { art1, art1_master, art1_draft }
     }
@@ -1291,10 +1291,10 @@ describe('Lv1 Storage Resolver', () => {
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(art1.path), {
-        article: { file: { type: 'Draft' } },
+        article: { src: { type: 'Draft' } },
       })
       return { art1, art1_master, art1_draft }
     }

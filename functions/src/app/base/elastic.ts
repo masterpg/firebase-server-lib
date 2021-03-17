@@ -157,7 +157,7 @@ function decodePageToken(pageToken?: string): ElasticPageToken | Record<string, 
   return { pit, search_after }
 }
 
-function extractSearchAfter<T>(response: ElasticSearchAPIResponse<T>): { pitId?: string; sort?: string[] } | undefined {
+function retrieveSearchAfter<T>(response: ElasticSearchAPIResponse<T>): { pitId?: string; sort?: string[] } | undefined {
   const length = response.body.hits.hits.length
   if (!length) return {}
 
@@ -217,7 +217,7 @@ export {
   closePointInTime,
   decodePageToken,
   encodePageToken,
-  extractSearchAfter,
+  retrieveSearchAfter,
   isPaginationTimeout,
   newElasticClient,
   openPointInTime,

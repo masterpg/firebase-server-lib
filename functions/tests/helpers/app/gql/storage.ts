@@ -1,4 +1,4 @@
-import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleFileDetail, StorageNode } from '../../../../src/app/services'
+import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleSrcDetail, StorageNode } from '../../../../src/app/services'
 
 //========================================================================
 //
@@ -9,7 +9,7 @@ import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleFile
 interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'article' | 'createdAt' | 'updatedAt'> {
   article: {
     dir: StorageArticleDirDetail | null
-    file: StorageArticleFileDetail | null
+    src: StorageArticleSrcDetail | null
   } | null
   createdAt: string
   updatedAt: string
@@ -37,7 +37,7 @@ const StorageNodeFields = `
         type
         sortOrder
       }
-      file {
+      src {
         type
       }
     }
@@ -92,7 +92,7 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       if (!node.article) return null
       return {
         dir: node.article.dir ?? null,
-        file: node.article.file ?? null,
+        src: node.article.src ?? null,
       }
     })(),
     version: node.version,

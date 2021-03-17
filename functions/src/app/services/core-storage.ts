@@ -28,10 +28,10 @@ import {
   closePointInTime,
   decodePageToken,
   encodePageToken,
-  extractSearchAfter,
   isPaginationTimeout,
   newElasticClient,
   openPointInTime,
+  retrieveSearchAfter,
   toElasticTimestamp,
   validateBulkResponse,
 } from '../base/elastic'
@@ -538,7 +538,7 @@ class CoreStorageService<
 
     // 次ページのページトークンを取得
     let nextPageToken: string | undefined
-    const searchAfter = extractSearchAfter(response)
+    const searchAfter = retrieveSearchAfter(response)
     if (nodes.length === 0 || nodes.length < maxChunk) {
       nextPageToken = undefined
       searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
@@ -784,7 +784,7 @@ class CoreStorageService<
 
     // 次ページのページトークンを取得
     let nextPageToken: string | undefined
-    const searchAfter = extractSearchAfter(response)
+    const searchAfter = retrieveSearchAfter(response)
     if (nodes.length === 0 || nodes.length < maxChunk) {
       nextPageToken = undefined
       searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
@@ -1303,7 +1303,7 @@ class CoreStorageService<
 
       // 次のページングトークンを取得
       if (nodes.length) {
-        const searchAfter = extractSearchAfter(response)!
+        const searchAfter = retrieveSearchAfter(response)!
         pageToken.pit.id = searchAfter.pitId!
         pageToken.search_after = searchAfter.sort!
       }
@@ -2255,7 +2255,7 @@ class CoreStorageService<
      * @param nodeMap
      * @param nodePath
      */
-    const extractHierarchicalNodes = (nodeMap: Record<string, NODE>, nodePath: string) => {
+    const retrieveHierarchicalNodes = (nodeMap: Record<string, NODE>, nodePath: string) => {
       const hierarchicalPaths = splitHierarchicalPaths(nodePath)
       return hierarchicalPaths.reduce<NODE[]>((result, path) => {
         const node = nodeMap[path]
@@ -2302,7 +2302,7 @@ class CoreStorageService<
       if (idToken.isAppAdmin) continue
       // ノードパスがアプリケーションノードまたは他ユーザーノードの場合
       if (CoreStorageService.isAppNode(nodePath) || CoreStorageService.isOtherUserRootFamily(idToken, nodePath)) {
-        const hierarchicalNodes = extractHierarchicalNodes(nodeMap!, nodePath)
+        const hierarchicalNodes = retrieveHierarchicalNodes(nodeMap!, nodePath)
         const share = this.getInheritedShareDetail(hierarchicalNodes)
         if (!share.readUIds?.includes(idToken.uid)) {
           throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
@@ -2969,7 +2969,7 @@ class CoreStorageService<
    * 指定されたノードパスからユーザー名を取り出します。
    * @param nodePath
    */
-  static extractUId(nodePath: string): string {
+  static retrieveUId(nodePath: string): string {
     const reg = new RegExp(`^${config.storage.user.rootName}/(?<uid>[^/]+)`)
     const execArray = reg.exec(nodePath)
     return execArray?.groups?.uid ?? ''

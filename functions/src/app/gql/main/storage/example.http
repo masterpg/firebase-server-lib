@@ -4,7 +4,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } article { dir { name type sortOrder } file { type } } version createdAt updatedAt } }",
+  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } article { dir { name type sortOrder } src { type } } version createdAt updatedAt } }",
   "variables": {
     "input": { "path": "test-files/d1" }
   }

@@ -8,7 +8,7 @@ import {
   toElasticTimestamp,
   toEntityTimestamp,
 } from '../../base/elastic'
-import { CoreStorageNode, StorageArticleDirDetail, StorageArticleFileDetail, StorageNode, StorageNodeShareDetail, User } from './index'
+import { CoreStorageNode, StorageArticleDirDetail, StorageArticleSrcDetail, StorageNode, StorageNodeShareDetail, User } from './index'
 import { Entities, pickProps, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
@@ -284,7 +284,7 @@ namespace StorageSchema {
                 },
               },
             },
-            file: {
+            src: {
               properties: {
                 type: {
                   type: 'keyword',
@@ -304,7 +304,7 @@ namespace StorageSchema {
   export interface DBStorageNode extends Omit<StorageNode, 'article' | 'createdAt' | 'updatedAt'>, ElasticTimestamp {
     article?: {
       dir?: StorageArticleDirDetail
-      file?: StorageArticleFileDetail
+      src?: StorageArticleSrcDetail
     }
   }
 
@@ -318,10 +318,10 @@ namespace StorageSchema {
           sortOrder: dbEntity.article.dir.sortOrder ?? null,
         },
       }
-    } else if (dbEntity.article?.file) {
+    } else if (dbEntity.article?.src) {
       result.article = {
-        file: {
-          type: dbEntity.article.file.type,
+        src: {
+          type: dbEntity.article.src.type,
         },
       }
     }
@@ -332,8 +332,8 @@ namespace StorageSchema {
     const result: DBStorageNode = { ...CoreStorageSchema.toDBEntity(appEntity) }
     if (appEntity.article?.dir) {
       result.article = { dir: pickProps(appEntity.article.dir, ['name', 'type', 'sortOrder']) }
-    } else if (appEntity.article?.file) {
-      result.article = { file: pickProps(appEntity.article.file, ['type']) }
+    } else if (appEntity.article?.src) {
+      result.article = { src: pickProps(appEntity.article.src, ['type']) }
     }
     return result
   }

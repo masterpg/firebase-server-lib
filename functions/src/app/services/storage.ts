@@ -72,7 +72,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //----------------------------------------------------------------------
 
   protected get excludeNodeFields(): string[] {
-    return [...super.excludeNodeFields, 'article.file.textContent']
+    return [...super.excludeNodeFields, 'article.src.textContent']
   }
 
   //----------------------------------------------------------------------
@@ -103,19 +103,19 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     })
 
     const result = this.dbResponseToNodes(response).reduce<{ master: StorageNode; draft: StorageNode }>((result, node) => {
-      if (node.article?.file?.type === 'Master') {
+      if (node.article?.src?.type === 'Master') {
         result.master = node
-      } else if (node.article?.file?.type === 'Draft') {
+      } else if (node.article?.src?.type === 'Draft') {
         result.draft = node
       }
       return result
     }, {} as any)
 
     if (!result.master) {
-      throw new AppError(`The master file for the article could not be found.`, { articleDirPath })
+      throw new AppError(`The master src for the article could not be found.`, { articleDirPath })
     }
     if (!result.draft) {
-      throw new AppError(`The draft file for the article could not be found.`, { articleDirPath })
+      throw new AppError(`The draft src for the article could not be found.`, { articleDirPath })
     }
 
     return result
@@ -578,7 +578,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         doc: {
           article: {
-            file: {
+            src: {
               textContent,
             },
           },
@@ -1018,10 +1018,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           sortOrder: existing.article.dir.sortOrder,
         },
       }
-    } else if (existing?.article?.file) {
+    } else if (existing?.article?.src) {
       result.article = {
-        file: {
-          type: existing.article.file.type,
+        src: {
+          type: existing.article.src.type,
         },
       }
     }
@@ -1159,7 +1159,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const masterFileItem = {
       path: _path.join(dirPath, config.storage.article.masterSrcFileName),
       article: {
-        file: {
+        src: {
           type: 'Master',
         },
       } as StorageArticleDetail,
@@ -1168,7 +1168,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const draftFileItem = {
       path: _path.join(dirPath, config.storage.article.draftSrcFileName),
       article: {
-        file: {
+        src: {
           type: 'Draft',
         },
       } as StorageArticleDetail,
@@ -1510,10 +1510,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const a = treeNodeA.item
         const b = treeNodeB.item
 
-        if (a.article?.file?.type === 'Draft') return -1
-        if (b.article?.file?.type === 'Draft') return 1
-        if (a.article?.file?.type === 'Master') return -1
-        if (b.article?.file?.type === 'Master') return 1
+        if (a.article?.src?.type === 'Draft') return -1
+        if (b.article?.src?.type === 'Draft') return 1
+        if (a.article?.src?.type === 'Master') return -1
+        if (b.article?.src?.type === 'Master') return 1
 
         if (a.nodeType === b.nodeType) {
           const orderA = a.article?.dir?.sortOrder ?? 0

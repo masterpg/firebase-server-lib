@@ -147,7 +147,7 @@ interface StorageNodeShareDetail {
 
 interface StorageArticleDetail {
   dir?: StorageArticleDirDetail
-  file?: StorageArticleFileDetail
+  src?: StorageArticleSrcDetail
 }
 
 interface StorageArticleDirDetail {
@@ -156,7 +156,7 @@ interface StorageArticleDirDetail {
   sortOrder: number
 }
 
-interface StorageArticleFileDetail {
+interface StorageArticleSrcDetail {
   type: StorageArticleFileType
 }
 
@@ -314,7 +314,7 @@ export {
   StorageArticleDetail,
   StorageArticleDirDetail,
   StorageArticleDirType,
-  StorageArticleFileDetail,
+  StorageArticleSrcDetail,
   StorageArticleFileType,
   StorageNode,
   StorageNodeGetKeyInput,

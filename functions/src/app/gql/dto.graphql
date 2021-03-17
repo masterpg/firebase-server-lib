@@ -109,7 +109,7 @@ type StorageNodeShareDetail {
 
 type StorageArticleDetail {
   dir: StorageArticleDirDetail
-  file: StorageArticleFileDetail
+  src: StorageArticleSrcDetail
 }
 
 type StorageArticleDirDetail {
@@ -118,7 +118,7 @@ type StorageArticleDirDetail {
   sortOrder: Long!
 }
 
-type StorageArticleFileDetail {
+type StorageArticleSrcDetail {
   type: String!
 }
 

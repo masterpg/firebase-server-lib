@@ -102,7 +102,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.cause).toBe(`The master file for the article could not be found.`)
+      expect(actual.cause).toBe(`The master src for the article could not be found.`)
       expect(actual.data).toEqual({ articleDirPath: art1.path })
     })
 
@@ -120,7 +120,7 @@ describe('StorageService', () => {
         actual = err
       }
 
-      expect(actual.cause).toBe(`The draft file for the article could not be found.`)
+      expect(actual.cause).toBe(`The draft src for the article could not be found.`)
       expect(actual.data).toEqual({ articleDirPath: art1.path })
     })
   })
@@ -635,14 +635,14 @@ describe('StorageService', () => {
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFileNodePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFileNodePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
-        expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.article?.src?.type).toBe('Draft')
         expect(art1DraftFileNode.share.isPublic).toBeFalsy()
 
         const art1MasterFileNodePath = StorageService.toArticleSrcMasterPath(actual.path)
         const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFileNodePath })
         expect(art1MasterFileNode.path).toBe(art1MasterFileNodePath)
         expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
+        expect(art1MasterFileNode.article?.src?.type).toBe('Master')
       })
 
       it('ベーシックケース - カテゴリ直下に記事ディレクトリを作成', async () => {
@@ -682,14 +682,14 @@ describe('StorageService', () => {
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFilePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFilePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
-        expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.article?.src?.type).toBe('Draft')
         expect(art1DraftFileNode.share.isPublic).toBeFalsy()
 
         const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
         const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
         expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
         expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
+        expect(art1MasterFileNode.article?.src?.type).toBe('Master')
       })
 
       it('オプションを指定した場合', async () => {
@@ -779,14 +779,14 @@ describe('StorageService', () => {
         const art1DraftFileNode = await storageService.sgetNode({ path: art1DraftFilePath })
         expect(art1DraftFileNode.path).toBe(art1DraftFilePath)
         expect(art1DraftFileNode.contentType).toBe('text/markdown')
-        expect(art1DraftFileNode.article?.file?.type).toBe('Draft')
+        expect(art1DraftFileNode.article?.src?.type).toBe('Draft')
         expect(art1DraftFileNode.share.isPublic).toBeFalsy()
 
         const art1MasterFilePath = StorageService.toArticleSrcMasterPath(actual.path)
         const art1MasterFileNode = await storageService.sgetNode({ path: art1MasterFilePath })
         expect(art1MasterFileNode.path).toBe(art1MasterFilePath)
         expect(art1MasterFileNode.contentType).toBe('text/markdown')
-        expect(art1MasterFileNode.article?.file?.type).toBe('Master')
+        expect(art1MasterFileNode.article?.src?.type).toBe('Master')
       })
 
       it('バケット直下に記事ディレクトリを作成しようとした場合', async () => {
@@ -2127,10 +2127,10 @@ describe('StorageService', () => {
         article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
       })
       const blog_artA_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(blog_artA.path), {
-        article: { file: { type: 'Draft' } },
+        article: { src: { type: 'Draft' } },
       })
       const blog_artA_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artA.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       const blog_artA_images = h.newDirNode(`${blog_artA.path}/images`)
       const blog_artA_images_picA = h.newFileNode(`${blog_artA_images.path}/picA.png`)
@@ -2140,10 +2140,10 @@ describe('StorageService', () => {
         article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
       })
       const blog_artB_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(blog_artB.path), {
-        article: { file: { type: 'Draft' } },
+        article: { src: { type: 'Draft' } },
       })
       const blog_artB_master = h.newFileNode(StorageService.toArticleSrcMasterPath(blog_artB.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
 
       const programming = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateNodeId()}`, {
@@ -2162,19 +2162,19 @@ describe('StorageService', () => {
         article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
       })
       const programming_ts_artE_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(programming_ts_artE.path), {
-        article: { file: { type: 'Draft' } },
+        article: { src: { type: 'Draft' } },
       })
       const programming_ts_artE_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artE.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
       })
       const programming_ts_artF_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(programming_ts_artF.path), {
-        article: { file: { type: 'Draft' } },
+        article: { src: { type: 'Draft' } },
       })
       const programming_ts_artF_master = h.newFileNode(StorageService.toArticleSrcMasterPath(programming_ts_artF.path), {
-        article: { file: { type: 'Master' } },
+        article: { src: { type: 'Master' } },
       })
       const programming_js = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
         article: { dir: { name: 'JavaScript', type: 'Category', sortOrder: 1 } },
