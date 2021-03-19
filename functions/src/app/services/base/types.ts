@@ -125,7 +125,8 @@ interface StorageNode extends CoreStorageNode {
   article?: StorageArticleDetail
 }
 
-interface ArticleTableOfContentsNode extends TimestampEntity {
+interface ArticleTableOfContentsNode {
+  id: string
   type: StorageArticleDirType
   name: string
   dir: string
@@ -220,6 +221,21 @@ interface SaveArticleMasterSrcFileResult {
   draft: StorageNode
 }
 
+interface ArticlePathDetail {
+  id: string
+  title: string
+}
+
+interface GetArticleSrcResult extends ArticlePathDetail {
+  id: string
+  title: string
+  src: string
+  dir: ArticlePathDetail[]
+  path: ArticlePathDetail[]
+  createdAt: Dayjs
+  updatedAt: Dayjs
+}
+
 interface GetArticleChildrenInput {
   dirPath: string
   types: StorageArticleDirType[]
@@ -303,19 +319,21 @@ export { JSON, JSONObject }
 export { Entity, EntityTimestamp, OmitTimestamp, TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
+  ArticlePathDetail,
   ArticleTableOfContentsNode,
   CoreStorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
+  GetArticleSrcResult,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
   StorageArticleDetail,
   StorageArticleDirDetail,
   StorageArticleDirType,
-  StorageArticleSrcDetail,
   StorageArticleFileType,
+  StorageArticleSrcDetail,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,

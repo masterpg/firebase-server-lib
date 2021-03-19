@@ -1,6 +1,7 @@
 import * as td from 'testdouble'
 import {
   AppAdminUser,
+  AppAdminUserHeader,
   GeneralUser,
   GeneralUserHeader,
   StorageTestHelper,
@@ -9,7 +10,14 @@ import {
   StorageUserHeader,
   StorageUserToken,
 } from '../../../../helpers/app'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageService, StorageServiceDI } from '../../../../../src/app/services'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  GetArticleSrcResult,
+  OmitTimestamp,
+  StorageService,
+  StorageServiceDI,
+} from '../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../src/app/gql/main/lv1'
 import { Response } from 'supertest'
@@ -27,6 +35,8 @@ initApp()
 //========================================================================
 
 const TestFilesDir = 'test-files'
+
+type RawGetArticleSrcResult = OmitTimestamp<GetArticleSrcResult> & { createdAt: string; updatedAt: string }
 
 //========================================================================
 //
@@ -61,7 +71,7 @@ describe('StorageService - HTTP関連のテスト', () => {
     td.reset()
   })
 
-  describe('serveArticle', () => {
+  describe('serveArticleSrc', () => {
     let app: any
 
     beforeEach(async () => {
@@ -86,17 +96,30 @@ describe('StorageService - HTTP関連のテスト', () => {
         type: 'Article',
       })
       // 記事1のマスターファイル
-      await storageService.saveArticleMasterSrcFile(art1.path, '#header1', 'header1')
+      await storageService.saveArticleMasterSrcFile(art1.path, '# header1', 'header1')
       const art1_master = await storageService.sgetFileNode({
-        path: StorageService.toArticleSrcMasterPath(art1.path),
+        path: StorageService.toArticleMasterSrcPath(art1.path),
       })
 
-      return { bundle, art1, art1_master }
+      // 記事1のレスポンス
+      const art1_response: RawGetArticleSrcResult = {
+        id: art1.id,
+        title: art1.article!.dir!.name,
+        src: '# header1',
+        dir: [{ id: bundle.id, title: bundle.article!.dir!.name }],
+        path: [
+          { id: bundle.id, title: bundle.article!.dir!.name },
+          { id: art1.id, title: art1.article!.dir!.name },
+        ],
+        createdAt: art1_master.createdAt.toISOString(),
+        updatedAt: art1_master.updatedAt.toISOString(),
+      }
+
+      return { bundle, art1, art1_master, art1_response }
     }
 
     it('記事は公開設定 -> 誰でもアクセス可能', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
+      const { art1, art1_response } = await setupArticleNodes()
 
       // 記事を公開設定
       await storageService.setDirShareDetail(art1, { isPublic: true })
@@ -106,31 +129,12 @@ describe('StorageService - HTTP関連のテスト', () => {
         .get(`/articles/${art1.id}`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.text).toEqual(art1_master_content)
+          expect(res.body).toEqual(art1_response)
         })
     })
 
-    it('記事は非公開設定 -> 自ユーザーはアクセス可能', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
-
-      // 記事を非公開設定
-      await storageService.setDirShareDetail(art1, { isPublic: false })
-
-      return (
-        request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
-          // 自ユーザーを設定
-          .set({ ...StorageUserHeader() })
-          .expect(200)
-          .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_content)
-          })
-      )
-    })
-
     it('記事は非公開設定 -> 他ユーザーはアクセス不可', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
+      const { art1 } = await setupArticleNodes()
 
       // 記事を公開未設定
       await storageService.setDirShareDetail(art1, { isPublic: false })
@@ -139,48 +143,13 @@ describe('StorageService - HTTP関連のテスト', () => {
         request(app.getHttpServer())
           .get(`/articles/${art1.id}`)
           // 他ユーザーを設定
-          .set({ ...GeneralUserHeader() })
-          .expect(403)
-      )
-    })
-
-    it('記事は公開未設定 -> 自ユーザーはアクセス可能', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
-
-      // 記事を非公開設定
-      await storageService.setDirShareDetail(art1, { isPublic: null })
-
-      return (
-        request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
-          // 自ユーザーを設定
-          .set({ ...StorageUserHeader() })
-          .expect(200)
-          .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_content)
-          })
-      )
-    })
-
-    it('記事は非公開未設定 -> 他ユーザーはアクセス不可', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
-
-      // 記事を公開未設定
-      await storageService.setDirShareDetail(art1, { isPublic: null })
-
-      return (
-        request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
-          // 他ユーザーを設定
-          .set({ ...GeneralUserHeader() })
+          .set({ ...AppAdminUserHeader() })
           .expect(403)
       )
     })
 
     it('記事に読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-      const { art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
+      const { art1, art1_response } = await setupArticleNodes()
 
       // 記事に読み込み権限設定
       await storageService.setDirShareDetail(art1, { readUIds: [GeneralUser().uid] })
@@ -192,82 +161,51 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_content)
+            expect(res.body).toEqual(art1_response)
           })
       )
     })
 
-    it('記事は公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
-      const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
+    it('存在しない記事を指定した場合', async () => {
+      await setupArticleNodes()
 
-      // 上位ディレクトリに公開設定
-      await storageService.setDirShareDetail(bundle, { isPublic: true })
+      return request(app.getHttpServer())
+        .get(`/articles/12345678901234567890`)
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body).toBeNull()
+        })
+    })
+
+    it('304 Not Modified の検証 - 公開', async () => {
+      const { art1 } = await setupArticleNodes()
+
+      // 記事を公開設定
+      await storageService.setDirShareDetail(art1, { isPublic: true })
 
       return (
         request(app.getHttpServer())
           .get(`/articles/${art1.id}`)
-          // 他ユーザーを設定
-          .set({ ...GeneralUserHeader() })
-          .expect(200)
-          .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_content)
-          })
+          // If-Modified-Sinceを設定
+          .set('If-Modified-Since', art1.updatedAt.toString())
+          .expect(304)
       )
     })
 
-    it('記事は非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーはアクセス不可', async () => {
-      const { bundle, art1, art1_master } = await setupArticleNodes()
+    it('304 Not Modified の検証 - 非公開', async () => {
+      const { art1 } = await setupArticleNodes()
 
-      // 記事に非公開設定
+      // 記事を非公開設定
       await storageService.setDirShareDetail(art1, { isPublic: false })
-      // 上位ディレクトリに公開設定
-      await storageService.setDirShareDetail(bundle, { isPublic: true })
 
       return (
         request(app.getHttpServer())
           .get(`/articles/${art1.id}`)
-          // 他ユーザーを設定
-          .set({ ...GeneralUserHeader() })
-          .expect(403)
-      )
-    })
-
-    it('記事は公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-      const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
-
-      // 上位ディレクトリに読み込み権限設定
-      await storageService.setDirShareDetail(bundle, { readUIds: [GeneralUser().uid] })
-
-      return (
-        request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
-          // 読み込み権限に設定した他ユーザーを設定
-          .set({ ...GeneralUserHeader() })
-          .expect(200)
-          .then((res: Response) => {
-            expect(res.text).toEqual(art1_master_content)
-          })
-      )
-    })
-
-    it('記事に読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
-      const { bundle, art1, art1_master } = await setupArticleNodes()
-      const art1_master_content = (await art1_master.file.download()).toString()
-
-      // 記事に読み込み権限設定
-      await storageService.setDirShareDetail(art1, { readUIds: ['ichiro'] })
-      // 上位ディレクトリに読み込み権限設定
-      await storageService.setDirShareDetail(bundle, { readUIds: [GeneralUser().uid] })
-
-      return (
-        request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
-          // 上位ディレクトリに設定した読み込み権限ではなく、
-          // 記事に設定した読み込み権限が適用されるため、アクセス不可
-          .set({ ...GeneralUserHeader() })
-          .expect(403)
+          // If-Modified-Sinceを設定
+          .set('If-Modified-Since', art1.updatedAt.toString())
+          // 自ユーザーを設定
+          .set({ ...StorageUserHeader() })
+          .expect(304)
       )
     })
   })

@@ -40,6 +40,7 @@ import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nest
 import { Request, Response } from 'express'
 import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths, summarizeFamilyPaths } from 'web-base-lib'
 import { AuthHelper } from './base/auth'
+import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import DBStorageNode = CoreStorageSchema.DBStorageNode
@@ -2240,32 +2241,23 @@ class CoreStorageService<
    * @param idToken
    * @param nodePath
    */
-  async validateBrowsable(idToken: IdToken, nodePath: string | undefined): Promise<void>
+  validateBrowsable(idToken: IdToken, nodePath: string | undefined): Promise<void>
 
   /**
    * @see validateBrowsable
    * @param idToken
    * @param nodePaths
    */
-  async validateBrowsable(idToken: IdToken, nodePaths: string[]): Promise<void>
+  validateBrowsable(idToken: IdToken, nodePaths: string[]): Promise<void>
 
   async validateBrowsable(idToken: IdToken, nodePath_or_nodePaths: string | undefined | string[]): Promise<void> {
-    /**
-     * 指定されたノードとノードの階層構造を形成するディレクトリを取得する関数です。
-     * @param nodeMap
-     * @param nodePath
-     */
-    const retrieveHierarchicalNodes = (nodeMap: Record<string, NODE>, nodePath: string) => {
-      const hierarchicalPaths = splitHierarchicalPaths(nodePath)
-      return hierarchicalPaths.reduce<NODE[]>((result, path) => {
-        const node = nodeMap[path]
-        node && result.push(node)
-        return result
-      }, [])
-    }
+    const error = await this.validateBrowsableImpl(idToken, nodePath_or_nodePaths)
+    if (error) throw error
+  }
 
+  async validateBrowsableImpl(idToken: IdToken, nodePath_or_nodePaths: string | undefined | string[]): Promise<HttpException | void> {
     if (!idToken) {
-      throw new UnauthorizedException('Authentication failed because no ID token was specified in the argument.')
+      return new UnauthorizedException('Authentication failed because no ID token was specified in the argument.')
     }
 
     let nodePaths: string[] = []
@@ -2282,31 +2274,98 @@ class CoreStorageService<
     })
     nodePaths = summarizeFamilyPaths(nodePaths)
 
-    let nodeMap: { [path: string]: NODE }
-
-    // アプリケーションノードパスを含んでいるか取得
+    // アプリケーションノードのパスを含んでいるか取得
     const hasAppNodePath = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
 
-    // 他ユーザーのノードパスを含んでいるか取得
-    const hasOtherNodePath = nodePaths.some(nodePath => CoreStorageService.isOtherUserRootUnder(idToken, nodePath))
+    // 他ユーザーノードのパスを含んでいるか取得
+    const hasOtherNodePath = nodePaths.some(nodePath => CoreStorageService.isOtherUserRootFamily(idToken, nodePath))
 
-    // ユーザーがアプリケーション管理者でなく、
-    // かつアプリケーションノードまたは他ユーザーノードのパスを含んでいる場合
-    if (!idToken.isAppAdmin && (hasAppNodePath || hasOtherNodePath)) {
-      const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
-      const nodes = await this.getNodes({ paths: hierarchicalPaths })
-      nodeMap = arrayToDict(nodes, 'path')
-    }
+    // 自ユーザーノードにアクセスしようとしている場合、検証を終了
+    // ※「アプリケーションノード or 他ユーザーノード」のパスを含んでないので
+    if (!hasAppNodePath && !hasOtherNodePath) return
+
+    // 指定されたノードとそのノードの階層構造を形成するディレクトリを取得
+    const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
+    const nodes = await this.getNodes({ paths: hierarchicalPaths })
+    const nodeMap = arrayToDict(nodes, 'path')
 
     for (const nodePath of nodePaths) {
-      if (idToken.isAppAdmin) continue
-      // ノードパスがアプリケーションノードまたは他ユーザーノードの場合
-      if (CoreStorageService.isAppNode(nodePath) || CoreStorageService.isOtherUserRootFamily(idToken, nodePath)) {
-        const hierarchicalNodes = retrieveHierarchicalNodes(nodeMap!, nodePath)
-        const share = this.getInheritedShareDetail(hierarchicalNodes)
-        if (!share.readUIds?.includes(idToken.uid)) {
-          throw new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
-        }
+      // 自ユーザーがアプリケーション管理者の場合、次のパスへ移動
+      if (idToken.isAppAdmin) break
+
+      // ノードを閲覧できる権限があることを検証
+      const hierarchicalNodes = this.retrieveHierarchicalNodes(nodeMap, nodePath)
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
+      if (!share.isPublic && !share.readUIds?.includes(idToken.uid)) {
+        return new ForbiddenException(`The user cannot access to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
+      }
+    }
+  }
+
+  /**
+   * リクエスターが指定されたノードを読み込み可能か検証します。
+   * @param idToken
+   * @param nodePath
+   */
+  validateReadable(idToken: IdToken, nodePath: string): Promise<void>
+
+  /**
+   * @see validateReadable
+   * @param idToken
+   * @param nodePaths
+   */
+  validateReadable(idToken: IdToken, nodePaths: string[]): Promise<void>
+
+  async validateReadable(idToken: IdToken, nodePath_or_nodePaths: string | undefined | string[]): Promise<void> {
+    const error = await this.validateReadableImpl(idToken, nodePath_or_nodePaths)
+    if (error) throw error
+  }
+
+  async validateReadableImpl(idToken: IdToken, nodePath_or_nodePaths: string | undefined | string[]): Promise<HttpException | void> {
+    if (!idToken) {
+      return new UnauthorizedException('Authentication failed because no ID token was specified in the argument.')
+    }
+
+    let nodePaths: string[] = []
+    if (Array.isArray(nodePath_or_nodePaths)) {
+      nodePaths.push(...nodePath_or_nodePaths)
+    } else {
+      if (typeof nodePath_or_nodePaths !== 'string') return
+      nodePaths.push(nodePath_or_nodePaths)
+    }
+    nodePaths = nodePaths.map(nodePath => {
+      nodePath = removeBothEndsSlash(nodePath)
+      CoreStorageService.validateNodePath(nodePath)
+      return nodePath
+    })
+    nodePaths = summarizeFamilyPaths(nodePaths)
+
+    // アプリケーションノードのパスを含んでいるか取得
+    const hasAppNodePath = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
+
+    // 他ユーザーノードのパスを含んでいるか取得
+    const hasOtherNodePath = nodePaths.some(nodePath => CoreStorageService.isOtherUserRootFamily(idToken, nodePath))
+
+    // 自ユーザーノードにアクセスしようとしている場合、検証を終了
+    // ※「アプリケーションノード or 他ユーザーノード」のパスを含んでないので
+    if (!hasAppNodePath && !hasOtherNodePath) return
+
+    // 指定されたノードとそのノードの階層構造を形成するディレクトリを取得
+    const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
+    const nodes = await this.getNodes({ paths: hierarchicalPaths })
+    const nodeMap = arrayToDict(nodes, 'path')
+
+    for (const nodePath of nodePaths) {
+      // アプリケーションノードかつ、自ユーザーがアプリケーション管理者の場合、次のパスへ移動
+      if (CoreStorageService.isAppNode(nodePath) && idToken.isAppAdmin) break
+
+      // ノードを閲覧できる権限があることを検証
+      // ※他ユーザーノードの場合、アプリケーション管理者であってもノードの読み込み権限に
+      //   自ユーザーが設定されていないと読み込みできない
+      const hierarchicalNodes = this.retrieveHierarchicalNodes(nodeMap, nodePath)
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
+      if (!share.isPublic && !share.readUIds?.includes(idToken.uid)) {
+        return new ForbiddenException(`The user cannot read to the node: ${JSON.stringify({ uid: idToken.uid, nodePath })}`)
       }
     }
   }
@@ -2324,38 +2383,26 @@ class CoreStorageService<
       return res.sendStatus(404)
     }
 
-    // ファイルの共有設定を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(fileNode.path)
-    const share = this.getInheritedShareDetail(hierarchicalNodes)
-
     // ファイルの公開フラグがオンの場合
+    const share = await this.getInheritedShareDetail(fileNode.path)
     if (share.isPublic) {
       return this.streamFile(req, res, fileNode)
     }
 
-    // ユーザー認証されているか検証
+    // リクエストユーザーが認証されていることを検証
     const validated = await this.authService.validate(req, res)
     if (!validated.result) {
       return res.sendStatus(validated.error!.getStatus())
     }
-    const user = validated.idToken!
+    const idToken = validated.idToken!
 
-    // アプリケーションファイルの場合
-    if (CoreStorageService.isAppNode(fileNode.path)) {
-      // 「自ユーザーがアプリケーション管理者」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
-      if (user.isAppAdmin || share.readUIds?.includes(user.uid)) {
-        return this.streamFile(req, res, fileNode)
-      }
+    // リクエストユーザーがファイルを閲覧できるか検証
+    const error = await this.validateReadableImpl(idToken, fileNode.path)
+    if (!error) {
+      return this.streamFile(req, res, fileNode)
+    } else {
+      return res.sendStatus(error.getStatus())
     }
-    // ユーザーファイルの場合
-    else {
-      // 「ファイルが自ユーザの所有物」or「ファイルが公開」or「ファイルの読み込み権限に自ユーザーが含まれている」の場合、読み込み可能
-      if (CoreStorageService.isOwnUserRootUnder(user, fileNode.path) || share.isPublic || share.readUIds?.includes(user.uid)) {
-        return this.streamFile(req, res, fileNode)
-      }
-    }
-
-    return res.sendStatus(403)
   }
 
   /**
@@ -2377,15 +2424,13 @@ class CoreStorageService<
       return res.sendStatus(404)
     }
 
-    const lastModified = fileNode.updatedAt.toString()
-    const ifModifiedSinceStr = req.header('If-Modified-Since')
-    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
-    if (lastModified === ifModifiedSince) {
-      return res.sendStatus(304)
+    const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, fileNode)
+    if (notModified) {
+      return res.sendStatus(notModifiedStatus)
     }
-
     res.setHeader('Last-Modified', lastModified)
     res.setHeader('Content-Type', fileNode.contentType)
+
     // TODO
     //  ローカル環境でContent-Lengthを指定するとなぜかタイムアウトエラーが発生する。
     //  本番環境ではタイムアウトエラーは発生しないので、本番時のみContent-Lengthを設定している。
@@ -2512,26 +2557,44 @@ class CoreStorageService<
 
   /**
    * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
+   * @param nodePath
+   */
+  protected getInheritedShareDetail(nodePath: string): Promise<Required<StorageNodeShareDetail>>
+
+  /**
+   * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
    * @param hierarchicalNodes
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
    */
-  protected getInheritedShareDetail(hierarchicalNodes: NODE[]): Required<StorageNodeShareDetail> {
-    hierarchicalNodes = CoreStorageService.sortNodes([...hierarchicalNodes]) as NODE[]
+  protected getInheritedShareDetail(hierarchicalNodes: NODE[]): Required<StorageNodeShareDetail>
 
-    const result: Required<StorageNodeShareDetail> = { isPublic: false, readUIds: null, writeUIds: null }
-    for (const node of hierarchicalNodes) {
-      if (typeof node.share.isPublic === 'boolean') {
-        result.isPublic = node.share.isPublic
+  protected getInheritedShareDetail(arg1: string | NODE[]): Promise<Required<StorageNodeShareDetail>> | Required<StorageNodeShareDetail> {
+    const getResult = (hierarchicalNodes: NODE[]) => {
+      hierarchicalNodes = CoreStorageService.sortNodes([...hierarchicalNodes]) as NODE[]
+
+      const result: Required<StorageNodeShareDetail> = { isPublic: false, readUIds: null, writeUIds: null }
+      for (const node of hierarchicalNodes) {
+        if (typeof node.share.isPublic === 'boolean') {
+          result.isPublic = node.share.isPublic
+        }
+        if (node.share.readUIds) {
+          result.readUIds = node.share.readUIds
+        }
+        if (node.share.writeUIds) {
+          result.writeUIds = node.share.writeUIds
+        }
       }
-      if (node.share.readUIds) {
-        result.readUIds = node.share.readUIds
-      }
-      if (node.share.writeUIds) {
-        result.writeUIds = node.share.writeUIds
-      }
+
+      return result
     }
 
-    return result
+    if (typeof arg1 === 'string') {
+      return this.getHierarchicalNodes(arg1).then(hierarchicalNodes => {
+        return getResult(hierarchicalNodes)
+      })
+    } else {
+      return getResult(arg1)
+    }
   }
 
   /**
@@ -2791,6 +2854,36 @@ class CoreStorageService<
     }
 
     return share
+  }
+
+  /**
+   * 指定されたノードが 304 Not Modified かチェックします。
+   * @param req
+   * @param target
+   */
+  protected checkNotModified(req: Request, target: Pick<NODE, 'updatedAt'>): { result: boolean; status: number; lastModified: string } {
+    const lastModified = target.updatedAt.toString()
+    const ifModifiedSinceStr = req.header('If-Modified-Since')
+    const ifModifiedSince = ifModifiedSinceStr ? dayjs(ifModifiedSinceStr).toString() : undefined
+    if (lastModified === ifModifiedSince) {
+      return { result: true, status: 304, lastModified }
+    }
+    return { result: false, status: NaN, lastModified }
+  }
+
+  /**
+   * ノードマップの中から、指定されたノードとそのノードを形成するディレクトリを取得します。
+   * @param nodeMap
+   * @param nodePath
+   * @protected
+   */
+  protected retrieveHierarchicalNodes(nodeMap: { [path: string]: NODE }, nodePath: string): NODE[] {
+    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+    return hierarchicalPaths.reduce<NODE[]>((result, path) => {
+      const node = nodeMap[path]
+      node && result.push(node)
+      return result
+    }, [])
   }
 
   //----------------------------------------------------------------------

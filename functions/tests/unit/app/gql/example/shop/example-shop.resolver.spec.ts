@@ -1,10 +1,9 @@
 import * as td from 'testdouble'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../../../../../../src/app/services'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, OmitTimestamp, Product } from '../../../../../../src/app/services'
 import { GeneralUser, GeneralUserHeader, GeneralUserToken, getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
 import ExampleGQLContainerModule from '../../../../../../src/app/gql/example'
 import { ExampleShopServiceDI } from '../../../../../../src/app/services'
-import { OmitEntityTimestamp } from '../../../../../../src/firestore-ex'
 import { initApp } from '../../../../../../src/app/base'
 import dayjs = require('dayjs')
 
@@ -17,7 +16,7 @@ initApp()
 //
 //========================================================================
 
-type RawProduct = OmitEntityTimestamp<Product> & { createdAt: string; updatedAt: string }
+type RawProduct = OmitTimestamp<Product> & { createdAt: string; updatedAt: string }
 
 function RawProducts(): RawProduct[] {
   return [
@@ -59,7 +58,7 @@ function Products(): Product[] {
   }))
 }
 
-type RawCartItem = OmitEntityTimestamp<CartItem> & { createdAt: string; updatedAt: string }
+type RawCartItem = OmitTimestamp<CartItem> & { createdAt: string; updatedAt: string }
 
 function RawCartItems(): RawCartItem[] {
   return [

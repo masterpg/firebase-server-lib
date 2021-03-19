@@ -78,16 +78,13 @@ type StorageNode implements TimestampEntity {
   updatedAt: DateTime!
 }
 
-type ArticleTableOfContentsNode implements TimestampEntity {
+type ArticleTableOfContentsNode {
   id: ID!
   name: String!
   dir: String!
   path: String!
   label: String!
   type: StorageArticleDirType!
-  version: Int!
-  createdAt: DateTime!
-  updatedAt: DateTime!
 }
 
 input StoragePaginationInput {

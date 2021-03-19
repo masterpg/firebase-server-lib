@@ -47,10 +47,7 @@ const StorageNodeFields = `
   }
 `
 
-interface ResponseArticleTableOfContentsNode extends Omit<ArticleTableOfContentsNode, 'createdAt' | 'updatedAt'> {
-  createdAt: string
-  updatedAt: string
-}
+interface ResponseArticleTableOfContentsNode extends ArticleTableOfContentsNode {}
 
 const ArticleTableOfContentsNodeFieldsName = 'ArticleTableOfContentsNodeFields'
 
@@ -62,9 +59,6 @@ const ArticleTableOfContentsNodeFields = `
     dir
     path
     label
-    version
-    createdAt
-    updatedAt
   }
 `
 
@@ -113,9 +107,6 @@ function toGQLResponseArticleTableOfContentsNode(node: ArticleTableOfContentsNod
     dir: node.dir,
     path: node.path,
     label: node.label,
-    version: node.version,
-    createdAt: node.createdAt.toISOString(),
-    updatedAt: node.updatedAt.toISOString(),
   }
 }
 

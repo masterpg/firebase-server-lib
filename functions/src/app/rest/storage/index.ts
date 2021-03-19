@@ -26,7 +26,7 @@ class StorageController {
 
   @Get('articles/:articleId')
   async serveArticle(@Req() req: Request, @Res() res: Response, @Param('articleId') articleId: string): Promise<Response> {
-    return this.storageService.serveArticle(req, res, articleId)
+    return this.storageService.getArticleSrc(req, res, articleId)
   }
 }
 

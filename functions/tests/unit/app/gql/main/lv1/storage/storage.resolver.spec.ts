@@ -1215,10 +1215,10 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
-      const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
+      const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
         article: { src: { type: 'Master' } },
       })
-      const art1_draft = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
+      const art1_draft = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
         article: { src: { type: 'Master' } },
       })
       return { art1, art1_master, art1_draft }
@@ -1290,10 +1290,10 @@ describe('Lv1 Storage Resolver', () => {
           },
         },
       })
-      const art1_master = h.newFileNode(StorageService.toArticleSrcMasterPath(art1.path), {
+      const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
         article: { src: { type: 'Master' } },
       })
-      const art1_draft = h.newFileNode(StorageService.toArticleSrcDraftPath(art1.path), {
+      const art1_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(art1.path), {
         article: { src: { type: 'Draft' } },
       })
       return { art1, art1_master, art1_draft }

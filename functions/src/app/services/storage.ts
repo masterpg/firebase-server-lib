@@ -5,6 +5,7 @@ import {
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
+  GetArticleSrcResult,
   IdToken,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
@@ -90,7 +91,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * @param articleDirPath
    */
   async getArticleSrcFiles(articleDirPath: string): Promise<{ master: StorageNode; draft: StorageNode }> {
-    const paths = [StorageService.toArticleSrcMasterPath(articleDirPath), StorageService.toArticleSrcDraftPath(articleDirPath)]
+    const paths = [StorageService.toArticleMasterSrcPath(articleDirPath), StorageService.toArticleDraftSrcPath(articleDirPath)]
 
     const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: CoreStorageSchema.IndexAlias,
@@ -641,7 +642,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   async saveOwnArticleDraftSrcFile(articleDirPath: string, srcContent: string | null): Promise<StorageNode> {
-    const draftNodePath = StorageService.toArticleSrcDraftPath(articleDirPath)
+    const draftNodePath = StorageService.toArticleDraftSrcPath(articleDirPath)
 
     // 下書き破棄が指定されていた場合
     if (srcContent === null) {
@@ -660,6 +661,131 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
   async saveOtherArticleDraftSrcFile(articleDirPath: string, srcContent: string | null): Promise<StorageNode> {
     throw new AppError(`Not implemented yet.`)
+  }
+
+  /**
+   * 指定された記事ソースを取得します。
+   * @param idToken
+   * @param articleId
+   */
+  getArticleSrc(idToken: IdToken, articleId: string): Promise<GetArticleSrcResult | undefined>
+
+  /**
+   * 指定された記事ソースを取得します。
+   * @param req
+   * @param res
+   * @param articleId
+   */
+  getArticleSrc(req: Request, res: Response, articleId: string): Promise<Response>
+
+  async getArticleSrc(arg1: IdToken | Request, arg2?: Response | string, arg3?: string): Promise<GetArticleSrcResult | undefined | Response> {
+    /**
+     * 戻り値の作成を行う関数です。
+     * @param hierarchicalNodes
+     */
+    const getResult = async (hierarchicalNodes: StorageNode[]) => {
+      hierarchicalNodes = [...hierarchicalNodes]
+      const articleDirNode = hierarchicalNodes.splice(-1)[0]
+      const ancestorNodes = hierarchicalNodes.filter(node => Boolean(node.article))
+      const srcPath = StorageService.toArticleMasterSrcPath(articleDirNode.path)
+      const srcNode = await this.sgetFileNode({ path: srcPath })
+      const src = (await srcNode.file.download()).toString()
+
+      const result: GetArticleSrcResult = {
+        id: articleDirNode.id,
+        title: articleDirNode.article!.dir!.name,
+        src,
+        dir: ancestorNodes.map(node => {
+          return { id: node.id, title: node.article!.dir!.name }
+        }),
+        path: [...ancestorNodes, articleDirNode].map(node => {
+          return { id: node.id, title: node.article!.dir!.name }
+        }),
+        createdAt: srcNode.createdAt,
+        updatedAt: srcNode.updatedAt,
+      }
+      return result
+    }
+
+    /**
+     * 指定された記事ソースを取得します（※GraphQL版）。
+     * @param idToken
+     * @param articleId
+     */
+    const getArticleSrcForGQL = async (idToken: IdToken, articleId: string) => {
+      // 記事ディレクトリを取得
+      const articleDirNode = await this.getNode({ id: articleId })
+      if (!articleDirNode) {
+        return undefined
+      }
+
+      // ファイルの公開フラグがオンの場合
+      const hierarchicalNodes = await this.getHierarchicalNodes(articleDirNode.path)
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
+      if (share.isPublic) {
+        return await getResult(hierarchicalNodes)
+      }
+
+      // リクエストユーザーがファイルを閲覧できることを検証
+      await this.validateReadable(idToken, articleDirNode.path)
+
+      // 戻り値を作成して返す
+      return await getResult(hierarchicalNodes)
+    }
+
+    /**
+     * 指定された記事ソースを取得します（※HTTP版）。
+     * @param req
+     * @param res
+     * @param articleId
+     */
+    const getArticleSrcForHttp = async (req: Request, res: Response, articleId: string) => {
+      // 記事ディレクトリを取得
+      const articleDirNode = await this.getNode({ id: articleId })
+      if (!articleDirNode) {
+        return res.json(null)
+      }
+
+      // 304 Not Modified のチェック
+      const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, articleDirNode)
+      res.setHeader('Last-Modified', lastModified)
+
+      // ファイルの公開フラグがオンの場合
+      const hierarchicalNodes = await this.getHierarchicalNodes(articleDirNode.path)
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
+      if (share.isPublic) {
+        if (notModified) {
+          return res.sendStatus(notModifiedStatus)
+        } else {
+          const result = await getResult(hierarchicalNodes)
+          return res.json(result)
+        }
+      }
+
+      // リクエストユーザーが認証されていることを検証
+      const validated = await this.authService.validate(req, res)
+      if (!validated.result) {
+        return res.sendStatus(validated.error!.getStatus())
+      }
+
+      // リクエストユーザーがファイルを閲覧できることを検証
+      await this.validateReadable(validated.idToken!, articleDirNode.path)
+
+      // 戻り値を作成して返す
+      const result = await getResult(hierarchicalNodes)
+      return res.json(result)
+    }
+
+    if (AuthHelper.isIdToken(arg1)) {
+      const idToken = arg1
+      const articleId = arg2 as string
+      return getArticleSrcForGQL(idToken, articleId)
+    } else {
+      const req = arg1
+      const res = arg2 as Response
+      const articleId = arg3!
+      return getArticleSrcForHttp(req, res, articleId)
+    }
   }
 
   /**
@@ -750,7 +876,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       StorageService.sortNodes(nodes)
       return nodes.map(node => {
         const result: ArticleTableOfContentsNode = {
-          ...pickProps(node, ['id', 'name', 'version', 'createdAt', 'updatedAt']),
+          ...pickProps(node, ['id', 'name']),
           dir: removeBothEndsSlash(node.dir.replace(articleRootPath, '')),
           path: removeBothEndsSlash(node.path.replace(articleRootPath, '')),
           label: node.article!.dir!.name,
@@ -855,22 +981,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const allAccessibleNodes = allAccessiblePaths.map(path => allNodeMap[path])
 
     return toArticleTableOfContentsNodes(allAccessibleNodes)
-  }
-
-  /**
-   * クライアントから指定された記事のソースファイルをサーブします。
-   * @param req
-   * @param res
-   * @param articleId
-   */
-  async serveArticle(req: Request, res: Response, articleId: string): Promise<Response> {
-    const articleDirNode = await this.getNode({ id: articleId })
-    if (!articleDirNode) {
-      return res.sendStatus(404)
-    }
-
-    const articleFilePath = StorageService.toArticleSrcMasterPath(articleDirNode.path)
-    return this.serveFile(req, res, { path: articleFilePath })
   }
 
   //--------------------------------------------------
@@ -1452,7 +1562,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事の本文ファイルパスを取得します。
    * @param articleDirPath 記事ディレクトリパス
    */
-  static toArticleSrcMasterPath(articleDirPath: string): string {
+  static toArticleMasterSrcPath(articleDirPath: string): string {
     articleDirPath = removeStartDirChars(articleDirPath)
     return _path.join(articleDirPath, config.storage.article.masterSrcFileName)
   }
@@ -1461,7 +1571,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事の下書きファイルパスを取得します。
    * @param articleDirPath 記事ディレクトリパス
    */
-  static toArticleSrcDraftPath(articleDirPath: string): string {
+  static toArticleDraftSrcPath(articleDirPath: string): string {
     articleDirPath = removeStartDirChars(articleDirPath)
     return _path.join(articleDirPath, config.storage.article.draftSrcFileName)
   }
