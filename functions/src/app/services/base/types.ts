@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin'
 import { Dayjs } from 'dayjs'
 import { IsPositive } from 'class-validator'
+import { TimestampEntity } from 'web-base-lib'
 
 //========================================================================
 //
@@ -10,45 +11,6 @@ import { IsPositive } from 'class-validator'
 
 type JSON = any
 type JSONObject = any
-
-interface Entity {
-  id: string
-  version: number
-}
-
-interface EntityTimestamp {
-  createdAt: Dayjs
-  updatedAt: Dayjs
-}
-
-type OmitTimestamp<T = unknown> = Omit<T, 'createdAt' | 'updatedAt'>
-
-type ToEntityTimestamp<T = unknown> = {
-  [K in keyof T]: K extends 'createdAt'
-    ? T[K] extends string
-      ? Dayjs
-      : T[K] extends string | undefined
-      ? Dayjs | undefined
-      : T[K] extends string | null
-      ? Dayjs | null
-      : T[K]
-    : K extends 'updatedAt'
-    ? T[K] extends string
-      ? Dayjs
-      : T[K] extends string | undefined
-      ? Dayjs | undefined
-      : T[K] extends string | null
-      ? Dayjs | null
-      : T[K]
-    : T[K]
-}
-
-interface EntityTimestamp {
-  createdAt: Dayjs
-  updatedAt: Dayjs
-}
-
-type TimestampEntity<T = unknown> = Entity & OmitTimestamp<T> & EntityTimestamp
 
 //--------------------------------------------------
 //  Auth
@@ -138,7 +100,7 @@ type StorageNodeType = 'File' | 'Dir'
 
 type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
 
-type StorageArticleFileType = 'Master' | 'Draft'
+type StorageArticleFileType = 'MasterSrc' | 'DraftSrc'
 
 interface StorageNodeShareDetail {
   isPublic: boolean | null
@@ -148,6 +110,7 @@ interface StorageNodeShareDetail {
 
 interface StorageArticleDetail {
   dir?: StorageArticleDirDetail
+  file?: StorageArticleFileDetail
   src?: StorageArticleSrcDetail
 }
 
@@ -157,8 +120,15 @@ interface StorageArticleDirDetail {
   sortOrder: number
 }
 
-interface StorageArticleSrcDetail {
+interface StorageArticleFileDetail {
   type: StorageArticleFileType
+}
+
+interface StorageArticleSrcDetail {
+  masterId: string
+  draftId: string
+  createdAt: Dayjs
+  updatedAt: Dayjs
 }
 
 interface StoragePaginationInput {
@@ -217,6 +187,7 @@ interface CreateArticleTypeDirInput {
 }
 
 interface SaveArticleMasterSrcFileResult {
+  article: StorageNode
   master: StorageNode
   draft: StorageNode
 }
@@ -316,7 +287,6 @@ interface CartItemEditResponse extends TimestampEntity {
 //========================================================================
 
 export { JSON, JSONObject }
-export { Entity, EntityTimestamp, OmitTimestamp, TimestampEntity }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
   ArticlePathDetail,
@@ -332,6 +302,7 @@ export {
   StorageArticleDetail,
   StorageArticleDirDetail,
   StorageArticleDirType,
+  StorageArticleFileDetail,
   StorageArticleFileType,
   StorageArticleSrcDetail,
   StorageNode,
@@ -343,7 +314,6 @@ export {
   StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
-  ToEntityTimestamp,
 }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }

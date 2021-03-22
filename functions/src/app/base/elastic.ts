@@ -1,11 +1,8 @@
 import { ApiResponse, Client as ElasticClient } from '@elastic/elasticsearch'
 import { AppError } from './base'
 import { Context } from '@elastic/elasticsearch/lib/Transport'
-import { Dayjs } from 'dayjs'
 import { ResponseError } from '@elastic/elasticsearch/lib/errors'
-import { TimestampEntity } from '../services'
 import { config } from '../../config'
-import dayjs = require('dayjs')
 
 //========================================================================
 //
@@ -105,14 +102,6 @@ interface ElasticPageToken {
   search_after?: string[]
 }
 
-type ToElasticDate<T = unknown> = {
-  [K in keyof T]: T[K] extends Dayjs ? string : T[K] extends Dayjs | undefined ? string | undefined : T[K] extends Dayjs | null ? string | null : T[K]
-}
-
-type ElasticTimestamp = { createdAt: string; updatedAt: string }
-
-type ElasticTimestampEntity<T extends TimestampEntity = TimestampEntity> = ToElasticDate<T>
-
 //========================================================================
 //
 //  Implementation
@@ -179,22 +168,6 @@ function validateBulkResponse(response: ElasticBulkAPIResponse): void {
   throw new AppError('Elasticsearch Bulk API Error', response.body.items)
 }
 
-function toEntityTimestamp<T extends ElasticTimestampEntity>(entity: T): TimestampEntity<T> {
-  return {
-    ...entity,
-    createdAt: dayjs(entity.createdAt),
-    updatedAt: dayjs(entity.updatedAt),
-  }
-}
-
-function toElasticTimestamp<T extends TimestampEntity>(entity: T): ToElasticDate<T> {
-  return {
-    ...entity,
-    createdAt: entity.createdAt.toISOString(),
-    updatedAt: entity.updatedAt.toISOString(),
-  } as ToElasticDate<T>
-}
-
 //========================================================================
 //
 //  Exports
@@ -210,18 +183,13 @@ export {
   ElasticPageToken,
   ElasticSearchAPIResponse,
   ElasticSearchResponse,
-  ElasticTimestamp,
-  ElasticTimestampEntity,
   SearchBody,
-  ToElasticDate,
   closePointInTime,
   decodePageToken,
   encodePageToken,
-  retrieveSearchAfter,
   isPaginationTimeout,
   newElasticClient,
   openPointInTime,
-  toElasticTimestamp,
-  toEntityTimestamp,
+  retrieveSearchAfter,
   validateBulkResponse,
 }

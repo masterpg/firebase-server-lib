@@ -1,15 +1,25 @@
 import * as _path from 'path'
+import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse } from '../../base/elastic'
 import {
-  BaseIndexDefinitions,
-  ElasticMSearchAPIResponse,
-  ElasticSearchAPIResponse,
-  ElasticTimestamp,
-  ElasticTimestampEntity,
-  toElasticTimestamp,
+  CoreStorageNode,
+  StorageArticleDirDetail,
+  StorageArticleFileDetail,
+  StorageArticleSrcDetail,
+  StorageNode,
+  StorageNodeShareDetail,
+  User,
+} from './index'
+import {
+  Entities,
+  ToRawTimestamp,
+  pickProps,
+  removeBothEndsSlash,
+  removeStartDirChars,
+  toEntityDate,
   toEntityTimestamp,
-} from '../../base/elastic'
-import { CoreStorageNode, StorageArticleDirDetail, StorageArticleSrcDetail, StorageNode, StorageNodeShareDetail, User } from './index'
-import { Entities, pickProps, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
+  toRawDate,
+  toRawTimestamp,
+} from 'web-base-lib'
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
 import { merge } from 'lodash'
@@ -26,7 +36,7 @@ const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = Base
  * @param apiResponse
  * @param convertor
  */
-function _dbResponseToAppEntities<APP_ENTITY, DB_ENTITY>(
+function _dbResponseToEntities<APP_ENTITY, DB_ENTITY>(
   apiResponse: ElasticSearchAPIResponse<DB_ENTITY> | ElasticMSearchAPIResponse<DB_ENTITY>,
   convertor: (dbEntity: DB_ENTITY) => APP_ENTITY
 ): APP_ENTITY[] {
@@ -93,9 +103,9 @@ namespace UserSchema {
     },
   }
 
-  export interface DBUser extends ElasticTimestampEntity<User> {}
+  export interface DBUser extends ToRawTimestamp<User> {}
 
-  export function toAppEntity(dbEntity: DBUser): Omit<User, 'email' | 'emailVerified'> {
+  export function toEntity(dbEntity: DBUser): Omit<User, 'email' | 'emailVerified'> {
     return {
       ...toEntityTimestamp({
         ...pickProps(dbEntity, ['id', 'userName', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
@@ -103,17 +113,17 @@ namespace UserSchema {
     }
   }
 
-  export function toDBEntity(appEntity: Omit<User, 'email' | 'emailVerified'>): ElasticTimestampEntity<Omit<User, 'email' | 'emailVerified'>> {
+  export function toDBEntity(appEntity: Omit<User, 'email' | 'emailVerified'>): ToRawTimestamp<Omit<User, 'email' | 'emailVerified'>> {
     return {
-      ...toElasticTimestamp({
+      ...toRawTimestamp({
         ...pickProps(appEntity, ['id', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
         userNameLower: appEntity.userName.toLowerCase(),
       }),
     }
   }
 
-  export function dbResponseToAppEntities(dbResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'email' | 'emailVerified'>[] {
-    return _dbResponseToAppEntities(dbResponse, toAppEntity)
+  export function dbResponseToEntities(dbResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'email' | 'emailVerified'>[] {
+    return _dbResponseToEntities(dbResponse, toEntity)
   }
 }
 
@@ -191,9 +201,9 @@ namespace CoreStorageSchema {
     },
   }
 
-  export interface DBStorageNode extends ElasticTimestampEntity<CoreStorageNode> {}
+  export interface DBStorageNode extends ToRawTimestamp<CoreStorageNode> {}
 
-  export function toAppEntity(dbEntity: DBStorageNode): CoreStorageNode {
+  export function toEntity(dbEntity: DBStorageNode): CoreStorageNode {
     return toEntityTimestamp({
       ...pickProps(dbEntity, ['id', 'nodeType', 'contentType', 'size', 'version', 'createdAt', 'updatedAt']),
       ...toPathData(dbEntity.path),
@@ -202,15 +212,15 @@ namespace CoreStorageSchema {
   }
 
   export function toDBEntity(appEntity: CoreStorageNode): DBStorageNode {
-    return toElasticTimestamp(
+    return toRawTimestamp(
       pickProps(appEntity, ['id', 'nodeType', 'name', 'dir', 'path', 'level', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
     )
   }
 
-  export function dbResponseToAppEntities(
+  export function dbResponseToEntities(
     dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>
   ): CoreStorageNode[] {
-    return _dbResponseToAppEntities(dbResponse, toAppEntity)
+    return _dbResponseToEntities(dbResponse, toEntity)
   }
 
   /**
@@ -284,10 +294,26 @@ namespace StorageSchema {
                 },
               },
             },
-            src: {
+            file: {
               properties: {
                 type: {
                   type: 'keyword',
+                },
+              },
+            },
+            src: {
+              properties: {
+                masterId: {
+                  type: 'keyword',
+                },
+                draftId: {
+                  type: 'keyword',
+                },
+                createdAt: {
+                  type: 'date',
+                },
+                updatedAt: {
+                  type: 'date',
                 },
                 textContent: {
                   type: 'text',
@@ -301,47 +327,83 @@ namespace StorageSchema {
     },
   })
 
-  export interface DBStorageNode extends Omit<StorageNode, 'article' | 'createdAt' | 'updatedAt'>, ElasticTimestamp {
+  export interface DBStorageNode extends ToRawTimestamp<Omit<StorageNode, 'article'>> {
     article?: {
       dir?: StorageArticleDirDetail
-      src?: StorageArticleSrcDetail
+      file?: StorageArticleFileDetail
+      src?: ToRawTimestamp<StorageArticleSrcDetail>
     }
   }
 
-  export function toAppEntity(dbEntity: DBStorageNode): StorageNode {
-    const result: StorageNode = { ...CoreStorageSchema.toAppEntity(dbEntity) }
-    if (dbEntity.article?.dir) {
-      result.article = {
-        dir: {
+  export interface StorageNodeInput extends Omit<StorageNode, 'article'> {
+    article?: {
+      dir?: StorageArticleDirDetail
+      file?: StorageArticleFileDetail
+      src?: StorageArticleSrcDetail & {
+        textContent?: string
+      }
+    }
+  }
+
+  export function toEntity(dbEntity: DBStorageNode): StorageNode {
+    const result: StorageNode = { ...CoreStorageSchema.toEntity(dbEntity) }
+    if (dbEntity.article) {
+      result.article = {}
+      if (dbEntity.article.dir) {
+        const dir: StorageArticleDirDetail = {
           name: dbEntity.article.dir.name,
           type: dbEntity.article.dir.type,
           sortOrder: dbEntity.article.dir.sortOrder ?? null,
-        },
+        }
+        merge(result.article, { dir })
       }
-    } else if (dbEntity.article?.src) {
-      result.article = {
-        src: {
-          type: dbEntity.article.src.type,
-        },
+      if (dbEntity.article.file) {
+        const file: StorageArticleFileDetail = {
+          type: dbEntity.article.file.type,
+        }
+        merge(result.article, { file })
+      }
+      if (dbEntity.article.src) {
+        const src: StorageArticleSrcDetail = {
+          masterId: dbEntity.article.src.masterId,
+          draftId: dbEntity.article.src.draftId,
+          createdAt: toEntityDate(dbEntity.article.src.createdAt),
+          updatedAt: toEntityDate(dbEntity.article.src.updatedAt),
+        }
+        merge(result.article, { src })
       }
     }
     return result
   }
 
-  export function toDBEntity(appEntity: StorageNode): DBStorageNode {
+  export function toDBEntity(appEntity: StorageNodeInput): DBStorageNode {
     const result: DBStorageNode = { ...CoreStorageSchema.toDBEntity(appEntity) }
-    if (appEntity.article?.dir) {
-      result.article = { dir: pickProps(appEntity.article.dir, ['name', 'type', 'sortOrder']) }
-    } else if (appEntity.article?.src) {
-      result.article = { src: pickProps(appEntity.article.src, ['type']) }
+    if (appEntity.article) {
+      result.article = {}
+      if (appEntity.article.dir) {
+        const dir: StorageArticleDirDetail = pickProps(appEntity.article.dir, ['name', 'type', 'sortOrder'])
+        merge(result.article, { dir })
+      }
+      if (appEntity.article.file) {
+        const file: StorageArticleFileDetail = pickProps(appEntity.article.file, ['type'])
+        merge(result.article, { file })
+      }
+      if (appEntity.article.src) {
+        const src: ToRawTimestamp<StorageArticleSrcDetail> = {
+          ...pickProps(appEntity.article.src, ['masterId', 'draftId', 'textContent']),
+          createdAt: toRawDate(appEntity.article.src.createdAt),
+          updatedAt: toRawDate(appEntity.article.src.updatedAt),
+        }
+        merge(result.article, { src })
+      }
     }
     return result
   }
 
-  export function dbResponseToAppEntities(
+  export function dbResponseToEntities(
     dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>
   ): StorageNode[] {
-    return _dbResponseToAppEntities(dbResponse, toAppEntity)
+    return _dbResponseToEntities(dbResponse, toEntity)
   }
 
   export import generateNodeId = CoreStorageSchema.generateNodeId
@@ -359,4 +421,4 @@ namespace StorageSchema {
 //
 //========================================================================
 
-export { UserSchema, CoreStorageSchema, StorageSchema, _dbResponseToAppEntities as dbResponseToAppEntities }
+export { UserSchema, CoreStorageSchema, StorageSchema, _dbResponseToEntities as dbResponseToEntities }

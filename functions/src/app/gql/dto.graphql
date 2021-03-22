@@ -63,6 +63,11 @@ enum StorageArticleDirType {
   Category
 }
 
+enum StorageArticleFileType {
+  MasterSrc
+  DraftSrc
+}
+
 type StorageNode implements TimestampEntity {
   id: ID!
   nodeType: StorageNodeType!
@@ -106,6 +111,7 @@ type StorageNodeShareDetail {
 
 type StorageArticleDetail {
   dir: StorageArticleDirDetail
+  file: StorageArticleFileDetail
   src: StorageArticleSrcDetail
 }
 
@@ -115,8 +121,15 @@ type StorageArticleDirDetail {
   sortOrder: Long!
 }
 
+type StorageArticleFileDetail {
+  type: StorageArticleFileType!
+}
+
 type StorageArticleSrcDetail {
-  type: String!
+  masterId: String!
+  draftId: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input SetShareDetailInput {
@@ -163,6 +176,7 @@ input CreateArticleTypeDirInput {
 }
 
 type SaveArticleMasterSrcFileResult {
+  article: StorageNode!
   master: StorageNode!
   draft: StorageNode!
 }

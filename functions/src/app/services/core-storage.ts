@@ -5,7 +5,6 @@ import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
   CoreStorageNode,
   CreateStorageNodeOptions,
-  EntityTimestamp,
   IdToken,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -14,12 +13,20 @@ import {
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareDetail,
-  StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
   UserIdClaims,
 } from './base'
 import { CoreStorageSchema, UserHelper } from './base'
+import {
+  DeepPartial,
+  arrayToDict,
+  removeBothEndsSlash,
+  removeStartDirChars,
+  splitArrayChunk,
+  splitHierarchicalPaths,
+  summarizeFamilyPaths,
+} from 'web-base-lib'
 import {
   ElasticMSearchAPIResponse,
   ElasticPageToken,
@@ -32,13 +39,11 @@ import {
   newElasticClient,
   openPointInTime,
   retrieveSearchAfter,
-  toElasticTimestamp,
   validateBulkResponse,
 } from '../base/elastic'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module, UnauthorizedException } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { arrayToDict, removeBothEndsSlash, removeStartDirChars, splitArrayChunk, splitHierarchicalPaths, summarizeFamilyPaths } from 'web-base-lib'
 import { AuthHelper } from './base/auth'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../config'
@@ -2599,41 +2604,36 @@ class CoreStorageService<
 
   /**
    * ストレージファイルをもとに、データベースのファイルノードを保存します。
-   * 冪等保存（何度実行しても同じ内容で保存が行われる）したい場合は、
-   * `options.idempotent`に`true`を設定してください。
    * @param fileNodePath
    * @param file
-   * @param options
+   * @param extra
    */
-  async saveFileNode(
-    fileNodePath: string,
-    file: File,
-    options?: {
-      share?: SetShareDetailInput
-      timestamp?: Partial<EntityTimestamp> & { version?: number }
-      idempotent?: boolean
-    }
-  ): Promise<FILE_NODE> {
+  async saveFileNode<EXTRA extends CoreStorageNode>(fileNodePath: string, file: File, extra?: DeepPartial<EXTRA>): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
-
     const nodeId = file.name
     const existingNode = await this.getNode({ id: nodeId })
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, version: extra_version, ...extra_rest } =
+      (extra as CoreStorageNode | undefined) ?? {}
 
-    //
     // ファイルノードに設定するタイムスタンプ+バージョンを取得
-    //
-    let createdAt: string | undefined
-    let updatedAt: string | undefined
-    let version: number | undefined
-    if (!options?.idempotent) {
-      const now = dayjs().toISOString()
-      createdAt = options?.timestamp?.createdAt?.toISOString() ?? existingNode?.createdAt.toISOString() ?? now
-      updatedAt = options?.timestamp?.updatedAt?.toISOString() ?? now
-      if (options?.timestamp?.version) {
-        version = options.timestamp.version
-      } else {
-        version = existingNode?.version ? existingNode.version + 1 : 1
-      }
+    const now = dayjs()
+    const createdAt = extra_createdAt ?? existingNode?.createdAt ?? now
+    const updatedAt = extra_updatedAt ?? now
+    const version = extra_version ?? (existingNode ? existingNode.version + 1 : 1)
+
+    // ファイルノードを作成/更新するデータを準備
+    const fileNode: CoreStorageNode = {
+      ...(existingNode ?? {}),
+      id: nodeId,
+      ...CoreStorageSchema.toPathData(fileNodePath),
+      nodeType: 'File',
+      share: this.toDBShareDetail(extra_share, existingNode?.share),
+      contentType: file.metadata.contentType ?? '',
+      size: file.metadata.size ? Number(file.metadata.size) : 0,
+      createdAt,
+      updatedAt,
+      version,
+      ...extra_rest,
     }
 
     // データベースにファイルノードを作成/更新
@@ -2641,22 +2641,7 @@ class CoreStorageService<
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: {
-          ...this.toBaseDBStorageNode(
-            {
-              id: nodeId,
-              path: fileNodePath,
-              nodeType: 'File',
-              share: options?.share,
-            },
-            existingNode
-          ),
-          contentType: file.metadata.contentType ?? '',
-          size: file.metadata.size ? Number(file.metadata.size) : 0,
-          createdAt,
-          updatedAt,
-          version,
-        },
+        doc: this.toDBStorageNode(fileNode as NODE),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2670,26 +2655,22 @@ class CoreStorageService<
 
   /**
    * ストレージファイルとデータベースへファイルノードを保存します。
-   * 冪等保存（何度実行しても同じ内容で保存が行われる）したい場合は、
-   * `options.idempotent`に`true`を設定してください。
    * @param fileNodePath
    * @param data
    * @param saveOptions
-   * @param options
+   * @param extra
    */
-  protected async saveGCSFileAndFileNode(
+  protected async saveGCSFileAndFileNode<EXTRA extends CoreStorageNode>(
     fileNodePath: string,
     data: any,
     saveOptions?: SaveOptions,
-    options?: {
-      share?: SetShareDetailInput
-      timestamp?: Partial<EntityTimestamp> & { version?: number }
-      idempotent?: boolean
-    }
+    extra?: DeepPartial<EXTRA>
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const existingNode = await this.getNode({ path: fileNodePath })
     const nodeId = existingNode?.id || CoreStorageSchema.generateNodeId()
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, version: extra_version, ...extra_rest } =
+      (extra as CoreStorageNode | undefined) ?? {}
 
     //
     // ストレージファイルのコンテンツデータを保存
@@ -2699,45 +2680,38 @@ class CoreStorageService<
     await file.save(data, saveOptions)
 
     //
-    // ストアにノードに設定するタイムスタンプ+バージョンを取得
+    // ファイルノードに設定するタイムスタンプ+バージョンを取得
     //
-    let createdAt: string | undefined
-    let updatedAt: string | undefined
-    let version: number | undefined
-    if (!options?.idempotent) {
-      const now = dayjs().toISOString()
-      createdAt = options?.timestamp?.createdAt?.toISOString() ?? existingNode?.createdAt.toISOString() ?? now
-      updatedAt = options?.timestamp?.updatedAt?.toISOString() ?? now
-      if (options?.timestamp?.version) {
-        version = options.timestamp.version
-      } else {
-        version = existingNode?.version ? existingNode.version + 1 : 1
-      }
+    const now = dayjs()
+    const createdAt = extra_createdAt ?? existingNode?.createdAt ?? now
+    const updatedAt = extra_updatedAt ?? now
+    const version = extra_version ?? (existingNode ? existingNode.version + 1 : 1)
+
+    //
+    // ファイルノードを作成/更新するデータを準備
+    //
+    const fileNode: CoreStorageNode = {
+      ...(existingNode ?? {}),
+      id: nodeId,
+      ...CoreStorageSchema.toPathData(fileNodePath),
+      nodeType: 'File',
+      share: this.toDBShareDetail(extra_share, existingNode?.share),
+      contentType: saveOptions?.contentType ?? existingNode?.contentType ?? file.metadata.contentType ?? '',
+      size: file.metadata.size ? Number(file.metadata.size) : 0,
+      createdAt,
+      updatedAt,
+      version,
+      ...extra_rest,
     }
 
     //
-    // ストアにノードデータを保存
+    // データベースにファイルノードを作成/更新
     //
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: {
-          ...this.toBaseDBStorageNode(
-            {
-              id: nodeId,
-              path: fileNodePath,
-              nodeType: 'File',
-              share: options?.share,
-            },
-            existingNode
-          ),
-          contentType: saveOptions?.contentType ?? existingNode?.contentType ?? '',
-          size: file.metadata.size ? Number(file.metadata.size) : 0,
-          createdAt,
-          updatedAt,
-          version,
-        },
+        doc: this.toDBStorageNode(fileNode as NODE),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2755,7 +2729,7 @@ class CoreStorageService<
    * @param dbResponse
    */
   protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
-    return CoreStorageSchema.dbResponseToAppEntities(dbResponse) as NODE[]
+    return CoreStorageSchema.dbResponseToEntities(dbResponse) as NODE[]
   }
 
   /**
@@ -2764,7 +2738,7 @@ class CoreStorageService<
    * @protected
    */
   protected toStorageNode(dbNode: DB_NODE): NODE {
-    return CoreStorageSchema.toAppEntity(dbNode) as NODE
+    return CoreStorageSchema.toEntity(dbNode) as NODE
   }
 
   /**
@@ -2794,29 +2768,6 @@ class CoreStorageService<
       createdAt: dayjs(0),
       updatedAt: dayjs(0),
     } as NODE
-  }
-
-  /**
-   * データベースノード保存時の基本項目が設定されたオブジェクトを取得します。
-   * @param input
-   * @param existing
-   */
-  protected toBaseDBStorageNode(
-    input: { id: string; nodeType: StorageNodeType; path: string; share?: SetShareDetailInput | null },
-    existing?: NODE
-  ): DB_NODE {
-    const now = dayjs()
-    return toElasticTimestamp({
-      ...CoreStorageSchema.toPathData(input.path),
-      id: input.id,
-      nodeType: input.nodeType,
-      contentType: existing?.contentType ?? '',
-      size: existing?.size ?? 0,
-      share: this.toDBShareDetail(input.share, existing?.share),
-      version: existing?.version ?? 1,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: existing?.updatedAt ?? now,
-    }) as DB_NODE
   }
 
   /**

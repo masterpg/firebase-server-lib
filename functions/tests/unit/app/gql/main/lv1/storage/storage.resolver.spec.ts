@@ -38,6 +38,7 @@ import {
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
 import { config } from '../../../../../../../src/config'
+import dayjs = require('dayjs')
 import { initApp } from '../../../../../../../src/app/base'
 import { pickProps } from 'web-base-lib'
 
@@ -118,13 +119,21 @@ describe('Lv1 Storage Resolver', () => {
               type: 'Article',
               sortOrder: 1,
             },
+            src: {
+              masterId: StorageSchema.generateNodeId(),
+              draftId: StorageSchema.generateNodeId(),
+              createdAt: dayjs('2020-01-02T00:00:00.000Z'),
+              updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
+            },
           },
         })
-        const art1_master = h.newDirNode(`${art1.path}/${config.storage.article.masterSrcFileName}`, {
-          article: { src: { type: 'Master' } },
+        const art1_master = h.newDirNode(StorageService.toArticleMasterSrcPath(art1.path), {
+          id: art1.article?.src?.masterId,
+          article: { file: { type: 'MasterSrc' } },
         })
-        const art1_draft = h.newDirNode(`${art1.path}/${config.storage.article.draftSrcFileName}`, {
-          article: { src: { type: 'Draft' } },
+        const art1_draft = h.newDirNode(StorageService.toArticleDraftSrcPath(art1.path), {
+          id: art1.article?.src?.draftId,
+          article: { file: { type: 'DraftSrc' } },
         })
 
         const input: StorageNodeGetKeysInput = { ids: [bundle.id, art1.id, art1_master.id, art1_draft.id] }
@@ -1191,6 +1200,9 @@ describe('Lv1 Storage Resolver', () => {
       query: `
         mutation SaveArticleMasterSrcFile($articleDirPath: String!, $srcContent: String!, $textContent: String!) {
           saveArticleMasterSrcFile(articleDirPath: $articleDirPath, srcContent: $srcContent, textContent: $textContent) {
+            article {
+              ...${StorageNodeFieldsName}
+            }
             master {
               ...${StorageNodeFieldsName}
             }
@@ -1213,25 +1225,34 @@ describe('Lv1 Storage Resolver', () => {
             type: 'Article',
             sortOrder: 1,
           },
+          src: {
+            masterId: StorageSchema.generateNodeId(),
+            draftId: StorageSchema.generateNodeId(),
+            createdAt: dayjs('2020-01-02T00:00:00.000Z'),
+            updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
+          },
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        article: { src: { type: 'Master' } },
+        id: art1.article?.src?.masterId,
+        article: { file: { type: 'MasterSrc' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        article: { src: { type: 'Master' } },
+        id: art1.article?.src?.draftId,
+        article: { file: { type: 'DraftSrc' } },
       })
       return { art1, art1_master, art1_draft }
     }
 
     it('疎通確認', async () => {
-      const { art1_master, art1_draft } = newArticleNodes(StorageUserToken())
+      const { art1, art1_master, art1_draft } = newArticleNodes(StorageUserToken())
       const articleDirPath = art1_draft.dir
       const srcContent = '# header1'
       const textContent = 'header1'
 
       const saveArticleMasterSrcFile = td.replace(storageService, 'saveArticleMasterSrcFile')
       td.when(saveArticleMasterSrcFile(StorageUserToken(), articleDirPath, srcContent, textContent)).thenResolve({
+        article: art1,
         master: art1_master,
         draft: art1_draft,
       })
@@ -1246,6 +1267,7 @@ describe('Lv1 Storage Resolver', () => {
       )
 
       expect(response.body.data.saveArticleMasterSrcFile).toEqual({
+        article: toGQLResponseStorageNode(art1),
         master: toGQLResponseStorageNode(art1_master),
         draft: toGQLResponseStorageNode(art1_draft),
       })
@@ -1288,13 +1310,21 @@ describe('Lv1 Storage Resolver', () => {
             type: 'Article',
             sortOrder: 1,
           },
+          src: {
+            masterId: StorageSchema.generateNodeId(),
+            draftId: StorageSchema.generateNodeId(),
+            createdAt: dayjs('2020-01-02T00:00:00.000Z'),
+            updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
+          },
         },
       })
       const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        article: { src: { type: 'Master' } },
+        id: art1.article?.src?.masterId,
+        article: { file: { type: 'MasterSrc' } },
       })
       const art1_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(art1.path), {
-        article: { src: { type: 'Draft' } },
+        id: art1.article?.src?.draftId,
+        article: { file: { type: 'DraftSrc' } },
       })
       return { art1, art1_master, art1_draft }
     }

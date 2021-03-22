@@ -1,4 +1,5 @@
 import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleSrcDetail, StorageNode } from '../../../../src/app/services'
+import { ToRawTimestamp, toRawTimestamp } from 'web-base-lib'
 
 //========================================================================
 //
@@ -9,7 +10,7 @@ import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleSrcD
 interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'article' | 'createdAt' | 'updatedAt'> {
   article: {
     dir: StorageArticleDirDetail | null
-    src: StorageArticleSrcDetail | null
+    src: ToRawTimestamp<StorageArticleSrcDetail> | null
   } | null
   createdAt: string
   updatedAt: string
@@ -37,8 +38,14 @@ const StorageNodeFields = `
         type
         sortOrder
       }
-      src {
+      file {
         type
+      }
+      src {
+        masterId
+        draftId
+        createdAt
+        updatedAt
       }
     }
     version
@@ -86,7 +93,8 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       if (!node.article) return null
       return {
         dir: node.article.dir ?? null,
-        src: node.article.src ?? null,
+        file: node.article.file ?? null,
+        src: toRawTimestamp(node.article.src) ?? null,
       }
     })(),
     version: node.version,

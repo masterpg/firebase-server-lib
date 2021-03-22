@@ -1,9 +1,10 @@
 import * as td from 'testdouble'
-import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, OmitTimestamp, Product } from '../../../../../../src/app/services'
+import { CartItem, CartItemAddInput, CartItemEditResponse, CartItemUpdateInput, Product } from '../../../../../../src/app/services'
 import { GeneralUser, GeneralUserHeader, GeneralUserToken, getGQLErrorStatus, requestGQL } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
 import ExampleGQLContainerModule from '../../../../../../src/app/gql/example'
 import { ExampleShopServiceDI } from '../../../../../../src/app/services'
+import { OmitTimestamp } from 'web-base-lib'
 import { initApp } from '../../../../../../src/app/base'
 import dayjs = require('dayjs')
 

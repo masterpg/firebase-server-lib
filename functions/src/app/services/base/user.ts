@@ -48,7 +48,7 @@ class UserHelper {
       },
     })
 
-    const users = UserSchema.dbResponseToAppEntities(response)
+    const users = UserSchema.dbResponseToEntities(response)
     if (!users.length) return
 
     return users[0]

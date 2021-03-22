@@ -8,12 +8,9 @@ import {
   GetArticleSrcResult,
   IdToken,
   SaveArticleMasterSrcFileResult,
-  SetShareDetailInput,
-  StorageArticleDetail,
   StorageArticleDirType,
   StorageNode,
   StorageNodeGetKeyInput,
-  StorageNodeType,
   StoragePaginationInput,
   StoragePaginationResult,
   StorageSchema,
@@ -37,7 +34,9 @@ import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 import dayjs = require('dayjs')
+import { merge } from 'lodash'
 import DBStorageNode = StorageSchema.DBStorageNode
+import StorageNodeInput = StorageSchema.StorageNodeInput
 
 //========================================================================
 //
@@ -87,15 +86,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //--------------------------------------------------
 
   /**
-   * 記事の本文ノードと下書きノードを取得します。
+   * 記事を構成するノード（記事ディレクトリ、本文ノード、下書きノード）を取得します。
    * @param articleDirPath
    */
-  async getArticleSrcFiles(articleDirPath: string): Promise<{ master: StorageNode; draft: StorageNode }> {
-    const paths = [StorageService.toArticleMasterSrcPath(articleDirPath), StorageService.toArticleDraftSrcPath(articleDirPath)]
+  async getArticleElementNodes(articleDirPath: string): Promise<{ article: StorageNode; master: StorageNode; draft: StorageNode }> {
+    const paths = [articleDirPath, StorageService.toArticleMasterSrcPath(articleDirPath), StorageService.toArticleDraftSrcPath(articleDirPath)]
 
     const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: CoreStorageSchema.IndexAlias,
-      size: 2,
+      size: 3,
       body: {
         query: { terms: { path: paths } },
       },
@@ -103,15 +102,20 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       _source_excludes: this.excludeNodeFields,
     })
 
-    const result = this.dbResponseToNodes(response).reduce<{ master: StorageNode; draft: StorageNode }>((result, node) => {
-      if (node.article?.src?.type === 'Master') {
+    const result = this.dbResponseToNodes(response).reduce<{ article: StorageNode; master: StorageNode; draft: StorageNode }>((result, node) => {
+      if (node.path === articleDirPath) {
+        result.article = node
+      } else if (node.article?.file?.type === 'MasterSrc') {
         result.master = node
-      } else if (node.article?.src?.type === 'Draft') {
+      } else if (node.article?.file?.type === 'DraftSrc') {
         result.draft = node
       }
       return result
     }, {} as any)
 
+    if (!result.article) {
+      throw new AppError(`The article could not be found.`, { articleDirPath })
+    }
     if (!result.master) {
       throw new AppError(`The master src for the article could not be found.`, { articleDirPath })
     }
@@ -563,33 +567,40 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     srcContent: string,
     textContent: string
   ): Promise<SaveArticleMasterSrcFileResult> {
-    let { master: masterNode, draft: draftNode } = await this.getArticleSrcFiles(articleDirPath)
+    const articleElements = await this.getArticleElementNodes(articleDirPath)
+    let { article: articleDirNode, master: masterNode, draft: draftNode } = articleElements
+    const now = dayjs()
 
-    masterNode = await this.saveGCSFileAndFileNode(masterNode.path, srcContent)
+    masterNode = await this.saveGCSFileAndFileNode(masterNode.path, srcContent, undefined, {
+      updatedAt: now,
+    })
     draftNode = await this.saveGCSFileAndFileNode(draftNode.path, '', undefined, {
-      timestamp: {
-        updatedAt: masterNode.updatedAt, // 更新日を本文に合わせる
-      },
+      updatedAt: now,
     })
 
     // 全文検索用のテキストコンテンツを設定
     await this.client.update({
       index: StorageSchema.IndexAlias,
-      id: masterNode.id,
+      id: articleDirNode.id,
       body: {
-        doc: {
-          article: {
-            src: {
-              textContent,
+        doc: this.toDBStorageNode(
+          merge(articleDirNode, {
+            article: {
+              src: {
+                textContent,
+                updatedAt: now,
+              },
             },
-          },
-        },
+            updatedAt: now,
+            version: articleDirNode.version + 1,
+          })
+        ),
       },
       refresh: true,
     })
-    masterNode = await this.sgetNode(masterNode)
+    articleDirNode = await this.sgetNode(articleDirNode)
 
-    return { master: masterNode, draft: draftNode }
+    return { article: articleDirNode, master: masterNode, draft: draftNode }
   }
 
   protected async saveOtherArticleMasterSrcFile(
@@ -646,11 +657,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 下書き破棄が指定されていた場合
     if (srcContent === null) {
-      const { master } = await this.getArticleSrcFiles(articleDirPath)
+      const { article } = await this.getArticleElementNodes(articleDirPath)
       return this.saveGCSFileAndFileNode(draftNodePath, srcContent, undefined, {
-        timestamp: {
-          updatedAt: master.updatedAt, // 更新日を本文に合わせる
-        },
+        updatedAt: article.article!.src!.updatedAt,
       })
     }
     // 下書きコンテンツが指定されていた場合
@@ -687,9 +696,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       hierarchicalNodes = [...hierarchicalNodes]
       const articleDirNode = hierarchicalNodes.splice(-1)[0]
       const ancestorNodes = hierarchicalNodes.filter(node => Boolean(node.article))
-      const srcPath = StorageService.toArticleMasterSrcPath(articleDirNode.path)
-      const srcNode = await this.sgetFileNode({ path: srcPath })
-      const src = (await srcNode.file.download()).toString()
+      const srcDetail = articleDirNode.article!.src!
+
+      const { exists: srcFileExists, file: srcFile } = await this.getStorageFile(srcDetail.masterId)
+      if (!srcFileExists) {
+        throw new AppError(`The master src for the article could not be found.`, { articleDirPath: articleDirNode.path })
+      }
+      const src = (await srcFile.download()).toString()
 
       const result: GetArticleSrcResult = {
         id: articleDirNode.id,
@@ -701,8 +714,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         path: [...ancestorNodes, articleDirNode].map(node => {
           return { id: node.id, title: node.article!.dir!.name }
         }),
-        createdAt: srcNode.createdAt,
-        updatedAt: srcNode.updatedAt,
+        createdAt: srcDetail.createdAt,
+        updatedAt: srcDetail.updatedAt,
       }
       return result
     }
@@ -747,7 +760,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       }
 
       // 304 Not Modified のチェック
-      const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, articleDirNode)
+      const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, articleDirNode.article!.src!)
       res.setHeader('Last-Modified', lastModified)
 
       // ファイルの公開フラグがオンの場合
@@ -1104,38 +1117,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   }
 
   protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>): StorageNode[] {
-    return StorageSchema.dbResponseToAppEntities(dbResponse)
+    return StorageSchema.dbResponseToEntities(dbResponse)
   }
 
   protected toStorageNode(dbNode: DBStorageNode): StorageNode {
-    return StorageSchema.toAppEntity(dbNode)
+    return StorageSchema.toEntity(dbNode)
   }
 
-  protected toDBStorageNode(node: StorageNode): DBStorageNode {
+  protected toDBStorageNode(node: StorageNodeInput): DBStorageNode {
     return StorageSchema.toDBEntity(node)
-  }
-
-  protected toBaseDBStorageNode(
-    input: { id: string; nodeType: StorageNodeType; path: string; share?: SetShareDetailInput | null },
-    existing?: StorageNode
-  ): DBStorageNode {
-    const result: DBStorageNode = { ...super.toBaseDBStorageNode(input, existing) }
-    if (existing?.article?.dir) {
-      result.article = {
-        dir: {
-          name: existing.article.dir.name,
-          type: existing.article.dir.type,
-          sortOrder: existing.article.dir.sortOrder,
-        },
-      }
-    } else if (existing?.article?.src) {
-      result.article = {
-        src: {
-          type: existing.article.src.type,
-        },
-      }
-    }
-    return result
   }
 
   //----------------------------------------------------------------------
@@ -1255,8 +1245,33 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       }
     }
 
+    const now = dayjs()
+
+    // 本文ファイルと下書きファイルを作成
+    const masterNode = await this.saveGCSFileAndFileNode<StorageNode>(
+      StorageService.toArticleMasterSrcPath(dirPath),
+      '',
+      { contentType: 'text/markdown' },
+      {
+        article: { file: { type: 'MasterSrc' } },
+        createdAt: now,
+        updatedAt: now,
+      }
+    )
+    const draftNode = await this.saveGCSFileAndFileNode<StorageNode>(
+      StorageService.toArticleDraftSrcPath(dirPath),
+      '',
+      { contentType: 'text/markdown' },
+      {
+        article: { file: { type: 'DraftSrc' } },
+        share: { isPublic: false },
+        createdAt: now,
+        updatedAt: now,
+      }
+    )
+
     // 記事ディレクトリを作成
-    const result = await this.m_createArticleTypeDir(
+    const articleDirNode = await this.m_createArticleTypeDir(
       hierarchicalDirNodes,
       {
         ...input,
@@ -1264,43 +1279,31 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       },
       options
     )
-
-    // 記事ディレクトリに記事ソースと下書きファイルを配置
-    const masterFileItem = {
-      path: _path.join(dirPath, config.storage.article.masterSrcFileName),
-      article: {
-        src: {
-          type: 'Master',
-        },
-      } as StorageArticleDetail,
-      share: undefined as SetShareDetailInput | undefined,
-    }
-    const draftFileItem = {
-      path: _path.join(dirPath, config.storage.article.draftSrcFileName),
-      article: {
-        src: {
-          type: 'Draft',
-        },
-      } as StorageArticleDetail,
-      share: { isPublic: false } as SetShareDetailInput,
-    }
-    await Promise.all(
-      [masterFileItem, draftFileItem].map(async ({ path, article, share }) => {
-        const fileNode = await this.saveGCSFileAndFileNode(path, '', { contentType: 'text/markdown' }, { share })
-        await this.client.update({
-          index: StorageSchema.IndexAlias,
-          id: fileNode.id,
-          body: {
-            doc: {
-              article,
+    await this.client.update({
+      index: StorageSchema.IndexAlias,
+      id: articleDirNode.id,
+      body: {
+        doc: this.toDBStorageNode(
+          merge(articleDirNode, {
+            article: {
+              src: {
+                masterId: masterNode.id,
+                draftId: draftNode.id,
+                textContent: '',
+                createdAt: now,
+                updatedAt: now,
+              },
             },
-          },
-          refresh: true,
-        })
-      })
-    )
+            createdAt: now,
+            updatedAt: now,
+          })
+        ),
+      },
+      refresh: true,
+    })
 
-    return result
+    // 更新された最新の記事ディレクトリを取得
+    return await this.sgetNode(articleDirNode)
   }
 
   /**
@@ -1384,21 +1387,23 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // ディレクトリを作成
     const id = dirNode.name
-    const now = dayjs().toISOString()
+    const now = dayjs()
     await this.client.update({
       index: StorageSchema.IndexAlias,
       id,
       body: {
         doc: {
-          ...this.toDBStorageNode(dirNode),
-          id,
-          share: this.toDBShareDetail(options?.share),
-          version: 1,
-          createdAt: now,
-          updatedAt: now,
-          article: {
-            dir: pickProps(input, ['name', 'type', 'sortOrder']),
-          },
+          ...this.toDBStorageNode({
+            ...dirNode,
+            id,
+            share: this.toDBShareDetail(options?.share),
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+            article: {
+              dir: pickProps(input, ['name', 'type', 'sortOrder']),
+            },
+          }),
         },
         doc_as_upsert: true,
       },
@@ -1620,10 +1625,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const a = treeNodeA.item
         const b = treeNodeB.item
 
-        if (a.article?.src?.type === 'Draft') return -1
-        if (b.article?.src?.type === 'Draft') return 1
-        if (a.article?.src?.type === 'Master') return -1
-        if (b.article?.src?.type === 'Master') return 1
+        if (a.article?.file?.type === 'DraftSrc') return -1
+        if (b.article?.file?.type === 'DraftSrc') return 1
+        if (a.article?.file?.type === 'MasterSrc') return -1
+        if (b.article?.file?.type === 'MasterSrc') return 1
 
         if (a.nodeType === b.nodeType) {
           const orderA = a.article?.dir?.sortOrder ?? 0

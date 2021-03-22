@@ -10,16 +10,10 @@ import {
   StorageUserHeader,
   StorageUserToken,
 } from '../../../../helpers/app'
-import {
-  DevUtilsServiceDI,
-  DevUtilsServiceModule,
-  GetArticleSrcResult,
-  OmitTimestamp,
-  StorageService,
-  StorageServiceDI,
-} from '../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, GetArticleSrcResult, StorageService, StorageServiceDI } from '../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../src/app/gql/main/lv1'
+import { OmitTimestamp } from 'web-base-lib'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../src/app/rest/storage'
 import { initApp } from '../../../../../src/app/base'
@@ -90,13 +84,13 @@ describe('StorageService - HTTP関連のテスト', () => {
         type: 'ListBundle',
       })
       // 記事1
-      const art1 = await storageService.createArticleTypeDir({
+      let art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
         name: '記事1',
         type: 'Article',
       })
       // 記事1のマスターファイル
-      await storageService.saveArticleMasterSrcFile(art1.path, '# header1', 'header1')
+      art1 = (await storageService.saveArticleMasterSrcFile(art1.path, '# header1', 'header1')).article
       const art1_master = await storageService.sgetFileNode({
         path: StorageService.toArticleMasterSrcPath(art1.path),
       })
@@ -187,7 +181,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         request(app.getHttpServer())
           .get(`/articles/${art1.id}`)
           // If-Modified-Sinceを設定
-          .set('If-Modified-Since', art1.updatedAt.toString())
+          .set('If-Modified-Since', art1.article!.src!.updatedAt.toString())
           .expect(304)
       )
     })
@@ -202,7 +196,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         request(app.getHttpServer())
           .get(`/articles/${art1.id}`)
           // If-Modified-Sinceを設定
-          .set('If-Modified-Since', art1.updatedAt.toString())
+          .set('If-Modified-Since', art1.article!.src!.updatedAt.toString())
           // 自ユーザーを設定
           .set({ ...StorageUserHeader() })
           .expect(304)

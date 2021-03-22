@@ -204,8 +204,6 @@ class CoreStorageTestHelper {
   newFileNode(filePath: string, data?: Partial<Omit<CoreStorageNode, 'name' | 'dir' | 'path' | 'nodeType'>>): CoreStorageNode {
     filePath = removeBothEndsSlash(filePath)
     data = data || {}
-    const name = _path.basename(filePath)
-    const dir = removeStartDirChars(_path.dirname(filePath))
     const result: CoreStorageNode = {
       id: data.id || CoreStorageSchema.generateNodeId(),
       nodeType: 'File',
@@ -259,9 +257,6 @@ class StorageTestHelper extends CoreStorageTestHelper {
       type: data.type,
       ...StorageSchema.toPathData(dirPath),
       label: data.label,
-      version: data.version || 1,
-      createdAt: data.createdAt || dayjs(),
-      updatedAt: data.updatedAt || dayjs(),
     }
   }
 }

@@ -40,7 +40,6 @@
     "class-transformer": "^0.3.1",
     "class-validator": "^0.12.2",
     "convert-hrtime": "^3.0.0",
-    "dayjs": "^1.9.6",
     "firebase-admin": "^9.4.1",
     "firebase-functions": "^3.11.0",
     "firebase-tools": "^8.16.2",
@@ -80,6 +79,6 @@
     "testdouble": "^3.16.1",
     "testdouble-jest": "^2.0.0",
     "ts-jest": "^26.4.4",
-    "typescript": "^3.9.7"
+    "typescript": "~3.9.9"
   }
 }
