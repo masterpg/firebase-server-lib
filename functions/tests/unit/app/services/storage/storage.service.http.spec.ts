@@ -80,13 +80,13 @@ describe('StorageService - HTTP関連のテスト', () => {
       // バンドル
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1
       let art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1のマスターファイル
@@ -98,12 +98,12 @@ describe('StorageService - HTTP関連のテスト', () => {
       // 記事1のレスポンス
       const art1_response: RawGetArticleSrcResult = {
         id: art1.id,
-        title: art1.article!.dir!.name,
+        label: art1.article!.dir!.label,
         src: '# header1',
-        dir: [{ id: bundle.id, title: bundle.article!.dir!.name }],
+        dir: [{ id: bundle.id, label: bundle.article!.dir!.label }],
         path: [
-          { id: bundle.id, title: bundle.article!.dir!.name },
-          { id: art1.id, title: art1.article!.dir!.name },
+          { id: bundle.id, label: bundle.article!.dir!.label },
+          { id: art1.id, label: art1.article!.dir!.label },
         ],
         createdAt: art1_master.createdAt.toISOString(),
         updatedAt: art1_master.updatedAt.toISOString(),

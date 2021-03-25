@@ -226,7 +226,7 @@ namespace CoreStorageSchema {
   /**
    * ノードIDを生成します。
    */
-  export function generateNodeId(): string {
+  export function generateId(): string {
     return generateEntityId(CoreStorageSchema.IndexAlias)
   }
 
@@ -277,7 +277,7 @@ namespace StorageSchema {
           properties: {
             dir: {
               properties: {
-                name: {
+                label: {
                   type: 'keyword',
                   fields: {
                     text: {
@@ -351,7 +351,7 @@ namespace StorageSchema {
       result.article = {}
       if (dbEntity.article.dir) {
         const dir: StorageArticleDirDetail = {
-          name: dbEntity.article.dir.name,
+          label: dbEntity.article.dir.label,
           type: dbEntity.article.dir.type,
           sortOrder: dbEntity.article.dir.sortOrder ?? null,
         }
@@ -381,7 +381,7 @@ namespace StorageSchema {
     if (appEntity.article) {
       result.article = {}
       if (appEntity.article.dir) {
-        const dir: StorageArticleDirDetail = pickProps(appEntity.article.dir, ['name', 'type', 'sortOrder'])
+        const dir: StorageArticleDirDetail = pickProps(appEntity.article.dir, ['label', 'type', 'sortOrder'])
         merge(result.article, { dir })
       }
       if (appEntity.article.file) {
@@ -406,7 +406,7 @@ namespace StorageSchema {
     return _dbResponseToEntities(dbResponse, toEntity)
   }
 
-  export import generateNodeId = CoreStorageSchema.generateNodeId
+  export import generateId = CoreStorageSchema.generateId
 
   export import getNodeLevel = CoreStorageSchema.getNodeLevel
 

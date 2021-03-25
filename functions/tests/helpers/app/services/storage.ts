@@ -1,19 +1,21 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
 import {
-  ArticleTableOfContentsNode,
+  ArticleListItem,
+  ArticleTableOfContentsItem,
   CoreStorageNode,
+  StorageArticleDirType,
   StorageNode,
-  StorageNodeType,
-  StorageSchema,
   StorageService,
   StorageServiceDI,
 } from '../../../../src/app/services'
-import { RequiredAre, removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
+import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
+import { Dayjs } from 'dayjs'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
+import toPathData = CoreStorageSchema.toPathData
 
 //========================================================================
 //
@@ -23,6 +25,8 @@ import { newElasticClient } from '../../../../src/app/base/elastic'
 
 type CoreStorageTestService = CoreStorageService & {
   client: CoreStorageService['client']
+  validateBrowsableImpl: CoreStorageService['validateBrowsableImpl']
+  validateReadableImpl: CoreStorageService['validateReadableImpl']
 }
 
 type StorageTestService = StorageService &
@@ -187,7 +191,7 @@ class CoreStorageTestHelper {
     dirPath = removeBothEndsSlash(dirPath)
     data = data || {}
     const result: CoreStorageNode = {
-      id: data.id || CoreStorageSchema.generateNodeId(),
+      id: data.id || CoreStorageSchema.generateId(),
       nodeType: 'Dir',
       ...CoreStorageSchema.toPathData(dirPath),
       level: CoreStorageSchema.getNodeLevel(dirPath),
@@ -205,7 +209,7 @@ class CoreStorageTestHelper {
     filePath = removeBothEndsSlash(filePath)
     data = data || {}
     const result: CoreStorageNode = {
-      id: data.id || CoreStorageSchema.generateNodeId(),
+      id: data.id || CoreStorageSchema.generateId(),
       nodeType: 'File',
       ...CoreStorageSchema.toPathData(filePath),
       level: CoreStorageSchema.getNodeLevel(filePath),
@@ -248,14 +252,26 @@ class StorageTestHelper extends CoreStorageTestHelper {
     return result
   }
 
-  newTableOfContentsNode(dirPath: string, data: RequiredAre<Partial<ArticleTableOfContentsNode>, 'type' | 'label'>): ArticleTableOfContentsNode {
-    dirPath = removeBothEndsSlash(dirPath)
-    data = data || {}
+  newArticleListItem(data: { path: string; label: string; createdAt?: Dayjs; updatedAt?: Dayjs }): ArticleListItem {
+    const pathData = toPathData(data.path)
+    const now = dayjs()
 
     return {
-      id: data.id || CoreStorageSchema.generateNodeId(),
+      id: pathData.name,
+      ...pathData,
+      label: data.label,
+      createdAt: data.createdAt ?? now,
+      updatedAt: data.updatedAt ?? now,
+    }
+  }
+
+  newTableOfContentsItems(data: { path: string; type: StorageArticleDirType; label: string }): ArticleTableOfContentsItem {
+    const pathData = toPathData(data.path)
+
+    return {
+      id: pathData.name,
+      ...pathData,
       type: data.type,
-      ...StorageSchema.toPathData(dirPath),
       label: data.label,
     }
   }

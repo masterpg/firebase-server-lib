@@ -12,6 +12,17 @@ import { TimestampEntity } from 'web-base-lib'
 type JSON = any
 type JSONObject = any
 
+interface PaginationInput {
+  maxChunk?: number
+  pageToken?: string
+}
+
+interface PaginationResult<T = any> {
+  list: T[]
+  nextPageToken?: string
+  isPaginationTimeout?: boolean
+}
+
 //--------------------------------------------------
 //  Auth
 //--------------------------------------------------
@@ -68,8 +79,10 @@ interface AuthDataResult {
 }
 
 //--------------------------------------------------
-//  Storage
+//  CoreStorage
 //--------------------------------------------------
+
+type StorageNodeType = 'File' | 'Dir'
 
 interface CoreStorageNode extends TimestampEntity {
   nodeType: StorageNodeType
@@ -81,71 +94,6 @@ interface CoreStorageNode extends TimestampEntity {
   size: number
   share: StorageNodeShareDetail
   version: number
-}
-
-interface StorageNode extends CoreStorageNode {
-  article?: StorageArticleDetail
-}
-
-interface ArticleTableOfContentsNode {
-  id: string
-  type: StorageArticleDirType
-  name: string
-  dir: string
-  path: string
-  label: string
-}
-
-type StorageNodeType = 'File' | 'Dir'
-
-type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
-
-type StorageArticleFileType = 'MasterSrc' | 'DraftSrc'
-
-interface StorageNodeShareDetail {
-  isPublic: boolean | null
-  readUIds: string[] | null
-  writeUIds: string[] | null
-}
-
-interface StorageArticleDetail {
-  dir?: StorageArticleDirDetail
-  file?: StorageArticleFileDetail
-  src?: StorageArticleSrcDetail
-}
-
-interface StorageArticleDirDetail {
-  name: string
-  type: StorageArticleDirType
-  sortOrder: number
-}
-
-interface StorageArticleFileDetail {
-  type: StorageArticleFileType
-}
-
-interface StorageArticleSrcDetail {
-  masterId: string
-  draftId: string
-  createdAt: Dayjs
-  updatedAt: Dayjs
-}
-
-interface StoragePaginationInput {
-  maxChunk?: number
-  pageToken?: string
-}
-
-interface StoragePaginationResult<T extends CoreStorageNode = CoreStorageNode> {
-  list: T[]
-  nextPageToken?: string
-  isPaginationTimeout?: boolean
-}
-
-interface SetShareDetailInput {
-  isPublic?: boolean | null
-  readUIds?: string[] | null
-  writeUIds?: string[] | null
 }
 
 interface StorageNodeKeyInput {
@@ -161,6 +109,18 @@ interface StorageNodeGetKeyInput {
 interface StorageNodeGetKeysInput {
   ids?: string[]
   paths?: string[]
+}
+
+interface StorageNodeShareDetail {
+  isPublic: boolean | null
+  readUIds: string[] | null
+  writeUIds: string[] | null
+}
+
+interface SetShareDetailInput {
+  isPublic?: boolean | null
+  readUIds?: string[] | null
+  writeUIds?: string[] | null
 }
 
 interface StorageNodeGetUnderInput {
@@ -179,9 +139,45 @@ interface CreateStorageNodeOptions {
   share?: SetShareDetailInput
 }
 
+//--------------------------------------------------
+//  Storage
+//--------------------------------------------------
+
+type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
+
+type StorageArticleFileType = 'MasterSrc' | 'DraftSrc'
+
+interface StorageNode extends CoreStorageNode {
+  article?: StorageArticleDetail
+}
+
+interface StorageArticleDetail {
+  dir?: StorageArticleDirDetail
+  file?: StorageArticleFileDetail
+  src?: StorageArticleSrcDetail
+}
+
+interface StorageArticleDirDetail {
+  label: string
+  type: StorageArticleDirType
+  sortOrder: number
+}
+
+interface StorageArticleFileDetail {
+  type: StorageArticleFileType
+}
+
+interface StorageArticleSrcDetail {
+  masterId: string
+  draftId: string
+  createdAt: Dayjs
+  updatedAt: Dayjs
+}
+
 interface CreateArticleTypeDirInput {
+  id?: string
   dir: string
-  name: string
+  label: string
   type: StorageArticleDirType
   sortOrder?: number
 }
@@ -194,17 +190,41 @@ interface SaveArticleMasterSrcFileResult {
 
 interface ArticlePathDetail {
   id: string
-  title: string
+  label: string
 }
 
 interface GetArticleSrcResult extends ArticlePathDetail {
   id: string
-  title: string
+  label: string
   src: string
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   createdAt: Dayjs
   updatedAt: Dayjs
+}
+
+interface ArticleListItem {
+  id: string
+  name: string
+  dir: string
+  path: string
+  label: string
+  createdAt: Dayjs
+  updatedAt: Dayjs
+}
+
+interface GetUserArticleListInput {
+  userName: string
+  articleTypeDirId: string
+}
+
+interface ArticleTableOfContentsItem {
+  id: string
+  type: StorageArticleDirType
+  name: string
+  dir: string
+  path: string
+  label: string
 }
 
 interface GetArticleChildrenInput {
@@ -289,13 +309,17 @@ interface CartItemEditResponse extends TimestampEntity {
 export { JSON, JSONObject }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
+  ArticleListItem,
   ArticlePathDetail,
-  ArticleTableOfContentsNode,
+  ArticleTableOfContentsItem,
   CoreStorageNode,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
   GetArticleSrcResult,
+  GetUserArticleListInput,
+  PaginationInput,
+  PaginationResult,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -312,8 +336,6 @@ export {
   StorageNodeKeyInput,
   StorageNodeShareDetail,
   StorageNodeType,
-  StoragePaginationInput,
-  StoragePaginationResult,
 }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }

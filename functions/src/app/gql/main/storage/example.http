@@ -18,7 +18,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDirDescendants",
-  "query": "query GetStorageDirDescendants($dirPath: String, $input: StoragePaginationInput) { storageDirDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageDirDescendants($dirPath: String, $input: PaginationInput) { storageDirDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -33,7 +33,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($dirPath: String, $input: StoragePaginationInput) { storageDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageDescendants($dirPath: String, $input: PaginationInput) { storageDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -48,7 +48,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDirChildren",
-  "query": "query GetStorageDirChildren($dirPath: String, $input: StoragePaginationInput) { storageDirChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageDirChildren($dirPath: String, $input: PaginationInput) { storageDirChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
   "variables": {
     "nodePath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -63,7 +63,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($dirPath: String, $input: StoragePaginationInput) { storageChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageChildren($dirPath: String, $input: PaginationInput) { storageChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
   "variables": {
     "dirPath": "test-files/d1",
     "input": { "maxChunk": 3 }
@@ -294,7 +294,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetArticleChildren",
-  "query": "query GetArticleChildren($dirPath: String!, $types: [StorageArticleDirType!]!, $input: StoragePaginationInput) { articleChildren(dirPath: $dirPath, types: $types, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetArticleChildren($dirPath: String!, $types: [StorageArticleDirType!]!, $input: PaginationInput) { articleChildren(dirPath: $dirPath, types: $types, input: $input) { list { id path } nextPageToken } }",
   "variables": {
     "dirPath": "users/general/articles/blog",
     "types": "Article",

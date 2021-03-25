@@ -24,13 +24,14 @@ type Mutation {
 type Query {
   storageNode(input: StorageNodeGetKeyInput!): StorageNode
   storageNodes(input: StorageNodeGetKeysInput!): [StorageNode!]!
-  storageDescendants(input: StorageNodeGetUnderInput!, pagination: StoragePaginationInput): StoragePaginationResult!
-  storageChildren(input: StorageNodeGetUnderInput!, pagination: StoragePaginationInput): StoragePaginationResult!
+  storageDescendants(input: StorageNodeGetUnderInput!, pagination: PaginationInput): StoragePaginationResult!
+  storageChildren(input: StorageNodeGetUnderInput!, pagination: PaginationInput): StoragePaginationResult!
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
-  articleChildren(input: GetArticleChildrenInput!, pagination: StoragePaginationInput): StoragePaginationResult!
-  articleTableOfContents(userName: String!): [ArticleTableOfContentsNode!]!
+  articleChildren(input: GetArticleChildrenInput!, pagination: PaginationInput): StoragePaginationResult!
+  userArticleList(input: GetUserArticleListInput!, pagination: PaginationInput): ArticleListPaginationResult!
+  userArticleTableOfContents(userName: String!): [ArticleTableOfContentsItem!]!
 }
 
 #--------------------------------------------------

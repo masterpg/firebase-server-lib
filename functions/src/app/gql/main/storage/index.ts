@@ -1,12 +1,16 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
-  ArticleTableOfContentsNode,
+  ArticleListItem,
+  ArticleTableOfContentsItem,
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleTypeDirInput,
   CreateStorageNodeOptions,
   GetArticleChildrenInput,
+  GetUserArticleListInput,
   IdToken,
+  PaginationInput,
+  PaginationResult,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -15,8 +19,6 @@ import {
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
-  StoragePaginationInput,
-  StoragePaginationResult,
   StorageServiceDI,
   StorageServiceModule,
 } from '../../../services'
@@ -29,9 +31,9 @@ import { Inject, Module, UseGuards } from '@nestjs/common'
 //
 //========================================================================
 
-//--------------------------------------------------
+//========================================================================
 //  Base
-//--------------------------------------------------
+//========================================================================
 
 @Module({
   imports: [StorageServiceModule, AuthServiceModule],
@@ -39,9 +41,9 @@ import { Inject, Module, UseGuards } from '@nestjs/common'
 })
 class BaseStorageGQLModule {}
 
-//--------------------------------------------------
+//========================================================================
 //  Main
-//--------------------------------------------------
+//========================================================================
 
 @Resolver()
 class StorageResolver {
@@ -67,8 +69,8 @@ class StorageResolver {
   async storageDescendants(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
+    @Args('pagination') pagination?: PaginationInput
+  ): Promise<PaginationResult<StorageNode>> {
     return this.storageService.getDescendants(idToken, input, pagination)
   }
 
@@ -77,8 +79,8 @@ class StorageResolver {
   async storageChildren(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
+    @Args('pagination') pagination?: PaginationInput
+  ): Promise<PaginationResult<StorageNode>> {
     return this.storageService.getChildren(idToken, input, pagination)
   }
 
@@ -240,14 +242,26 @@ class StorageResolver {
   async articleChildren(
     @UserArg() idToken: IdToken,
     @Args('input') input: GetArticleChildrenInput,
-    @Args('pagination') pagination?: StoragePaginationInput
-  ): Promise<StoragePaginationResult<StorageNode>> {
+    @Args('pagination') pagination?: PaginationInput
+  ): Promise<PaginationResult<StorageNode>> {
     return this.storageService.getArticleChildren(input, pagination)
   }
 
   @Query()
-  async articleTableOfContents(@UserArg() idToken: IdToken, @Args('userName') userName: string): Promise<ArticleTableOfContentsNode[]> {
-    return this.storageService.getArticleTableOfContents(userName, idToken)
+  async userArticleList(
+    @UserArg() idToken: IdToken | undefined,
+    @Args('input') input: GetUserArticleListInput,
+    @Args('pagination') pagination?: PaginationInput
+  ): Promise<PaginationResult<ArticleListItem>> {
+    return this.storageService.getUserArticleList(idToken, input, pagination)
+  }
+
+  @Query()
+  async userArticleTableOfContents(
+    @UserArg() idToken: IdToken | undefined,
+    @Args('userName') userName: string
+  ): Promise<ArticleTableOfContentsItem[]> {
+    return this.storageService.getUserArticleTableOfContents(idToken, userName)
   }
 
   //----------------------------------------------------------------------
@@ -263,9 +277,9 @@ class StorageResolver {
 })
 class StorageGQLModule {}
 
-//--------------------------------------------------
+//========================================================================
 //  RemoveStorageDir
-//--------------------------------------------------
+//========================================================================
 
 @Resolver()
 class RemoveStorageDirResolver {
@@ -288,9 +302,9 @@ class RemoveStorageDirResolver {
 })
 class RemoveStorageDirGQLModule {}
 
-//--------------------------------------------------
+//========================================================================
 //  MoveStorageDir
-//--------------------------------------------------
+//========================================================================
 
 @Resolver()
 class MoveStorageDirResolver {
@@ -317,9 +331,9 @@ class MoveStorageDirResolver {
 })
 class MoveStorageDirGQLModule {}
 
-//--------------------------------------------------
+//========================================================================
 //  RenameStorageDir
-//--------------------------------------------------
+//========================================================================
 
 @Resolver()
 class RenameStorageDirResolver {

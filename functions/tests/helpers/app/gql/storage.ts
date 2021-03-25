@@ -1,4 +1,10 @@
-import { ArticleTableOfContentsNode, StorageArticleDirDetail, StorageArticleSrcDetail, StorageNode } from '../../../../src/app/services'
+import {
+  ArticleListItem,
+  ArticleTableOfContentsItem,
+  StorageArticleDirDetail,
+  StorageArticleSrcDetail,
+  StorageNode,
+} from '../../../../src/app/services'
 import { ToRawTimestamp, toRawTimestamp } from 'web-base-lib'
 
 //========================================================================
@@ -34,7 +40,7 @@ const StorageNodeFields = `
     }
     article {
       dir {
-        name
+        label
         type
         sortOrder
       }
@@ -54,12 +60,24 @@ const StorageNodeFields = `
   }
 `
 
-interface ResponseArticleTableOfContentsNode extends ArticleTableOfContentsNode {}
+const ArticleListItemFieldsName = 'ArticleListItemFields'
 
-const ArticleTableOfContentsNodeFieldsName = 'ArticleTableOfContentsNodeFields'
+const ArticleListItemFields = `
+  fragment ${ArticleListItemFieldsName} on ArticleListItem {
+    id
+    name
+    dir
+    path
+    label
+    createdAt
+    updatedAt
+  }
+`
 
-const ArticleTableOfContentsNodeFields = `
-  fragment ${ArticleTableOfContentsNodeFieldsName} on ArticleTableOfContentsNode {
+const ArticleTableOfContentsItemFieldsName = 'ArticleTableOfContentsItemFields'
+
+const ArticleTableOfContentsItemFields = `
+  fragment ${ArticleTableOfContentsItemFieldsName} on ArticleTableOfContentsItem {
     id
     type
     name
@@ -107,19 +125,35 @@ function toGQLResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] 
   return nodes.map(node => toGQLResponseStorageNode(node))
 }
 
-function toGQLResponseArticleTableOfContentsNode(node: ArticleTableOfContentsNode): ResponseArticleTableOfContentsNode {
+function toGQLResponseArticleListItem(item: ArticleListItem): ToRawTimestamp<ArticleListItem> {
   return {
-    id: node.id,
-    type: node.type,
-    name: node.name,
-    dir: node.dir,
-    path: node.path,
-    label: node.label,
+    id: item.id,
+    name: item.name,
+    dir: item.dir,
+    path: item.path,
+    label: item.label,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
   }
 }
 
-function toGQLResponseArticleTableOfContentsNodes(nodes: ArticleTableOfContentsNode[]): ResponseArticleTableOfContentsNode[] {
-  return nodes.map(node => toGQLResponseArticleTableOfContentsNode(node))
+function toGQLResponseArticleListItems(items: ArticleListItem[]): ToRawTimestamp<ArticleListItem>[] {
+  return items.map(item => toGQLResponseArticleListItem(item))
+}
+
+function toGQLResponseArticleTableOfContentsItem(item: ArticleTableOfContentsItem): ArticleTableOfContentsItem {
+  return {
+    id: item.id,
+    type: item.type,
+    name: item.name,
+    dir: item.dir,
+    path: item.path,
+    label: item.label,
+  }
+}
+
+function toGQLResponseArticleTableOfContentsItems(items: ArticleTableOfContentsItem[]): ArticleTableOfContentsItem[] {
+  return items.map(item => toGQLResponseArticleTableOfContentsItem(item))
 }
 
 //========================================================================
@@ -129,12 +163,16 @@ function toGQLResponseArticleTableOfContentsNodes(nodes: ArticleTableOfContentsN
 //========================================================================
 
 export {
-  ArticleTableOfContentsNodeFields,
-  ArticleTableOfContentsNodeFieldsName,
+  ArticleListItemFields,
+  ArticleListItemFieldsName,
+  ArticleTableOfContentsItemFields,
+  ArticleTableOfContentsItemFieldsName,
   StorageNodeFields,
   StorageNodeFieldsName,
-  toGQLResponseArticleTableOfContentsNode,
-  toGQLResponseArticleTableOfContentsNodes,
+  toGQLResponseArticleListItem,
+  toGQLResponseArticleListItems,
+  toGQLResponseArticleTableOfContentsItem,
+  toGQLResponseArticleTableOfContentsItems,
   toGQLResponseStorageNode,
   toGQLResponseStorageNodes,
 }

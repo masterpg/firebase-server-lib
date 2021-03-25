@@ -1,6 +1,7 @@
-#--------------------------------------------------
-#  Env
-#--------------------------------------------------
+input PaginationInput {
+  maxChunk: Int
+  pageToken: String
+}
 
 #--------------------------------------------------
 #  User
@@ -48,13 +49,60 @@ type AuthDataResult {
 }
 
 #--------------------------------------------------
-#  Storage
+#  CoreStorage
 #--------------------------------------------------
 
 enum StorageNodeType {
   File
   Dir
 }
+
+input StorageNodeKeyInput {
+  id: String!
+  path: String!
+}
+
+input StorageNodeGetKeyInput {
+  id: String
+  path: String
+}
+
+input StorageNodeGetKeysInput {
+  ids: [String!]
+  paths: [String!]
+}
+
+type StorageNodeShareDetail {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input SetShareDetailInput {
+  isPublic: Boolean
+  readUIds: [String!]
+  writeUIds: [String!]
+}
+
+input StorageNodeGetUnderInput {
+  id: String
+  path: String
+  includeBase: Boolean
+}
+
+input SignedUploadUrlInput {
+  id: String!
+  path: String!
+  contentType: String
+}
+
+input CreateStorageNodeOptions {
+  share: SetShareDetailInput
+}
+
+#--------------------------------------------------
+#  Storage
+#--------------------------------------------------
 
 enum StorageArticleDirType {
   ListBundle
@@ -83,30 +131,10 @@ type StorageNode implements TimestampEntity {
   updatedAt: DateTime!
 }
 
-type ArticleTableOfContentsNode {
-  id: ID!
-  name: String!
-  dir: String!
-  path: String!
-  label: String!
-  type: StorageArticleDirType!
-}
-
-input StoragePaginationInput {
-  maxChunk: Int
-  pageToken: String
-}
-
 type StoragePaginationResult {
   list: [StorageNode!]!
   nextPageToken: String
   isPaginationTimeout: Boolean
-}
-
-type StorageNodeShareDetail {
-  isPublic: Boolean
-  readUIds: [String!]
-  writeUIds: [String!]
 }
 
 type StorageArticleDetail {
@@ -116,7 +144,7 @@ type StorageArticleDetail {
 }
 
 type StorageArticleDirDetail {
-  name: String!
+  label: String!
   type: StorageArticleDirType!
   sortOrder: Long!
 }
@@ -132,46 +160,9 @@ type StorageArticleSrcDetail {
   updatedAt: DateTime!
 }
 
-input SetShareDetailInput {
-  isPublic: Boolean
-  readUIds: [String!]
-  writeUIds: [String!]
-}
-
-input StorageNodeKeyInput {
-  id: String!
-  path: String!
-}
-
-input StorageNodeGetKeyInput {
-  id: String
-  path: String
-}
-
-input StorageNodeGetKeysInput {
-  ids: [String!]
-  paths: [String!]
-}
-
-input StorageNodeGetUnderInput {
-  id: String
-  path: String
-  includeBase: Boolean
-}
-
-input SignedUploadUrlInput {
-  id: String!
-  path: String!
-  contentType: String
-}
-
-input CreateStorageNodeOptions {
-  share: SetShareDetailInput
-}
-
 input CreateArticleTypeDirInput {
   dir: String!
-  name: String!
+  label: String!
   type: StorageArticleDirType
 }
 
@@ -179,6 +170,35 @@ type SaveArticleMasterSrcFileResult {
   article: StorageNode!
   master: StorageNode!
   draft: StorageNode!
+}
+
+type ArticleListItem {
+  id: String!
+  name: String!
+  dir: String!
+  path: String!
+  label: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input GetUserArticleListInput {
+  userName: String!
+  articleTypeDirId: String!
+}
+
+type ArticleListPaginationResult {
+  list: [ArticleListItem!]!
+  nextPageToken: String
+}
+
+type ArticleTableOfContentsItem {
+  id: ID!
+  name: String!
+  dir: String!
+  path: String!
+  label: String!
+  type: StorageArticleDirType!
 }
 
 input GetArticleChildrenInput {

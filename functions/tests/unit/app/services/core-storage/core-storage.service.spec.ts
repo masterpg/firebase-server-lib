@@ -4204,7 +4204,7 @@ describe('CoreStorageService', () => {
 
     it('存在しないファイルを指定した場合', async () => {
       const fileA = {
-        id: CoreStorageSchema.generateNodeId(),
+        id: CoreStorageSchema.generateId(),
         path: `d1/fileA.txt`,
       }
 
@@ -4221,7 +4221,7 @@ describe('CoreStorageService', () => {
 
     it('ファイルの祖先が存在しない場合', async () => {
       const fileA = {
-        id: CoreStorageSchema.generateNodeId(),
+        id: CoreStorageSchema.generateId(),
         path: `d1/fileA.txt`,
       }
 
@@ -4278,8 +4278,8 @@ describe('CoreStorageService', () => {
     it('ベーシックケース', async () => {
       const requestOrigin = config.cors.whitelist[0]
       const inputs: SignedUploadUrlInput[] = [
-        { id: CoreStorageSchema.generateNodeId(), path: `fileA.txt`, contentType: 'text/plain' },
-        { id: CoreStorageSchema.generateNodeId(), path: `fileB.txt`, contentType: 'text/plain' },
+        { id: CoreStorageSchema.generateId(), path: `fileA.txt`, contentType: 'text/plain' },
+        { id: CoreStorageSchema.generateId(), path: `fileB.txt`, contentType: 'text/plain' },
       ]
 
       const actual = await storageService.getSignedUploadUrls(requestOrigin, inputs)
@@ -4292,7 +4292,7 @@ describe('CoreStorageService', () => {
       const requestOrigin = config.cors.whitelist[0]
 
       const actual = await storageService.getSignedUploadUrls(StorageUserToken(), requestOrigin, [
-        { id: CoreStorageSchema.generateNodeId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
+        { id: CoreStorageSchema.generateId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
       ])
 
       expect(actual.length).toBe(1)
@@ -4305,7 +4305,7 @@ describe('CoreStorageService', () => {
       let actual!: HttpException
       try {
         await storageService.getSignedUploadUrls(GeneralUserToken(), requestOrigin, [
-          { id: CoreStorageSchema.generateNodeId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
+          { id: CoreStorageSchema.generateId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
         ])
       } catch (err) {
         actual = err
@@ -4799,20 +4799,86 @@ describe('CoreStorageService', () => {
       })
     })
 
-    it('サインインしていない場合', async () => {
-      const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
-      await storageService.createHierarchicalDirs([`${userRootPath}`])
-      const d1 = await storageService.createDir(`${userRootPath}/d1`)
-
-      let actual!: HttpException
-      try {
-        // サインインしていない状況を再現するために、トークンにundefinedを渡す
-        await storageService.validateBrowsable(undefined as any, d1.path)
-      } catch (err) {
-        actual = err
+    describe('IDトークン指定なし', () => {
+      async function setupUserNodes() {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        const [users, userRoot, d1, d11] = await storageService.createHierarchicalDirs([`${userRootPath}/d1/d11`])
+        return { users, userRoot, d1, d11 }
       }
 
-      expect(actual.getStatus()).toBe(401)
+      it('権限あり', async () => {
+        const { d11 } = await setupUserNodes()
+
+        // ノードを公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+
+        // IDトークンなしで検証
+        await storageService.validateBrowsableImpl(undefined, d11.path)
+      })
+
+      it('権限なし', async () => {
+        const { d11 } = await setupUserNodes()
+
+        // ノードを非公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: false })
+
+        let actual!: HttpException
+        try {
+          // IDトークンなしで検証
+          await storageService.validateBrowsable(undefined, d11.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+    })
+
+    describe('hierarchicalNodesを指定した場合', () => {
+      async function setupUserNodes() {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        const [users, userRoot, d1, d11, d111] = await storageService.createHierarchicalDirs([`${userRootPath}/d1/d11/d111`])
+        return { users, userRoot, d1, d11, d111 }
+      }
+
+      it('ベーシックケース', async () => {
+        const { d1, d111 } = await setupUserNodes()
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareDetail(d1, { readUIds: [GeneralUser().uid] })
+
+        // ノードと階層を構成するノードを取得
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d111.path)
+
+        // hierarchicalNodesを指定して検証
+        await storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+      })
+
+      it('階層を構成するノードの一部が欠けている場合', async () => {
+        const { d1, d11, d111 } = await setupUserNodes()
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareDetail(d1, { readUIds: [GeneralUser().uid] })
+
+        // ノード階層の一部を欠けさせてノードを取得
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d111.path)
+        const index = hierarchicalNodes.findIndex(node => node.path === d11.path)
+        hierarchicalNodes.splice(index, 1)
+
+        let actual!: AppError
+        try {
+          // hierarchicalNodesを指定して検証
+          await storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`There is a missing node in the hierarchy.`)
+        expect(actual.data).toEqual({
+          hierarchicalNodes: hierarchicalNodes.map(node => node.path),
+          missingNode: d11.path,
+        })
+      })
     })
   })
 
@@ -5244,20 +5310,86 @@ describe('CoreStorageService', () => {
       })
     })
 
-    it('サインインしていない場合', async () => {
-      const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
-      await storageService.createHierarchicalDirs([`${userRootPath}`])
-      const d1 = await storageService.createDir(`${userRootPath}/d1`)
-
-      let actual!: HttpException
-      try {
-        // サインインしていない状況を再現するために、トークンにundefinedを渡す
-        await storageService.validateReadable(undefined as any, d1.path)
-      } catch (err) {
-        actual = err
+    describe('IDトークン指定なし', () => {
+      async function setupUserNodes() {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        const [users, userRoot, d1, d11] = await storageService.createHierarchicalDirs([`${userRootPath}/d1/d11`])
+        return { users, userRoot, d1, d11 }
       }
 
-      expect(actual.getStatus()).toBe(401)
+      it('権限あり', async () => {
+        const { d11 } = await setupUserNodes()
+
+        // ノードを公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+
+        // IDトークンなしで検証
+        await storageService.validateReadable(undefined, d11.path)
+      })
+
+      it('権限なし', async () => {
+        const { d11 } = await setupUserNodes()
+
+        // ノードを非公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: false })
+
+        let actual!: HttpException
+        try {
+          // IDトークンなしで検証
+          await storageService.validateReadable(undefined, d11.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+    })
+
+    describe('hierarchicalNodesを指定した場合', () => {
+      async function setupUserNodes() {
+        const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
+        const [users, userRoot, d1, d11, d111] = await storageService.createHierarchicalDirs([`${userRootPath}/d1/d11/d111`])
+        return { users, userRoot, d1, d11, d111 }
+      }
+
+      it('ベーシックケース', async () => {
+        const { d1, d111 } = await setupUserNodes()
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareDetail(d1, { readUIds: [GeneralUser().uid] })
+
+        // ノードと階層を構成するノードを取得
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d111.path)
+
+        // hierarchicalNodesを指定して検証
+        await storageService.validateReadableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+      })
+
+      it('階層を構成するノードの一部が欠けている場合', async () => {
+        const { d1, d11, d111 } = await setupUserNodes()
+
+        // 上位ディレクトリに読み込み権限設定
+        await storageService.setDirShareDetail(d1, { readUIds: [GeneralUser().uid] })
+
+        // ノード階層の一部を欠けさせてノードを取得
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d111.path)
+        const index = hierarchicalNodes.findIndex(node => node.path === d11.path)
+        hierarchicalNodes.splice(index, 1)
+
+        let actual!: AppError
+        try {
+          // hierarchicalNodesを指定して検証
+          await storageService.validateReadableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`There is a missing node in the hierarchy.`)
+        expect(actual.data).toEqual({
+          hierarchicalNodes: hierarchicalNodes.map(node => node.path),
+          missingNode: d11.path,
+        })
+      })
     })
   })
 })

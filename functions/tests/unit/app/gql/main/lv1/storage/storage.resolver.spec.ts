@@ -3,8 +3,10 @@ import {
   AppAdminUser,
   AppAdminUserHeader,
   AppAdminUserToken,
-  ArticleTableOfContentsNodeFields,
-  ArticleTableOfContentsNodeFieldsName,
+  ArticleListItemFields,
+  ArticleListItemFieldsName,
+  ArticleTableOfContentsItemFields,
+  ArticleTableOfContentsItemFieldsName,
   GeneralUser,
   StorageNodeFields,
   StorageNodeFieldsName,
@@ -15,7 +17,8 @@ import {
   StorageUserToken,
   getGQLErrorStatus,
   requestGQL,
-  toGQLResponseArticleTableOfContentsNodes,
+  toGQLResponseArticleListItems,
+  toGQLResponseArticleTableOfContentsItems,
   toGQLResponseStorageNode,
   toGQLResponseStorageNodes,
 } from '../../../../../../helpers/app'
@@ -24,12 +27,13 @@ import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   GetArticleChildrenInput,
+  GetUserArticleListInput,
+  PaginationResult,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeKeyInput,
   StorageNodeShareDetail,
-  StoragePaginationResult,
   StorageSchema,
   StorageService,
   StorageServiceDI,
@@ -103,25 +107,25 @@ describe('Lv1 Storage Resolver', () => {
     describe('ベーシックケース', () => {
       it('疎通確認', async () => {
         const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-        const bundle = h.newDirNode(`${articleRootPath}/${StorageSchema.generateNodeId()}`, {
+        const bundle = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
           article: {
             dir: {
-              name: `リストバンドル`,
+              label: `リストバンドル`,
               type: 'ListBundle',
               sortOrder: 1,
             },
           },
         })
-        const art1 = h.newDirNode(`${bundle.path}/${StorageSchema.generateNodeId()}`, {
+        const art1 = h.newDirNode(`${bundle.path}/${StorageSchema.generateId()}`, {
           article: {
             dir: {
-              name: '記事1',
+              label: '記事1',
               type: 'Article',
               sortOrder: 1,
             },
             src: {
-              masterId: StorageSchema.generateNodeId(),
-              draftId: StorageSchema.generateNodeId(),
+              masterId: StorageSchema.generateId(),
+              draftId: StorageSchema.generateId(),
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
@@ -265,7 +269,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: StoragePaginationInput) {
+        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) {
           storageDescendants(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
@@ -287,7 +291,7 @@ describe('Lv1 Storage Resolver', () => {
       td.when(getDescendants(AppAdminUserToken(), input, { maxChunk: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
+      } as PaginationResult)
 
       const response = await requestGQL(
         app,
@@ -325,7 +329,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: StoragePaginationInput) {
+        query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) {
           storageChildren(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
@@ -905,7 +909,7 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageSchema.generateNodeId(),
+          id: StorageSchema.generateId(),
           path: `d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -929,7 +933,7 @@ describe('Lv1 Storage Resolver', () => {
     it('サインインしていない場合', async () => {
       const inputs: SignedUploadUrlInput[] = [
         {
-          id: StorageSchema.generateNodeId(),
+          id: StorageSchema.generateId(),
           path: `d1/d11/fileA.txt`,
           contentType: 'text/plain',
         },
@@ -960,13 +964,13 @@ describe('Lv1 Storage Resolver', () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const input: CreateArticleTypeDirInput = {
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       }
-      const bundle = h.newDirNode(`${input.dir}/${StorageSchema.generateNodeId()}`, {
+      const bundle = h.newDirNode(`${input.dir}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: input.name,
+            label: input.label,
             type: input.type,
             sortOrder: 1,
           },
@@ -992,7 +996,7 @@ describe('Lv1 Storage Resolver', () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const input: CreateArticleTypeDirInput = {
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       }
 
@@ -1065,11 +1069,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ1',
+            label: 'カテゴリ1',
             type: 'Category',
             sortOrder: 1,
           },
@@ -1077,13 +1081,13 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       const renameArticleDir = td.replace(storageService, 'renameArticleDir')
-      td.when(renameArticleDir(StorageUserToken(), cat1.path, cat1.article!.dir!.name)).thenResolve(cat1)
+      td.when(renameArticleDir(StorageUserToken(), cat1.path, cat1.article!.dir!.label)).thenResolve(cat1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: cat1.path, newName: cat1.article?.dir?.name },
+          variables: { dirPath: cat1.path, newName: cat1.article?.dir?.label },
         },
         { headers: StorageUserHeader() }
       )
@@ -1093,11 +1097,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ1',
+            label: 'カテゴリ1',
             type: 'Category',
             sortOrder: 1,
           },
@@ -1106,7 +1110,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: cat1.path, newName: cat1.article?.dir?.name },
+        variables: { dirPath: cat1.path, newName: cat1.article?.dir?.label },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1124,20 +1128,20 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ1',
+            label: 'カテゴリ1',
             type: 'Category',
             sortOrder: 2,
           },
         },
       })
-      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ2',
+            label: 'カテゴリ2',
             type: 'Category',
             sortOrder: 1,
           },
@@ -1165,20 +1169,20 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ1',
+            label: 'カテゴリ1',
             type: 'Category',
             sortOrder: 2,
           },
         },
       })
-      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: 'カテゴリ2',
+            label: 'カテゴリ2',
             type: 'Category',
             sortOrder: 1,
           },
@@ -1217,17 +1221,17 @@ describe('Lv1 Storage Resolver', () => {
 
     function newArticleNodes(user: UserIdClaims) {
       const articleRootPath = StorageService.toArticleRootPath(user)
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: '記事1',
+            label: '記事1',
             type: 'Article',
             sortOrder: 1,
           },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: dayjs('2020-01-02T00:00:00.000Z'),
             updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
           },
@@ -1302,17 +1306,17 @@ describe('Lv1 Storage Resolver', () => {
 
     function newArticleNodes(user: UserIdClaims) {
       const articleRootPath = StorageService.toArticleRootPath(user)
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: '記事1',
+            label: '記事1',
             type: 'Article',
             sortOrder: 1,
           },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: dayjs('2020-01-02T00:00:00.000Z'),
             updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
           },
@@ -1386,7 +1390,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('articleChildren', () => {
     const gql = {
       query: `
-        query GetArticleChildren($input: GetArticleChildrenInput!, $pagination: StoragePaginationInput) {
+        query GetArticleChildren($input: GetArticleChildrenInput!, $pagination: PaginationInput) {
           articleChildren(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
@@ -1401,11 +1405,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const bundlePath = `${articleRootPath}/${StorageSchema.generateNodeId()}`
-      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateNodeId()}`, {
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
           dir: {
-            name: '記事1',
+            label: '記事1',
             type: 'Article',
             sortOrder: 1,
           },
@@ -1418,7 +1422,7 @@ describe('Lv1 Storage Resolver', () => {
       td.when(getArticleChildren(input, pagination)).thenResolve({
         list: [art1],
         nextPageToken: 'abcdefg',
-      } as StoragePaginationResult)
+      } as PaginationResult)
 
       const response = await requestGQL(
         app,
@@ -1449,29 +1453,105 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('articleTableOfContents', () => {
+  describe('userArticleList', () => {
     const gql = {
       query: `
-        query GetArticleTableOfContents($userName: String!) {
-          articleTableOfContents(userName: $userName) {
-            ...${ArticleTableOfContentsNodeFieldsName}
+        query GetUserArticleList($input: GetUserArticleListInput!, $pagination: PaginationInput) {
+          userArticleList(input: $input, pagination: $pagination) {
+            list {
+              ...${ArticleListItemFieldsName}
+            }
+            nextPageToken
           }
         }
-        ${ArticleTableOfContentsNodeFields}
+        ${ArticleListItemFields}
       `,
     }
 
     function createTestData() {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const treeBundle = h.newTableOfContentsNode(`${articleRootPath}/${StorageSchema.generateNodeId()}`, {
+      const blog = h.newArticleListItem({
+        path: `${articleRootPath}/${StorageSchema.generateId()}`,
+        label: 'ブログ',
+      })
+      const art1 = h.newArticleListItem({
+        path: `${blog.path}/${StorageSchema.generateId()}`,
+        label: '記事1',
+      })
+      return { blog, art1 }
+    }
+
+    it('疎通確認', async () => {
+      const { blog, art1 } = createTestData()
+
+      const input: GetUserArticleListInput = { userName: StorageUser().userName, articleTypeDirId: blog.id }
+      const pagination = { maxChunk: 3 }
+      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
+      td.when(getUserArticleList(StorageUserToken(), input, pagination)).thenResolve({
+        list: [art1],
+        nextPageToken: 'abcdefg',
+      })
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { input, pagination },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
+      expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+    })
+
+    it('サインインしていない場合', async () => {
+      const { blog, art1 } = createTestData()
+
+      const input: GetUserArticleListInput = { userName: StorageUser().userName, articleTypeDirId: blog.id }
+      const pagination = { maxChunk: 3 }
+      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
+      td.when(getUserArticleList(undefined, input, pagination)).thenResolve({
+        list: [art1],
+        nextPageToken: 'abcdefg',
+      })
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { input, pagination },
+      })
+
+      expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
+      expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+    })
+  })
+
+  describe('userArticleTableOfContents', () => {
+    const gql = {
+      query: `
+        query GetUserArticleTableOfContents($userName: String!) {
+          userArticleTableOfContents(userName: $userName) {
+            ...${ArticleTableOfContentsItemFieldsName}
+          }
+        }
+        ${ArticleTableOfContentsItemFields}
+      `,
+    }
+
+    function createTestData() {
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const treeBundle = h.newTableOfContentsItems({
+        path: `${articleRootPath}/${StorageSchema.generateId()}`,
         type: 'TreeBundle',
         label: 'ツリーバンドル1',
       })
-      const cat1 = h.newTableOfContentsNode(`${treeBundle}/${StorageSchema.generateNodeId()}`, {
+      const cat1 = h.newTableOfContentsItems({
+        path: `${treeBundle.path}/${StorageSchema.generateId()}`,
         type: 'Category',
         label: 'カテゴリ1',
       })
-      const art1 = h.newTableOfContentsNode(`${cat1}/${StorageSchema.generateNodeId()}`, {
+      const art1 = h.newTableOfContentsItems({
+        path: `${cat1.path}/${StorageSchema.generateId()}`,
         type: 'Article',
         label: '記事1',
       })
@@ -1481,8 +1561,8 @@ describe('Lv1 Storage Resolver', () => {
     it('疎通確認', async () => {
       const { treeBundle, cat1, art1 } = createTestData()
 
-      const getArticleTableOfContents = td.replace(storageService, 'getArticleTableOfContents')
-      td.when(getArticleTableOfContents(StorageUser().userName, StorageUserToken())).thenResolve([treeBundle, cat1, art1])
+      const getUserArticleTableOfContents = td.replace(storageService, 'getUserArticleTableOfContents')
+      td.when(getUserArticleTableOfContents(StorageUserToken(), StorageUser().userName)).thenResolve([treeBundle, cat1, art1])
 
       const response = await requestGQL(
         app,
@@ -1493,21 +1573,21 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.articleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsNodes([treeBundle, cat1, art1]))
+      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsItems([treeBundle, cat1, art1]))
     })
 
     it('サインインしていない場合', async () => {
       const { treeBundle, cat1, art1 } = createTestData()
 
-      const getArticleTableOfContents = td.replace(storageService, 'getArticleTableOfContents')
-      td.when(getArticleTableOfContents(StorageUser().userName, undefined)).thenResolve([treeBundle, cat1, art1])
+      const getUserArticleTableOfContents = td.replace(storageService, 'getUserArticleTableOfContents')
+      td.when(getUserArticleTableOfContents(undefined, StorageUser().userName)).thenResolve([treeBundle, cat1, art1])
 
       const response = await requestGQL(app, {
         ...gql,
         variables: { userName: StorageUser().userName },
       })
 
-      expect(response.body.data.articleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsNodes([treeBundle, cat1, art1]))
+      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsItems([treeBundle, cat1, art1]))
     })
   })
 })

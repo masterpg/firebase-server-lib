@@ -9,12 +9,14 @@ import {
 } from '../../../../helpers/app'
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
-  ArticleTableOfContentsNode,
+  ArticleListItem,
+  ArticleTableOfContentsItem,
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   GetArticleChildrenInput,
   GetArticleSrcResult,
+  GetUserArticleListInput,
   StorageNode,
   StorageSchema,
   StorageService,
@@ -22,9 +24,9 @@ import {
   StorageServiceModule,
   StorageUploadDataItem,
 } from '../../../../../src/app/services'
-import { Test, TestingModule } from '@nestjs/testing'
 import { pickProps, removeBothEndsSlash, shuffleArray } from 'web-base-lib'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
+import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import dayjs = require('dayjs')
 
@@ -38,7 +40,6 @@ initApp()
 //========================================================================
 
 describe('StorageService', () => {
-  let testingModule!: TestingModule
   let storageService!: StorageTestService
   let devUtilsService!: DevUtilsServiceDI.type
   let h!: StorageTestHelper
@@ -52,7 +53,7 @@ describe('StorageService', () => {
   })
 
   beforeEach(async () => {
-    testingModule = await Test.createTestingModule({
+    const testingModule = await Test.createTestingModule({
       imports: [DevUtilsServiceModule, StorageServiceModule],
     }).compile()
 
@@ -73,13 +74,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1の本文ファイル
@@ -146,14 +147,14 @@ describe('StorageService', () => {
         // テスト対象実行
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
         const actual = await storageService.createArticleTypeDir(input)
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(1)
         await h.existsNodes([actual])
@@ -167,7 +168,7 @@ describe('StorageService', () => {
         // テスト対象実行
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
         const options = {
@@ -186,13 +187,13 @@ describe('StorageService', () => {
         // バンドル1の作成
         const bundle1 = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル1',
+          label: 'バンドル1',
           type: 'ListBundle',
         })
         // バンドル2の作成
         const bundle2 = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル2',
+          label: 'バンドル2',
           type: 'ListBundle',
         })
 
@@ -207,7 +208,7 @@ describe('StorageService', () => {
         // バンドルを作成
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
         await storageService.createArticleTypeDir(input)
@@ -218,7 +219,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(2)
         await h.existsNodes([actual])
@@ -227,7 +228,7 @@ describe('StorageService', () => {
       it('バンドルをバケット直下に作成しようとした場合', async () => {
         const input: CreateArticleTypeDirInput = {
           dir: ``,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
 
@@ -250,7 +251,7 @@ describe('StorageService', () => {
         // バンドル作成の引数
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}/aaa`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
 
@@ -275,7 +276,7 @@ describe('StorageService', () => {
         const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
         const input: CreateArticleTypeDirInput = {
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         }
 
@@ -301,13 +302,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -316,7 +317,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(1)
         await h.existsNodes([actual])
@@ -329,19 +330,19 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
         // カテゴリ1を作成
         const cat1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         })
         // カテゴリ11作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${cat1.path}`,
-          name: 'カテゴリ11',
+          label: 'カテゴリ11',
           type: 'Category',
         }
 
@@ -350,7 +351,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(1)
         await h.existsNodes([actual])
@@ -363,13 +364,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
         const options = {
@@ -389,20 +390,20 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
 
         // カテゴリ1を作成
         const cat1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         })
         // カテゴリ2を作成
         const cat2 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: 'カテゴリ2',
+          label: 'カテゴリ2',
           type: 'Category',
         })
 
@@ -417,13 +418,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
         // カテゴリ1を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
         const cat1 = await storageService.createArticleTypeDir(input)
@@ -434,7 +435,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(2)
         await h.existsNodes([actual])
@@ -444,7 +445,7 @@ describe('StorageService', () => {
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: ``,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -468,7 +469,7 @@ describe('StorageService', () => {
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${userRootNode.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -493,13 +494,13 @@ describe('StorageService', () => {
         // リストバンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -524,19 +525,19 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: '',
+          label: '',
           type: 'TreeBundle',
         })
         // 記事1の作成
         const art1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         })
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${art1.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -563,7 +564,7 @@ describe('StorageService', () => {
         // カテゴリ1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${assets.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -588,14 +589,14 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // カテゴリ1作成の引数を作成
         // ※カテゴリの上位ディレクトリが存在しない状態でカテゴリの作成を試みる
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}/dummy`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         }
 
@@ -622,13 +623,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
 
@@ -637,7 +638,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(1)
         expect(actual.article?.src?.masterId).toBeDefined()
@@ -669,19 +670,19 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'TreeBundle',
         })
         // カテゴリ1を作成
         const cat1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: 'カテゴリ1',
+          label: 'カテゴリ1',
           type: 'Category',
         })
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${cat1.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
 
@@ -690,7 +691,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir!.name).toBe(input.name)
+        expect(actual.article?.dir!.label).toBe(input.label)
         expect(actual.article?.dir!.type).toBe(input.type)
         expect(actual.article?.dir!.sortOrder).toBe(1)
         expect(actual.article?.src?.masterId).toBeDefined()
@@ -722,13 +723,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
         const options = {
@@ -748,20 +749,20 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
 
         // 記事1の作成
         const art1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         })
         // 記事2の作成
         const art2 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: '記事2',
+          label: '記事2',
           type: 'Article',
         })
 
@@ -776,13 +777,13 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // 記事を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
         const art1 = await storageService.createArticleTypeDir(input)
@@ -793,7 +794,7 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.name).toBe(input.name)
+        expect(actual.article?.dir?.label).toBe(input.label)
         expect(actual.article?.dir?.type).toBe(input.type)
         expect(actual.article?.dir?.sortOrder).toBe(2)
         expect(actual.article?.src?.masterId).toBeDefined()
@@ -822,7 +823,7 @@ describe('StorageService', () => {
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: ``,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
 
@@ -846,7 +847,7 @@ describe('StorageService', () => {
         // 記事1作成の引数を作成
         const input: CreateArticleTypeDirInput = {
           dir: `${userRootPath}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
 
@@ -871,14 +872,14 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // 記事1作成の引数を作成
         // ※カテゴリの上位ディレクトリが存在しない状態で記事ディレクトリ作成を試みる
         const input: CreateArticleTypeDirInput = {
           dir: `${bundle.path}/dummy`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         }
 
@@ -903,20 +904,20 @@ describe('StorageService', () => {
         // バンドルを作成
         const bundle = await storageService.createArticleTypeDir({
           dir: `${articleRootPath}`,
-          name: 'バンドル',
+          label: 'バンドル',
           type: 'ListBundle',
         })
         // 記事1を作成
         const art1 = await storageService.createArticleTypeDir({
           dir: `${bundle.path}`,
-          name: '記事1',
+          label: '記事1',
           type: 'Article',
         })
         // 記事11作成の引数を作成
         // ※作成した記事ディレクトリの下にさらに記事ディレクトリを作成するよう準備
         const input: CreateArticleTypeDirInput = {
           dir: `${art1.path}`,
-          name: '記事11',
+          label: '記事11',
           type: 'Article',
         }
 
@@ -974,13 +975,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
 
@@ -1059,7 +1060,7 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // ディレクトリのパスを作成
@@ -1083,13 +1084,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'TreeBundle',
       })
       // カテゴリを作成
       const cat1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'Category',
       })
       // ディレクトリのパスを作成
@@ -1141,13 +1142,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
 
@@ -1155,7 +1156,7 @@ describe('StorageService', () => {
       const actual = await storageService.renameArticleDir(art1.path, 'Article1')
 
       // 戻り値の検証
-      expect(actual.article?.dir?.name).toBe('Article1')
+      expect(actual.article?.dir?.label).toBe('Article1')
       expect(actual.version).toBe(art1.version + 1)
       await h.existsNodes([actual])
     })
@@ -1167,13 +1168,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1のソースファイルを取得
@@ -1234,25 +1235,25 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
 
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
         sortOrder: 1,
       })
       const art2 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事2',
+        label: '記事2',
         type: 'Article',
         sortOrder: 2,
       })
       const art3 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事3',
+        label: '記事3',
         type: 'Article',
         sortOrder: 3,
       })
@@ -1273,31 +1274,31 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'TreeBundle',
       })
       // カテゴリを作成
       const cat1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: 'カテゴリ1',
+        label: 'カテゴリ1',
         type: 'Category',
       })
 
       const art1 = await storageService.createArticleTypeDir({
         dir: `${cat1.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
         sortOrder: 1,
       })
       const art2 = await storageService.createArticleTypeDir({
         dir: `${cat1.path}`,
-        name: '記事2',
+        label: '記事2',
         type: 'Article',
         sortOrder: 2,
       })
       const art3 = await storageService.createArticleTypeDir({
         dir: `${cat1.path}`,
-        name: '記事3',
+        label: '記事3',
         type: 'Article',
         sortOrder: 3,
       })
@@ -1322,21 +1323,21 @@ describe('StorageService', () => {
       // バンドル1を作成
       const bundle1 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル1',
+        label: 'バンドル1',
         type: 'ListBundle',
         sortOrder: 1,
       })
       // バンドル2を作成
       const bundle2 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル2',
+        label: 'バンドル2',
         type: 'ListBundle',
         sortOrder: 2,
       })
       // バンドル3を作成
       const bundle3 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル3',
+        label: 'バンドル3',
         type: 'ListBundle',
         sortOrder: 3,
       })
@@ -1357,27 +1358,27 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'TreeBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
         sortOrder: 1,
       })
       // 記事2を作成
       const art2 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事2',
+        label: '記事2',
         type: 'Article',
         sortOrder: 2,
       })
       // カテゴリ1を作成
       const cat1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: 'カテゴリ1',
+        label: 'カテゴリ1',
         type: 'Category',
         sortOrder: 3,
       })
@@ -1399,26 +1400,26 @@ describe('StorageService', () => {
       // バンドル1を作成
       const bundle1 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル1',
+        label: 'バンドル1',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle1.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
 
       // バンドル2を作成
       const bundle2 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル2',
+        label: 'バンドル2',
         type: 'ListBundle',
       })
       // 記事2を作成
       const art2 = await storageService.createArticleTypeDir({
         dir: `${bundle2.path}`,
-        name: '記事2',
+        label: '記事2',
         type: 'Article',
       })
 
@@ -1441,14 +1442,14 @@ describe('StorageService', () => {
       // バンドル1を作成
       const bundle1 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル1',
+        label: 'バンドル1',
         type: 'ListBundle',
         sortOrder: 1,
       })
       // バンドル2を作成
       const bundle2 = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル2',
+        label: 'バンドル2',
         type: 'ListBundle',
         sortOrder: 2,
       })
@@ -1473,13 +1474,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事ディレクトリ配下にディレクトリを作成
@@ -1533,13 +1534,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1の本文ファイル
@@ -1622,13 +1623,13 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1の本文ファイル
@@ -1702,13 +1703,13 @@ describe('StorageService', () => {
       // バンドル
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1
       const art1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
       // 記事1のマスターファイル
@@ -1720,12 +1721,12 @@ describe('StorageService', () => {
       // 記事1のレスポンス
       const art1_result: GetArticleSrcResult = {
         id: art1.id,
-        title: art1.article!.dir!.name,
+        label: art1.article!.dir!.label,
         src: '# header1',
-        dir: [{ id: bundle.id, title: bundle.article!.dir!.name }],
+        dir: [{ id: bundle.id, label: bundle.article!.dir!.label }],
         path: [
-          { id: bundle.id, title: bundle.article!.dir!.name },
-          { id: art1.id, title: art1.article!.dir!.name },
+          { id: bundle.id, label: bundle.article!.dir!.label },
+          { id: art1.id, label: art1.article!.dir!.label },
         ],
         createdAt: art1_master.createdAt,
         updatedAt: art1_master.updatedAt,
@@ -1762,7 +1763,571 @@ describe('StorageService', () => {
     })
   })
 
+  describe('getUserArticleList', () => {
+    let users: StorageNode
+    let userRoot: StorageNode
+    let articleRoot: StorageNode
+    let ts: StorageNode
+    let ts_interface: StorageNode
+    let ts_class: StorageNode
+    let ts_types: StorageNode
+    let js: StorageNode
+
+    beforeAll(async () => {
+      await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    async function setupArticleTypeNodes(): Promise<void> {
+      // users
+      // └test.storage
+      //   ├articles
+      //   │├TypeScript
+      //   ││├Interface
+      //   │││└master.src.md
+      //   ││├Class
+      //   │││└master.src.md
+      //   ││└Types
+      //   ││  ├Primitive Type
+      //   ││  │└master.src.md
+      //   ││  └Literal Type
+      //   ││    └master.src.md
+      //   │└JavaScript
+      //   ︙  ︙
+
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
+
+      // TypeScript
+      ts = await storageService.createArticleTypeDir({
+        dir: `${articleRoot.path}`,
+        label: 'TypeScript',
+        type: 'TreeBundle',
+        sortOrder: 2,
+      })
+
+      // Interface
+      ts_interface = await storageService.createArticleTypeDir({
+        dir: `${ts.path}`,
+        label: 'Interface',
+        type: 'Article',
+        sortOrder: 3,
+      })
+
+      // Class
+      ts_class = await storageService.createArticleTypeDir({
+        dir: `${ts.path}`,
+        label: 'Class',
+        type: 'Article',
+        sortOrder: 2,
+      })
+
+      // Types
+      ts_types = await storageService.createArticleTypeDir({
+        dir: `${ts.path}`,
+        label: 'Types',
+        type: 'Category',
+        sortOrder: 1,
+      })
+
+      // JavaScript
+      js = await storageService.createArticleTypeDir({
+        dir: `${articleRoot.path}`,
+        label: 'JavaScript',
+        type: 'TreeBundle',
+        sortOrder: 1,
+      })
+    }
+
+    function verifyArticleListItem(actual: ArticleListItem, expected: StorageNode): void {
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
+      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
+      expect(actual.label).toBe(expected.article?.dir?.label)
+      expect(actual.createdAt).toEqual(expected.article?.src?.createdAt)
+      expect(actual.updatedAt).toEqual(expected.article?.src?.updatedAt)
+    }
+
+    describe('他ユーザーによる記事リスト取得', () => {
+      it('対象カテゴリを公開設定', async () => {
+        await setupArticleTypeNodes()
+
+        // 対象カテゴリを公開設定
+        await storageService.setDirShareDetail(ts, { isPublic: true })
+
+        const actual = await storageService.getUserArticleList(GeneralUserToken(), {
+          userName: StorageUser().userName,
+          articleTypeDirId: ts.id,
+        })
+
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(2)
+        verifyArticleListItem(actual.list[0], ts_interface)
+        verifyArticleListItem(actual.list[1], ts_class)
+      })
+
+      it('対象カテゴリを公開設定 - 記事の一部を非公開設定', async () => {
+        await setupArticleTypeNodes()
+
+        // 対象カテゴリを公開設定
+        await storageService.setDirShareDetail(ts, { isPublic: true })
+        // 対象カテゴリ直下の記事を一部非公開設定
+        await storageService.setDirShareDetail(ts_interface, { isPublic: false })
+
+        const actual = await storageService.getUserArticleList(GeneralUserToken(), {
+          userName: StorageUser().userName,
+          articleTypeDirId: ts.id,
+        })
+
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(1)
+        verifyArticleListItem(actual.list[0], ts_class)
+      })
+
+      it('対象カテゴリを公開設定 - 記事の一部に読み込み権限設定', async () => {
+        await setupArticleTypeNodes()
+
+        // 対象カテゴリを非公開設定
+        await storageService.setDirShareDetail(ts, { isPublic: false })
+        // 対象カテゴリ直下の記事を一部読み込み権限設定
+        await storageService.setDirShareDetail(ts_interface, { readUIds: [GeneralUserToken().uid] })
+
+        const actual = await storageService.getUserArticleList(GeneralUserToken(), {
+          userName: StorageUser().userName,
+          articleTypeDirId: ts.id,
+        })
+
+        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.list.length).toBe(1)
+        verifyArticleListItem(actual.list[0], ts_interface)
+      })
+    })
+
+    it('自ユーザーによる記事リスト取得', async () => {
+      await setupArticleTypeNodes()
+
+      const actual = await storageService.getUserArticleList(StorageUserToken(), {
+        userName: StorageUser().userName,
+        articleTypeDirId: ts.id,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(2)
+      verifyArticleListItem(actual.list[0], ts_interface)
+      verifyArticleListItem(actual.list[1], ts_class)
+    })
+
+    it('サインインしていないユーザーによる記事リスト取得', async () => {
+      await setupArticleTypeNodes()
+
+      // 対象カテゴリを公開設定
+      await storageService.setDirShareDetail(ts, { isPublic: true })
+
+      const actual = await storageService.getUserArticleList(undefined, {
+        userName: StorageUser().userName,
+        articleTypeDirId: ts.id,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(2)
+      verifyArticleListItem(actual.list[0], ts_interface)
+      verifyArticleListItem(actual.list[1], ts_class)
+    })
+
+    it('対象カテゴリに記事リストがない場合', async () => {
+      // 記事ルートを作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
+
+      // TypeScript
+      ts = await storageService.createArticleTypeDir({
+        dir: `${articleRoot.path}`,
+        label: 'TypeScript',
+        type: 'TreeBundle',
+        sortOrder: 1,
+      })
+
+      const actual = await storageService.getUserArticleList(StorageUserToken(), {
+        userName: StorageUser().userName,
+        articleTypeDirId: ts.id,
+      })
+
+      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.list.length).toBe(0)
+    })
+
+    it('大量データの場合', async () => {
+      await setupArticleTypeNodes()
+
+      await Promise.all(
+        [...Array(10)].map(async (_, i) => {
+          await storageService.createArticleTypeDir({
+            dir: `${js.path}`,
+            label: `art${(i + 1).toString().padStart(2, '0')}`,
+            type: 'Article',
+            sortOrder: i + 1,
+          })
+        })
+      )
+
+      // 大量データを想定して検索を行う
+      const actual: ArticleListItem[] = []
+      const input: GetUserArticleListInput = { userName: StorageUser().userName, articleTypeDirId: js.id }
+      let fetched = await storageService.getUserArticleList(StorageUserToken(), input, { maxChunk: 3 })
+      fetched.list
+      actual.push(...fetched.list)
+      while (fetched.nextPageToken) {
+        fetched = await storageService.getUserArticleList(StorageUserToken(), input, { maxChunk: 3, pageToken: fetched.nextPageToken })
+        actual.push(...fetched.list)
+      }
+
+      expect(actual.length).toBe(10)
+      expect(actual[0].label).toBe(`art10`)
+      expect(actual[1].label).toBe(`art09`)
+      expect(actual[2].label).toBe(`art08`)
+      expect(actual[3].label).toBe(`art07`)
+      expect(actual[4].label).toBe(`art06`)
+      expect(actual[5].label).toBe(`art05`)
+      expect(actual[6].label).toBe(`art04`)
+      expect(actual[7].label).toBe(`art03`)
+      expect(actual[8].label).toBe(`art02`)
+      expect(actual[9].label).toBe(`art01`)
+    })
+  })
+
+  describe('getUserArticleTableOfContents', () => {
+    let users: StorageNode
+    let userRoot: StorageNode
+    let articleRoot: StorageNode
+    let blog: StorageNode
+    let blog_note2: StorageNode
+    let blog_note1: StorageNode
+    let js: StorageNode
+    let js_variable: StorageNode
+    let ts: StorageNode
+    let ts_interface: StorageNode
+    let ts_class: StorageNode
+    let ts_types: StorageNode
+    let ts_types_primitive: StorageNode
+    let ts_types_literal: StorageNode
+
+    beforeAll(async () => {
+      await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    async function setupArticleTypeNodes(): Promise<void> {
+      // users
+      // └test.storage
+      //   ├articles
+      //   │├Blog
+      //   ││└Note2
+      //   │││└master.src.md
+      //   ││└Note1
+      //   ││  └master.src.md
+      //   │└Programming
+      //   │  ├JavaScript
+      //   │  │└Variable
+      //   │  │  └master.src.md
+      //   │  └TypeScript
+      //   │    ├Interface
+      //   │    │└master.src.md
+      //   │    ├Class
+      //   │    │└master.src.md
+      //   │    └Types
+      //   │      ├Primitive Type
+      //   │      │└master.src.md
+      //   │      └Literal Type
+      //   ︙        └master.src.md
+
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
+
+      // Blog
+      const input_blog: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}`,
+        label: 'Blog',
+        type: 'ListBundle',
+        sortOrder: 2,
+      }
+
+      // Blog/Note2
+      const input_blog_note2: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_blog.id}`,
+        label: 'Note2',
+        type: 'Article',
+        sortOrder: 2,
+      }
+
+      // Blog/Note1
+      const input_blog_note1: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_blog.id}`,
+        label: 'Note1',
+        type: 'Article',
+        sortOrder: 1,
+      }
+
+      // JavaScript
+      const input_js: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}`,
+        label: 'JavaScript',
+        type: 'TreeBundle',
+        sortOrder: 2,
+      }
+
+      // JavaScript/Variable
+      const input_js_variable: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_js.id}`,
+        label: 'Variable',
+        type: 'Article',
+        sortOrder: 1,
+      }
+
+      // TypeScript
+      const input_ts: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}`,
+        label: 'TypeScript',
+        type: 'TreeBundle',
+        sortOrder: 1,
+      }
+
+      // TypeScript/Interface
+      const input_ts_interface: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_ts.id}`,
+        label: 'Interface',
+        type: 'Article',
+        sortOrder: 3,
+      }
+
+      // TypeScript/Class
+      const input_ts_class: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_ts.id}`,
+        label: 'Class',
+        type: 'Article',
+        sortOrder: 2,
+      }
+
+      // TypeScript/Types
+      const input_ts_types: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_ts.id}`,
+        label: 'Types',
+        type: 'Category',
+        sortOrder: 1,
+      }
+
+      // TypeScript/Types/Primitive Type
+      const input_ts_types_primitive: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_ts.id}/${input_ts_types.id}`,
+        label: 'Primitive Type',
+        type: 'Article',
+        sortOrder: 2,
+      }
+
+      // TypeScript/Types/Literal Type
+      const input_ts_types_literal: CreateArticleTypeDirInput = {
+        id: StorageSchema.generateId(),
+        dir: `${articleRoot.path}/${input_ts.id}/${input_ts_types.id}`,
+        label: 'Literal Type',
+        type: 'Article',
+        sortOrder: 1,
+      }
+
+      try {
+        await Promise.all([
+          storageService.createArticleTypeDir(input_blog).then(node => (blog = node)),
+          storageService.createArticleTypeDir(input_js).then(node => (js = node)),
+          storageService.createArticleTypeDir(input_ts).then(node => (ts = node)),
+        ])
+        await Promise.all([
+          storageService.createArticleTypeDir(input_blog_note2).then(node => (blog_note2 = node)),
+          storageService.createArticleTypeDir(input_blog_note1).then(node => (blog_note1 = node)),
+          storageService.createArticleTypeDir(input_js_variable).then(node => (js_variable = node)),
+          storageService.createArticleTypeDir(input_ts_interface).then(node => (ts_interface = node)),
+          storageService.createArticleTypeDir(input_ts_class).then(node => (ts_class = node)),
+          storageService.createArticleTypeDir(input_ts_types).then(node => (ts_types = node)),
+        ])
+        await Promise.all([
+          storageService.createArticleTypeDir(input_ts_types_primitive).then(node => (ts_types_primitive = node)),
+          storageService.createArticleTypeDir(input_ts_types_literal).then(node => (ts_types_literal = node)),
+        ])
+      } catch (err) {
+        console.log(err)
+      }
+    }
+
+    function verifyArticleTableOfContentsItem(actual: ArticleTableOfContentsItem, expected: StorageNode): void {
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
+      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
+      expect(actual.label).toBe(expected.article?.dir?.label)
+      expect(actual.type).toBe(expected.article?.dir?.type)
+    }
+
+    describe('他ユーザーによる目次取得', () => {
+      it('全ての記事系ディレクトリは公開未設定', async () => {
+        await setupArticleTypeNodes()
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), StorageUser().userName)
+
+        // リストバンドルは権限がなくても取得される！
+        expect(actual.length).toBe(1)
+        verifyArticleTableOfContentsItem(actual[0], blog)
+      })
+
+      it('カテゴリを公開設定 - カテゴリ配下に読み込み可能な記事がある場合', async () => {
+        await setupArticleTypeNodes()
+
+        await Promise.all([
+          // カテゴリを公開設定
+          storageService.setDirShareDetail(ts, { isPublic: true }),
+          // カテゴリ配下のノードの一部を非公開設定
+          storageService.setDirShareDetail(ts_class, { isPublic: false }),
+          storageService.setDirShareDetail(ts_types, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), StorageUser().userName)
+
+        expect(actual.length).toBe(3)
+        verifyArticleTableOfContentsItem(actual[0], blog)
+        verifyArticleTableOfContentsItem(actual[1], ts)
+        verifyArticleTableOfContentsItem(actual[2], ts_interface)
+      })
+
+      it('カテゴリを公開設定 - カテゴリ配下に読み込み可能な記事がない場合', async () => {
+        await setupArticleTypeNodes()
+
+        await Promise.all([
+          // カテゴリを公開設定
+          storageService.setDirShareDetail(js, { isPublic: true }),
+          // カテゴリ配下のノードを非公開設定
+          storageService.setDirShareDetail(js_variable, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), StorageUser().userName)
+
+        // カテゴリ配下に読み込み可能な「記事」がない場合、カテゴリは取得されない
+        expect(actual.length).toBe(1)
+        verifyArticleTableOfContentsItem(actual[0], blog)
+      })
+
+      it('カテゴリを非公開設定 - カテゴリ配下に公開記事ある場合', async () => {
+        await setupArticleTypeNodes()
+
+        await Promise.all([
+          // カテゴリを非公開設定
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+          storageService.setDirShareDetail(ts_types, { isPublic: false }),
+          // カテゴリ配下のノードを公開設定
+          storageService.setDirShareDetail(ts_types_primitive, { isPublic: true }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), StorageUser().userName)
+
+        // カテゴリが非公開でも配下の記事が公開されていればその階層が取得される
+        expect(actual.length).toBe(4)
+        verifyArticleTableOfContentsItem(actual[0], blog)
+        verifyArticleTableOfContentsItem(actual[1], ts)
+        verifyArticleTableOfContentsItem(actual[2], ts_types)
+        verifyArticleTableOfContentsItem(actual[3], ts_types_primitive)
+      })
+
+      it('カテゴリを非公開設定 - カテゴリ配下に読み込み権限設定された記事がある場合', async () => {
+        await setupArticleTypeNodes()
+
+        await Promise.all([
+          // カテゴリを非公開設定
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+          storageService.setDirShareDetail(ts_types, { isPublic: false }),
+          // カテゴリ配下のノードを読み込み権限設定
+          storageService.setDirShareDetail(ts_types_primitive, { readUIds: [GeneralUserToken().uid] }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), StorageUser().userName)
+
+        // カテゴリが非公開でも配下の記事が読み込み権限設定されていればその階層が取得される
+        expect(actual.length).toBe(4)
+        verifyArticleTableOfContentsItem(actual[0], blog)
+        verifyArticleTableOfContentsItem(actual[1], ts)
+        verifyArticleTableOfContentsItem(actual[2], ts_types)
+        verifyArticleTableOfContentsItem(actual[3], ts_types_primitive)
+      })
+    })
+
+    it('自ユーザーによる目次取得', async () => {
+      await setupArticleTypeNodes()
+
+      const actual = await storageService.getUserArticleTableOfContents(StorageUserToken(), StorageUser().userName)
+
+      expect(actual.length).toBe(9)
+      verifyArticleTableOfContentsItem(actual[0], blog)
+      verifyArticleTableOfContentsItem(actual[1], js)
+      verifyArticleTableOfContentsItem(actual[2], js_variable)
+      verifyArticleTableOfContentsItem(actual[3], ts)
+      verifyArticleTableOfContentsItem(actual[4], ts_interface)
+      verifyArticleTableOfContentsItem(actual[5], ts_class)
+      verifyArticleTableOfContentsItem(actual[6], ts_types)
+      verifyArticleTableOfContentsItem(actual[7], ts_types_primitive)
+      verifyArticleTableOfContentsItem(actual[8], ts_types_literal)
+    })
+
+    it('サインインしていないユーザーによる目次取得', async () => {
+      await setupArticleTypeNodes()
+
+      await Promise.all([
+        // カテゴリを公開設定
+        storageService.setDirShareDetail(ts, { isPublic: true }),
+        // カテゴリ配下のノードの一部を非公開設定
+        storageService.setDirShareDetail(ts_class, { isPublic: false }),
+        storageService.setDirShareDetail(ts_types, { isPublic: false }),
+      ])
+
+      const actual = await storageService.getUserArticleTableOfContents(undefined, StorageUser().userName)
+
+      expect(actual.length).toBe(3)
+      verifyArticleTableOfContentsItem(actual[0], blog)
+      verifyArticleTableOfContentsItem(actual[1], ts)
+      verifyArticleTableOfContentsItem(actual[2], ts_interface)
+    })
+
+    it('目次がない場合', async () => {
+      // 記事ルートを作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+
+      const actual = await storageService.getUserArticleTableOfContents(StorageUserToken(), StorageUser().userName)
+
+      expect(actual.length).toBe(0)
+    })
+
+    it('記事ルートがまだ存在しない場合', async () => {
+      const actual = await storageService.getUserArticleTableOfContents(StorageUserToken(), StorageUser().userName)
+
+      expect(actual.length).toBe(0)
+    })
+  })
+
   describe('getArticleChildren', () => {
+    let users: StorageNode
+    let userRoot: StorageNode
     let articleRoot: StorageNode
     let programming: StorageNode
     let introduction: StorageNode
@@ -1788,20 +2353,22 @@ describe('StorageService', () => {
       //   │  ├js
       //   │  │└variable
       //   │  │  └master.src.md
-      //   │  └ts
+      //   │  ├ts
       //   │  │└class
       //   │  │  └master.src.md
       //   │  └py
       //   └tmp
 
-      // users/test.storage
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
 
       // programming
       programming = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'programming',
+        label: 'programming',
         type: 'TreeBundle',
         sortOrder: 1,
       })
@@ -1809,7 +2376,7 @@ describe('StorageService', () => {
       // introduction
       introduction = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'introduction',
+        label: 'introduction',
         type: 'Article',
         sortOrder: 4,
       })
@@ -1819,14 +2386,14 @@ describe('StorageService', () => {
       // js
       js = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'js',
+        label: 'js',
         type: 'Category',
         sortOrder: 3,
       })
       // js/variable
       variable = await storageService.createArticleTypeDir({
         dir: `${js.path}`,
-        name: 'variable',
+        label: 'variable',
         type: 'Article',
         sortOrder: 1,
       })
@@ -1836,14 +2403,14 @@ describe('StorageService', () => {
       // ts
       ts = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'ts',
+        label: 'ts',
         type: 'Category',
         sortOrder: 2,
       })
       // ts/class
       clazz = await storageService.createArticleTypeDir({
         dir: `${ts.path}`,
-        name: 'class',
+        label: 'class',
         type: 'Article',
         sortOrder: 1,
       })
@@ -1853,7 +2420,7 @@ describe('StorageService', () => {
       // py
       py = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'py',
+        label: 'py',
         type: 'Category',
         sortOrder: 1,
       })
@@ -1894,7 +2461,7 @@ describe('StorageService', () => {
         [...Array(10)].map(async (_, i) => {
           await storageService.createArticleTypeDir({
             dir: `${py.path}`,
-            name: `art${(i + 1).toString().padStart(2, '0')}`,
+            label: `art${(i + 1).toString().padStart(2, '0')}`,
             type: 'Article',
             sortOrder: i + 1,
           })
@@ -1912,278 +2479,17 @@ describe('StorageService', () => {
       }
 
       expect(actual.length).toBe(10)
-      expect(actual[0].article?.dir?.name).toBe(`art10`)
-      expect(actual[1].article?.dir?.name).toBe(`art09`)
-      expect(actual[2].article?.dir?.name).toBe(`art08`)
-      expect(actual[3].article?.dir?.name).toBe(`art07`)
-      expect(actual[4].article?.dir?.name).toBe(`art06`)
-      expect(actual[5].article?.dir?.name).toBe(`art05`)
-      expect(actual[6].article?.dir?.name).toBe(`art04`)
-      expect(actual[7].article?.dir?.name).toBe(`art03`)
-      expect(actual[8].article?.dir?.name).toBe(`art02`)
-      expect(actual[9].article?.dir?.name).toBe(`art01`)
+      expect(actual[0].article?.dir?.label).toBe(`art10`)
+      expect(actual[1].article?.dir?.label).toBe(`art09`)
+      expect(actual[2].article?.dir?.label).toBe(`art08`)
+      expect(actual[3].article?.dir?.label).toBe(`art07`)
+      expect(actual[4].article?.dir?.label).toBe(`art06`)
+      expect(actual[5].article?.dir?.label).toBe(`art05`)
+      expect(actual[6].article?.dir?.label).toBe(`art04`)
+      expect(actual[7].article?.dir?.label).toBe(`art03`)
+      expect(actual[8].article?.dir?.label).toBe(`art02`)
+      expect(actual[9].article?.dir?.label).toBe(`art01`)
       await h.existsNodes(actual)
-    })
-  })
-
-  describe('getArticleTableOfContents', () => {
-    let articleRootPath: string
-    let users: StorageNode
-    let userRoot: StorageNode
-    let articleRoot: StorageNode
-    let blog: StorageNode
-    let blogArt1: StorageNode
-    let blogArt1_master: StorageNode
-    let programming: StorageNode
-    let introduction: StorageNode
-    let introduction_master: StorageNode
-    let js: StorageNode
-    let variable: StorageNode
-    let variable_master: StorageNode
-    let ts: StorageNode
-    let clazz: StorageNode
-    let clazz_master: StorageNode
-    let generics: StorageNode
-    let generics_master: StorageNode
-    let secret: StorageNode
-    let secretArt1: StorageNode
-    let secretArt1_master: StorageNode
-    let secretArt2: StorageNode
-    let secretArt2_master: StorageNode
-
-    beforeAll(async () => {
-      await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
-    })
-
-    async function setupArticleTypeNodes(): Promise<void> {
-      const { masterSrcFileName } = config.storage.article
-
-      // users
-      // └test.storage
-      //   └articles
-      //     ├blog ← 公開
-      //     │└blog-art1
-      //     │  └master.src.md
-      //     ├programming ← 公開
-      //     │├introduction
-      //     ││└master.src.md
-      //     │├js
-      //     ││└variable ← 非公開
-      //     ││  └master.src.md
-      //     │└ts
-      //     │  ├class
-      //     │  │└master.src.md
-      //     │  └generics ← 非公開
-      //     │    └master.src.md
-      //     └secret ← 非公開
-      //       ├secret-art1
-      //       │└master.src.md
-      //       └secret-art2 ← 指定ユーザーにのみ公開
-      //         └master.src.md
-
-      // users/test.storage/articles
-      articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
-      users = articleRootNodes[0]
-      userRoot = articleRootNodes[1]
-      articleRoot = articleRootNodes[2]
-
-      // blog
-      blog = await storageService.createArticleTypeDir(
-        {
-          dir: `${articleRootPath}`,
-          name: 'blog',
-          type: 'ListBundle',
-          sortOrder: 3,
-        },
-        { share: { isPublic: true } }
-      )
-
-      // blog-art1
-      blogArt1 = await storageService.createArticleTypeDir({
-        dir: `${blog.path}`,
-        name: 'blog-art1',
-        type: 'Article',
-        sortOrder: 2,
-      })
-      // blog-art1/master.src.md
-      blogArt1_master = await storageService.sgetNode({ path: `${blogArt1.path}/${masterSrcFileName}` })
-
-      // programming
-      programming = await storageService.createArticleTypeDir(
-        {
-          dir: `${articleRootPath}`,
-          name: 'programming',
-          type: 'TreeBundle',
-          sortOrder: 2,
-        },
-        { share: { isPublic: true } }
-      )
-
-      // introduction
-      introduction = await storageService.createArticleTypeDir({
-        dir: `${programming.path}`,
-        name: 'introduction',
-        type: 'Article',
-        sortOrder: 4,
-      })
-      // introduction/master.src.md
-      introduction_master = await storageService.sgetNode({ path: `${introduction.path}/${masterSrcFileName}` })
-
-      // js
-      js = await storageService.createArticleTypeDir({
-        dir: `${programming.path}`,
-        name: 'js',
-        type: 'Category',
-        sortOrder: 3,
-      })
-      // js/variable
-      variable = await storageService.createArticleTypeDir(
-        {
-          dir: `${js.path}`,
-          name: 'variable',
-          type: 'Article',
-          sortOrder: 1,
-        },
-        { share: { isPublic: false } }
-      )
-      // js/variable/master.src.md
-      variable_master = await storageService.sgetNode({ path: `${variable.path}/${masterSrcFileName}` })
-
-      // ts
-      ts = await storageService.createArticleTypeDir({
-        dir: `${programming.path}`,
-        name: 'ts',
-        type: 'Category',
-        sortOrder: 2,
-      })
-      // ts/class
-      clazz = await storageService.createArticleTypeDir({
-        dir: `${ts.path}`,
-        name: 'class',
-        type: 'Article',
-        sortOrder: 1,
-      })
-      // ts/class/master.src.md
-      clazz_master = await storageService.sgetNode({ path: `${clazz.path}/${masterSrcFileName}` })
-      // ts/generics
-      generics = await storageService.createArticleTypeDir(
-        {
-          dir: `${ts.path}`,
-          name: 'generics',
-          type: 'Article',
-          sortOrder: 1,
-        },
-        { share: { isPublic: false } }
-      )
-      // ts/generics/master.src.md
-      generics_master = await storageService.sgetNode({ path: `${generics.path}/${masterSrcFileName}` })
-
-      // secret
-      secret = await storageService.createArticleTypeDir(
-        {
-          dir: `${articleRootPath}`,
-          name: 'secret',
-          type: 'TreeBundle',
-          sortOrder: 1,
-        },
-        { share: { isPublic: false } }
-      )
-
-      // secret-art1
-      secretArt1 = await storageService.createArticleTypeDir({
-        dir: `${secret.path}`,
-        name: 'secret-art1',
-        type: 'Article',
-        sortOrder: 2,
-      })
-      // secret-art1/master.src.md
-      secretArt1_master = await storageService.sgetNode({ path: `${secretArt1.path}/${masterSrcFileName}` })
-
-      // secret-art2
-      secretArt2 = await storageService.createArticleTypeDir(
-        {
-          dir: `${secret.path}`,
-          name: 'secret-art2',
-          type: 'Article',
-          sortOrder: 2,
-        },
-        { share: { readUIds: [GeneralUser().uid] } }
-      )
-      // secret-art2/master.src.md
-      secretArt2_master = await storageService.sgetNode({ path: `${secretArt2.path}/${masterSrcFileName}` })
-    }
-
-    function verifyArticleTableOfContentsNode(actual: ArticleTableOfContentsNode, expected: StorageNode): void {
-      expect(actual.id).toBe(expected.id)
-      expect(actual.name).toBe(expected.name)
-      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRootPath, '')))
-      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRootPath, '')))
-      expect(actual.label).toBe(expected.article?.dir?.name)
-      expect(actual.type).toBe(expected.article?.dir?.type)
-    }
-
-    it('ベーシックケース', async () => {
-      await setupArticleTypeNodes()
-
-      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, StorageUser())
-
-      expect(actual.length).toBe(11)
-      verifyArticleTableOfContentsNode(actual[0], blog)
-      verifyArticleTableOfContentsNode(actual[1], programming)
-      verifyArticleTableOfContentsNode(actual[2], introduction)
-      verifyArticleTableOfContentsNode(actual[3], js)
-      verifyArticleTableOfContentsNode(actual[4], variable)
-      verifyArticleTableOfContentsNode(actual[5], ts)
-      verifyArticleTableOfContentsNode(actual[6], clazz)
-      verifyArticleTableOfContentsNode(actual[7], generics)
-      verifyArticleTableOfContentsNode(actual[8], secret)
-      verifyArticleTableOfContentsNode(actual[9], secretArt1)
-      verifyArticleTableOfContentsNode(actual[10], secretArt2)
-    })
-
-    it('他ユーザーによる目次取得', async () => {
-      await setupArticleTypeNodes()
-
-      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
-
-      expect(actual.length).toBe(7)
-      verifyArticleTableOfContentsNode(actual[0], blog)
-      verifyArticleTableOfContentsNode(actual[1], programming)
-      verifyArticleTableOfContentsNode(actual[2], introduction)
-      verifyArticleTableOfContentsNode(actual[3], ts)
-      verifyArticleTableOfContentsNode(actual[4], clazz)
-      verifyArticleTableOfContentsNode(actual[5], secret)
-      verifyArticleTableOfContentsNode(actual[6], secretArt2)
-    })
-
-    it('サインインしていないユーザーによる目次取得', async () => {
-      await setupArticleTypeNodes()
-
-      const actual = await storageService.getArticleTableOfContents(StorageUser().userName)
-
-      expect(actual.length).toBe(5)
-      verifyArticleTableOfContentsNode(actual[0], blog)
-      verifyArticleTableOfContentsNode(actual[1], programming)
-      verifyArticleTableOfContentsNode(actual[2], introduction)
-      verifyArticleTableOfContentsNode(actual[3], ts)
-      verifyArticleTableOfContentsNode(actual[4], clazz)
-    })
-
-    it('目次がない場合', async () => {
-      // 記事ルートを作成
-      articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      await storageService.createHierarchicalDirs([articleRootPath])
-
-      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
-
-      expect(actual.length).toBe(0)
-    })
-
-    it('記事ルートがまだ存在しない場合', async () => {
-      const actual = await storageService.getArticleTableOfContents(StorageUser().userName, GeneralUser())
-
-      expect(actual.length).toBe(0)
     })
   })
 
@@ -2232,16 +2538,16 @@ describe('StorageService', () => {
 
       const articleRoot = h.newDirNode(StorageService.toArticleRootPath(StorageUserToken()))
 
-      const blog = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'blog', type: 'ListBundle', sortOrder: 2 } },
+      const blog = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'blog', type: 'ListBundle', sortOrder: 2 } },
       })
 
-      const blog_artA = h.newDirNode(`${blog.path}/${StorageSchema.generateNodeId()}`, {
+      const blog_artA = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { name: 'art1', type: 'Article', sortOrder: 2 },
+          dir: { label: 'art1', type: 'Article', sortOrder: 2 },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: now,
             updatedAt: now,
           },
@@ -2266,12 +2572,12 @@ describe('StorageService', () => {
 
       const blog_artA_memo = h.newFileNode(`${blog_artA.path}/memo.txt`)
 
-      const blog_artB = h.newDirNode(`${blog.path}/${StorageSchema.generateNodeId()}`, {
+      const blog_artB = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { name: 'art2', type: 'Article', sortOrder: 1 },
+          dir: { label: 'art2', type: 'Article', sortOrder: 1 },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: now,
             updatedAt: now,
           },
@@ -2288,28 +2594,28 @@ describe('StorageService', () => {
         article: { file: { type: 'DraftSrc' } },
       })
 
-      const programming = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'programming', type: 'TreeBundle', sortOrder: 1 } },
+      const programming = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'programming', type: 'TreeBundle', sortOrder: 1 } },
       })
 
-      const programming_artC = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art1', type: 'Article', sortOrder: 4 } },
+      const programming_artC = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art1', type: 'Article', sortOrder: 4 } },
       })
 
-      const programming_artD = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art2', type: 'Article', sortOrder: 3 } },
+      const programming_artD = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art2', type: 'Article', sortOrder: 3 } },
       })
 
-      const programming_ts = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'TypeScript', type: 'Category', sortOrder: 2 } },
+      const programming_ts = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'TypeScript', type: 'Category', sortOrder: 2 } },
       })
 
-      const programming_ts_artE = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateNodeId()}`, {
+      const programming_ts_artE = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { name: 'art1', type: 'Article', sortOrder: 2 },
+          dir: { label: 'art1', type: 'Article', sortOrder: 2 },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: now,
             updatedAt: now,
           },
@@ -2326,12 +2632,12 @@ describe('StorageService', () => {
         article: { file: { type: 'DraftSrc' } },
       })
 
-      const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateNodeId()}`, {
+      const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { name: 'art2', type: 'Article', sortOrder: 1 },
+          dir: { label: 'art2', type: 'Article', sortOrder: 1 },
           src: {
-            masterId: StorageSchema.generateNodeId(),
-            draftId: StorageSchema.generateNodeId(),
+            masterId: StorageSchema.generateId(),
+            draftId: StorageSchema.generateId(),
             createdAt: now,
             updatedAt: now,
           },
@@ -2348,8 +2654,8 @@ describe('StorageService', () => {
         article: { file: { type: 'DraftSrc' } },
       })
 
-      const programming_js = h.newDirNode(`${programming.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'JavaScript', type: 'Category', sortOrder: 1 } },
+      const programming_js = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'JavaScript', type: 'Category', sortOrder: 1 } },
       })
 
       const assets = h.newDirNode(StorageService.toArticleAssetsPath(StorageUserToken()))
@@ -2453,29 +2759,29 @@ describe('StorageService', () => {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const categoryPath = `${articleRootPath}/category`
 
-      const category_art1 = h.newDirNode(`${categoryPath}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art1', type: 'Article', sortOrder: 4 } },
+      const category_art1 = h.newDirNode(`${categoryPath}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art1', type: 'Article', sortOrder: 4 } },
       })
-      const category_art2 = h.newDirNode(`${categoryPath}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art2', type: 'Article', sortOrder: 3 } },
+      const category_art2 = h.newDirNode(`${categoryPath}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art2', type: 'Article', sortOrder: 3 } },
       })
-      const category_ts = h.newDirNode(`${categoryPath}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'TypeScript', type: 'Category', sortOrder: 2 } },
+      const category_ts = h.newDirNode(`${categoryPath}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'TypeScript', type: 'Category', sortOrder: 2 } },
       })
-      const category_ts_art1 = h.newDirNode(`${category_ts.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
+      const category_ts_art1 = h.newDirNode(`${category_ts.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art1', type: 'Article', sortOrder: 2 } },
       })
-      const category_ts_art2 = h.newDirNode(`${category_ts.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
+      const category_ts_art2 = h.newDirNode(`${category_ts.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art2', type: 'Article', sortOrder: 1 } },
       })
-      const category_js = h.newDirNode(`${categoryPath}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'JavaScript', type: 'Category', sortOrder: 1 } },
+      const category_js = h.newDirNode(`${categoryPath}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'JavaScript', type: 'Category', sortOrder: 1 } },
       })
-      const category_js_art1 = h.newDirNode(`${category_js.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art1', type: 'Article', sortOrder: 2 } },
+      const category_js_art1 = h.newDirNode(`${category_js.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art1', type: 'Article', sortOrder: 2 } },
       })
-      const category_js_art2 = h.newDirNode(`${category_js.path}/${StorageSchema.generateNodeId()}`, {
-        article: { dir: { name: 'art2', type: 'Article', sortOrder: 1 } },
+      const category_js_art2 = h.newDirNode(`${category_js.path}/${StorageSchema.generateId()}`, {
+        article: { dir: { label: 'art2', type: 'Article', sortOrder: 1 } },
       })
 
       // 配列に上位ディレクトリがなくてもソートできるか検証するために、
@@ -2652,6 +2958,9 @@ describe('StorageService', () => {
   })
 
   describe('moveDir', () => {
+    let articleRootPath: string
+    let users: StorageNode
+    let userRoot: StorageNode
     let articleRoot: StorageNode
     let programming: StorageNode
     let introduction: StorageNode
@@ -2683,14 +2992,16 @@ describe('StorageService', () => {
       //   │  └py
       //   └tmp
 
-      // users/test.storage
-      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      articleRoot = (await storageService.createHierarchicalDirs([articleRootPath]))[0]
+      articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
 
       // programming
       programming = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'programming',
+        label: 'programming',
         type: 'TreeBundle',
         sortOrder: 1,
       })
@@ -2698,7 +3009,7 @@ describe('StorageService', () => {
       // introduction
       introduction = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'introduction',
+        label: 'introduction',
         type: 'Article',
         sortOrder: 4,
       })
@@ -2708,14 +3019,14 @@ describe('StorageService', () => {
       // ts
       ts = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'ts',
+        label: 'ts',
         type: 'Category',
         sortOrder: 3,
       })
       // ts/class
       clazz = await storageService.createArticleTypeDir({
         dir: `${ts.path}`,
-        name: 'class',
+        label: 'class',
         type: 'Article',
       })
       // ts/class/master.src.md
@@ -2726,14 +3037,14 @@ describe('StorageService', () => {
       // js
       js = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'js',
+        label: 'js',
         type: 'Category',
         sortOrder: 2,
       })
       // js/variable
       variable = await storageService.createArticleTypeDir({
         dir: `${js.path}`,
-        name: 'variable',
+        label: 'variable',
         type: 'Article',
       })
       // js/variable/master.src.md
@@ -2744,7 +3055,7 @@ describe('StorageService', () => {
       // py
       py = await storageService.createArticleTypeDir({
         dir: `${programming.path}`,
-        name: 'py',
+        label: 'py',
         type: 'Category',
         sortOrder: 1,
       })
@@ -3017,19 +3328,19 @@ describe('StorageService', () => {
       // バンドルを作成
       const bundle = await storageService.createArticleTypeDir({
         dir: `${articleRootPath}`,
-        name: 'バンドル',
+        label: 'バンドル',
         type: 'TreeBundle',
       })
       // カテゴリ1を作成
       const cat1 = await storageService.createArticleTypeDir({
         dir: `${bundle.path}`,
-        name: 'カテゴリ1',
+        label: 'カテゴリ1',
         type: 'Category',
       })
       // 記事1を作成
       const art1 = await storageService.createArticleTypeDir({
         dir: `${cat1.path}`,
-        name: '記事1',
+        label: '記事1',
         type: 'Article',
       })
 

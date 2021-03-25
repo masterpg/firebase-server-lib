@@ -92,7 +92,7 @@ function printInOneLine(nodes: StorageNode[], specifiedPath?: string): void {
   const toDisplayPath = (node: StorageNode) => {
     return splitHierarchicalPaths(node.path).reduce((result, nodePath) => {
       const node = nodeDict[nodePath]
-      const name = node.article?.dir?.name || node.name
+      const name = node.article?.dir?.label || node.name
       return result ? `${result}/${name}` : name
     }, '')
   }
