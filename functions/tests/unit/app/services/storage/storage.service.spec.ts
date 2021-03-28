@@ -1728,6 +1728,7 @@ describe('StorageService', () => {
           { id: bundle.id, label: bundle.article!.dir!.label },
           { id: art1.id, label: art1.article!.dir!.label },
         ],
+        isPublic: false,
         createdAt: art1_master.createdAt,
         updatedAt: art1_master.updatedAt,
       }
@@ -1743,7 +1744,10 @@ describe('StorageService', () => {
 
       const actual = await storageService.getArticleSrc(StorageUserToken(), art1.id)
 
-      expect(actual).toEqual(art1_result)
+      expect(actual).toEqual<GetArticleSrcResult>({
+        ...art1_result,
+        isPublic: true,
+      })
     })
 
     it('閲覧権限がない場合', async () => {

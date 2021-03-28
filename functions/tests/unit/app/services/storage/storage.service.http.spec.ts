@@ -28,8 +28,6 @@ initApp()
 //
 //========================================================================
 
-const TestFilesDir = 'test-files'
-
 type RawGetArticleSrcResult = OmitTimestamp<GetArticleSrcResult> & { createdAt: string; updatedAt: string }
 
 //========================================================================
@@ -65,7 +63,7 @@ describe('StorageService - HTTP関連のテスト', () => {
     td.reset()
   })
 
-  describe('serveArticleSrc', () => {
+  describe('getArticleSrc', () => {
     let app: any
 
     beforeEach(async () => {
@@ -105,6 +103,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           { id: bundle.id, label: bundle.article!.dir!.label },
           { id: art1.id, label: art1.article!.dir!.label },
         ],
+        isPublic: false,
         createdAt: art1_master.createdAt.toISOString(),
         updatedAt: art1_master.updatedAt.toISOString(),
       }
@@ -123,7 +122,10 @@ describe('StorageService - HTTP関連のテスト', () => {
         .get(`/articles/${art1.id}`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.body).toEqual(art1_response)
+          expect(res.body).toEqual<RawGetArticleSrcResult>({
+            ...art1_response,
+            isPublic: true,
+          })
         })
     })
 
@@ -155,7 +157,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.body).toEqual(art1_response)
+            expect(res.body).toEqual<RawGetArticleSrcResult>(art1_response)
           })
       )
     })
@@ -163,12 +165,7 @@ describe('StorageService - HTTP関連のテスト', () => {
     it('存在しない記事を指定した場合', async () => {
       await setupArticleNodes()
 
-      return request(app.getHttpServer())
-        .get(`/articles/12345678901234567890`)
-        .expect(200)
-        .then((res: Response) => {
-          expect(res.body).toBeNull()
-        })
+      return request(app.getHttpServer()).get(`/articles/12345678901234567890`).expect(404)
     })
 
     it('304 Not Modified の検証 - 公開', async () => {

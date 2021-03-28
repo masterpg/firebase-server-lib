@@ -695,9 +695,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
      * @param hierarchicalNodes
      */
     const getResult = async (hierarchicalNodes: StorageNode[]) => {
-      hierarchicalNodes = [...hierarchicalNodes]
-      const articleDirNode = hierarchicalNodes.splice(-1)[0]
-      const ancestorNodes = hierarchicalNodes.filter(node => Boolean(node.article))
+      const share = this.getInheritedShareDetail(hierarchicalNodes)
+      const _hierarchicalNodes = [...hierarchicalNodes]
+      const articleDirNode = _hierarchicalNodes.splice(-1)[0]
+      const ancestorNodes = _hierarchicalNodes.filter(node => Boolean(node.article))
       const srcDetail = articleDirNode.article!.src!
 
       const { exists: srcFileExists, file: srcFile } = await this.getStorageFile(srcDetail.masterId)
@@ -716,6 +717,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         path: [...ancestorNodes, articleDirNode].map(node => {
           return { id: node.id, label: node.article!.dir!.label }
         }),
+        isPublic: Boolean(share.isPublic),
         createdAt: srcDetail.createdAt,
         updatedAt: srcDetail.updatedAt,
       }
@@ -730,7 +732,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const getArticleSrcForGQL = async (idToken: IdToken, articleId: string) => {
       // 記事ディレクトリを取得
       const articleDirNode = await this.getNode({ id: articleId })
-      if (!articleDirNode) {
+      if (!articleDirNode || !articleDirNode.article?.src) {
         return undefined
       }
 
@@ -757,12 +759,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const getArticleSrcForHttp = async (req: Request, res: Response, articleId: string) => {
       // 記事ディレクトリを取得
       const articleDirNode = await this.getNode({ id: articleId })
-      if (!articleDirNode) {
-        return res.json(null)
+      if (!articleDirNode || !articleDirNode.article?.src) {
+        return res.sendStatus(404)
       }
 
       // 304 Not Modified のチェック
-      const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, articleDirNode.article!.src!)
+      const { result: notModified, status: notModifiedStatus, lastModified } = this.checkNotModified(req, articleDirNode.article.src)
       res.setHeader('Last-Modified', lastModified)
 
       // ファイルの公開フラグがオンの場合

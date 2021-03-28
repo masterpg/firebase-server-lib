@@ -199,6 +199,7 @@ interface GetArticleSrcResult extends ArticlePathDetail {
   src: string
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
+  isPublic: boolean
   createdAt: Dayjs
   updatedAt: Dayjs
 }
