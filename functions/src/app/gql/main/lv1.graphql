@@ -3,11 +3,11 @@
 #--------------------------------------------------
 
 type Mutation {
-  createStorageDir(dirPath: String!, options: CreateStorageNodeOptions): StorageNode!
-  createStorageHierarchicalDirs(dirPaths: [String!]!): [StorageNode!]!
+  createStorageDir(input: CreateStorageDirInput!): StorageNode!
+  createStorageHierarchicalDirs(dirs: [String!]!): [StorageNode!]!
   removeStorageFile(key: StorageNodeGetKeyInput!): StorageNode
-  moveStorageFile(fromFilePath: String!, toFilePath: String!): StorageNode!
-  renameStorageFile(filePath: String!, newName: String!): StorageNode!
+  moveStorageFile(input: MoveStorageFileInput!): StorageNode!
+  renameStorageFile(input: RenameStorageFileInput!): StorageNode!
   setStorageDirShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
   setStorageFileShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
   handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!

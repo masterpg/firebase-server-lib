@@ -96,8 +96,29 @@ input SignedUploadUrlInput {
   contentType: String
 }
 
-input CreateStorageNodeOptions {
+input CreateStorageDirInput {
+  dir: String!
   share: SetShareDetailInput
+}
+
+input MoveStorageDirInput {
+  fromDir: String!
+  toDir: String!
+}
+
+input MoveStorageFileInput {
+  fromFile: String!
+  toFile: String!
+}
+
+input RenameStorageDirInput {
+  dir: String!
+  name: String!
+}
+
+input RenameStorageFileInput {
+  file: String!
+  name: String!
 }
 
 #--------------------------------------------------

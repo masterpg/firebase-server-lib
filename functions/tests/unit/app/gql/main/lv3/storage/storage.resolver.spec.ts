@@ -9,7 +9,13 @@ import {
   getGQLErrorStatus,
   requestGQL,
 } from '../../../../../../helpers/app'
-import { DevUtilsServiceDI, DevUtilsServiceModule, StorageService, StorageServiceDI } from '../../../../../../../src/app/services'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  MoveStorageDirInput,
+  RenameStorageDirInput,
+  StorageServiceDI,
+} from '../../../../../../../src/app/services'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv3GQLContainerModule from '../../../../../../../src/app/gql/main/lv3'
 import { initApp } from '../../../../../../../src/app/base'
@@ -92,8 +98,8 @@ describe('Lv3 Storage Resolver', () => {
   describe('moveStorageDir', () => {
     const gql = {
       query: `
-        mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) {
-          moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath)
+        mutation MoveStorageDir($input: MoveStorageDirInput!) {
+          moveStorageDir(input: $input)
         }
       `,
     }
@@ -105,7 +111,12 @@ describe('Lv3 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { fromDirPath: `docs`, toDirPath: `archive/docs` },
+          variables: {
+            input: <MoveStorageDirInput>{
+              fromDir: `docs`,
+              toDir: `archive/docs`,
+            },
+          },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -114,13 +125,18 @@ describe('Lv3 Storage Resolver', () => {
 
       const exp = td.explain(moveDir)
       expect(exp.calls.length).toBe(1)
-      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), `docs`, `archive/docs`])
+      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), { fromDir: `docs`, toDir: `archive/docs` }])
     })
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { fromDirPath: `docs`, toDirPath: `archive/docs` },
+        variables: {
+          input: <MoveStorageDirInput>{
+            fromDir: `docs`,
+            toDir: `archive/docs`,
+          },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -130,8 +146,8 @@ describe('Lv3 Storage Resolver', () => {
   describe('renameStorageDir', () => {
     const gql = {
       query: `
-        mutation RenameStorageDir($dirPath: String!, $newName: String!) {
-          renameStorageDir(dirPath: $dirPath, newName: $newName)
+        mutation RenameStorageDir($input: RenameStorageDirInput!) {
+          renameStorageDir(input: $input)
         }
       `,
     }
@@ -143,7 +159,12 @@ describe('Lv3 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPath: `documents`, newName: `docs` },
+          variables: {
+            input: <RenameStorageDirInput>{
+              dir: `documents`,
+              name: `docs`,
+            },
+          },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -152,13 +173,18 @@ describe('Lv3 Storage Resolver', () => {
 
       const exp = td.explain(renameDir)
       expect(exp.calls.length).toBe(1)
-      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), `documents`, `docs`])
+      expect(exp.calls[0].args).toEqual([AppAdminUserToken(), { dir: `documents`, name: `docs` }])
     })
 
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: `documents`, newName: `docs` },
+        variables: {
+          input: <RenameStorageDirInput>{
+            dir: `documents`,
+            name: `docs`,
+          },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)

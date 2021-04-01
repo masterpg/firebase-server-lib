@@ -5,12 +5,15 @@ import {
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleTypeDirInput,
-  CreateStorageNodeOptions,
-  GetArticleChildrenInput,
+  CreateStorageDirInput,
   GetUserArticleListInput,
   IdToken,
+  MoveStorageDirInput,
+  MoveStorageFileInput,
   PaginationInput,
   PaginationResult,
+  RenameStorageDirInput,
+  RenameStorageFileInput,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -98,18 +101,14 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async createStorageDir(
-    @UserArg() idToken: IdToken,
-    @Args('dirPath') dirPath: string,
-    @Args('options') options?: CreateStorageNodeOptions
-  ): Promise<StorageNode> {
-    return this.storageService.createDir(idToken, dirPath, options)
+  async createStorageDir(@UserArg() idToken: IdToken, @Args('input') input: CreateStorageDirInput): Promise<StorageNode> {
+    return this.storageService.createDir(idToken, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async createStorageHierarchicalDirs(@UserArg() idToken: IdToken, @Args('dirPaths') dirPaths: string[]): Promise<StorageNode[]> {
-    return this.storageService.createHierarchicalDirs(idToken, dirPaths)
+  async createStorageHierarchicalDirs(@UserArg() idToken: IdToken, @Args('dirs') dirs: string[]): Promise<StorageNode[]> {
+    return this.storageService.createHierarchicalDirs(idToken, dirs)
   }
 
   @Mutation()
@@ -120,18 +119,14 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async moveStorageFile(
-    @UserArg() idToken: IdToken,
-    @Args('fromFilePath') fromFilePath: string,
-    @Args('toFilePath') toFilePath: string
-  ): Promise<StorageNode> {
-    return await this.storageService.moveFile(idToken, fromFilePath, toFilePath)
+  async moveStorageFile(@UserArg() idToken: IdToken, @Args('input') input: MoveStorageFileInput): Promise<StorageNode> {
+    return await this.storageService.moveFile(idToken, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameStorageFile(@UserArg() idToken: IdToken, @Args('filePath') filePath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return await this.storageService.renameFile(idToken, filePath, newName)
+  async renameStorageFile(@UserArg() idToken: IdToken, @Args('input') input: RenameStorageFileInput): Promise<StorageNode> {
+    return await this.storageService.renameFile(idToken, input)
   }
 
   @Mutation()
@@ -315,12 +310,8 @@ class MoveStorageDirResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async moveStorageDir(
-    @UserArg() idToken: IdToken,
-    @Args('fromDirPath') fromDirPath: string,
-    @Args('toDirPath') toDirPath: string
-  ): Promise<boolean> {
-    await this.storageService.moveDir(idToken, fromDirPath, toDirPath)
+  async moveStorageDir(@UserArg() idToken: IdToken, @Args('input') input: MoveStorageDirInput): Promise<boolean> {
+    await this.storageService.moveDir(idToken, input)
     return true
   }
 }
@@ -344,8 +335,8 @@ class RenameStorageDirResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameStorageDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<boolean> {
-    await this.storageService.renameDir(idToken, dirPath, newName)
+  async renameStorageDir(@UserArg() idToken: IdToken, @Args('input') input: RenameStorageDirInput): Promise<boolean> {
+    await this.storageService.renameDir(idToken, input)
     return true
   }
 }

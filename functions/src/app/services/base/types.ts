@@ -135,8 +135,29 @@ interface SignedUploadUrlInput {
   contentType?: string
 }
 
-interface CreateStorageNodeOptions {
+interface CreateStorageDirInput {
+  dir: string
   share?: SetShareDetailInput
+}
+
+interface MoveStorageDirInput {
+  fromDir: string
+  toDir: string
+}
+
+interface MoveStorageFileInput {
+  fromFile: string
+  toFile: string
+}
+
+interface RenameStorageDirInput {
+  dir: string
+  name: string
+}
+
+interface RenameStorageFileInput {
+  file: string
+  name: string
 }
 
 //--------------------------------------------------
@@ -315,12 +336,15 @@ export {
   ArticleTableOfContentsItem,
   CoreStorageNode,
   CreateArticleTypeDirInput,
-  CreateStorageNodeOptions,
-  GetArticleChildrenInput,
+  CreateStorageDirInput,
   GetArticleSrcResult,
   GetUserArticleListInput,
+  MoveStorageDirInput,
+  MoveStorageFileInput,
   PaginationInput,
   PaginationResult,
+  RenameStorageDirInput,
+  RenameStorageFileInput,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,

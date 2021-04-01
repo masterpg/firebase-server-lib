@@ -14,12 +14,13 @@ import { AppError, initApp } from '../../../../../src/app/base'
 import {
   CoreStorageNode,
   CoreStorageSchema,
-  CreateStorageNodeOptions,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareDetail,
+  StorageService,
   StorageUploadDataItem,
   UserClaims,
   UserHelper,
@@ -168,25 +169,108 @@ describe('CoreStorageService', () => {
       await h.existsNodes([actual])
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = (await storageService.getNode(StorageUserToken(), { path: d1.path }))!
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      expect(actual.path).toBe(d1.path)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
 
-      let actual!: HttpException
-      try {
-        await storageService.getNode(GeneralUserToken(), { path: d1.path })
-      } catch (err) {
-        actual = err
+        return { users, storage: { root: storage_root, tmp: storage_tmp }, general: { root: general_root, tmp: general_tmp }, app: { tmp: app_tmp } }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      describe('ID検索', () => {
+        it('自ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          const actual = await storageService.getNode(StorageUserToken(), { id: storage.tmp.id })
+
+          expect(actual!.path).toBe(storage.tmp.path)
+        })
+
+        it('他ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          let actual!: HttpException
+          try {
+            await storageService.getNode(GeneralUserToken(), { id: storage.tmp.id })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.getStatus()).toBe(403)
+        })
+
+        it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+          const { app } = await setupUserNodes()
+
+          let actual!: HttpException
+          try {
+            await storageService.getNode(GeneralUserToken(), { id: app.tmp.id })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.getStatus()).toBe(403)
+        })
+
+        it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          const actual = await storageService.getNode(AppAdminUserToken(), { id: storage.tmp.id })
+
+          expect(actual!.path).toBe(storage.tmp.path)
+        })
+      })
+
+      describe('パス検索', () => {
+        it('自ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          const actual = await storageService.getNode(StorageUserToken(), { path: storage.tmp.path })
+
+          expect(actual!.path).toBe(storage.tmp.path)
+        })
+
+        it('他ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          let actual!: HttpException
+          try {
+            await storageService.getNode(GeneralUserToken(), { path: storage.tmp.path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.getStatus()).toBe(403)
+        })
+
+        it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+          const { app } = await setupUserNodes()
+
+          let actual!: HttpException
+          try {
+            await storageService.getNode(GeneralUserToken(), { path: app.tmp.path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.getStatus()).toBe(403)
+        })
+
+        it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+          const { storage } = await setupUserNodes()
+
+          const actual = await storageService.getNode(AppAdminUserToken(), { path: storage.tmp.path })
+
+          expect(actual!.path).toBe(storage.tmp.path)
+        })
+      })
     })
   })
 
@@ -231,27 +315,6 @@ describe('CoreStorageService', () => {
       }
 
       expect(actual.cause).toBe(`Either 'id' or 'path' must be specified.`)
-    })
-
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
-
-      const actual = (await storageService.sgetNode(StorageUserToken(), { path: d1.path }))!
-
-      expect(actual.path).toBe(d1.path)
-    })
-
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
-
-      let actual!: HttpException
-      try {
-        await storageService.sgetNode(GeneralUserToken(), { path: d1.path })
-      } catch (err) {
-        actual = err
-      }
-
-      expect(actual.getStatus()).toBe(403)
     })
   })
 
@@ -321,25 +384,62 @@ describe('CoreStorageService', () => {
       await h.existsNodes(actual)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getNodes(StorageUserToken(), { paths: [d1.path] })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      expect(actual[0].path).toBe(d1.path)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
 
-      let actual!: HttpException
-      try {
-        await storageService.getNodes(GeneralUserToken(), { paths: [d1.path] })
-      } catch (err) {
-        actual = err
+        return { users, storage: { root: storage_root, tmp: storage_tmp }, general: { root: general_root, tmp: general_tmp }, app: { tmp: app_tmp } }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getNodes(StorageUserToken(), { paths: [storage.tmp.path] })
+
+        expect(actual[0].path).toBe(storage.tmp.path)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: HttpException
+        try {
+          await storageService.getNodes(GeneralUserToken(), { paths: [storage.tmp.path] })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: HttpException
+        try {
+          await storageService.getNodes(GeneralUserToken(), { paths: [app.tmp.path] })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getNodes(AppAdminUserToken(), { paths: [storage.tmp.path] })
+
+        expect(actual[0].path).toBe(storage.tmp.path)
+      })
     })
   })
 
@@ -383,27 +483,6 @@ describe('CoreStorageService', () => {
       const actual = await storageService.getFileNode({ id: '12345678901234567890' })
 
       expect(actual).toBeUndefined()
-    })
-
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
-
-      const actual = (await storageService.getFileNode(StorageUserToken(), fileA))!
-
-      expect(actual.path).toBe(fileA.path)
-    })
-
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
-
-      let actual!: HttpException
-      try {
-        await storageService.getFileNode(GeneralUserToken(), fileA)
-      } catch (err) {
-        actual = err
-      }
-
-      expect(actual.getStatus()).toBe(403)
     })
   })
 
@@ -667,25 +746,88 @@ describe('CoreStorageService', () => {
       await h.existsNodes(actual)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getDescendants(StorageUserToken(), { path: d1.path, includeBase: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual.list[0].path).toBe(d1.path)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.getDescendants(GeneralUserToken(), { path: d1.path, includeBase: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getDescendants(StorageUserToken(), { path: storage.tmp.path })
+
+        expect(actual.list[0].path).toBe(storage.fileA.path)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getDescendants(GeneralUserToken(), { path: storage.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getDescendants(GeneralUserToken(), { path: app.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getDescendants(AppAdminUserToken(), { path: storage.tmp.path })
+
+        expect(actual.list[0].path).toBe(storage.fileA.path)
+      })
     })
   })
 
@@ -831,29 +973,92 @@ describe('CoreStorageService', () => {
       expect(actual.cause).toBe(`Either 'id' or 'path' must be specified.`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getDescendantsCount(StorageUserToken(), { path: d1.path, includeBase: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual).toBe(1)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.getDescendantsCount(GeneralUserToken(), { path: d1.path, includeBase: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getDescendantsCount(StorageUserToken(), { path: storage.tmp.path })
+
+        expect(actual).toBe(1)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getDescendantsCount(GeneralUserToken(), { path: storage.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getDescendantsCount(GeneralUserToken(), { path: app.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getDescendantsCount(AppAdminUserToken(), { path: storage.tmp.path })
+
+        expect(actual).toBe(1)
+      })
     })
   })
 
-  describe('getDirChildren', () => {
+  describe('getChildren', () => {
     async function setupUserNodes() {
       const userRootPath = CoreStorageService.toUserRootPath(StorageUserToken())
       const [users, userRoot, d1] = await storageService.createHierarchicalDirs([`${userRootPath}/d1`])
@@ -1106,25 +1311,88 @@ describe('CoreStorageService', () => {
       await h.existsNodes(actual)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getChildren(StorageUserToken(), { path: d1.path, includeBase: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual.list[0].path).toBe(d1.path)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.getChildren(GeneralUserToken(), { path: d1.path, includeBase: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getChildren(StorageUserToken(), { path: storage.tmp.path })
+
+        expect(actual.list[0].path).toBe(storage.fileA.path)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getChildren(GeneralUserToken(), { path: storage.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getChildren(GeneralUserToken(), { path: app.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getChildren(AppAdminUserToken(), { path: storage.tmp.path })
+
+        expect(actual.list[0].path).toBe(storage.fileA.path)
+      })
     })
   })
 
@@ -1270,25 +1538,88 @@ describe('CoreStorageService', () => {
       expect(actual.cause).toBe(`Either 'id' or 'path' must be specified.`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getChildrenCount(StorageUserToken(), { path: d1.path, includeBase: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual).toBe(1)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.getChildrenCount(GeneralUserToken(), { path: d1.path, includeBase: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getChildrenCount(StorageUserToken(), { path: storage.tmp.path })
+
+        expect(actual).toBe(1)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getChildrenCount(GeneralUserToken(), { path: storage.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getChildrenCount(GeneralUserToken(), { path: app.tmp.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.getChildrenCount(AppAdminUserToken(), { path: storage.tmp.path })
+
+        expect(actual).toBe(1)
+      })
     })
   })
 
@@ -1410,28 +1741,94 @@ describe('CoreStorageService', () => {
       })
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { users, userRoot, d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getHierarchicalNodes(StorageUserToken(), d1.path)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual.length).toBe(3)
-      expect(actual[0]).toEqual(users)
-      expect(actual[1]).toEqual(userRoot)
-      expect(actual[2]).toEqual(d1)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.getHierarchicalNodes(GeneralUserToken(), d1.path)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを検索', async () => {
+        const { users, storage } = await setupUserNodes()
+
+        const actual = await storageService.getHierarchicalNodes(StorageUserToken(), storage.tmp.path)
+
+        expect(actual.length).toBe(3)
+        expect(actual[0].path).toBe(users.path)
+        expect(actual[1].path).toBe(storage.root.path)
+        expect(actual[2].path).toBe(storage.tmp.path)
+      })
+
+      it('他ユーザーのディレクトリを検索', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getHierarchicalNodes(GeneralUserToken(), storage.tmp.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを検索', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getHierarchicalNodes(GeneralUserToken(), app.tmp.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
+        const { users, storage } = await setupUserNodes()
+
+        const actual = await storageService.getHierarchicalNodes(AppAdminUserToken(), storage.tmp.path)
+
+        expect(actual.length).toBe(3)
+        expect(actual[0].path).toBe(users.path)
+        expect(actual[1].path).toBe(storage.root.path)
+        expect(actual[2].path).toBe(storage.tmp.path)
+      })
     })
   })
 
@@ -1467,29 +1864,6 @@ describe('CoreStorageService', () => {
 
       expect(actual.length).toBe(0)
     })
-
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { users, userRoot, d1 } = await setupUserNodes()
-
-      const actual = await storageService.getAncestorDirs(StorageUserToken(), d1.path)
-
-      expect(actual.length).toBe(2)
-      expect(actual[0]).toEqual(users)
-      expect(actual[1]).toEqual(userRoot)
-    })
-
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
-
-      let actual!: HttpException
-      try {
-        await storageService.getAncestorDirs(GeneralUserToken(), d1.path)
-      } catch (err) {
-        actual = err
-      }
-
-      expect(actual.getStatus()).toBe(403)
-    })
   })
 
   describe('createDir', () => {
@@ -1500,7 +1874,7 @@ describe('CoreStorageService', () => {
     }
 
     it('ベーシックケース', async () => {
-      const actual = await storageService.createDir(`d1`)
+      const actual = await storageService.createDir({ dir: `d1` })
 
       expect(actual.path).toBe(`d1`)
       expect(actual.contentType).toBe('')
@@ -1515,7 +1889,8 @@ describe('CoreStorageService', () => {
     })
 
     it('共有設定を指定した場合', async () => {
-      const actual = await storageService.createDir(`d1`, {
+      const actual = await storageService.createDir({
+        dir: `d1`,
         share: {
           isPublic: true,
           readUIds: ['ichiro'],
@@ -1534,20 +1909,21 @@ describe('CoreStorageService', () => {
     })
 
     it('既に存在するディレクトリを作成しようとした場合 - 共有設定なし', async () => {
-      const before = await storageService.createDir(`d1`)
+      const before = await storageService.createDir({ dir: `d1` })
 
       // 同じパスのディレクトリ作成を試みる
-      const actual = await storageService.createDir(`d1`)
+      const actual = await storageService.createDir({ dir: `d1` })
 
       expect(actual).toEqual(before)
       await h.existsNodes([actual])
     })
 
     it('既に存在するディレクトリを作成しようとした場合 - 共有設定あり', async () => {
-      const before = await storageService.createDir(`d1`)
+      const before = await storageService.createDir({ dir: `d1` })
 
       // 同じパスのディレクトリ作成を試みる
-      const actual = await storageService.createDir(`d1`, {
+      const actual = await storageService.createDir({
+        dir: `d1`,
         share: {
           isPublic: true,
           readUIds: ['ichiro'],
@@ -1571,7 +1947,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         // 祖先がいないディレクトリ作成を試みる
-        const actual = await storageService.createDir(`d1/d11`)
+        const actual = await storageService.createDir({ dir: `d1/d11` })
       } catch (err) {
         actual = err
       }
@@ -1586,43 +1962,75 @@ describe('CoreStorageService', () => {
     it('作成ディレクトリパスへのバリデーション実行確認', async () => {
       const validatePath = td.replace(CoreStorageService, 'validateNodePath')
 
-      await storageService.createDir(`d1`)
+      await storageService.createDir({ dir: `d1` })
 
-      const explanation = td.explain(validatePath)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(`d1`)
+      const exp = td.explain(validatePath)
+      expect(exp.calls[0].args[0]).toBe(`d1`)
     })
 
     it('共有設定入力へのバリデーション実行確認', async () => {
       const validateShareDetailInput = td.replace(CoreStorageService, 'validateShareDetailInput')
 
-      const options: CreateStorageNodeOptions = { share: { isPublic: null } }
-      await storageService.createDir(`d1`, options)
+      const share: SetShareDetailInput = { isPublic: null }
+      await storageService.createDir({ dir: `d1`, share })
 
-      const explanation = td.explain(validateShareDetailInput)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(options.share)
+      const exp = td.explain(validateShareDetailInput)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args[0]).toBe(share)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { userRoot } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.createDir(StorageUserToken(), `${userRoot.path}/d9`)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root] = await storageService.createHierarchicalDirs([`${storageUserRootPath}`])
 
-      expect(actual.path).toBe(`${userRoot.path}/d9`)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root] = await storageService.createHierarchicalDirs([`${generalUserRootPath}`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { userRoot } = await setupUserNodes()
-
-      let actual!: HttpException
-      try {
-        await storageService.createDir(GeneralUserToken(), `${userRoot.path}/d9`)
-      } catch (err) {
-        actual = err
+        return { users, storage: { root: storage_root }, general: { root: general_root } }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを作成', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.createDir(StorageUserToken(), { dir: `${storage.root.path}/tmp` })
+
+        expect(actual.path).toBe(`${storage.root.path}/tmp`)
+      })
+
+      it('他ユーザーのディレクトリを作成', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.createDir(GeneralUserToken(), { dir: `${storage.root}/tmp` })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを作成', async () => {
+        let actual!: AppError
+        try {
+          await storageService.createDir(GeneralUserToken(), { dir: `tmp` })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを作成', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.createDir(AppAdminUserToken(), { dir: `${storage.root.path}/tmp` })
+
+        expect(actual.path).toBe(`${storage.root.path}/tmp`)
+      })
     })
   })
 
@@ -1672,31 +2080,68 @@ describe('CoreStorageService', () => {
 
       await storageService.createHierarchicalDirs([`d1`, `d2`])
 
-      const explanation = td.explain(validatePath)
-      expect(explanation.calls.length).toBe(2)
-      expect(explanation.calls[0].args[0]).toBe(`d1`)
-      expect(explanation.calls[1].args[0]).toBe(`d2`)
+      const exp = td.explain(validatePath)
+      expect(exp.calls[0].args[0]).toBe(`d1`)
+      expect(exp.calls[1].args[0]).toBe(`d2`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { userRoot } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.createHierarchicalDirs(StorageUserToken(), [`${userRoot.path}/d9`])
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root] = await storageService.createHierarchicalDirs([`${storageUserRootPath}`])
 
-      expect(actual[0].path).toBe(`${userRoot.path}/d9`)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root] = await storageService.createHierarchicalDirs([`${generalUserRootPath}`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { userRoot } = await setupUserNodes()
-
-      let actual!: HttpException
-      try {
-        await storageService.createHierarchicalDirs(GeneralUserToken(), [`${userRoot.path}/d9`])
-      } catch (err) {
-        actual = err
+        return { users, storage: { root: storage_root }, general: { root: general_root } }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを作成', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.createHierarchicalDirs(StorageUserToken(), [`${storage.root.path}/tmp`])
+
+        expect(actual[0].path).toBe(`${storage.root.path}/tmp`)
+      })
+
+      it('他ユーザーのディレクトリを作成', async () => {
+        const { storage, general } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          // 自身と他者のユーザーディレクトリの作成を試みる
+          await storageService.createHierarchicalDirs(GeneralUserToken(), [`${storage.root.path}/tmp`, `${general.root.path}/tmp`])
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+        // 自身のディレクトリも作成されなかったことを検証
+        expect(await storageService.getNode({ path: `${storage.root.path}/tmp1` })).toBeUndefined()
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを作成', async () => {
+        const { storage, general } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.createHierarchicalDirs(GeneralUserToken(), [`tmp`])
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを作成', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.createHierarchicalDirs(AppAdminUserToken(), [`${storage.root.path}/tmp`])
+
+        expect(actual[0].path).toBe(`${storage.root.path}/tmp`)
+      })
     })
   })
 
@@ -1817,25 +2262,62 @@ describe('CoreStorageService', () => {
       await h.notExistsNodes(beforeNodes)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      await storageService.removeDir(StorageUserToken(), d1)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      await h.notExistsNodes([d1])
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
 
-      let actual!: HttpException
-      try {
-        await storageService.removeDir(GeneralUserToken(), d1)
-      } catch (err) {
-        actual = err
+        return { users, storage: { root: storage_root, tmp: storage_tmp }, general: { root: general_root, tmp: general_tmp }, app: { tmp: app_tmp } }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.removeDir(StorageUserToken(), storage.tmp)
+
+        await h.notExistsNodes([storage.tmp])
+      })
+
+      it('他ユーザーのディレクトリを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.removeDir(GeneralUserToken(), storage.tmp)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリを削除', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.removeDir(GeneralUserToken(), app.tmp)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.removeDir(AppAdminUserToken(), storage.tmp)
+
+        await h.notExistsNodes([storage.tmp])
+      })
     })
   })
 
@@ -1911,25 +2393,88 @@ describe('CoreStorageService', () => {
       expect(actual).toBeUndefined()
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      await storageService.removeFile(StorageUserToken(), fileA)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      await h.notExistsNodes([fileA])
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.removeFile(GeneralUserToken(), fileA)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのファイルを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.removeFile(StorageUserToken(), storage.fileA)
+
+        await h.notExistsNodes([storage.fileA])
+      })
+
+      it('他ユーザーのファイルを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.removeDir(GeneralUserToken(), storage.fileA)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションファイルを削除', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.removeDir(GeneralUserToken(), app.fileA)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのファイルを削除', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.removeDir(AppAdminUserToken(), storage.fileA)
+
+        await h.notExistsNodes([storage.fileA])
+      })
     })
   })
 
@@ -1956,7 +2501,7 @@ describe('CoreStorageService', () => {
       expect(fromNodes.length).toBe(3)
 
       // 'd1'を'd2/d1'へ移動
-      await storageService.moveDir(`d1`, `d2/d1`)
+      await storageService.moveDir({ fromDir: `d1`, toDir: `d2/d1` })
 
       // 移動後の'd2/d1'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d2/d1`, includeBase: true })
@@ -1983,7 +2528,7 @@ describe('CoreStorageService', () => {
       expect(fromNodes.length).toBe(2)
 
       // 'd1/d11'をバケット直下へ移動
-      const actual = await storageService.moveDir(`d1/docs`, `docs`)
+      const actual = await storageService.moveDir({ fromDir: `d1/docs`, toDir: `docs` })
 
       // 移動後の'docs'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `docs`, includeBase: true })
@@ -2017,7 +2562,7 @@ describe('CoreStorageService', () => {
       expect(fromNodes.length).toBe(2)
 
       // 'd1/docs'を'd2/docs'へ移動
-      const actual = await storageService.moveDir(`d1/docs`, `d2/docs`)
+      const actual = await storageService.moveDir({ fromDir: `d1/docs`, toDir: `d2/docs` })
 
       // 移動後の'd2/docs'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d2/docs`, includeBase: true })
@@ -2053,7 +2598,7 @@ describe('CoreStorageService', () => {
       expect(existsToNodes.length).toBe(2)
 
       // 'd1/docs'を'd2/docs'へ移動
-      const actual = await storageService.moveDir(`d1/docs`, `d2/docs`)
+      const actual = await storageService.moveDir({ fromDir: `d1/docs`, toDir: `d2/docs` })
 
       // 移動後の'd2/docs'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d2/docs`, includeBase: true })
@@ -2077,7 +2622,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         const fromNode = await storageService.sgetNode({ path: `d1` })
-        await storageService.moveDir(fromNode.path, fromNode.path + '/') // 移動先に'/'を付けて試す
+        await storageService.moveDir({ fromDir: fromNode.path, toDir: fromNode.path + '/' }) // 移動先に'/'を付けて試す
       } catch (err) {
         actual = err
       }
@@ -2097,7 +2642,7 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.moveDir(`d1`, `d2/d1`)
+        await storageService.moveDir({ fromDir: `d1`, toDir: `d2/d1` })
       } catch (err) {
         actual = err
       }
@@ -2117,7 +2662,7 @@ describe('CoreStorageService', () => {
 
       let actual!: AppError
       try {
-        await storageService.moveDir(`d1`, `d1/d11/d1`)
+        await storageService.moveDir({ fromDir: `d1`, toDir: `d1/d11/d1` })
       } catch (err) {
         actual = err
       }
@@ -2166,7 +2711,7 @@ describe('CoreStorageService', () => {
       const { list: fromNodes } = await storageService.getDescendants({ path: `dX/dA`, includeBase: true })
 
       // 'dX/dA'を'dY/dA'へ移動
-      await storageService.moveDir(`dX/dA`, `dY/dA`)
+      await storageService.moveDir({ fromDir: `dX/dA`, toDir: `dY/dA` })
 
       // 移動後の'dY/dA'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `dY/dA`, includeBase: true })
@@ -2249,7 +2794,7 @@ describe('CoreStorageService', () => {
       const { list: fromNodes } = await storageService.getDescendants({ path: `dX/dA`, includeBase: true })
 
       // 'dX/dA'を'dY/dA'へ移動
-      const actual = await storageService.moveDir(`dX/dA`, `dY/dA`)
+      const actual = await storageService.moveDir({ fromDir: `dX/dA`, toDir: `dY/dA` })
 
       // 移動後の'dY/dA'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `dY/dA`, includeBase: true })
@@ -2284,11 +2829,11 @@ describe('CoreStorageService', () => {
       // バリデーションメソッドのモック化
       const validatePath = td.replace(CoreStorageService, 'validateNodePath')
 
-      await storageService.moveDir(`d1`, `d2`)
+      await storageService.moveDir({ fromDir: `d1`, toDir: `d2` })
 
-      const explanation = td.explain(validatePath)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(`d2`)
+      const exp = td.explain(validatePath)
+      expect(exp.calls[0].args[0]).toBe(`d1`)
+      expect(exp.calls[1].args[0]).toBe(`d2`)
     })
 
     it('大量データの場合', async () => {
@@ -2318,7 +2863,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
-      await storageService.moveDir(`d1`, `dA/d1`, { maxChunk: 3 })
+      await storageService.moveDir({ fromDir: `d1`, toDir: `dA/d1` }, { maxChunk: 3 })
 
       // 移動後の'dA'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `dA/d1`, includeBase: true })
@@ -2341,28 +2886,139 @@ describe('CoreStorageService', () => {
       await h.verifyMoveNodes(fromNodes, `dA/d1`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1, tmp } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const toDirPath = `${tmp.path}/${d1.name}`
-      await storageService.moveDir(StorageUserToken(), d1.path, toDirPath)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp, storage_work] = await storageService.createHierarchicalDirs([
+          `${storageUserRootPath}/tmp`,
+          `${storageUserRootPath}/work`,
+        ])
 
-      const moved_d1 = await storageService.sgetNode({ path: toDirPath })
-      expect(moved_d1.path).toBe(toDirPath)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp, general_work] = await storageService.createHierarchicalDirs([
+          `${generalUserRootPath}/tmp`,
+          `${generalUserRootPath}/work`,
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1, tmp } = await setupUserNodes()
+        const [app_tmp, app_work] = await storageService.createHierarchicalDirs([`tmp`, `work`])
 
-      let actual!: HttpException
-      try {
-        const toDirPath = `${tmp.path}/${d1.name}`
-        await storageService.moveDir(GeneralUserToken(), d1.path, toDirPath)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, work: storage_work },
+          general: { root: general_root, tmp: general_tmp, work: general_work },
+          app: { tmp: app_tmp, work: app_work },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      describe('自ユーザー', () => {
+        it('自ユーザーの範囲内でディレクトリを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          const moved_work_path = `${storage.tmp.path}/${storage.work.name}`
+          await storageService.moveDir(StorageUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+
+          const moved_work = await storageService.sgetNode({ id: storage.work.id })
+          expect(moved_work.path).toBe(moved_work_path)
+        })
+
+        it('自ユーザーのディレクトリを他ユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_work_path = `${general.tmp.path}/${storage.work.name}`
+            await storageService.moveDir(StorageUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
+
+      describe('他ユーザー', () => {
+        it('他ユーザーの範囲内でディレクトリを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_work_path = `${storage.tmp.path}/${storage.work.name}`
+            await storageService.moveDir(GeneralUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+
+        it('他ユーザーのディレクトリを自ユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_work_path = `${general.root.path}/${storage.work.name}`
+            await storageService.moveDir(GeneralUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
+
+      describe('一般ユーザー', () => {
+        it('一般ユーザーでアプリケーションディレクトリの範囲内でディレクトリを移動', async () => {
+          const { app } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_work_path = `${app.tmp.path}/${app.work.name}`
+            await storageService.moveDir(GeneralUserToken(), { fromDir: app.work.path, toDir: moved_work_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+
+        it('一般ユーザーでアプリケーションディレクトリを自ユーザーのディレクトリへ移動', async () => {
+          const { app, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_work_path = `${general.root.path}/${app.work.name}`
+            await storageService.moveDir(GeneralUserToken(), { fromDir: app.work.path, toDir: moved_work_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
+
+      describe('アプリケーション管理者', () => {
+        it('Aユーザーの範囲内でディレクトリを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          const moved_work_path = `${storage.tmp.path}/${storage.work.name}`
+          await storageService.moveDir(AppAdminUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+
+          const moved_work = await storageService.sgetNode({ id: storage.work.id })
+          expect(moved_work.path).toBe(moved_work_path)
+        })
+
+        it('AユーザーのディレクトリをBユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          const moved_work_path = `${general.root.path}/${storage.work.name}`
+          await storageService.moveDir(AppAdminUserToken(), { fromDir: storage.work.path, toDir: moved_work_path })
+
+          const moved_work = await storageService.sgetNode({ id: storage.work.id })
+          expect(moved_work.path).toBe(moved_work_path)
+        })
+      })
     })
   })
 
@@ -2395,7 +3051,7 @@ describe('CoreStorageService', () => {
       const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'を'd2'へ移動
-      const actual = await storageService.moveFile(fromNode.path, `d2/fileA.txt`)
+      const actual = await storageService.moveFile({ fromFile: fromNode.path, toFile: `d2/fileA.txt` })
 
       expect(actual.path).toBe(`d2/fileA.txt`)
       await h.verifyMoveNodes([fromNode], `d2/fileA.txt`)
@@ -2415,7 +3071,7 @@ describe('CoreStorageService', () => {
       const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'をバケット直下へ移動
-      const actual = await storageService.moveFile(fromNode.path, `fileA.txt`)
+      const actual = await storageService.moveFile({ fromFile: fromNode.path, toFile: `fileA.txt` })
 
       expect(actual.path).toBe(`fileA.txt`)
       await h.verifyMoveNodes([fromNode], `fileA.txt`)
@@ -2445,7 +3101,7 @@ describe('CoreStorageService', () => {
       expect(existsToFile).toBeDefined()
 
       // 'd1/file.txt'を'd2'へ移動
-      const actual = await storageService.moveFile(fromNode.path, `d2/file.txt`)
+      const actual = await storageService.moveFile({ fromFile: fromNode.path, toFile: `d2/file.txt` })
 
       expect(actual.path).toBe(`d2/file.txt`)
       await h.verifyMoveNodes([fromNode], `d2/file.txt`)
@@ -2459,7 +3115,7 @@ describe('CoreStorageService', () => {
     it('移動元ファイルがない場合', async () => {
       let actual!: AppError
       try {
-        await storageService.moveFile(`d1/fileA.txt`, `d2/fileA.txt`)
+        await storageService.moveFile({ fromFile: `d1/fileA.txt`, toFile: `d2/fileA.txt` })
       } catch (err) {
         actual = err
       }
@@ -2480,7 +3136,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
-        await storageService.moveFile(fromNode.path, `d2/fileA.txt`)
+        await storageService.moveFile({ fromFile: fromNode.path, toFile: `d2/fileA.txt` })
       } catch (err) {
         actual = err
       }
@@ -2501,35 +3157,161 @@ describe('CoreStorageService', () => {
       // バリデーションメソッドのモック化
       const validatePath = td.replace(CoreStorageService, 'validateNodePath')
 
-      await storageService.moveFile(`d1/fileA.txt`, `d2/fileA.txt`)
+      await storageService.moveFile({ fromFile: `d1/fileA.txt`, toFile: `d2/fileA.txt` })
 
-      const explanation = td.explain(validatePath)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(`d2/fileA.txt`)
+      const exp = td.explain(validatePath)
+      expect(exp.calls[0].args[0]).toBe(`d1/fileA.txt`)
+      expect(exp.calls[1].args[0]).toBe(`d2/fileA.txt`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA, d2 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const toFilePath = `${d2.path}/${fileA.name}`
-      await storageService.moveFile(StorageUserToken(), fileA.path, toFilePath)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      const moved_fileA = await storageService.sgetNode({ path: toFilePath })
-      expect(moved_fileA.path).toBe(toFilePath)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA, d2 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        const toFilePath = `${d2.path}/${fileA.name}`
-        await storageService.moveFile(GeneralUserToken(), fileA.path, toFilePath)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      describe('自ユーザー', () => {
+        it('自ユーザーの範囲内でファイルを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          const moved_fileA_path = `${storage.root.path}/${storage.fileA.name}`
+          await storageService.moveFile(StorageUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+
+          const moved_fileA = await storageService.sgetNode({ id: storage.fileA.id })
+          expect(moved_fileA.path).toBe(moved_fileA_path)
+        })
+
+        it('自ユーザーのファイルを他ユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_fileA_path = `${general.root.path}/${storage.fileA.name}`
+            await storageService.moveFile(StorageUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
+
+      describe('アプリケーション管理者', () => {
+        it('ユーザーの範囲内でファイルを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          const moved_fileA_path = `${storage.root.path}/${storage.fileA.name}`
+          await storageService.moveFile(AppAdminUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+
+          const moved_fileA = await storageService.sgetNode({ id: storage.fileA.id })
+          expect(moved_fileA.path).toBe(moved_fileA_path)
+        })
+
+        it('AユーザーのファイルをBユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          const moved_fileA_path = `${general.root.path}/${storage.fileA.name}`
+          await storageService.moveFile(AppAdminUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+
+          const moved_fileA = await storageService.sgetNode({ id: storage.fileA.id })
+          expect(moved_fileA.path).toBe(moved_fileA_path)
+        })
+      })
+
+      describe('一般ユーザー', () => {
+        it('一般ユーザーでアプリケーションディレクトリの範囲内でファイルを移動', async () => {
+          const { app } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_fileA_path = `${app.fileA.name}`
+            await storageService.moveFile(GeneralUserToken(), { fromFile: app.fileA.path, toFile: moved_fileA_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+
+        it('一般ユーザーでアプリケーションファイルを自ユーザーのファイルへ移動', async () => {
+          const { app, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_fileA_path = `${general.root.path}/${app.fileA.name}`
+            await storageService.moveFile(GeneralUserToken(), { fromFile: app.fileA.path, toFile: moved_fileA_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
+
+      describe('他ユーザー', () => {
+        it('他ユーザーの範囲内でファイルを移動', async () => {
+          const { storage } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_fileA_path = `${storage.root.path}/${storage.fileA.name}`
+            await storageService.moveFile(GeneralUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+
+        it('他ユーザーのファイルを自ユーザーのディレクトリへ移動', async () => {
+          const { storage, general } = await setupUserNodes()
+
+          let actual!: AppError
+          try {
+            const moved_fileA_path = `${general.root.path}/${storage.fileA.name}`
+            await storageService.moveFile(GeneralUserToken(), { fromFile: storage.fileA.path, toFile: moved_fileA_path })
+          } catch (err) {
+            actual = err
+          }
+
+          expect(actual.cause).toBe(`Not implemented yet.`)
+        })
+      })
     })
   })
 
@@ -2554,7 +3336,7 @@ describe('CoreStorageService', () => {
       const { list: fromNodes } = await storageService.getDescendants({ path: `d1`, includeBase: true })
 
       // 'd1'を'd2'へリネーム
-      await storageService.renameDir(`d1`, `d2`)
+      await storageService.renameDir({ dir: `d1`, name: `d2` })
 
       // リネーム後の'd2'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d2`, includeBase: true })
@@ -2573,7 +3355,7 @@ describe('CoreStorageService', () => {
       try {
         // 'd1/docs'を'd1/files'へリネーム
         const dirNode = await storageService.sgetNode({ path: `d1/docs` })
-        await storageService.renameDir(dirNode.path, `files`)
+        await storageService.renameDir({ dir: dirNode.path, name: `files` })
       } catch (err) {
         actual = err
       }
@@ -2600,7 +3382,7 @@ describe('CoreStorageService', () => {
       const fromNodes = (await storageService.getDescendants({ path: `d1/d1`, includeBase: true })).list
 
       // 'd1/d1'を'd1/d2'へリネーム
-      await storageService.renameDir(`d1/d1`, `d2`)
+      await storageService.renameDir({ dir: `d1/d1`, name: `d2` })
 
       // リネーム後の'd2'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d1/d2`, includeBase: true })
@@ -2619,7 +3401,7 @@ describe('CoreStorageService', () => {
       const fromNodes = (await storageService.getDescendants({ path: `d1`, includeBase: true })).list
 
       // 'd1'を'd1XXX'へリネーム
-      await storageService.renameDir(`d1`, `d1XXX`)
+      await storageService.renameDir({ dir: `d1`, name: `d1XXX` })
 
       // リネーム後の'd1'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `d1XXX`, includeBase: true })
@@ -2636,11 +3418,11 @@ describe('CoreStorageService', () => {
       // バリデーションメソッドのモック化
       const validateDirName = td.replace(CoreStorageService, 'validateNodeName')
 
-      await storageService.renameDir(`d1`, `d2`)
+      await storageService.renameDir({ dir: `d1`, name: `d2` })
 
-      const explanation = td.explain(validateDirName)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(`d2`)
+      const exp = td.explain(validateDirName)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args[0]).toBe(`d2`)
     })
 
     it('大量データの場合', async () => {
@@ -2668,7 +3450,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割でリネームを行う
       // 'dA'を'dB'へリネーム
-      await storageService.renameDir(`dA`, `dB`, { maxChunk: 3 })
+      await storageService.renameDir({ dir: `dA`, name: `dB` }, { maxChunk: 3 })
 
       // 移動後の'dB'＋配下ノードを検証
       const renamedNodes = (await storageService.getDescendants({ path: `dB`, includeBase: true })).list
@@ -2692,26 +3474,69 @@ describe('CoreStorageService', () => {
       await h.verifyMoveNodes(fromNodes, `dB`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      await storageService.renameDir(StorageUserToken(), d1.path, `dx`)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      const dx = await storageService.sgetNode({ id: d1.id })
-      expect(dx.path).toBe(`${d1.dir}/dx`)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
 
-      let actual!: HttpException
-      try {
-        await storageService.renameDir(GeneralUserToken(), d1.path, `dx`)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp },
+          general: { root: general_root, tmp: general_tmp },
+          app: { tmp: app_tmp },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのディレクトリ名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.renameDir(StorageUserToken(), { dir: storage.tmp.path, name: '__tmp__' })
+
+        const renamed_tmp = await storageService.sgetNode({ id: storage.tmp.id })
+        expect(renamed_tmp.path).toBe(`${storage.tmp.dir}/__tmp__`)
+      })
+
+      it('他ユーザーのディレクトリ名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.renameDir(GeneralUserToken(), { dir: storage.tmp.path, name: '__tmp__' })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリ名を変更', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.renameDir(GeneralUserToken(), { dir: app.tmp.path, name: '__tmp__' })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのディレクトリ名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.renameDir(AppAdminUserToken(), { dir: storage.tmp.path, name: '__tmp__' })
+
+        const renamed_tmp = await storageService.sgetNode({ id: storage.tmp.id })
+        expect(renamed_tmp.path).toBe(`${storage.tmp.dir}/__tmp__`)
+      })
     })
   })
 
@@ -2743,7 +3568,7 @@ describe('CoreStorageService', () => {
       const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt` })
 
       // 'd1/fileA.txt'を'd1/fileB.txt'へリネーム
-      const actual = await storageService.renameFile(`d1/fileA.txt`, `fileB.txt`)
+      const actual = await storageService.renameFile({ file: `d1/fileA.txt`, name: `fileB.txt` })
 
       expect(actual.path).toBe(`d1/fileB.txt`)
       await h.verifyMoveNodes([fromNode], `d1/fileB.txt`)
@@ -2767,7 +3592,7 @@ describe('CoreStorageService', () => {
       let actual!: AppError
       try {
         // 'd1/fileA.txt'を'd1/fileB.txt'へリネーム
-        await storageService.renameFile('d1/fileA.txt', `fileB.txt`)
+        await storageService.renameFile({ file: 'd1/fileA.txt', name: `fileB.txt` })
       } catch (err) {
         actual = err
       }
@@ -2794,7 +3619,7 @@ describe('CoreStorageService', () => {
       const fromNode = await storageService.sgetFileNode({ path: `d1/fileA.txt/fileA.txt` })
 
       // 'd1/fileA.txt/fileA.txt'を'd1/fileA.txt/fileB.txt'へリネーム
-      const actual = await storageService.renameFile('d1/fileA.txt/fileA.txt', 'fileB.txt')
+      const actual = await storageService.renameFile({ file: 'd1/fileA.txt/fileA.txt', name: 'fileB.txt' })
 
       // 'fileA.txt'というディレクトリ名は変わらず、
       // 'fileA.txt'が'fileB.txt'に名前変更されたことを確認
@@ -2815,33 +3640,97 @@ describe('CoreStorageService', () => {
       // バリデーションメソッドのモック化
       const validateFileName = td.replace(CoreStorageService, 'validateNodeName')
 
-      await storageService.renameFile(`d1/fileA.txt`, `fileB.txt`)
+      await storageService.renameFile({ file: `d1/fileA.txt`, name: `fileB.txt` })
 
-      const explanation = td.explain(validateFileName)
-      expect(explanation.calls.length).toBe(1)
-      expect(explanation.calls[0].args[0]).toBe(`fileB.txt`)
+      const exp = td.explain(validateFileName)
+      expect(exp.calls.length).toBe(1)
+      expect(exp.calls[0].args[0]).toBe(`fileB.txt`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      await storageService.renameFile(StorageUserToken(), fileA.path, `fileX.txt`)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      const fileX = await storageService.sgetNode({ id: fileA.id })
-      expect(fileX.path).toBe(`${fileA.dir}/fileX.txt`)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${general_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.renameFile(GeneralUserToken(), fileA.path, `fileX.txt`)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのファイル名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.renameFile(StorageUserToken(), { file: storage.fileA.path, name: '__fileA__.text' })
+
+        const renamed_tmp = await storageService.sgetNode({ id: storage.fileA.id })
+        expect(renamed_tmp.path).toBe(`${storage.fileA.dir}/__fileA__.text`)
+      })
+
+      it('他ユーザーのファイル名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.renameFile(GeneralUserToken(), { file: storage.fileA.path, name: '__fileA__.text' })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションファイル名を変更', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.renameFile(GeneralUserToken(), { file: app.fileA.path, name: '__fileA__.text' })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのファイル名を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.renameFile(AppAdminUserToken(), { file: storage.fileA.path, name: '__fileA__.text' })
+
+        const renamed_tmp = await storageService.sgetNode({ id: storage.fileA.id })
+        expect(renamed_tmp.path).toBe(`${storage.fileA.dir}/__fileA__.text`)
+      })
     })
   })
 
@@ -3816,25 +4705,82 @@ describe('CoreStorageService', () => {
       expect(actual.cause).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.setDirShareDetail(StorageUserToken(), { path: d1.path }, { isPublic: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
 
-      let actual!: HttpException
-      try {
-        await storageService.setDirShareDetail(GeneralUserToken(), { path: d1.path }, { isPublic: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp },
+          general: { root: general_root, tmp: general_tmp },
+          app: { tmp: app_tmp },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーディレクトリの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.setDirShareDetail(StorageUserToken(), storage.tmp, { isPublic: true })
+
+        const renamed_tmp = await storageService.sgetNode(storage.tmp)
+        expect(renamed_tmp.share.isPublic).toBeTruthy()
+      })
+
+      it('他ユーザーディレクトリの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(GeneralUserToken(), storage.tmp, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションディレクトリの共有設定を変更', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(GeneralUserToken(), app.tmp, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーディレクトリの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(AppAdminUserToken(), storage.tmp, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者でアプリケーションディレクトリの共有設定を変更', async () => {
+        const { app } = await setupUserNodes()
+
+        await storageService.setDirShareDetail(AppAdminUserToken(), app.tmp, { isPublic: true })
+
+        const renamed_tmp = await storageService.sgetNode(app.tmp)
+        expect(renamed_tmp.share.isPublic).toBeTruthy()
+      })
     })
   })
 
@@ -4074,25 +5020,94 @@ describe('CoreStorageService', () => {
       expect(actual.cause).toBe(`The specified 'writeUIds' had an incorrect value: 'xxx,yyy'`)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.setFileShareDetail(StorageUserToken(), { path: fileA.path }, { isPublic: true })
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.setDirShareDetail(GeneralUserToken(), { path: fileA.path }, { isPublic: true })
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーファイルの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        await storageService.setFileShareDetail(StorageUserToken(), storage.fileA, { isPublic: true })
+
+        const renamed_tmp = await storageService.sgetNode(storage.fileA)
+        expect(renamed_tmp.share.isPublic).toBeTruthy()
+      })
+
+      it('他ユーザーファイルの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(GeneralUserToken(), storage.fileA, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションファイルの共有設定を変更', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(GeneralUserToken(), app.fileA, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーファイルの共有設定を変更', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.setDirShareDetail(AppAdminUserToken(), storage.fileA, { isPublic: true })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
     })
   })
 
@@ -4197,9 +5212,9 @@ describe('CoreStorageService', () => {
 
       await storageService.handleUploadedFile(fileA)
 
-      const explanation = td.explain(validatePath)
-      expect(explanation.calls.length >= 1).toBeTruthy()
-      expect(explanation.calls[0].args[0]).toBe(`d1/fileA.txt`)
+      const exp = td.explain(validatePath)
+      expect(exp.calls.length >= 1).toBeTruthy()
+      expect(exp.calls[0].args[0]).toBe(`d1/fileA.txt`)
     })
 
     it('存在しないファイルを指定した場合', async () => {
@@ -4246,25 +5261,88 @@ describe('CoreStorageService', () => {
       expect(exists).toBeFalsy()
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.handleUploadedFile(StorageUserToken(), fileA)
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
+        const [storage_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      expect(actual.id).toBe(fileA.id)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
+        const [general_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${storage_tmp.path}/fileA.txt`,
+          },
+        ])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { fileA } = await setupUserNodes()
+        const [app_tmp] = await storageService.createHierarchicalDirs([`tmp`])
+        const [app_fileA] = await storageService.uploadDataItems([
+          {
+            data: 'test',
+            contentType: 'text/plain; charset=utf-8',
+            path: `${app_tmp.path}/fileA.txt`,
+          },
+        ])
 
-      let actual!: HttpException
-      try {
-        await storageService.handleUploadedFile(GeneralUserToken(), fileA)
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp, fileA: storage_fileA },
+          general: { root: general_root, tmp: general_tmp, fileA: general_fileA },
+          app: { tmp: app_tmp, fileA: app_fileA },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーのファイルアップロード後処理を実行', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.handleUploadedFile(StorageUserToken(), storage.fileA)
+
+        await h.existsNodes([actual])
+      })
+
+      it('他ユーザーのファイルアップロード後処理を実行', async () => {
+        const { storage } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await await storageService.handleUploadedFile(GeneralUserToken(), storage.fileA)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションファイルアップロード後処理を実行', async () => {
+        const { app } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await await storageService.handleUploadedFile(GeneralUserToken(), app.fileA)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーのファイルアップロード後処理を実行', async () => {
+        const { storage } = await setupUserNodes()
+
+        const actual = await storageService.handleUploadedFile(AppAdminUserToken(), storage.fileA)
+
+        await h.existsNodes([actual])
+      })
     })
   })
 
@@ -4287,31 +5365,79 @@ describe('CoreStorageService', () => {
       expect(actual.length).toBe(2)
     })
 
-    it('閲覧権限があるユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
-      const requestOrigin = config.cors.whitelist[0]
+    describe('権限の検証', () => {
+      async function setupUserNodes() {
+        const users = await storageService.createDir({ dir: config.storage.user.rootName })
 
-      const actual = await storageService.getSignedUploadUrls(StorageUserToken(), requestOrigin, [
-        { id: CoreStorageSchema.generateId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
-      ])
+        const storageUserRootPath = StorageService.toUserRootPath(StorageUserToken())
+        const [storage_root, storage_tmp] = await storageService.createHierarchicalDirs([`${storageUserRootPath}/tmp`])
 
-      expect(actual.length).toBe(1)
-    })
+        const generalUserRootPath = StorageService.toUserRootPath(GeneralUserToken())
+        const [general_root, general_tmp] = await storageService.createHierarchicalDirs([`${generalUserRootPath}/tmp`])
 
-    it('閲覧権限がないユーザーで実行した場合', async () => {
-      const { d1 } = await setupUserNodes()
-      const requestOrigin = config.cors.whitelist[0]
-
-      let actual!: HttpException
-      try {
-        await storageService.getSignedUploadUrls(GeneralUserToken(), requestOrigin, [
-          { id: CoreStorageSchema.generateId(), path: `${d1.path}/fileA.txt`, contentType: 'text/plain' },
-        ])
-      } catch (err) {
-        actual = err
+        return {
+          users,
+          storage: { root: storage_root, tmp: storage_tmp },
+          general: { root: general_root, tmp: general_tmp },
+        }
       }
 
-      expect(actual.getStatus()).toBe(403)
+      it('自ユーザーファイルのアップロードURL取得', async () => {
+        const { storage } = await setupUserNodes()
+        const requestOrigin = config.cors.whitelist[0]
+
+        const actual = await storageService.getSignedUploadUrls(StorageUserToken(), requestOrigin, [
+          { id: CoreStorageSchema.generateId(), path: `${storage.tmp.path}/fileA.txt`, contentType: 'text/plain' },
+        ])
+
+        expect(actual.length).toBe(1)
+      })
+
+      it('他ユーザーファイルのアップロードURL取得', async () => {
+        const { storage, general } = await setupUserNodes()
+        const requestOrigin = config.cors.whitelist[0]
+
+        let actual!: AppError
+        try {
+          // 自身と他者のURL取得を試みる
+          await storageService.getSignedUploadUrls(GeneralUserToken(), requestOrigin, [
+            // 自身
+            { id: CoreStorageSchema.generateId(), path: `${general.tmp.path}/fileA.txt`, contentType: 'text/plain' },
+            // 他ユーザー
+            { id: CoreStorageSchema.generateId(), path: `${storage.tmp.path}/fileA.txt`, contentType: 'text/plain' },
+          ])
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('一般ユーザーでアプリケーションファイルのアップロードURL取得', async () => {
+        const requestOrigin = config.cors.whitelist[0]
+
+        let actual!: AppError
+        try {
+          await storageService.getSignedUploadUrls(GeneralUserToken(), requestOrigin, [
+            { id: CoreStorageSchema.generateId(), path: `fileA.txt`, contentType: 'text/plain' },
+          ])
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('アプリケーション管理者で他ユーザーファイルのアップロードURL取得', async () => {
+        const { storage } = await setupUserNodes()
+        const requestOrigin = config.cors.whitelist[0]
+
+        const actual = await storageService.getSignedUploadUrls(AppAdminUserToken(), requestOrigin, [
+          { id: CoreStorageSchema.generateId(), path: `${storage.tmp.path}/fileA.txt`, contentType: 'text/plain' },
+        ])
+
+        expect(actual.length).toBe(1)
+      })
     })
   })
 
@@ -5410,20 +6536,20 @@ describe('大量データのテスト', () => {
 
   /**
    * 指定されたディレクトリにテスト用のファイルを作成します。
-   * @param dirPath
+   * @param dir
    * @param startFileNumber
    * @param endFileNumber
    */
-  async function createTestData(dirPath: string, startFileNumber: number, endFileNumber: number): Promise<void> {
+  async function createTestData(dir: string, startFileNumber: number, endFileNumber: number): Promise<void> {
     const start = performance.now()
 
-    dirPath = removeBothEndsSlash(dirPath)
+    dir = removeBothEndsSlash(dir)
 
     // 現在存在するノードを全て削除
     await h.removeAllNodes()
 
     // ファイルを格納するディレクトリを作成
-    await storageService.createHierarchicalDirs([dirPath])
+    await storageService.createHierarchicalDirs([dir])
 
     // ファイルを作成
     const uploadItems: StorageUploadDataItem[] = []
@@ -5431,7 +6557,7 @@ describe('大量データのテスト', () => {
       uploadItems.push({
         data: `test${i}`,
         contentType: 'text/plain; charset=utf-8',
-        path: `${dirPath}/${i.toString().padStart(6, '0')}.txt`,
+        path: `${dir}/${i.toString().padStart(6, '0')}.txt`,
       })
     }
     await storageService.uploadDataItems(uploadItems)
@@ -5442,16 +6568,16 @@ describe('大量データのテスト', () => {
 
   /**
    * 指定されたディレクトリとその配下ノードの数を取得します。
-   * @param dirPath
+   * @param dir
    */
-  async function getFileCount(dirPath: string): Promise<number> {
+  async function getFileCount(dir: string): Promise<number> {
     const client = newElasticClient()
     const response = await client.count({
       index: CoreStorageSchema.IndexAlias,
       body: {
         query: {
           bool: {
-            must: [{ wildcard: { path: `${dirPath}/*` } }, { term: { nodeType: 'File' } }],
+            must: [{ wildcard: { path: `${dir}/*` } }, { term: { nodeType: 'File' } }],
           },
         },
       },
@@ -5487,7 +6613,7 @@ describe('大量データのテスト', () => {
       await storageService.createHierarchicalDirs([ToDirPath])
 
       const start = performance.now()
-      await storageService.moveDir(FromDirPath, ToDirPath, { maxChunk: 100 })
+      await storageService.moveDir({ fromDir: FromDirPath, toDir: ToDirPath }, { maxChunk: 100 })
       const end = performance.now()
       console.log(`removeDir: ${(end - start) / 1000}s`)
 

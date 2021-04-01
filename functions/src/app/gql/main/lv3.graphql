@@ -4,6 +4,6 @@
 
 type Mutation {
   removeStorageDir(key: StorageNodeGetKeyInput!): Boolean!
-  moveStorageDir(fromDirPath: String!, toDirPath: String!): Boolean!
-  renameStorageDir(dirPath: String!, newName: String!): Boolean!
+  moveStorageDir(input: MoveStorageDirInput!): Boolean!
+  renameStorageDir(input: RenameStorageDirInput!): Boolean!
 }

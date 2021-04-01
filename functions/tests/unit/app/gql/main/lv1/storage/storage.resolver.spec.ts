@@ -24,11 +24,13 @@ import {
 } from '../../../../../../helpers/app'
 import {
   CreateArticleTypeDirInput,
+  CreateStorageDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
-  GetArticleChildrenInput,
   GetUserArticleListInput,
+  MoveStorageFileInput,
   PaginationResult,
+  RenameStorageFileInput,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
@@ -477,8 +479,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('createStorageDir', () => {
     const gql = {
       query: `
-        mutation CreateStorageDir($dirPath: String!, $options: CreateStorageNodeOptions) {
-          createStorageDir(dirPath: $dirPath, options: $options) {
+        mutation CreateStorageDir($input: CreateStorageDirInput!) {
+          createStorageDir(input: $input) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -490,13 +492,18 @@ describe('Lv1 Storage Resolver', () => {
       const d1 = h.newDirNode(`d1`, { share: InitialShareDetail })
 
       const createDir = td.replace(storageService, 'createDir')
-      td.when(createDir(AppAdminUserToken(), d1.path, { share: InitialShareDetail })).thenResolve(d1)
+      td.when(createDir(AppAdminUserToken(), { dir: d1.path, share: InitialShareDetail })).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { dirPath: d1.path, options: { share: InitialShareDetail } },
+          variables: {
+            input: <CreateStorageDirInput>{
+              dir: d1.path,
+              share: InitialShareDetail,
+            },
+          },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -509,7 +516,9 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPath: d1.path },
+        variables: {
+          input: <CreateStorageDirInput>{ dir: d1.path },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -519,8 +528,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('createStorageHierarchicalDirs', () => {
     const gql = {
       query: `
-        mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) {
-          createStorageHierarchicalDirs(dirPaths: $dirPaths) {
+        mutation CreateStorageHierarchicalDirs($dirs: [String!]!) {
+          createStorageHierarchicalDirs(dirs: $dirs) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -539,7 +548,7 @@ describe('Lv1 Storage Resolver', () => {
         app,
         {
           ...gql,
-          variables: { dirPaths: [d11.path, d12.path] },
+          variables: { dirs: [d11.path, d12.path] },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -553,7 +562,7 @@ describe('Lv1 Storage Resolver', () => {
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { dirPaths: [d11.path, d12.path] },
+        variables: { dirs: [d11.path, d12.path] },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -605,8 +614,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('moveStorageFile', () => {
     const gql = {
       query: `
-        mutation MoveStorageFile($fromFilePath: String!, $toFilePath: String!) {
-          moveStorageFile(fromFilePath: $fromFilePath, toFilePath: $toFilePath) {
+        mutation MoveStorageFile($input: MoveStorageFileInput!) {
+          moveStorageFile(input: $input) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -618,13 +627,18 @@ describe('Lv1 Storage Resolver', () => {
       const fileA = h.newFileNode(`docs/fileA.txt`)
 
       const moveFile = td.replace(storageService, 'moveFile')
-      td.when(moveFile(AppAdminUserToken(), `fileA.txt`, `docs/fileA.txt`)).thenResolve(fileA)
+      td.when(moveFile(AppAdminUserToken(), { fromFile: `fileA.txt`, toFile: `docs/fileA.txt` })).thenResolve(fileA)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { fromFilePath: `fileA.txt`, toFilePath: `docs/fileA.txt` },
+          variables: {
+            input: <MoveStorageFileInput>{
+              fromFile: `fileA.txt`,
+              toFile: `docs/fileA.txt`,
+            },
+          },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -635,7 +649,12 @@ describe('Lv1 Storage Resolver', () => {
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { fromFilePath: `fileA.txt`, toFilePath: `docs/fileA.txt` },
+        variables: {
+          input: <MoveStorageFileInput>{
+            fromFile: `fileA.txt`,
+            toFile: `docs/fileA.txt`,
+          },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -645,8 +664,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('renameStorageFile', () => {
     const gql = {
       query: `
-        mutation RenameStorageFile($filePath: String!, $newName: String!) {
-          renameStorageFile(filePath: $filePath, newName: $newName) {
+        mutation RenameStorageFile($input: RenameStorageFileInput!) {
+          renameStorageFile(input: $input) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -658,13 +677,18 @@ describe('Lv1 Storage Resolver', () => {
       const fileB = h.newFileNode(`fileB.txt`)
 
       const renameFile = td.replace(storageService, 'renameFile')
-      td.when(renameFile(AppAdminUserToken(), `fileA.txt`, `fileB.txt`)).thenResolve(fileB)
+      td.when(renameFile(AppAdminUserToken(), { file: `fileA.txt`, name: `fileB.txt` })).thenResolve(fileB)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { filePath: `fileA.txt`, newName: `fileB.txt` },
+          variables: {
+            input: <RenameStorageFileInput>{
+              file: `fileA.txt`,
+              name: `fileB.txt`,
+            },
+          },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -675,7 +699,12 @@ describe('Lv1 Storage Resolver', () => {
     it('サインインしていない場合', async () => {
       const response = await requestGQL(app, {
         ...gql,
-        variables: { filePath: `fileA.txt`, newName: `fileB.txt` },
+        variables: {
+          input: <RenameStorageFileInput>{
+            file: `fileA.txt`,
+            name: `fileB.txt`,
+          },
+        },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)

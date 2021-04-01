@@ -1,10 +1,11 @@
+
 POST {{apiHost}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } article { dir { name type sortOrder } src { type } } version createdAt updatedAt } }",
+  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id path } }",
   "variables": {
     "input": { "path": "test-files/d1" }
   }
@@ -17,11 +18,10 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetStorageDirDescendants",
-  "query": "query GetStorageDirDescendants($dirPath: String, $input: PaginationInput) { storageDirDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "operationName": "GetStorageNodes",
+  "query": "query GetStorageNodes($input: StorageNodeGetKeysInput!) { storageNodes(input: $input) { id path } }",
   "variables": {
-    "nodePath": "test-files/d1",
-    "input": { "maxChunk": 3 }
+    "input": { "paths": ["test-files/d1"] }
   }
 }
 
@@ -33,25 +33,13 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($dirPath: String, $input: PaginationInput) { storageDescendants(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) { storageDescendants(input: $input, pagination: $pagination) { list { id path } nextPageToken isPaginationTimeout } }",
   "variables": {
-    "nodePath": "test-files/d1",
-    "input": { "maxChunk": 3 }
-  }
-}
-
-###
-
-POST {{apiHost}}/gql_lv1
-Content-Type: application/json
-Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
-
-{
-  "operationName": "GetStorageDirChildren",
-  "query": "query GetStorageDirChildren($dirPath: String, $input: PaginationInput) { storageDirChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
-  "variables": {
-    "nodePath": "test-files/d1",
-    "input": { "maxChunk": 3 }
+    "input": {
+      "path": "test-files/d1",
+      "includeBase": true
+    },
+    "pagination": { "maxChunk": 3 }
   }
 }
 
@@ -63,10 +51,13 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($dirPath: String, $input: PaginationInput) { storageChildren(dirPath: $dirPath, input: $input) { list { id path } nextPageToken } }",
+  "query": "query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) { storageChildren(input: $input, pagination: $pagination) { list { id path } nextPageToken isPaginationTimeout } }",
   "variables": {
-    "dirPath": "test-files/d1",
-    "input": { "maxChunk": 3 }
+    "input": {
+      "path": "test-files/d1",
+      "includeBase": true
+    },
+    "pagination": { "maxChunk": 3 }
   }
 }
 
@@ -106,9 +97,12 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "CreateStorageDir",
-  "query": "mutation CreateStorageDir($dirPath: String!, $options: CreateStorageNodeOptions) { createStorageDir(dirPath: $dirPath, input: $input) { id path } }",
+  "query": "mutation CreateStorageDir($input: CreateStorageDirInput!) { createStorageDir(input: $input) { id path } }",
   "variables": {
-    "dirPath": "test-files"
+    "input": {
+      "dir": "test-files",
+      "share": { "isPublic": true }
+    }
   }
 }
 
@@ -120,9 +114,9 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "CreateStorageHierarchicalDirs",
-  "query": "mutation CreateStorageHierarchicalDirs($dirPaths: [String!]!) { createStorageHierarchicalDirs(dirPaths: $dirPaths) { id path } }",
+  "query": "mutation CreateStorageHierarchicalDirs($dirs: [String!]!) { createStorageHierarchicalDirs(dirs: $dirs) { id path } }",
   "variables": {
-    "dirPaths": [
+    "dirs": [
       "test-files/d1/d11",
       "test-files/d1/d11/d111",
       "test-files/d1/d11/d112",
@@ -139,9 +133,11 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RemoveStorageDir",
-  "query": "mutation RemoveStorageDir($dirPath: String!) { removeStorageDir(dirPath: $dirPath) }",
+  "query": "mutation RemoveStorageDir($key: StorageNodeGetKeyInput!) { removeStorageDir(key: $key) }",
   "variables": {
-    "dirPath": "test-files/d1"
+    "key": {
+      "path": "test-files/d1"
+    }
   }
 }
 
@@ -153,9 +149,11 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RemoveStorageFile",
-  "query": "mutation RemoveStorageFile($filePath: String!) { removeStorageFile(filePath: $filePath) { id path } }",
+  "query": "mutation RemoveStorageFile($key: StorageNodeGetKeyInput!) { removeStorageFile(key: $key) { id path } }",
   "variables": {
-    "filePath": "test-files/d1/fileA.txt"
+    "key": {
+      "path": "test-files/d1/fileA.txt"
+    }
   }
 }
 
