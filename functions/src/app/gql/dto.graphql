@@ -3,6 +3,11 @@ input PaginationInput {
   pageToken: String
 }
 
+enum LangCode {
+  ja
+  en
+}
+
 #--------------------------------------------------
 #  User
 #--------------------------------------------------
@@ -144,7 +149,7 @@ type StorageNode implements TimestampEntity {
   dir: String!
   path: String!
   contentType: String!
-  size: Int!
+  size: Long!
   share: StorageNodeShareDetail!
   article: StorageArticleDetail
   version: Int!
@@ -161,35 +166,76 @@ type StoragePaginationResult {
 type StorageArticleDetail {
   dir: StorageArticleDirDetail
   file: StorageArticleFileDetail
-  src: StorageArticleSrcDetail
+  src: StorageArticleSrcByLang
 }
 
 type StorageArticleDirDetail {
-  label: String!
+  label: StorageArticleDirLabelByLang!
   type: StorageArticleDirType!
   sortOrder: Long!
+}
+
+type StorageArticleDirLabelByLang {
+  ja: String
+  en: String
 }
 
 type StorageArticleFileDetail {
   type: StorageArticleFileType!
 }
 
+type StorageArticleSrcByLang {
+  ja: StorageArticleSrcDetail
+  en: StorageArticleSrcDetail
+}
+
 type StorageArticleSrcDetail {
-  masterId: String!
-  draftId: String!
-  createdAt: DateTime!
-  updatedAt: DateTime!
+  masterId: String
+  draftId: String
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input CreateArticleTypeDirInput {
+  lang: LangCode!
   dir: String!
   label: String!
-  type: StorageArticleDirType
+  type: StorageArticleDirType!
+  share: SetShareDetailInput
+}
+
+input CreateArticleGeneralDirInput {
+  dir: String!
+  share: SetShareDetailInput
+}
+
+input RenameArticleTypeDirInput {
+  lang: LangCode!
+  dir: String!
+  label: String!
+}
+
+input SaveArticleMasterSrcFileInput {
+  lang: LangCode!
+  articleId: String!
+  srcContent: String!
+  textContent: String!
 }
 
 type SaveArticleMasterSrcFileResult {
   article: StorageNode!
   master: StorageNode!
+  draft: StorageNode!
+}
+
+input SaveArticleDraftSrcFileInput {
+  lang: LangCode!
+  articleId: String!
+  srcContent: String
+}
+
+type SaveArticleDraftSrcFileResult {
+  article: StorageNode!
   draft: StorageNode!
 }
 
@@ -204,6 +250,7 @@ type ArticleListItem {
 }
 
 input GetUserArticleListInput {
+  lang: LangCode!
   userName: String!
   articleTypeDirId: String!
 }
@@ -222,7 +269,7 @@ type ArticleTableOfContentsItem {
   type: StorageArticleDirType!
 }
 
-input GetArticleChildrenInput {
-  dirPath: String!
-  types: [StorageArticleDirType!]!
+input GetUserArticleTableOfContentsInput {
+  lang: LangCode!
+  userName: String!
 }

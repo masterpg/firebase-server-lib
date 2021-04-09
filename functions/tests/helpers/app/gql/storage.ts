@@ -1,11 +1,5 @@
-import {
-  ArticleListItem,
-  ArticleTableOfContentsItem,
-  StorageArticleDirDetail,
-  StorageArticleSrcDetail,
-  StorageNode,
-} from '../../../../src/app/services'
-import { ToRawTimestamp, toRawTimestamp } from 'web-base-lib'
+import { ArticleListItem, ArticleTableOfContentsItem, StorageArticleDetail, StorageArticleSrcDetail, StorageNode } from '../../../../src/app/services'
+import { ToDeepRawDate, ToStrictDeepNull, toRawDate } from 'web-base-lib'
 
 //========================================================================
 //
@@ -13,14 +7,9 @@ import { ToRawTimestamp, toRawTimestamp } from 'web-base-lib'
 //
 //========================================================================
 
-interface ResponseStorageNode extends Omit<StorageNode, 'level' | 'article' | 'createdAt' | 'updatedAt'> {
-  article: {
-    dir: StorageArticleDirDetail | null
-    src: ToRawTimestamp<StorageArticleSrcDetail> | null
-  } | null
-  createdAt: string
-  updatedAt: string
-}
+type ToGQLResponse<T> = ToStrictDeepNull<ToDeepRawDate<T>>
+
+type ResponseStorageNode = ToGQLResponse<StorageNode>
 
 const StorageNodeFieldsName = 'StorageNodeFields'
 
@@ -40,7 +29,10 @@ const StorageNodeFields = `
     }
     article {
       dir {
-        label
+        label {
+          ja
+          en
+        }
         type
         sortOrder
       }
@@ -48,10 +40,18 @@ const StorageNodeFields = `
         type
       }
       src {
-        masterId
-        draftId
-        createdAt
-        updatedAt
+        ja {
+          masterId
+          draftId
+          createdAt
+          updatedAt
+        }
+        en {
+          masterId
+          draftId
+          createdAt
+          updatedAt
+        }
       }
     }
     version
@@ -94,6 +94,41 @@ const ArticleTableOfContentsItemFields = `
 //========================================================================
 
 function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
+  function toArticle(articleDetail?: StorageArticleDetail): ToGQLResponse<StorageArticleDetail> | null {
+    function toSrc(srcDetail?: StorageArticleSrcDetail): ToGQLResponse<StorageArticleSrcDetail> | null {
+      if (!srcDetail) return null
+      return {
+        masterId: srcDetail?.masterId ?? null,
+        draftId: srcDetail?.draftId ?? null,
+        createdAt: toRawDate(srcDetail?.createdAt) ?? null,
+        updatedAt: toRawDate(srcDetail?.updatedAt) ?? null,
+      }
+    }
+
+    if (!articleDetail) return null
+    return {
+      dir: (() => {
+        if (!articleDetail?.dir) return null
+        return {
+          type: articleDetail.dir.type,
+          sortOrder: articleDetail.dir.sortOrder,
+          label: {
+            ja: articleDetail.dir.label.ja ?? null,
+            en: articleDetail.dir.label.en ?? null,
+          },
+        }
+      })(),
+      file: articleDetail?.file ?? null,
+      src: (() => {
+        if (!articleDetail?.src) return null
+        return {
+          ja: toSrc(articleDetail.src.ja),
+          en: toSrc(articleDetail.src.en),
+        }
+      })(),
+    }
+  }
+
   return {
     id: node.id,
     nodeType: node.nodeType,
@@ -107,14 +142,7 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
       readUIds: node.share.readUIds ?? null,
       writeUIds: node.share.writeUIds ?? null,
     },
-    article: (() => {
-      if (!node.article) return null
-      return {
-        dir: node.article.dir ?? null,
-        file: node.article.file ?? null,
-        src: toRawTimestamp(node.article.src) ?? null,
-      }
-    })(),
+    article: toArticle(node.article),
     version: node.version,
     createdAt: node.createdAt.toISOString(),
     updatedAt: node.updatedAt.toISOString(),
@@ -125,7 +153,7 @@ function toGQLResponseStorageNodes(nodes: StorageNode[]): ResponseStorageNode[] 
   return nodes.map(node => toGQLResponseStorageNode(node))
 }
 
-function toGQLResponseArticleListItem(item: ArticleListItem): ToRawTimestamp<ArticleListItem> {
+function toGQLResponseArticleListItem(item: ArticleListItem): ToDeepRawDate<ArticleListItem> {
   return {
     id: item.id,
     name: item.name,
@@ -137,7 +165,7 @@ function toGQLResponseArticleListItem(item: ArticleListItem): ToRawTimestamp<Art
   }
 }
 
-function toGQLResponseArticleListItems(items: ArticleListItem[]): ToRawTimestamp<ArticleListItem>[] {
+function toGQLResponseArticleListItems(items: ArticleListItem[]): ToDeepRawDate<ArticleListItem>[] {
   return items.map(item => toGQLResponseArticleListItem(item))
 }
 

@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin'
 import { Dayjs } from 'dayjs'
 import { IsPositive } from 'class-validator'
+import { LangCode } from '../../../../../../web-base-lib/dist'
 import { TimestampEntity } from 'web-base-lib'
 
 //========================================================================
@@ -89,7 +90,6 @@ interface CoreStorageNode extends TimestampEntity {
   name: string
   dir: string
   path: string
-  level: number
   contentType: string
   size: number
   share: StorageNodeShareDetail
@@ -175,38 +175,84 @@ interface StorageNode extends CoreStorageNode {
 interface StorageArticleDetail {
   dir?: StorageArticleDirDetail
   file?: StorageArticleFileDetail
-  src?: StorageArticleSrcDetail
+  src?: StorageArticleSrcByLang
 }
 
 interface StorageArticleDirDetail {
-  label: string
+  label: StorageArticleDirLabelByLang
   type: StorageArticleDirType
   sortOrder: number
+}
+
+interface StorageArticleDirLabelByLang {
+  ja?: string
+  en?: string
 }
 
 interface StorageArticleFileDetail {
   type: StorageArticleFileType
 }
 
+interface StorageArticleSrcByLang {
+  ja?: StorageArticleSrcDetail
+  en?: StorageArticleSrcDetail
+}
+
 interface StorageArticleSrcDetail {
-  masterId: string
-  draftId: string
-  createdAt: Dayjs
-  updatedAt: Dayjs
+  masterId?: string
+  draftId?: string
+  createdAt?: Dayjs
+  updatedAt?: Dayjs
 }
 
 interface CreateArticleTypeDirInput {
+  lang: LangCode
   id?: string
   dir: string
   label: string
   type: StorageArticleDirType
   sortOrder?: number
+  share?: SetShareDetailInput
+}
+
+interface CreateArticleGeneralDirInput {
+  dir: string
+  share?: SetShareDetailInput
+}
+
+interface RenameArticleTypeDirInput {
+  lang: LangCode
+  dir: string
+  label: string
+}
+
+interface SaveArticleMasterSrcFileInput {
+  lang: LangCode
+  articleId: string
+  srcContent: string
+  textContent: string
 }
 
 interface SaveArticleMasterSrcFileResult {
   article: StorageNode
   master: StorageNode
   draft: StorageNode
+}
+
+interface SaveArticleDraftSrcFileInput {
+  lang: LangCode
+  articleId: string
+  srcContent: string | null
+}
+
+interface SaveArticleDraftSrcFileResult {
+  article: StorageNode
+  draft: StorageNode
+}
+
+interface GetArticleSrcInput {
+  lang: LangCode
+  articleId: string
 }
 
 interface ArticlePathDetail {
@@ -236,6 +282,7 @@ interface ArticleListItem {
 }
 
 interface GetUserArticleListInput {
+  lang: LangCode
   userName: string
   articleTypeDirId: string
 }
@@ -249,9 +296,9 @@ interface ArticleTableOfContentsItem {
   label: string
 }
 
-interface GetArticleChildrenInput {
-  dirPath: string
-  types: StorageArticleDirType[]
+interface GetUserArticleTableOfContentsInput {
+  lang: LangCode
+  userName: string
 }
 
 //--------------------------------------------------
@@ -335,24 +382,33 @@ export {
   ArticlePathDetail,
   ArticleTableOfContentsItem,
   CoreStorageNode,
+  CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
+  GetArticleSrcInput,
   GetArticleSrcResult,
   GetUserArticleListInput,
+  GetUserArticleTableOfContentsInput,
   MoveStorageDirInput,
   MoveStorageFileInput,
   PaginationInput,
   PaginationResult,
+  RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
+  SaveArticleDraftSrcFileInput,
+  SaveArticleDraftSrcFileResult,
+  SaveArticleMasterSrcFileInput,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
   StorageArticleDetail,
   StorageArticleDirDetail,
+  StorageArticleDirLabelByLang,
   StorageArticleDirType,
   StorageArticleFileDetail,
   StorageArticleFileType,
+  StorageArticleSrcByLang,
   StorageArticleSrcDetail,
   StorageNode,
   StorageNodeGetKeyInput,

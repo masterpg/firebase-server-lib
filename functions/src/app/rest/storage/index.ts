@@ -1,9 +1,10 @@
 import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
 import { AuthServiceModule, CORSServiceModule, LoggingServiceModule, StorageServiceDI, StorageServiceModule } from '../../services'
-import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Req, RequestMethod, Res } from '@nestjs/common'
+import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Query, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { BaseRESTModule } from '../base'
 import KeepAliveRESTModule from '../base/keepalive'
+import { LangCode } from 'web-base-lib'
 
 //========================================================================
 //
@@ -25,8 +26,13 @@ class StorageController {
   }
 
   @Get('articles/:articleId')
-  async serveArticle(@Req() req: Request, @Res() res: Response, @Param('articleId') articleId: string): Promise<Response> {
-    return this.storageService.getArticleSrc(req, res, articleId)
+  async serveArticle(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Param('articleId') articleId: string,
+    @Query('lang') lang: LangCode
+  ): Promise<Response> {
+    return this.storageService.getArticleSrc(req, res, { articleId, lang })
   }
 }
 

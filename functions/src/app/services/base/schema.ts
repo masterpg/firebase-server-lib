@@ -4,6 +4,7 @@ import {
   CoreStorageNode,
   StorageArticleDirDetail,
   StorageArticleFileDetail,
+  StorageArticleSrcByLang,
   StorageArticleSrcDetail,
   StorageNode,
   StorageNodeShareDetail,
@@ -11,6 +12,7 @@ import {
 } from './index'
 import {
   Entities,
+  LangCodes,
   ToRawTimestamp,
   pickProps,
   removeBothEndsSlash,
@@ -182,7 +184,7 @@ namespace CoreStorageSchema {
           type: 'keyword',
         },
         size: {
-          type: 'float',
+          type: 'long',
         },
         share: {
           properties: {
@@ -213,7 +215,7 @@ namespace CoreStorageSchema {
 
   export function toDBEntity(appEntity: CoreStorageNode): DBStorageNode {
     return toRawTimestamp(
-      pickProps(appEntity, ['id', 'nodeType', 'name', 'dir', 'path', 'level', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
+      pickProps(appEntity, ['id', 'nodeType', 'name', 'dir', 'path', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
     )
   }
 
@@ -231,7 +233,7 @@ namespace CoreStorageSchema {
   }
 
   /**
-   * ストアノードレベルを取得します。
+   * ノードレベルを取得します。
    * @param nodePath
    */
   export function getNodeLevel(nodePath: string | null): number {
@@ -243,13 +245,12 @@ namespace CoreStorageSchema {
    * 指定されたノードパスをノードデータに変換します。
    * @param nodePath
    */
-  export function toPathData(nodePath: string): { name: string; dir: string; path: string; level: number } {
+  export function toPathData(nodePath: string): { name: string; dir: string; path: string } {
     nodePath = removeBothEndsSlash(nodePath)
     return {
       name: _path.basename(nodePath),
       dir: removeStartDirChars(_path.dirname(nodePath)),
       path: nodePath,
-      level: getNodeLevel(nodePath),
     }
   }
 
@@ -277,17 +278,30 @@ namespace StorageSchema {
           properties: {
             dir: {
               properties: {
-                label: {
-                  type: 'keyword',
-                  fields: {
-                    text: {
-                      type: 'text',
-                      analyzer: 'kuromoji_analyzer',
-                    },
-                  },
-                },
                 type: {
                   type: 'keyword',
+                },
+                label: {
+                  properties: {
+                    ja: {
+                      type: 'keyword',
+                      fields: {
+                        text: {
+                          type: 'text',
+                          analyzer: 'kuromoji_analyzer',
+                        },
+                      },
+                    },
+                    en: {
+                      type: 'keyword',
+                      fields: {
+                        text: {
+                          type: 'text',
+                          analyzer: 'standard',
+                        },
+                      },
+                    },
+                  },
                 },
                 sortOrder: {
                   type: 'long',
@@ -303,21 +317,45 @@ namespace StorageSchema {
             },
             src: {
               properties: {
-                masterId: {
-                  type: 'keyword',
+                ja: {
+                  properties: {
+                    masterId: {
+                      type: 'keyword',
+                    },
+                    draftId: {
+                      type: 'keyword',
+                    },
+                    createdAt: {
+                      type: 'date',
+                    },
+                    updatedAt: {
+                      type: 'date',
+                    },
+                    textContent: {
+                      type: 'text',
+                      analyzer: 'kuromoji_analyzer',
+                    },
+                  },
                 },
-                draftId: {
-                  type: 'keyword',
-                },
-                createdAt: {
-                  type: 'date',
-                },
-                updatedAt: {
-                  type: 'date',
-                },
-                textContent: {
-                  type: 'text',
-                  analyzer: 'kuromoji_analyzer',
+                en: {
+                  properties: {
+                    masterId: {
+                      type: 'keyword',
+                    },
+                    draftId: {
+                      type: 'keyword',
+                    },
+                    createdAt: {
+                      type: 'date',
+                    },
+                    updatedAt: {
+                      type: 'date',
+                    },
+                    textContent: {
+                      type: 'text',
+                      analyzer: 'standard',
+                    },
+                  },
                 },
               },
             },
@@ -331,18 +369,34 @@ namespace StorageSchema {
     article?: {
       dir?: StorageArticleDirDetail
       file?: StorageArticleFileDetail
-      src?: ToRawTimestamp<StorageArticleSrcDetail>
+      src?: DBStorageArticleSrcByLang
     }
+  }
+
+  export interface DBStorageArticleSrcByLang {
+    ja?: DBStorageArticleSrcDetail
+    en?: DBStorageArticleSrcDetail
+  }
+
+  export interface DBStorageArticleSrcDetail extends ToRawTimestamp<StorageArticleSrcDetail> {
+    textContent: string
   }
 
   export interface StorageNodeInput extends Omit<StorageNode, 'article'> {
     article?: {
       dir?: StorageArticleDirDetail
       file?: StorageArticleFileDetail
-      src?: StorageArticleSrcDetail & {
-        textContent?: string
-      }
+      src?: StorageArticleSrcByLangInput
     }
+  }
+
+  export interface StorageArticleSrcByLangInput {
+    ja?: StorageArticleSrcDetailInput
+    en?: StorageArticleSrcDetailInput
+  }
+
+  export interface StorageArticleSrcDetailInput extends StorageArticleSrcDetail {
+    textContent?: string
   }
 
   export function toEntity(dbEntity: DBStorageNode): StorageNode {
@@ -364,12 +418,18 @@ namespace StorageSchema {
         merge(result.article, { file })
       }
       if (dbEntity.article.src) {
-        const src: StorageArticleSrcDetail = {
-          masterId: dbEntity.article.src.masterId,
-          draftId: dbEntity.article.src.draftId,
-          createdAt: toEntityDate(dbEntity.article.src.createdAt),
-          updatedAt: toEntityDate(dbEntity.article.src.updatedAt),
-        }
+        const src = LangCodes.reduce((result, langCode) => {
+          const srcDetail = dbEntity.article?.src?.[langCode]
+          if (srcDetail) {
+            result[langCode] = {
+              masterId: srcDetail.masterId,
+              draftId: srcDetail.draftId,
+              createdAt: toEntityDate(srcDetail.createdAt),
+              updatedAt: toEntityDate(srcDetail.updatedAt),
+            }
+          }
+          return result
+        }, {} as StorageArticleSrcByLang)
         merge(result.article, { src })
       }
     }
@@ -389,11 +449,18 @@ namespace StorageSchema {
         merge(result.article, { file })
       }
       if (appEntity.article.src) {
-        const src: ToRawTimestamp<StorageArticleSrcDetail> = {
-          ...pickProps(appEntity.article.src, ['masterId', 'draftId', 'textContent']),
-          createdAt: toRawDate(appEntity.article.src.createdAt),
-          updatedAt: toRawDate(appEntity.article.src.updatedAt),
-        }
+        const src = LangCodes.reduce((result, langCode) => {
+          const srcDetail = appEntity.article?.src?.[langCode]
+          if (srcDetail) {
+            result[langCode] = {
+              ...pickProps(srcDetail, ['masterId', 'draftId']),
+              textContent: srcDetail.textContent ?? '',
+              createdAt: toRawDate(srcDetail.createdAt),
+              updatedAt: toRawDate(srcDetail.updatedAt),
+            }
+          }
+          return result
+        }, {} as DBStorageArticleSrcByLang)
         merge(result.article, { src })
       }
     }

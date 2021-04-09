@@ -113,7 +113,6 @@ Content-Type: application/json
           "name" : "d1",
           "dir" : "",
           "path" : "d1",
-          "level" : 1,
           "contentType" : "",
           "size" : 0,
           "share" : {

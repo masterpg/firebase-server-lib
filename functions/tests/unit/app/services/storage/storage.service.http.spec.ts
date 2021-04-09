@@ -10,10 +10,17 @@ import {
   StorageUserHeader,
   StorageUserToken,
 } from '../../../../helpers/app'
-import { DevUtilsServiceDI, DevUtilsServiceModule, GetArticleSrcResult, StorageService, StorageServiceDI } from '../../../../../src/app/services'
+import {
+  DevUtilsServiceDI,
+  DevUtilsServiceModule,
+  GetArticleSrcResult,
+  StorageFileNode,
+  StorageService,
+  StorageServiceDI,
+} from '../../../../../src/app/services'
+import { LangCode, OmitTimestamp } from 'web-base-lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../src/app/gql/main/lv1'
-import { OmitTimestamp } from 'web-base-lib'
 import { Response } from 'supertest'
 import StorageRESTModule from '../../../../../src/app/rest/storage'
 import { initApp } from '../../../../../src/app/base'
@@ -71,55 +78,60 @@ describe('StorageService - HTTP関連のテスト', () => {
       await app.init()
     })
 
-    async function setupArticleNodes() {
+    async function setupArticleNodes(lang: LangCode) {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドル
       const bundle = await storageService.createArticleTypeDir({
+        lang,
         dir: `${articleRootPath}`,
         label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1
       let art1 = await storageService.createArticleTypeDir({
+        lang,
         dir: `${bundle.path}`,
         label: '記事1',
         type: 'Article',
       })
-      // 記事1のマスターファイル
-      art1 = (await storageService.saveArticleMasterSrcFile(art1.path, '# header1', 'header1')).article
-      const art1_master = await storageService.sgetFileNode({
-        path: StorageService.toArticleMasterSrcPath(art1.path),
-      })
+      // 記事1の本文ノード
+      let art1_master!: StorageFileNode
+      await storageService
+        .saveArticleMasterSrcFile({ lang, articleId: art1.id, srcContent: '# header1', textContent: 'header1' })
+        .then(async ({ article, master }) => {
+          art1 = article
+          art1_master = await storageService.sgetFileNode(master)
+        })
 
       // 記事1のレスポンス
       const art1_response: RawGetArticleSrcResult = {
         id: art1.id,
-        label: art1.article!.dir!.label,
+        label: art1.article!.dir!.label[lang]!,
         src: '# header1',
-        dir: [{ id: bundle.id, label: bundle.article!.dir!.label }],
+        dir: [{ id: bundle.id, label: bundle.article!.dir!.label[lang]! }],
         path: [
-          { id: bundle.id, label: bundle.article!.dir!.label },
-          { id: art1.id, label: art1.article!.dir!.label },
+          { id: bundle.id, label: bundle.article!.dir!.label[lang]! },
+          { id: art1.id, label: art1.article!.dir!.label[lang]! },
         ],
         isPublic: false,
-        createdAt: art1_master.createdAt.toISOString(),
-        updatedAt: art1_master.updatedAt.toISOString(),
+        createdAt: art1.article!.src![lang]!.createdAt!.toISOString(),
+        updatedAt: art1.article!.src![lang]!.updatedAt!.toISOString(),
       }
 
       return { bundle, art1, art1_master, art1_response }
     }
 
     it('記事は公開設定 -> 誰でもアクセス可能', async () => {
-      const { art1, art1_response } = await setupArticleNodes()
+      const { art1, art1_response } = await setupArticleNodes('ja')
 
       // 記事を公開設定
       await storageService.setDirShareDetail(art1, { isPublic: true })
 
       // Authorizationヘッダーを設定しない
       return request(app.getHttpServer())
-        .get(`/articles/${art1.id}`)
+        .get(`/articles/${art1.id}?lang=ja`)
         .expect(200)
         .then((res: Response) => {
           expect(res.body).toEqual<RawGetArticleSrcResult>({
@@ -130,14 +142,14 @@ describe('StorageService - HTTP関連のテスト', () => {
     })
 
     it('記事は非公開設定 -> 他ユーザーはアクセス不可', async () => {
-      const { art1 } = await setupArticleNodes()
+      const { art1 } = await setupArticleNodes('ja')
 
       // 記事を公開未設定
       await storageService.setDirShareDetail(art1, { isPublic: false })
 
       return (
         request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
+          .get(`/articles/${art1.id}?lang=ja`)
           // 他ユーザーを設定
           .set({ ...AppAdminUserHeader() })
           .expect(403)
@@ -145,14 +157,14 @@ describe('StorageService - HTTP関連のテスト', () => {
     })
 
     it('記事に読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
-      const { art1, art1_response } = await setupArticleNodes()
+      const { art1, art1_response } = await setupArticleNodes('ja')
 
       // 記事に読み込み権限設定
       await storageService.setDirShareDetail(art1, { readUIds: [GeneralUser().uid] })
 
       return (
         request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
+          .get(`/articles/${art1.id}?lang=ja`)
           // 読み込み権限に設定した他ユーザーを設定
           .set({ ...GeneralUserHeader() })
           .expect(200)
@@ -163,41 +175,97 @@ describe('StorageService - HTTP関連のテスト', () => {
     })
 
     it('存在しない記事を指定した場合', async () => {
-      await setupArticleNodes()
+      await setupArticleNodes('ja')
 
       return request(app.getHttpServer()).get(`/articles/12345678901234567890`).expect(404)
     })
 
     it('304 Not Modified の検証 - 公開', async () => {
-      const { art1 } = await setupArticleNodes()
+      const { art1 } = await setupArticleNodes('ja')
 
       // 記事を公開設定
       await storageService.setDirShareDetail(art1, { isPublic: true })
 
       return (
         request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
+          .get(`/articles/${art1.id}?lang=ja`)
           // If-Modified-Sinceを設定
-          .set('If-Modified-Since', art1.article!.src!.updatedAt.toString())
+          .set('If-Modified-Since', art1.article!.src!['ja']!.updatedAt!.toString())
           .expect(304)
       )
     })
 
     it('304 Not Modified の検証 - 非公開', async () => {
-      const { art1 } = await setupArticleNodes()
+      const { art1 } = await setupArticleNodes('ja')
 
       // 記事を非公開設定
       await storageService.setDirShareDetail(art1, { isPublic: false })
 
       return (
         request(app.getHttpServer())
-          .get(`/articles/${art1.id}`)
+          .get(`/articles/${art1.id}?lang=ja`)
           // If-Modified-Sinceを設定
-          .set('If-Modified-Since', art1.article!.src!.updatedAt.toString())
+          .set('If-Modified-Since', art1.article!.src!['ja']!.updatedAt!.toString())
           // 自ユーザーを設定
           .set({ ...StorageUserHeader() })
           .expect(304)
       )
+    })
+
+    it('日本語', async () => {
+      const { art1, art1_response } = await setupArticleNodes('ja')
+
+      // 記事を公開設定
+      await storageService.setDirShareDetail(art1, { isPublic: true })
+
+      // テスト対象実行
+      return request(app.getHttpServer())
+        .get(`/articles/${art1.id}?lang=ja`)
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body).toEqual<RawGetArticleSrcResult>({
+            ...art1_response,
+            isPublic: true,
+          })
+        })
+    })
+
+    it('英語', async () => {
+      const { art1, art1_response } = await setupArticleNodes('en')
+
+      // 記事を公開設定
+      await storageService.setDirShareDetail(art1, { isPublic: true })
+
+      // テスト対象実行
+      return request(app.getHttpServer())
+        .get(`/articles/${art1.id}?lang=en`)
+        .expect(200)
+        .then((res: Response) => {
+          expect(res.body).toEqual<RawGetArticleSrcResult>({
+            ...art1_response,
+            isPublic: true,
+          })
+        })
+    })
+
+    it('読み込み権限の検証が行われているか確認', async () => {
+      const validateReadable = td.replace(storageService, 'validateReadable')
+
+      // 記事に非公開設定
+      const { art1 } = await setupArticleNodes('ja')
+      await storageService.setDirShareDetail(art1, { isPublic: false })
+      const hierarchicalNodes = await storageService.getHierarchicalNodes(art1.path)
+
+      // テスト対象実行
+      return request(app.getHttpServer())
+        .get(`/articles/${art1.id}?lang=ja`)
+        .set({ ...StorageUserHeader() })
+        .expect(200)
+        .then((res: Response) => {
+          const exp = td.explain(validateReadable)
+          expect(exp.calls.length).toBe(1)
+          expect(exp.calls[0].args).toEqual([StorageUserToken(), art1.path, hierarchicalNodes])
+        })
     })
   })
 })

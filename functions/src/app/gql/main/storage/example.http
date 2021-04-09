@@ -291,13 +291,143 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "GetArticleChildren",
-  "query": "query GetArticleChildren($dirPath: String!, $types: [StorageArticleDirType!]!, $input: PaginationInput) { articleChildren(dirPath: $dirPath, types: $types, input: $input) { list { id path } nextPageToken } }",
+  "operationName": "CreateArticleTypeDir",
+  "query": "mutation CreateArticleTypeDir($input: CreateArticleTypeDirInput!) { createArticleTypeDir(input: $input) { id path } }",
   "variables": {
-    "dirPath": "users/general/articles/blog",
-    "types": "Article",
-    "input": { "maxChunk": 3 }
+    "input": {
+      "lang": "ja",
+      "dir": "",
+      "label": "バンドル",
+      "type": "ListBundle",
+      "share": { "isPublic": true }
+    }
   }
 }
 
 ###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "CreateArticleGeneralDir",
+  "query": "mutation CreateArticleGeneralDir($input: CreateArticleGeneralDirInput!) { createArticleGeneralDir(input: $input) { id path } }",
+  "variables": {
+    "input": {
+      "dir": "users/test.general/articles/assets/tmp",
+      "share": { "isPublic": true }
+    }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "RenameArticleTypeDir",
+  "query": "mutation RenameArticleTypeDir($input: RenameArticleTypeDirInput!) { renameArticleTypeDir(input: $input) { id } }",
+  "variables": {
+    "input": {
+      "lang": "ja",
+      "dir": "",
+      "label": "バンドル"
+    }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "SetArticleSortOrder",
+  "query": "mutation SetArticleSortOrder($orderNodePaths: [String!]!) { setArticleSortOrder(orderNodePaths: $orderNodePaths) }",
+  "variables": {
+    "orderNodePaths": [
+      "users/test.general/articles/12345678901234567890",
+      "users/test.general/articles/abcdefghijklmnopqrst"
+    ]
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "SaveArticleMasterSrcFile",
+  "query": "mutation SaveArticleMasterSrcFile($input: SaveArticleMasterSrcFileInput!) { saveArticleMasterSrcFile(input: $input) { article { id path } master { id path } draft { id path } } }",
+  "variables": {
+    "input": {
+      "lang": "ja",
+      "articleId": "12345678901234567890",
+      "srcContent": "test",
+      "textContent": "test"
+    }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "SaveArticleDraftSrcFile",
+  "query": "mutation SaveArticleDraftSrcFile($input: SaveArticleDraftSrcFileInput!) { saveArticleDraftSrcFile(input: $input) { article { id path } draft { id path } } }",
+  "variables": {
+    "input": {
+      "lang": "ja",
+      "articleId": "12345678901234567890",
+      "srcContent": "test"
+    }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "GetUserArticleList",
+  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $pagination: PaginationInput) { userArticleList(input: $input, pagination: $pagination) { list { id path } nextPageToken } }",
+  "variables": {
+    "input": {
+      "lang": "ja",
+      "userName": "test.general",
+      "articleTypeDirId": "12345678901234567890"
+    },
+    "pagination": { "maxChunk": 3 }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "GetUserArticleTableOfContents",
+  "query": "query GetUserArticleTableOfContents($input: GetUserArticleTableOfContentsInput!) { userArticleTableOfContents(input: $input) { id path } }",
+  "variables": {
+    "input": {
+      "lang": "ja",
+      "userName": "test.general"
+    }
+  }
+}
+
+###
+

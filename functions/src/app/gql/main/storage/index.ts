@@ -4,16 +4,22 @@ import {
   ArticleTableOfContentsItem,
   AuthServiceDI,
   AuthServiceModule,
+  CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
   GetUserArticleListInput,
+  GetUserArticleTableOfContentsInput,
   IdToken,
   MoveStorageDirInput,
   MoveStorageFileInput,
   PaginationInput,
   PaginationResult,
+  RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
+  SaveArticleDraftSrcFileInput,
+  SaveArticleDraftSrcFileResult,
+  SaveArticleMasterSrcFileInput,
   SaveArticleMasterSrcFileResult,
   SetShareDetailInput,
   SignedUploadUrlInput,
@@ -180,28 +186,20 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async createArticleTypeDir(
-    @UserArg() idToken: IdToken,
-    @Args('input') input: CreateArticleTypeDirInput,
-    @Args('options') options: CreateStorageNodeOptions
-  ): Promise<StorageNode> {
-    return this.storageService.createArticleTypeDir(idToken, input, options)
+  async createArticleTypeDir(@UserArg() idToken: IdToken, @Args('input') input: CreateArticleTypeDirInput): Promise<StorageNode> {
+    return this.storageService.createArticleTypeDir(idToken, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async createArticleGeneralDir(
-    @UserArg() idToken: IdToken,
-    @Args('dirPath') dirPath: string,
-    @Args('options') options?: CreateStorageNodeOptions
-  ): Promise<StorageNode> {
-    return this.storageService.createArticleGeneralDir(idToken, dirPath, options)
+  async createArticleGeneralDir(@UserArg() idToken: IdToken, @Args('input') input: CreateArticleGeneralDirInput): Promise<StorageNode> {
+    return this.storageService.createArticleGeneralDir(idToken, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async renameArticleDir(@UserArg() idToken: IdToken, @Args('dirPath') dirPath: string, @Args('newName') newName: string): Promise<StorageNode> {
-    return this.storageService.renameArticleDir(idToken, dirPath, newName)
+  async renameArticleTypeDir(@UserArg() idToken: IdToken, @Args('input') input: RenameArticleTypeDirInput): Promise<StorageNode> {
+    return this.storageService.renameArticleTypeDir(idToken, input)
   }
 
   @Mutation()
@@ -215,31 +213,18 @@ class StorageResolver {
   @UseGuards(AuthGuard)
   async saveArticleMasterSrcFile(
     @UserArg() idToken: IdToken,
-    @Args('articleDirPath') articleDirPath: string,
-    @Args('srcContent') srcContent: string,
-    @Args('textContent') textContent: string
+    @Args('input') input: SaveArticleMasterSrcFileInput
   ): Promise<SaveArticleMasterSrcFileResult> {
-    return this.storageService.saveArticleMasterSrcFile(idToken, articleDirPath, srcContent, textContent)
+    return this.storageService.saveArticleMasterSrcFile(idToken, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
   async saveArticleDraftSrcFile(
     @UserArg() idToken: IdToken,
-    @Args('articleDirPath') articleDirPath: string,
-    @Args('srcContent') srcContent: string
-  ): Promise<StorageNode> {
-    return this.storageService.saveArticleDraftSrcFile(idToken, articleDirPath, srcContent)
-  }
-
-  @Query()
-  @UseGuards(AuthGuard)
-  async articleChildren(
-    @UserArg() idToken: IdToken,
-    @Args('input') input: GetArticleChildrenInput,
-    @Args('pagination') pagination?: PaginationInput
-  ): Promise<PaginationResult<StorageNode>> {
-    return this.storageService.getArticleChildren(input, pagination)
+    @Args('input') input: SaveArticleDraftSrcFileInput
+  ): Promise<SaveArticleDraftSrcFileResult> {
+    return this.storageService.saveArticleDraftSrcFile(idToken, input)
   }
 
   @Query()
@@ -254,9 +239,9 @@ class StorageResolver {
   @Query()
   async userArticleTableOfContents(
     @UserArg() idToken: IdToken | undefined,
-    @Args('userName') userName: string
+    @Args('input') input: GetUserArticleTableOfContentsInput
   ): Promise<ArticleTableOfContentsItem[]> {
-    return this.storageService.getUserArticleTableOfContents(idToken, userName)
+    return this.storageService.getUserArticleTableOfContents(idToken, input)
   }
 
   //----------------------------------------------------------------------
