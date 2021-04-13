@@ -1,12 +1,18 @@
 import * as _path from 'path'
 import {
+  ArticleContentFields,
+  ArticleContentType,
+  ArticleDirLabelByLang,
+  ArticleDirType,
   ArticleListItem,
+  ArticleSrcByLang,
   ArticleTableOfContentsItem,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
-  GetArticleSrcInput,
-  GetArticleSrcResult,
+  GetArticleContentsNodeInput,
+  GetArticleSrcContentInput,
+  GetArticleSrcContentResult,
   GetUserArticleListInput,
   GetUserArticleTableOfContentsInput,
   IdToken,
@@ -14,13 +20,9 @@ import {
   PaginationInput,
   PaginationResult,
   RenameArticleTypeDirInput,
-  SaveArticleDraftSrcFileInput,
-  SaveArticleDraftSrcFileResult,
-  SaveArticleMasterSrcFileInput,
-  SaveArticleMasterSrcFileResult,
+  SaveArticleDraftContentInput,
+  SaveArticleSrcContentInput,
   SetShareDetailInput,
-  StorageArticleDirLabelByLang,
-  StorageArticleDirType,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageSchema,
@@ -28,6 +30,7 @@ import {
 import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
   DeepPartial,
+  LangCode,
   RequiredAre,
   arrayToDict,
   pickProps,
@@ -43,13 +46,10 @@ import { AppError } from '../base'
 import { AuthHelper } from './base/auth'
 import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
-import { LangCode } from '../../../../../web-base-lib/dist'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import { merge } from 'lodash'
 import DBStorageNode = StorageSchema.DBStorageNode
-import StorageNodeInput = StorageSchema.StorageNodeInput
-import StorageArticleSrcDetailInput = StorageSchema.StorageArticleSrcDetailInput
 
 //========================================================================
 //
@@ -84,8 +84,16 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //
   //----------------------------------------------------------------------
 
-  protected get excludeNodeFields(): string[] {
-    return [...super.excludeNodeFields, 'article.src.textContent']
+  protected get sourceExcludes(): string[] {
+    return [
+      ...super.sourceExcludes,
+      ArticleContentFields.ja.SrcContent,
+      ArticleContentFields.ja.DraftContent,
+      ArticleContentFields.ja.SearchContent,
+      ArticleContentFields.en.SrcContent,
+      ArticleContentFields.en.DraftContent,
+      ArticleContentFields.en.SearchContent,
+    ]
   }
 
   //----------------------------------------------------------------------
@@ -231,10 +239,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (!reg.test(dir)) {
       // 祖先に記事が存在することを確認
       const parentPath = removeStartDirChars(_path.dirname(dir))
-      let nearestArticleDirType: StorageArticleDirType | undefined = undefined
+      let nearestArticleDirType: ArticleDirType | undefined = undefined
       for (let i = ancestorDirNodes.length - 1; i >= 0; i--) {
         const ancestorNode = ancestorDirNodes[i]
-        const articleDirType = ancestorNode?.article?.dir?.type
+        const articleDirType = ancestorNode?.article?.type
         if (articleDirType) {
           nearestArticleDirType = articleDirType
           break
@@ -321,14 +329,20 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     dir = removeBothEndsSlash(dir)
     StorageService.validateArticleDirName(label)
 
-    // 引数ディレクトリのパスが実際にディレクトリか検証
     const dirNode = await this.sgetNode({ path: dir })
+
+    // 引数ディレクトリのパスが実際にディレクトリか検証
     if (dirNode.nodeType !== 'Dir') {
-      throw new AppError(`The specified path is not a directory.`, { specifiedPath: dir })
+      throw new AppError(`The specified path is not a directory.`, { dir })
     }
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
     this.m_validateArticleRootUnder(dir)
+
+    // 引数ディレクトリが記事系ディレクトリか検証
+    if (!dirNode.article?.type) {
+      throw new AppError(`The specified path is not a article type directory.`, { dir })
+    }
 
     await this.client.update({
       index: StorageSchema.IndexAlias,
@@ -336,9 +350,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         doc: {
           article: {
-            dir: {
-              label: { [lang]: label },
-            },
+            label: { [lang]: label },
           },
           updatedAt: dayjs(),
           version: dirNode.version + 1,
@@ -390,7 +402,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 親ディレクトリを取得
     const parentNode = await this.sgetNode({ path: parentPath })
-    const parentArticleDirType = parentNode.article?.dir?.type
+    const parentArticleDirType = parentNode.article?.type
 
     // 親ディレクトリが「記事ルート、リストバンドル、ツリーバンドル、カテゴリ」以外の場合、
     // 子ノードにソート順を設定することはできない。
@@ -415,7 +427,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           bool: {
             must: [{ term: { dir: parentPath } }],
             // ソート順を設定できるのは記事系ディレクトリのみなのでフィルターする
-            filter: [{ exists: { field: 'article.dir' } }],
+            filter: [{ exists: { field: 'article' } }],
           },
         },
       },
@@ -443,8 +455,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         script: {
           lang: 'painless',
           source: `
-            if (ctx._source.article != null && ctx._source.article.dir != null) {
-              ctx._source.article.dir.sortOrder = params[ctx._source.path]
+            if (ctx._source.article != null) {
+              ctx._source.article.sortOrder = params[ctx._source.path]
             }
           `,
           params,
@@ -457,101 +469,73 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   /**
    * 記事本文を保存します。
    * @param idToken
+   * @param key
    * @param input
    */
-  saveArticleMasterSrcFile(idToken: IdToken, input: SaveArticleMasterSrcFileInput): Promise<SaveArticleMasterSrcFileResult>
+  saveArticleSrcContent(idToken: IdToken, key: StorageNodeGetKeyInput, input: SaveArticleSrcContentInput): Promise<StorageNode>
 
   /**
    * 記事本文を保存します。
+   * @param key
    * @param input
    */
-  saveArticleMasterSrcFile(input: SaveArticleMasterSrcFileInput): Promise<SaveArticleMasterSrcFileResult>
+  saveArticleSrcContent(key: StorageNodeGetKeyInput, input: SaveArticleSrcContentInput): Promise<StorageNode>
 
-  async saveArticleMasterSrcFile(
-    arg1: IdToken | SaveArticleMasterSrcFileInput,
-    arg2?: SaveArticleMasterSrcFileInput
-  ): Promise<SaveArticleMasterSrcFileResult> {
+  async saveArticleSrcContent(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2: StorageNodeGetKeyInput | SaveArticleSrcContentInput,
+    arg3?: SaveArticleSrcContentInput
+  ): Promise<StorageNode> {
     let idToken: IdToken | undefined
-    let input: SaveArticleMasterSrcFileInput
+    let key: StorageNodeGetKeyInput
+    let input: SaveArticleSrcContentInput
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
+      input = arg3!
     } else {
-      input = arg1
+      key = arg1
+      input = arg2 as SaveArticleSrcContentInput
     }
 
-    const articleNode = await this.sgetNode({ id: input.articleId })
-    const _input: Omit<SaveArticleMasterSrcFileInput, 'articleId'> & { articleNode: StorageNode } = {
-      ...pickProps(input, ['lang', 'srcContent', 'textContent']),
-      articleNode,
-    }
+    const articleNode = await this.sgetNode(key)
 
     if (idToken) {
       // 自ユーザーのノードに対する処理
       if (CoreStorageService.isOwnUserRootUnder(idToken, articleNode.path)) {
-        return this.saveArticleMasterSrcFileImpl(_input)
+        return this.saveArticleSrcContentImpl(articleNode, input)
       }
       // 他ユーザーのノードに対する処理
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.saveArticleMasterSrcFileImpl(_input)
+      return this.saveArticleSrcContentImpl(articleNode, input)
     }
   }
 
-  protected async saveArticleMasterSrcFileImpl({
-    lang,
-    articleNode,
-    srcContent,
-    textContent,
-  }: Omit<SaveArticleMasterSrcFileInput, 'articleId'> & { articleNode: StorageNode }): Promise<SaveArticleMasterSrcFileResult> {
-    const now = dayjs()
+  protected async saveArticleSrcContentImpl(
+    articleNode: StorageNode,
+    { lang, srcContent, searchContent }: SaveArticleSrcContentInput
+  ): Promise<StorageNode> {
+    if (articleNode.article?.type !== 'Article') {
+      throw new AppError(`The specified node is not an article.`, { key: pickProps(articleNode, ['id', 'path']) })
+    }
 
-    // 本文と下書きを保存
-    const srcNodes = await Promise.all([
-      // 本文を保存
-      this.saveGCSFileAndFileNode<StorageNode>(
-        StorageService.toArticleMasterSrcPath(articleNode.path),
-        srcContent,
-        { contentType: 'text/markdown' },
-        {
-          article: { file: { type: 'MasterSrc' } },
-          updatedAt: now,
-        }
-      ),
-      // 下書きを保存
-      this.saveGCSFileAndFileNode<StorageNode>(
-        StorageService.toArticleDraftSrcPath(articleNode.path),
-        '',
-        { contentType: 'text/markdown' },
-        {
-          article: { file: { type: 'DraftSrc' } },
-          share: { isPublic: false },
-          updatedAt: now,
-        }
-      ),
-    ])
-    const { masterNode, draftNode } = srcNodes.reduce((result, srcNode) => {
-      const articleFileType = srcNode.article!.file!.type
-      if (articleFileType === 'MasterSrc') {
-        result.masterNode = srcNode
-      } else if (articleFileType === 'DraftSrc') {
-        result.draftNode = srcNode
-      }
-      return result
-    }, {} as { masterNode: StorageNode; draftNode: StorageNode })
+    const now = dayjs()
+    const existingSrcDetail = articleNode.article?.src?.[lang]
 
     // 記事ノードの更新データを作成
-    merge(articleNode, <DeepPartial<StorageNodeInput>>{
+    delete articleNode.article?.src
+    merge(articleNode, <DeepPartial<StorageNode>>{
       article: {
         src: {
-          [lang]: <StorageArticleSrcDetailInput>{
-            createdAt: now,
-            ...articleNode.article?.src?.[lang],
-            masterId: masterNode.id,
-            draftId: draftNode.id,
-            textContent,
+          [lang]: {
+            ...existingSrcDetail,
+            srcContent,
+            draftContent: undefined,
+            searchContent,
+            createdAt: existingSrcDetail?.createdAt ?? now,
             updatedAt: now,
           },
         },
@@ -559,6 +543,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       updatedAt: now,
       version: articleNode.version + 1,
     })
+
     // 記事ノードを更新
     await this.client.update({
       index: StorageSchema.IndexAlias,
@@ -568,200 +553,236 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       },
       refresh: true,
     })
-    articleNode = await this.sgetNode(articleNode)
+    articleNode = await this.sgetNode(articleNode, [
+      ArticleContentFields[lang].SrcContent,
+      ArticleContentFields[lang].DraftContent,
+      ArticleContentFields[lang].SearchContent,
+    ])
 
-    return { article: articleNode, master: masterNode, draft: draftNode }
+    return articleNode
   }
 
   /**
    * 記事下書きを保存します。
    * @param idToken
+   * @param key
    * @param input
    */
-  saveArticleDraftSrcFile(idToken: IdToken, input: SaveArticleDraftSrcFileInput): Promise<SaveArticleDraftSrcFileResult>
+  saveArticleDraftContent(idToken: IdToken, key: StorageNodeGetKeyInput, input: SaveArticleDraftContentInput): Promise<StorageNode>
 
   /**
    * 記事下書きを保存します。
+   * @param key
    * @param input
    */
-  saveArticleDraftSrcFile(input: SaveArticleDraftSrcFileInput): Promise<SaveArticleDraftSrcFileResult>
+  saveArticleDraftContent(key: StorageNodeGetKeyInput, input: SaveArticleDraftContentInput): Promise<StorageNode>
 
-  async saveArticleDraftSrcFile(
-    arg1: IdToken | SaveArticleDraftSrcFileInput,
-    arg2?: SaveArticleDraftSrcFileInput
-  ): Promise<SaveArticleDraftSrcFileResult> {
+  async saveArticleDraftContent(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2: StorageNodeGetKeyInput | SaveArticleDraftContentInput,
+    arg3?: SaveArticleDraftContentInput
+  ): Promise<StorageNode> {
     let idToken: IdToken | undefined
-    let input: SaveArticleDraftSrcFileInput
+    let key: StorageNodeGetKeyInput
+    let input: SaveArticleDraftContentInput
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
+      input = arg3!
     } else {
-      input = arg1
+      key = arg1
+      input = arg2 as SaveArticleDraftContentInput
     }
 
-    const articleNode = await this.sgetNode({ id: input.articleId })
-    const _input: Omit<SaveArticleDraftSrcFileInput, 'articleId'> & { articleNode: StorageNode } = {
-      ...pickProps(input, ['lang', 'srcContent']),
-      articleNode,
-    }
+    const { lang } = input
+    const articleNode = await this.sgetNode(key, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].SearchContent])
 
     if (idToken) {
       // 自ユーザーのノードに対する処理
       if (CoreStorageService.isOwnUserRootUnder(idToken, articleNode.path)) {
-        return this.saveArticleDraftSrcFileImpl(_input)
+        return this.saveArticleDraftContentImpl(articleNode, input)
       }
       // 他ユーザーのノードに対する処理
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.saveArticleDraftSrcFileImpl(_input)
+      return this.saveArticleDraftContentImpl(articleNode, input)
     }
   }
 
-  async saveArticleDraftSrcFileImpl({
-    lang,
-    articleNode,
-    srcContent,
-  }: Omit<SaveArticleDraftSrcFileInput, 'articleId'> & { articleNode: StorageNode }): Promise<SaveArticleDraftSrcFileResult> {
-    const now = dayjs()
-    const existingSrcDetail = articleNode.article?.src?.[lang]
-
-    // 下書きを保存
-    const draftNode = await this.saveGCSFileAndFileNode<StorageNode>(
-      StorageService.toArticleDraftSrcPath(articleNode.path),
-      srcContent ?? '',
-      { contentType: 'text/markdown' },
-      {
-        article: {
-          file: { type: 'DraftSrc' },
-        },
-        share: { isPublic: false },
-        updatedAt: now,
-      }
-    )
-
-    // 今回が初めての下書き保存だった場合
-    // ※2回め以降の下書き保存が記事ノードに影響を与えることはない
-    if (!existingSrcDetail) {
-      // 記事ノードの更新データを作成
-      merge(articleNode, <DeepPartial<StorageNodeInput>>{
-        article: {
-          src: {
-            [lang]: <StorageArticleSrcDetailInput>{
-              draftId: draftNode.id,
-            },
-          },
-        },
-        updatedAt: now,
-        version: articleNode.version + 1,
-      })
-      // 記事ノードを更新
-      await this.client.update({
-        index: StorageSchema.IndexAlias,
-        id: articleNode.id,
-        body: { doc: this.toDBStorageNode(articleNode) },
-        refresh: true,
-      })
-      articleNode = await this.sgetNode(articleNode)
+  async saveArticleDraftContentImpl(articleNode: StorageNode, { lang, draftContent }: SaveArticleDraftContentInput): Promise<StorageNode> {
+    if (articleNode.article?.type !== 'Article') {
+      throw new AppError(`The specified node is not an article.`, { key: pickProps(articleNode, ['id', 'path']) })
     }
 
-    return { article: articleNode, draft: draftNode }
+    const now = dayjs()
+
+    // 記事ノードの更新データを作成
+    delete articleNode.article?.src
+    merge(articleNode, <DeepPartial<StorageNode>>{
+      article: {
+        src: {
+          [lang]: {
+            draftContent,
+          },
+        },
+      },
+      updatedAt: now,
+      version: articleNode.version + 1,
+    })
+
+    // 記事ノードを更新
+    await this.client.update({
+      index: StorageSchema.IndexAlias,
+      id: articleNode.id,
+      body: { doc: this.toDBStorageNode(articleNode) },
+      refresh: true,
+    })
+    articleNode = await this.sgetNode(articleNode, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
+
+    return articleNode
   }
 
   /**
-   * 指定された記事ソースを取得します。
+   * 指定された記事コンテンツを取得します。
+   * @param idToken
+   * @param key
+   * @param input
+   */
+  getArticleContentsNode(idToken: IdToken, key: StorageNodeGetKeyInput, input: GetArticleContentsNodeInput): Promise<StorageNode | undefined>
+
+  /**
+   * 指定された記事コンテンツを取得します。
+   * @param key
+   * @param input
+   */
+  getArticleContentsNode(key: StorageNodeGetKeyInput, input: GetArticleContentsNodeInput): Promise<StorageNode>
+
+  async getArticleContentsNode(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2: StorageNodeGetKeyInput | GetArticleContentsNodeInput,
+    arg3?: GetArticleContentsNodeInput
+  ): Promise<StorageNode | undefined> {
+    let idToken: IdToken | undefined
+    let key: StorageNodeGetKeyInput
+    let input: GetArticleContentsNodeInput
+    if (AuthHelper.isIdToken(arg1)) {
+      idToken = arg1
+      key = arg2 as StorageNodeGetKeyInput
+      input = arg3!
+    } else {
+      key = arg1
+      input = arg2 as GetArticleContentsNodeInput
+    }
+
+    const sourceIncludes = ArticleContentType.toSourceIncludes(input.lang, input.contentTypes)
+    const articleNode = await this.getNode(key, sourceIncludes)
+    if (!articleNode || articleNode.article?.type !== 'Article') return undefined
+
+    if (idToken) {
+      // 自ユーザーのノードに対する処理
+      if (CoreStorageService.isOwnUserRootUnder(idToken, articleNode.path)) {
+        return articleNode
+      }
+      // 他ユーザーのノードに対する処理
+      else {
+        await this.validateReadable(idToken, articleNode.path)
+        return articleNode
+      }
+    } else {
+      return articleNode
+    }
+  }
+
+  /**
+   * 指定された記事本文を取得します。
    * @param idToken
    * @param input
    */
-  getArticleSrc(idToken: IdToken, input: GetArticleSrcInput): Promise<GetArticleSrcResult | undefined>
+  getArticleSrcContent(idToken: IdToken, input: GetArticleSrcContentInput): Promise<GetArticleSrcContentResult | undefined>
 
   /**
-   * 指定された記事ソースを取得します。
+   * 指定された記事本文を取得します。
    * @param req
    * @param res
    * @param input
    */
-  getArticleSrc(req: Request, res: Response, input: GetArticleSrcInput): Promise<Response>
+  getArticleSrcContent(req: Request, res: Response, input: GetArticleSrcContentInput): Promise<Response>
 
-  async getArticleSrc(
+  async getArticleSrcContent(
     arg1: IdToken | Request,
-    arg2?: Response | GetArticleSrcInput,
-    arg3?: GetArticleSrcInput
-  ): Promise<GetArticleSrcResult | undefined | Response> {
+    arg2: Response | GetArticleSrcContentInput,
+    arg3?: GetArticleSrcContentInput
+  ): Promise<GetArticleSrcContentResult | undefined | Response> {
     /**
      * 戻り値の作成を行う関数です。
-     * ※この関数を実行するには記事本文があることを前提とします。
+     * ※この関数を実行するには記事本文の保存が行われていることを前提とします。
      */
-    const getResult = async (lang: LangCode, hierarchicalNodes: StorageNode[]) => {
+    const _getResult = async (lang: LangCode, hierarchicalNodes: StorageNode[]) => {
       const share = this.getInheritedShareDetail(hierarchicalNodes)
       const _hierarchicalNodes = [...hierarchicalNodes]
       const articleNode = _hierarchicalNodes.splice(-1)[0]
       const ancestorNodes = _hierarchicalNodes.filter(node => Boolean(node.article))
       const srcDetail = articleNode.article!.src![lang]!
 
-      const { exists, file } = await this.getStorageFile(srcDetail.masterId!)
-      let src = ''
-      if (exists) {
-        src = (await file.download()).toString()
-      }
-
-      const result: GetArticleSrcResult = {
+      const result: GetArticleSrcContentResult = {
         id: articleNode.id,
-        label: StorageService.getArticleLangLabel(lang, articleNode.article!.dir!.label),
-        src,
+        label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
+        srcContent: srcDetail.srcContent ?? '',
         dir: ancestorNodes.map(node => ({
           id: node.id,
-          label: StorageService.getArticleLangLabel(lang, node.article!.dir!.label),
+          label: StorageService.getArticleLangLabel(lang, node.article!.label),
         })),
         path: [...ancestorNodes, articleNode].map(node => ({
           id: node.id,
-          label: StorageService.getArticleLangLabel(lang, node.article!.dir!.label),
+          label: StorageService.getArticleLangLabel(lang, node.article!.label),
         })),
         isPublic: Boolean(share.isPublic),
-        createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
-        updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
+        createdAt: srcDetail.createdAt!, // 記事本文の保存が行われているなら作成日は設定されている
+        updatedAt: srcDetail.updatedAt!, // 記事本文の保存が行われているなら更新日は設定されている
       }
       return result
     }
 
     /**
-     * 指定された記事ソースを取得します（※GraphQL版）。
+     * 指定された記事コンテンツを取得します（※GraphQL版）。
      */
-    const getArticleSrcForGQL = async (idToken: IdToken, { lang, articleId }: GetArticleSrcInput) => {
+    const getArticleSrcContentForGQL = async (idToken: IdToken, { lang, articleId }: GetArticleSrcContentInput) => {
       // 記事ノードを取得
-      // ※記事本文があることを確認。ない場合は終了
-      const articleNode = await this.getNode({ id: articleId })
+      // ※記事本文の保存が行われていることを確認。ない場合は終了
+      const articleNode = await this.getNode({ id: articleId }, [ArticleContentFields[lang].SrcContent])
       const srcDetail = articleNode?.article?.src?.[lang]
-      if (!articleNode || !srcDetail || !srcDetail.masterId) {
+      if (!articleNode || !srcDetail || !srcDetail.createdAt) {
         return undefined
       }
 
       // 記事の共有設定を取得
-      const hierarchicalNodes = await this.getHierarchicalNodes(articleNode.path)
+      const ancestorNodes = await this.getAncestorDirs(articleNode.path)
+      const hierarchicalNodes = [...ancestorNodes, articleNode]
       const share = this.getInheritedShareDetail(hierarchicalNodes)
 
       // 記事の公開フラグがオンの場合
       if (share.isPublic) {
-        return await getResult(lang, hierarchicalNodes)
+        return await _getResult(lang, hierarchicalNodes)
       }
 
       // リクエストユーザーに記事の読み込み権限があることを検証
       await this.validateReadable(idToken, articleNode.path, hierarchicalNodes)
 
       // 戻り値を作成して返す
-      return await getResult(lang, hierarchicalNodes)
+      return await _getResult(lang, hierarchicalNodes)
     }
 
     /**
-     * 指定された記事ソースを取得します（※HTTP版）。
+     * 指定された記事コンテンツを取得します（※HTTP版）。
      */
-    const getArticleSrcForHttp = async (req: Request, res: Response, { lang, articleId }: GetArticleSrcInput) => {
+    const getArticleSrcContentForHttp = async (req: Request, res: Response, { lang, articleId }: GetArticleSrcContentInput) => {
       // 記事ノードを取得
-      // ※記事本文があることを確認。ない場合は終了
-      const articleNode = await this.getNode({ id: articleId })
+      // ※記事本文の保存が行われていることを確認。ない場合は終了
+      const articleNode = await this.getNode({ id: articleId }, [ArticleContentFields[lang].SrcContent])
       const srcDetail = articleNode?.article?.src?.[lang]
-      if (!articleNode || !srcDetail || !srcDetail.masterId) {
+      if (!articleNode || !srcDetail || !srcDetail.createdAt) {
         return res.sendStatus(404)
       }
 
@@ -770,7 +791,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       res.setHeader('Last-Modified', notModified.lastModified)
 
       // 記事の共有設定を取得
-      const hierarchicalNodes = await this.getHierarchicalNodes(articleNode.path)
+      const ancestorNodes = await this.getAncestorDirs(articleNode.path)
+      const hierarchicalNodes = [...ancestorNodes, articleNode]
       const share = this.getInheritedShareDetail(hierarchicalNodes)
 
       // 記事の公開フラグがオンの場合
@@ -778,7 +800,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         if (notModified.result) {
           return res.sendStatus(notModified.status)
         } else {
-          const result = await getResult(lang, hierarchicalNodes)
+          const result = await _getResult(lang, hierarchicalNodes)
           return res.json(result)
         }
       }
@@ -793,19 +815,19 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       await this.validateReadable(validated.idToken!, articleNode.path, hierarchicalNodes)
 
       // 戻り値を作成して返す
-      const result = await getResult(lang, hierarchicalNodes)
+      const result = await _getResult(lang, hierarchicalNodes)
       return res.json(result)
     }
 
     if (AuthHelper.isIdToken(arg1)) {
       const idToken = arg1
-      const input = arg2 as GetArticleSrcInput
-      return getArticleSrcForGQL(idToken, input)
+      const input = arg2 as GetArticleSrcContentInput
+      return getArticleSrcContentForGQL(idToken, input)
     } else {
       const req = arg1
       const res = arg2 as Response
       const input = arg3!
-      return getArticleSrcForHttp(req, res, input)
+      return getArticleSrcContentForHttp(req, res, input)
     }
   }
 
@@ -826,10 +848,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 指定された記事系ディレクトリを取得
     const articleTypeDir = await this.getNode({ id: articleTypeDirId })
-    if (!articleTypeDir || !articleTypeDir.article?.dir) return { list: [] }
+    if (!articleTypeDir || !articleTypeDir.article) return { list: [] }
 
     // 指定された記事系ディレクトリが「記事」の場合は無視
-    const articleType = articleTypeDir.article.dir.type
+    const articleType = articleTypeDir.article.type
     if (articleType === 'Article') return { list: [] }
 
     // 指定された記事系ディレクトリとその上位階層を取得
@@ -843,13 +865,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         query: {
           bool: {
-            must: [{ term: { dir: articleTypeDir.path } }, { term: { 'article.dir.type': 'Article' } }],
+            must: [{ term: { dir: articleTypeDir.path } }, { term: { 'article.type': 'Article' } }],
           },
         },
-        sort: [{ 'article.dir.sortOrder': 'desc' }],
+        sort: [{ 'article.sortOrder': 'desc' }],
       },
-      _source_includes: this.includeNodeFields,
-      _source_excludes: this.excludeNodeFields,
+      _source_excludes: this.sourceExcludes,
     })
     const articleNodes = this.dbResponseToNodes(response)
 
@@ -865,15 +886,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       const validated = await this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
       if (validated) continue
 
-      // 指定言語の記事に本文がなかった場合、次の記事へ移動
+      // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
       const srcDetail = articleNode.article?.src?.[lang]
-      if (!srcDetail?.masterId) continue
+      if (!srcDetail?.createdAt) continue
 
       articleList.push({
         ...pickProps(articleNode, ['id', 'name']),
         dir: removeBothEndsSlash(articleNode.dir.replace(articleRootPath, '')),
         path: removeBothEndsSlash(articleNode.path.replace(articleRootPath, '')),
-        label: StorageService.getArticleLangLabel(lang, articleNode.article!.dir!.label),
+        label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
         createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
         updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
       })
@@ -923,8 +944,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           ...pickProps(node, ['id', 'name']),
           dir: removeBothEndsSlash(node.dir.replace(articleRootPath, '')),
           path: removeBothEndsSlash(node.path.replace(articleRootPath, '')),
-          label: StorageService.getArticleLangLabel(lang, node.article!.dir!.label),
-          type: node.article!.dir!.type,
+          label: StorageService.getArticleLangLabel(lang, node.article!.label),
+          type: node.article!.type,
         }
         return result
       })
@@ -947,14 +968,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             must: [
               { term: { dir: articleRootPath } },
               {
-                terms: { 'article.dir.type': ['ListBundle', 'TreeBundle'] },
+                terms: { 'article.type': ['ListBundle', 'TreeBundle'] },
               },
             ],
           },
         },
       },
-      _source_includes: this.includeNodeFields,
-      _source_excludes: this.excludeNodeFields,
+      _source_excludes: this.sourceExcludes,
     })
     const bundleDirs = this.dbResponseToNodes(response1)
 
@@ -965,7 +985,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     const queryBody: string[] = []
     for (const bundleNode of bundleDirs) {
-      if (bundleNode.article?.dir?.type === 'ListBundle') continue
+      if (bundleNode.article?.type === 'ListBundle') continue
       const header = { index: StorageSchema.IndexAlias }
       const body = {
         size: 10000,
@@ -974,14 +994,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             must: [
               { wildcard: { path: `${bundleNode.path}/*` } },
               {
-                terms: { 'article.dir.type': ['Category', 'Article'] },
+                terms: { 'article.type': ['Category', 'Article'] },
               },
             ],
           },
         },
         _source: {
-          includes: this.includeNodeFields,
-          excludes: this.excludeNodeFields,
+          excludes: this.sourceExcludes,
         },
       }
       queryBody.push(JSON.stringify(header))
@@ -990,10 +1009,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // バンドルディレクトリ配下に記事系ディレクトリがない場合
     if (!queryBody.length) {
-      // リストバンドルのみを返す
+      // 検索されたバンドルディレクトリの中からリストバンドルのみを返す
       return toArticleTableOfContentsItems(
         lang,
-        bundleDirs.filter(bundleDir => bundleDir.article?.dir?.type === 'ListBundle')
+        bundleDirs.filter(bundleDir => bundleDir.article?.type === 'ListBundle')
       )
     }
 
@@ -1009,34 +1028,28 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       {}
     )
 
-    // リクエスター自身の目次を取得しようとしている場合、検索結果の全てを返す
-    if (user.id === idToken?.uid) {
-      return toArticleTableOfContentsItems(lang, [...bundleDirs, ...bundleUnderCategoryAndArticle])
-    }
-
     //
     // リクエスターがアクセス可能な「記事」に絞り込み
     //
     const accessibleArticles: StorageNode[] = []
     for (const node of bundleUnderCategoryAndArticle) {
       // 記事以外のノードの場合は次へ移動
-      if (node.article?.dir?.type !== 'Article') continue
+      if (node.article?.type !== 'Article') continue
       // リクエスターが記事を読み込み可能かを検証
       const hierarchicalNodes = this.retrieveHierarchicalNodes(allNodeDict, node.path)
       const error = await this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
       if (error) continue
-      // 指定言語の記事に本文があるか検証
+      // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
       const srcDetail = node.article.src?.[lang]
-      if (!srcDetail?.masterId) continue
+      if (!srcDetail?.createdAt) continue
       // ここまで残った記事はアクセス可能となる
       accessibleArticles.push(node)
     }
 
     //
     // 取得した記事系ディレクトリを階層構造化
-    // ※階層構造の中で重複ノードが発生するのでそれは除去
     //
-    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.dir?.type === 'ListBundle'), ...accessibleArticles]
+    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.type === 'ListBundle'), ...accessibleArticles]
     const summarizedPaths = summarizeFamilyPaths(accessibleDirNodes.map(node => node.path))
     const allAccessiblePaths = splitHierarchicalPaths(...summarizedPaths).filter(isArticleRootUnder)
     const allAccessibleNodes = allAccessiblePaths.map(path => allNodeDict[path])
@@ -1076,7 +1089,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
      * 指定されたノードをエラー情報用ノードに変換します。
      */
     const toErrorNodeData = (node: StorageNode) => {
-      const article = node.article ? pickProps(node.article, ['dir', 'file']) : undefined
+      const article = node.article ? pickProps(node.article, ['type', 'label']) : undefined
       return { ...pickProps(node, ['id', 'path']), article }
     }
 
@@ -1086,8 +1099,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     StorageService.validateNodePath(input.toDir)
 
     const fromDirNode = await this.sgetNode({ path: input.fromDir })
-    const fromArticleDirType = fromDirNode.article?.dir?.type
-    switch (fromDirNode.article?.dir?.type) {
+    const fromArticleDirType = fromDirNode.article?.type
+    switch (fromArticleDirType) {
       // 移動ノードがバンドルの場合
       // ※バンドルは移動不可
       case 'ListBundle':
@@ -1100,7 +1113,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       // ※カテゴリは｢ツリーバンドル、カテゴリ｣へのみ移動可能
       case 'Category': {
         const toParentNode = await this.sgetNode({ path: _path.dirname(input.toDir) })
-        const toParentArticleDirType = toParentNode.article?.dir?.type
+        const toParentArticleDirType = toParentNode.article?.type
         // カテゴリは｢ツリーバンドル、カテゴリ｣へのみ移動可能。それ以外へは移動不可
         if (!(toParentArticleDirType === 'TreeBundle' || toParentArticleDirType === 'Category')) {
           throw new AppError('Categories can only be moved to category bundles or categories.', {
@@ -1114,7 +1127,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       // ※記事は｢リストバンドル、ツリーバンドル、カテゴリ｣へのみ移動可能
       case 'Article': {
         const toParentNode = await this.sgetNode({ path: _path.dirname(input.toDir) })
-        const toParentArticleDirType = toParentNode.article?.dir?.type
+        const toParentArticleDirType = toParentNode.article?.type
         if (!(toParentArticleDirType === 'ListBundle' || toParentArticleDirType === 'TreeBundle' || toParentArticleDirType === 'Category')) {
           throw new AppError('Articles can only be moved to list bundles or category bundles or categories.', {
             movingNode: toErrorNodeData(fromDirNode),
@@ -1130,7 +1143,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         // 移動先がルートノード以外の場合
         if (toParentPath) {
           const toParentNode = await this.sgetNode({ path: toParentPath })
-          const toParentArticleDirType = toParentNode.article?.dir?.type
+          const toParentArticleDirType = toParentNode.article?.type
           // 移動先が｢一般ディレクトリ、記事｣以外の場合
           if (!(!toParentArticleDirType || toParentArticleDirType === 'Article')) {
             throw new AppError('The general directory can only be moved to the general directory or articles.', {
@@ -1162,9 +1175,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         body: {
           doc: {
             article: {
-              dir: {
-                sortOrder,
-              },
+              sortOrder,
             },
           },
         },
@@ -1181,7 +1192,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return StorageSchema.toEntity(dbNode)
   }
 
-  protected toDBStorageNode(node: StorageNodeInput): DBStorageNode {
+  protected toDBStorageNode(node: StorageNode): DBStorageNode {
     return StorageSchema.toDBEntity(node)
   }
 
@@ -1216,8 +1227,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // バンドルを作成
     const dirPath = _path.join(input.dir, input.id ?? StorageSchema.generateId())
-    // return this.m_createArticleTypeDir(dirPath, input)
-    return this.m_createArticleTypeDir(dirPath, input)
+    return this.m_createArticleTypeDir(
+      dirPath,
+      {
+        ...pickProps(input, ['type', 'type', 'sortOrder']),
+        label: <ArticleDirLabelByLang>{ [input.lang]: input.label },
+      },
+      { share: input.share }
+    )
   }
 
   /**
@@ -1232,7 +1249,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 親ディレクトリが｢ツリーバンドル、カテゴリ｣以外の場合、
     // カテゴリの作成はできないためエラー
     const parentNode = await this.getNode({ path: parentPath })
-    const parentArticleDirType = parentNode?.article?.dir?.type
+    const parentArticleDirType = parentNode?.article?.type
     if (!parentNode) {
       throw new AppError(`There is no parent directory for the category to be created.`, { parentPath })
     }
@@ -1244,7 +1261,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // カテゴリを作成
     const dirPath = _path.join(input.dir, input.id ?? StorageSchema.generateId())
-    return this.m_createArticleTypeDir(dirPath, { ...input, type: 'Category' })
+    return this.m_createArticleTypeDir(
+      dirPath,
+      {
+        ...pickProps(input, ['type', 'type', 'sortOrder']),
+        label: <ArticleDirLabelByLang>{ [input.lang]: input.label },
+      },
+      { share: input.share }
+    )
   }
 
   /**
@@ -1264,7 +1288,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 親ディレクトリが｢リストバンドル、ツリーバンドル、カテゴリ｣以外の場合、
     // カテゴリの作成はできないためエラー
     const parentNode = hierarchicalNodeDict[parentPath]
-    const parentArticleDirType = parentNode.article?.dir?.type
+    const parentArticleDirType = parentNode.article?.type
     if (!parentNode.exists) {
       throw new AppError(`There is no parent directory for the article to be created.`, { parentPath })
     }
@@ -1276,7 +1300,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 祖先に記事が存在しないことをチェック
     for (const iDirNode of hierarchicalNodes.filter(node => node.path !== articlePath)) {
-      if (iDirNode.article?.dir?.type === 'Article') {
+      if (iDirNode.article?.type === 'Article') {
         throw new AppError(`The article cannot be created under article.`, {
           specifiedDirPath: articlePath,
           ancestorDirPath: iDirNode.path,
@@ -1285,7 +1309,16 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     // 記事ノードを作成
-    const articleNode = await this.m_createArticleTypeDir(hierarchicalNodes, { ...input, type: 'Article' })
+    const articleNode = await this.m_createArticleTypeDir(
+      hierarchicalNodes,
+      {
+        ...pickProps(input, ['type', 'type', 'sortOrder']),
+        label: <ArticleDirLabelByLang>{ [input.lang]: input.label },
+      },
+      {
+        share: input.share,
+      }
+    )
 
     // 更新された最新の記事を取得
     return await this.sgetNode(articleNode)
@@ -1295,14 +1328,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事ルート配下にディレクトリを作成します。
    * @param dirPath
    * @param input
+   * @param options
    */
   private async m_createArticleTypeDir(
     dirPath: string,
     input: {
-      lang: LangCode
-      label: string
-      type: StorageArticleDirType
+      label: ArticleDirLabelByLang
+      type: ArticleDirType
       sortOrder: number
+      src?: ArticleSrcByLang
+    },
+    options?: {
       share?: SetShareDetailInput
     }
   ): Promise<StorageNode>
@@ -1311,14 +1347,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 記事ルート配下に記事系ディレクトリを作成します。
    * @param hierarchicalDirNodes
    * @param input
+   * @param options
    */
   private async m_createArticleTypeDir(
     hierarchicalDirNodes: (StorageNode & { exists: boolean })[],
     input: {
-      lang: LangCode
-      label: string
-      type: StorageArticleDirType
+      label: ArticleDirLabelByLang
+      type: ArticleDirType
       sortOrder: number
+      src?: ArticleSrcByLang
+    },
+    options?: {
       share?: SetShareDetailInput
     }
   ): Promise<StorageNode>
@@ -1326,10 +1365,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   private async m_createArticleTypeDir(
     dirPath_or_hierarchicalDirNodes: string | (StorageNode & { exists: boolean })[],
     input: {
-      lang: LangCode
-      label: string
-      type: StorageArticleDirType
+      label: ArticleDirLabelByLang
+      type: ArticleDirType
       sortOrder: number
+      src?: ArticleSrcByLang
+    },
+    options?: {
       share?: SetShareDetailInput
     }
   ): Promise<StorageNode> {
@@ -1382,16 +1423,11 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           ...this.toDBStorageNode({
             ...dirNode,
             id,
-            share: this.toDBShareDetail(input.share),
+            share: this.toDBShareDetail(options?.share),
+            article: input,
             version: 1,
             createdAt: now,
             updatedAt: now,
-            article: {
-              dir: {
-                ...pickProps(input, ['type', 'sortOrder']),
-                label: { [input.lang]: input.label },
-              },
-            },
           }),
         },
         doc_as_upsert: true,
@@ -1438,7 +1474,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 上記で取得したパスからバンドルを取得
     const bundle = await this.getNode({ path: bundlePath })
-    const bundleArticleDirTyp = bundle?.article?.dir?.type
+    const bundleArticleDirTyp = bundle?.article?.type
     if (!bundle) return undefined
     if (!(bundleArticleDirTyp === 'ListBundle' || bundleArticleDirTyp === 'TreeBundle')) {
       return undefined
@@ -1483,7 +1519,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
         aggs: {
           maxArticleSortOrder: {
-            max: { field: 'article.dir.sortOrder' },
+            max: { field: 'article.sortOrder' },
           },
         },
       },
@@ -1521,7 +1557,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
         aggs: {
           maxArticleSortOrder: {
-            max: { field: 'article.dir.sortOrder' },
+            max: { field: 'article.sortOrder' },
           },
         },
       },
@@ -1609,7 +1645,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * @param lang
    * @param labelByLang
    */
-  static getArticleLangLabel(lang: LangCode, labelByLang?: StorageArticleDirLabelByLang): string {
+  static getArticleLangLabel(lang: LangCode, labelByLang?: ArticleDirLabelByLang): string {
     if (!labelByLang) return ''
 
     let label = labelByLang[lang]
@@ -1634,14 +1670,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         const a = treeNodeA.item
         const b = treeNodeB.item
 
-        if (a.article?.file?.type === 'DraftSrc') return -1
-        if (b.article?.file?.type === 'DraftSrc') return 1
-        if (a.article?.file?.type === 'MasterSrc') return -1
-        if (b.article?.file?.type === 'MasterSrc') return 1
-
         if (a.nodeType === b.nodeType) {
-          const orderA = a.article?.dir?.sortOrder ?? 0
-          const orderB = b.article?.dir?.sortOrder ?? 0
+          const orderA = a.article?.sortOrder ?? 0
+          const orderB = b.article?.sortOrder ?? 0
           if (orderA === orderB) {
             const nameA = a.name
             const nameB = b.name
@@ -1725,5 +1756,5 @@ class StorageServiceModule {}
 //
 //========================================================================
 
-export { StorageService, StorageServiceDI, StorageServiceModule }
+export { StorageService, StorageServiceDI, StorageServiceModule, ArticleContentFields }
 export { StorageFileNode, StorageUploadDataItem } from './core-storage'

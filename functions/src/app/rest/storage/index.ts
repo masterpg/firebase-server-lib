@@ -2,6 +2,7 @@ import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppIntercept
 import { AuthServiceModule, CORSServiceModule, LoggingServiceModule, StorageServiceDI, StorageServiceModule } from '../../services'
 import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Query, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { AppError } from '../../base'
 import { BaseRESTModule } from '../base'
 import KeepAliveRESTModule from '../base/keepalive'
 import { LangCode } from 'web-base-lib'
@@ -32,7 +33,8 @@ class StorageController {
     @Param('articleId') articleId: string,
     @Query('lang') lang: LangCode
   ): Promise<Response> {
-    return this.storageService.getArticleSrc(req, res, { articleId, lang })
+    if (!lang) throw new AppError(`No "lang" specified.`)
+    return this.storageService.getArticleSrcContent(req, res, { articleId, lang })
   }
 }
 

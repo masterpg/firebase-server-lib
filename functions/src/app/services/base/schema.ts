@@ -1,18 +1,10 @@
 import * as _path from 'path'
+import { ArticleSrcByLang, CoreStorageNode, StorageNode, StorageNodeShareDetail, User } from './index'
 import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse } from '../../base/elastic'
-import {
-  CoreStorageNode,
-  StorageArticleDirDetail,
-  StorageArticleFileDetail,
-  StorageArticleSrcByLang,
-  StorageArticleSrcDetail,
-  StorageNode,
-  StorageNodeShareDetail,
-  User,
-} from './index'
 import {
   Entities,
   LangCodes,
+  ToDeepRawDate,
   ToRawTimestamp,
   pickProps,
   removeBothEndsSlash,
@@ -276,74 +268,49 @@ namespace StorageSchema {
       properties: {
         article: {
           properties: {
-            dir: {
-              properties: {
-                type: {
-                  type: 'keyword',
-                },
-                label: {
-                  properties: {
-                    ja: {
-                      type: 'keyword',
-                      fields: {
-                        text: {
-                          type: 'text',
-                          analyzer: 'kuromoji_analyzer',
-                        },
-                      },
-                    },
-                    en: {
-                      type: 'keyword',
-                      fields: {
-                        text: {
-                          type: 'text',
-                          analyzer: 'standard',
-                        },
-                      },
-                    },
-                  },
-                },
-                sortOrder: {
-                  type: 'long',
-                },
-              },
+            type: {
+              type: 'keyword',
             },
-            file: {
-              properties: {
-                type: {
-                  type: 'keyword',
-                },
-              },
-            },
-            src: {
+            label: {
               properties: {
                 ja: {
-                  properties: {
-                    masterId: {
-                      type: 'keyword',
-                    },
-                    draftId: {
-                      type: 'keyword',
-                    },
-                    createdAt: {
-                      type: 'date',
-                    },
-                    updatedAt: {
-                      type: 'date',
-                    },
-                    textContent: {
+                  type: 'keyword',
+                  fields: {
+                    text: {
                       type: 'text',
                       analyzer: 'kuromoji_analyzer',
                     },
                   },
                 },
                 en: {
-                  properties: {
-                    masterId: {
-                      type: 'keyword',
+                  type: 'keyword',
+                  fields: {
+                    text: {
+                      type: 'text',
+                      analyzer: 'standard',
                     },
-                    draftId: {
-                      type: 'keyword',
+                  },
+                },
+              },
+            },
+            sortOrder: {
+              type: 'long',
+            },
+            src: {
+              properties: {
+                ja: {
+                  properties: {
+                    srcContent: {
+                      type: 'text',
+                      analyzer: 'kuromoji_analyzer',
+                    },
+                    draftContent: {
+                      type: 'text',
+                      analyzer: 'kuromoji_analyzer',
+                    },
+                    searchContent: {
+                      type: 'text',
+                      analyzer: 'kuromoji_analyzer',
                     },
                     createdAt: {
                       type: 'date',
@@ -351,9 +318,27 @@ namespace StorageSchema {
                     updatedAt: {
                       type: 'date',
                     },
-                    textContent: {
+                  },
+                },
+                en: {
+                  properties: {
+                    srcContent: {
                       type: 'text',
                       analyzer: 'standard',
+                    },
+                    draftContent: {
+                      type: 'text',
+                      analyzer: 'standard',
+                    },
+                    searchContent: {
+                      type: 'text',
+                      analyzer: 'standard',
+                    },
+                    createdAt: {
+                      type: 'date',
+                    },
+                    updatedAt: {
+                      type: 'date',
                     },
                   },
                 },
@@ -365,103 +350,61 @@ namespace StorageSchema {
     },
   })
 
-  export interface DBStorageNode extends ToRawTimestamp<Omit<StorageNode, 'article'>> {
-    article?: {
-      dir?: StorageArticleDirDetail
-      file?: StorageArticleFileDetail
-      src?: DBStorageArticleSrcByLang
-    }
-  }
-
-  export interface DBStorageArticleSrcByLang {
-    ja?: DBStorageArticleSrcDetail
-    en?: DBStorageArticleSrcDetail
-  }
-
-  export interface DBStorageArticleSrcDetail extends ToRawTimestamp<StorageArticleSrcDetail> {
-    textContent: string
-  }
-
-  export interface StorageNodeInput extends Omit<StorageNode, 'article'> {
-    article?: {
-      dir?: StorageArticleDirDetail
-      file?: StorageArticleFileDetail
-      src?: StorageArticleSrcByLangInput
-    }
-  }
-
-  export interface StorageArticleSrcByLangInput {
-    ja?: StorageArticleSrcDetailInput
-    en?: StorageArticleSrcDetailInput
-  }
-
-  export interface StorageArticleSrcDetailInput extends StorageArticleSrcDetail {
-    textContent?: string
-  }
+  export type DBStorageNode = ToDeepRawDate<StorageNode>
 
   export function toEntity(dbEntity: DBStorageNode): StorageNode {
     const result: StorageNode = { ...CoreStorageSchema.toEntity(dbEntity) }
     if (dbEntity.article) {
-      result.article = {}
-      if (dbEntity.article.dir) {
-        const dir: StorageArticleDirDetail = {
-          label: dbEntity.article.dir.label,
-          type: dbEntity.article.dir.type,
-          sortOrder: dbEntity.article.dir.sortOrder ?? null,
-        }
-        merge(result.article, { dir })
-      }
-      if (dbEntity.article.file) {
-        const file: StorageArticleFileDetail = {
-          type: dbEntity.article.file.type,
-        }
-        merge(result.article, { file })
+      result.article = {
+        ...pickProps(dbEntity.article, ['type', 'label', 'sortOrder']),
       }
       if (dbEntity.article.src) {
-        const src = LangCodes.reduce((result, langCode) => {
+        result.article.src = LangCodes.reduce((result, langCode) => {
           const srcDetail = dbEntity.article?.src?.[langCode]
           if (srcDetail) {
             result[langCode] = {
-              masterId: srcDetail.masterId,
-              draftId: srcDetail.draftId,
+              // ---> 空文字はundefinedに変換する
+              srcContent: srcDetail.srcContent || undefined,
+              draftContent: srcDetail.draftContent || undefined,
+              searchContent: srcDetail.searchContent || undefined,
+              // <---
               createdAt: toEntityDate(srcDetail.createdAt),
               updatedAt: toEntityDate(srcDetail.updatedAt),
             }
           }
           return result
-        }, {} as StorageArticleSrcByLang)
-        merge(result.article, { src })
+        }, {} as ArticleSrcByLang)
       }
     }
     return result
   }
 
-  export function toDBEntity(appEntity: StorageNodeInput): DBStorageNode {
-    const result: DBStorageNode = { ...CoreStorageSchema.toDBEntity(appEntity) }
-    if (appEntity.article) {
-      result.article = {}
-      if (appEntity.article.dir) {
-        const dir: StorageArticleDirDetail = pickProps(appEntity.article.dir, ['label', 'type', 'sortOrder'])
-        merge(result.article, { dir })
+  export function toDBEntity(entity: StorageNode): DBStorageNode {
+    const result: DBStorageNode = { ...CoreStorageSchema.toDBEntity(entity) }
+    if (entity.article) {
+      result.article = {
+        ...pickProps(entity.article, ['type', 'label', 'sortOrder']),
       }
-      if (appEntity.article.file) {
-        const file: StorageArticleFileDetail = pickProps(appEntity.article.file, ['type'])
-        merge(result.article, { file })
-      }
-      if (appEntity.article.src) {
-        const src = LangCodes.reduce((result, langCode) => {
-          const srcDetail = appEntity.article?.src?.[langCode]
+      if (entity.article.src) {
+        result.article.src = LangCodes.reduce((result, langCode) => {
+          const srcDetail = entity.article?.src?.[langCode]
           if (srcDetail) {
             result[langCode] = {
-              ...pickProps(srcDetail, ['masterId', 'draftId']),
-              textContent: srcDetail.textContent ?? '',
+              // ---> undefined or null は空文字に変換する
+              ...(() => {
+                const result = pickProps(srcDetail, ['srcContent', 'draftContent', 'searchContent']) // キーが存在するプロパティのみ抽出
+                for (const [key, value] of Object.entries(result)) {
+                  result[key as 'srcContent' | 'draftContent' | 'searchContent'] = value ?? ''
+                }
+                return result
+              })(),
+              // <---
               createdAt: toRawDate(srcDetail.createdAt),
               updatedAt: toRawDate(srcDetail.updatedAt),
             }
           }
           return result
-        }, {} as DBStorageArticleSrcByLang)
-        merge(result.article, { src })
+        }, {} as ToDeepRawDate<ArticleSrcByLang>)
       }
     }
     return result

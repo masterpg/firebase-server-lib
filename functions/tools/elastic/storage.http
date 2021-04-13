@@ -51,6 +51,15 @@ Authorization: Basic {{elasticToken}}
       "id": {
         "type": "keyword"
       },
+      "version": {
+        "type": "long"
+      },
+      "createdAt": {
+        "type": "date"
+      },
+      "updatedAt": {
+        "type": "date"
+      },
       "nodeType": {
         "type": "keyword"
       },
@@ -85,7 +94,7 @@ Authorization: Basic {{elasticToken}}
         "type": "keyword"
       },
       "size": {
-        "type": "float"
+        "type": "long"
       },
       "share": {
         "properties": {
@@ -102,9 +111,12 @@ Authorization: Basic {{elasticToken}}
       },
       "article": {
         "properties": {
-          "dir": {
+          "type": {
+            "type": "keyword"
+          },
+          "label": {
             "properties": {
-              "name": {
+              "ja": {
                 "type": "keyword",
                 "fields": {
                   "text": {
@@ -113,38 +125,69 @@ Authorization: Basic {{elasticToken}}
                   }
                 }
               },
-              "type": {
-                "type": "keyword"
-              },
-              "sortOrder": {
-                "type": "long"
+              "en": {
+                "type": "keyword",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "standard"
+                  }
+                }
               }
             }
           },
-          "file": {
+          "sortOrder": {
+            "type": "long"
+          },
+          "src": {
             "properties": {
-              "type": {
-                "type": "keyword"
+              "ja": {
+                "properties": {
+                  "srcContent": {
+                    "type": "text",
+                    "analyzer": "kuromoji_analyzer"
+                  },
+                  "draftContent": {
+                    "type": "text",
+                    "analyzer": "kuromoji_analyzer"
+                  },
+                  "searchContent": {
+                    "type": "text",
+                    "analyzer": "kuromoji_analyzer"
+                  },
+                  "createdAt": {
+                    "type": "date"
+                  },
+                  "updatedAt": {
+                    "type": "date"
+                  }
+                }
+              },
+              "en": {
+                "properties": {
+                  "srcContent": {
+                    "type": "text",
+                    "analyzer": "standard"
+                  },
+                  "draftContent": {
+                    "type": "text",
+                    "analyzer": "standard"
+                  },
+                  "searchContent": {
+                    "type": "text",
+                    "analyzer": "standard"
+                  },
+                  "createdAt": {
+                    "type": "date"
+                  },
+                  "updatedAt": {
+                    "type": "date"
+                  }
+                }
               }
             }
-          },
-          "textContent": {
-            "type": "text",
-            "analyzer": "kuromoji_analyzer"
           }
         }
-      },
-      "level": {
-        "type": "long"
-      },
-      "version": {
-        "type": "long"
-      },
-      "createdAt": {
-        "type": "date"
-      },
-      "updatedAt": {
-        "type": "date"
       }
     }
   }
@@ -185,12 +228,12 @@ Authorization: Basic {{elasticToken}}
     "match_all": {}
   },
   "sort": [{ "path": "asc" }],
-  "_source": ["id", "nodeType", "name", "dir", "path", "contentType", "size", "share.isPublic", "share.readUIds", "share.writeUIds", "article.dir.name", "article.dir.type", "article.dir.sortOrder", "article.file.type", "article.textContent", "version", "createdAt", "updatedAt"]
+  "_source": ["id", "nodeType", "name", "dir", "path", "contentType", "size", "share.isPublic", "share.readUIds", "share.writeUIds", "article.dir.name", "article.dir.type", "article.dir.sortOrder", "article.file.type", "article.searchContent", "version", "createdAt", "updatedAt"]
 }
 
 ###
 
-# ノードをキー(Id or パス)で検索
+# ノードをキー(ID or パス)で検索
 
 GET {{elasticHost}}/storage-nodes-test/_search
 Content-Type: application/json

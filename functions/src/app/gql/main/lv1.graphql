@@ -17,18 +17,19 @@ type Mutation {
   createArticleGeneralDir(input: CreateArticleGeneralDirInput!): StorageNode!
   renameArticleTypeDir(input: RenameArticleTypeDirInput!): StorageNode!
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
-  saveArticleMasterSrcFile(input: SaveArticleMasterSrcFileInput!): SaveArticleMasterSrcFileResult!
-  saveArticleDraftSrcFile(input: SaveArticleDraftSrcFileInput!): SaveArticleDraftSrcFileResult!
+  saveArticleSrcContent(key: StorageNodeGetKeyInput!, input: SaveArticleSrcContentInput!): StorageNode!
+  saveArticleDraftContent(key: StorageNodeGetKeyInput!, input: SaveArticleDraftContentInput!): StorageNode!
 }
 
 type Query {
-  storageNode(input: StorageNodeGetKeyInput!): StorageNode
-  storageNodes(input: StorageNodeGetKeysInput!): [StorageNode!]!
+  storageNode(key: StorageNodeGetKeyInput!): StorageNode
+  storageNodes(keys: StorageNodeGetKeysInput!): [StorageNode!]!
   storageDescendants(input: StorageNodeGetUnderInput!, pagination: PaginationInput): StoragePaginationResult!
   storageChildren(input: StorageNodeGetUnderInput!, pagination: PaginationInput): StoragePaginationResult!
   storageHierarchicalNodes(nodePath: String!): [StorageNode!]!
   storageAncestorDirs(nodePath: String!): [StorageNode!]!
   signedUploadUrls(inputs: [SignedUploadUrlInput!]!): [String!]!
+  articleContentsNode(key: StorageNodeGetKeyInput!, input: GetArticleContentsNodeInput!): StorageNode
   userArticleList(input: GetUserArticleListInput!, pagination: PaginationInput): ArticleListPaginationResult!
   userArticleTableOfContents(input: GetUserArticleTableOfContentsInput!): [ArticleTableOfContentsItem!]!
 }

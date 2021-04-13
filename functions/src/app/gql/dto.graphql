@@ -130,16 +130,16 @@ input RenameStorageFileInput {
 #  Storage
 #--------------------------------------------------
 
-enum StorageArticleDirType {
+enum ArticleDirType {
   ListBundle
   TreeBundle
   Article
   Category
 }
 
-enum StorageArticleFileType {
-  MasterSrc
-  DraftSrc
+enum ArticleContentType {
+  Src
+  Draft
 }
 
 type StorageNode implements TimestampEntity {
@@ -151,7 +151,7 @@ type StorageNode implements TimestampEntity {
   contentType: String!
   size: Long!
   share: StorageNodeShareDetail!
-  article: StorageArticleDetail
+  article: ArticleDetail
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -163,35 +163,27 @@ type StoragePaginationResult {
   isPaginationTimeout: Boolean
 }
 
-type StorageArticleDetail {
-  dir: StorageArticleDirDetail
-  file: StorageArticleFileDetail
-  src: StorageArticleSrcByLang
-}
-
-type StorageArticleDirDetail {
-  label: StorageArticleDirLabelByLang!
-  type: StorageArticleDirType!
+type ArticleDetail {
+  type: ArticleDirType!
+  label: ArticleDirLabelByLang!
   sortOrder: Long!
+  src: ArticleSrcByLang
 }
 
-type StorageArticleDirLabelByLang {
+type ArticleDirLabelByLang {
   ja: String
   en: String
 }
 
-type StorageArticleFileDetail {
-  type: StorageArticleFileType!
+type ArticleSrcByLang {
+  ja: ArticleSrcDetail
+  en: ArticleSrcDetail
 }
 
-type StorageArticleSrcByLang {
-  ja: StorageArticleSrcDetail
-  en: StorageArticleSrcDetail
-}
-
-type StorageArticleSrcDetail {
-  masterId: String
-  draftId: String
+type ArticleSrcDetail {
+  srcContent: String
+  draftContent: String
+  searchContent: String
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -200,7 +192,7 @@ input CreateArticleTypeDirInput {
   lang: LangCode!
   dir: String!
   label: String!
-  type: StorageArticleDirType!
+  type: ArticleDirType!
   share: SetShareDetailInput
 }
 
@@ -215,28 +207,20 @@ input RenameArticleTypeDirInput {
   label: String!
 }
 
-input SaveArticleMasterSrcFileInput {
+input SaveArticleSrcContentInput {
   lang: LangCode!
-  articleId: String!
   srcContent: String!
-  textContent: String!
+  searchContent: String!
 }
 
-type SaveArticleMasterSrcFileResult {
-  article: StorageNode!
-  master: StorageNode!
-  draft: StorageNode!
-}
-
-input SaveArticleDraftSrcFileInput {
+input SaveArticleDraftContentInput {
   lang: LangCode!
-  articleId: String!
-  srcContent: String
+  draftContent: String
 }
 
-type SaveArticleDraftSrcFileResult {
-  article: StorageNode!
-  draft: StorageNode!
+input GetArticleContentsNodeInput {
+  lang: LangCode!
+  contentTypes: [ArticleContentType!]!
 }
 
 type ArticleListItem {
@@ -266,7 +250,7 @@ type ArticleTableOfContentsItem {
   dir: String!
   path: String!
   label: String!
-  type: StorageArticleDirType!
+  type: ArticleDirType!
 }
 
 input GetUserArticleTableOfContentsInput {

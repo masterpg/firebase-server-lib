@@ -1,10 +1,10 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
 import {
+  ArticleDirType,
   ArticleListItem,
   ArticleTableOfContentsItem,
   CoreStorageNode,
-  StorageArticleDirType,
   StorageNode,
   StorageService,
   StorageServiceDI,
@@ -263,7 +263,7 @@ class StorageTestHelper extends CoreStorageTestHelper {
     }
   }
 
-  newTableOfContentsItems(data: { path: string; type: StorageArticleDirType; label: string }): ArticleTableOfContentsItem {
+  newTableOfContentsItems(data: { path: string; type: ArticleDirType; label: string }): ArticleTableOfContentsItem {
     const pathData = toPathData(data.path)
 
     return {

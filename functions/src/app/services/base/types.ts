@@ -1,8 +1,8 @@
 import * as admin from 'firebase-admin'
+import { LangCode, TimestampEntity } from 'web-base-lib'
+import { AppError } from '../../base'
 import { Dayjs } from 'dayjs'
 import { IsPositive } from 'class-validator'
-import { LangCode } from '../../../../../../web-base-lib/dist'
-import { TimestampEntity } from 'web-base-lib'
 
 //========================================================================
 //
@@ -164,43 +164,73 @@ interface RenameStorageFileInput {
 //  Storage
 //--------------------------------------------------
 
-type StorageArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
+type ArticleDirType = 'ListBundle' | 'TreeBundle' | 'Category' | 'Article'
 
-type StorageArticleFileType = 'MasterSrc' | 'DraftSrc'
+type ArticleContentType = 'Src' | 'Draft'
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+namespace ArticleContentType {
+  export function toSourceIncludes(lang: LangCode, contentType: ArticleContentType): string[]
+  export function toSourceIncludes(lang: LangCode, srcTypes: ArticleContentType[]): string[]
+  export function toSourceIncludes(arg1: LangCode, arg2: ArticleContentType | ArticleContentType[]): string[] {
+    const lang = arg1
+    if (Array.isArray(arg2)) {
+      return arg2.map(contentType => toSourceInclude(lang, contentType))
+    } else {
+      return [toSourceInclude(lang, arg2)]
+    }
+  }
+
+  function toSourceInclude(lang: LangCode, contentType: ArticleContentType): string {
+    switch (contentType) {
+      case 'Src':
+        return ArticleContentFields[lang].SrcContent
+      case 'Draft':
+        return ArticleContentFields[lang].DraftContent
+      default:
+        throw new AppError(`Invalid value specified.`, { contentType })
+    }
+  }
+}
+
+const ArticleContentFields = {
+  ja: {
+    SrcContent: 'article.src.ja.srcContent',
+    DraftContent: 'article.src.ja.draftContent',
+    SearchContent: 'article.src.ja.searchContent',
+  },
+  en: {
+    SrcContent: 'article.src.en.srcContent',
+    DraftContent: 'article.src.en.draftContent',
+    SearchContent: 'article.src.en.searchContent',
+  },
+} as const
 
 interface StorageNode extends CoreStorageNode {
-  article?: StorageArticleDetail
+  article?: ArticleDetail
 }
 
-interface StorageArticleDetail {
-  dir?: StorageArticleDirDetail
-  file?: StorageArticleFileDetail
-  src?: StorageArticleSrcByLang
-}
-
-interface StorageArticleDirDetail {
-  label: StorageArticleDirLabelByLang
-  type: StorageArticleDirType
+interface ArticleDetail {
+  type: ArticleDirType
+  label: ArticleDirLabelByLang
   sortOrder: number
+  src?: ArticleSrcByLang
 }
 
-interface StorageArticleDirLabelByLang {
+interface ArticleDirLabelByLang {
   ja?: string
   en?: string
 }
 
-interface StorageArticleFileDetail {
-  type: StorageArticleFileType
+interface ArticleSrcByLang {
+  ja?: ArticleSrcDetail
+  en?: ArticleSrcDetail
 }
 
-interface StorageArticleSrcByLang {
-  ja?: StorageArticleSrcDetail
-  en?: StorageArticleSrcDetail
-}
-
-interface StorageArticleSrcDetail {
-  masterId?: string
-  draftId?: string
+interface ArticleSrcDetail {
+  srcContent?: string
+  draftContent?: string
+  searchContent?: string
   createdAt?: Dayjs
   updatedAt?: Dayjs
 }
@@ -210,7 +240,7 @@ interface CreateArticleTypeDirInput {
   id?: string
   dir: string
   label: string
-  type: StorageArticleDirType
+  type: ArticleDirType
   sortOrder?: number
   share?: SetShareDetailInput
 }
@@ -226,49 +256,41 @@ interface RenameArticleTypeDirInput {
   label: string
 }
 
-interface SaveArticleMasterSrcFileInput {
+interface SaveArticleSrcContentInput {
   lang: LangCode
-  articleId: string
   srcContent: string
-  textContent: string
+  searchContent: string
 }
 
-interface SaveArticleMasterSrcFileResult {
-  article: StorageNode
-  master: StorageNode
-  draft: StorageNode
-}
-
-interface SaveArticleDraftSrcFileInput {
+interface SaveArticleDraftContentInput {
   lang: LangCode
-  articleId: string
-  srcContent: string | null
+  draftContent: string | null
 }
 
-interface SaveArticleDraftSrcFileResult {
-  article: StorageNode
-  draft: StorageNode
+interface GetArticleContentsNodeInput {
+  lang: LangCode
+  contentTypes: ArticleContentType[]
 }
 
-interface GetArticleSrcInput {
+interface GetArticleSrcContentInput {
   lang: LangCode
   articleId: string
 }
 
-interface ArticlePathDetail {
+interface GetArticleSrcContentResult extends ArticlePathDetail {
   id: string
   label: string
-}
-
-interface GetArticleSrcResult extends ArticlePathDetail {
-  id: string
-  label: string
-  src: string
+  srcContent: string
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   isPublic: boolean
   createdAt: Dayjs
   updatedAt: Dayjs
+}
+
+interface ArticlePathDetail {
+  id: string
+  label: string
 }
 
 interface ArticleListItem {
@@ -289,7 +311,7 @@ interface GetUserArticleListInput {
 
 interface ArticleTableOfContentsItem {
   id: string
-  type: StorageArticleDirType
+  type: ArticleDirType
   name: string
   dir: string
   path: string
@@ -378,15 +400,23 @@ interface CartItemEditResponse extends TimestampEntity {
 export { JSON, JSONObject }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
+  ArticleContentFields,
+  ArticleDetail,
+  ArticleDirLabelByLang,
+  ArticleDirType,
   ArticleListItem,
   ArticlePathDetail,
+  ArticleSrcByLang,
+  ArticleSrcDetail,
   ArticleTableOfContentsItem,
   CoreStorageNode,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
-  GetArticleSrcInput,
-  GetArticleSrcResult,
+  GetArticleContentsNodeInput,
+  ArticleContentType,
+  GetArticleSrcContentInput,
+  GetArticleSrcContentResult,
   GetUserArticleListInput,
   GetUserArticleTableOfContentsInput,
   MoveStorageDirInput,
@@ -396,20 +426,10 @@ export {
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
-  SaveArticleDraftSrcFileInput,
-  SaveArticleDraftSrcFileResult,
-  SaveArticleMasterSrcFileInput,
-  SaveArticleMasterSrcFileResult,
+  SaveArticleDraftContentInput,
+  SaveArticleSrcContentInput,
   SetShareDetailInput,
   SignedUploadUrlInput,
-  StorageArticleDetail,
-  StorageArticleDirDetail,
-  StorageArticleDirLabelByLang,
-  StorageArticleDirType,
-  StorageArticleFileDetail,
-  StorageArticleFileType,
-  StorageArticleSrcByLang,
-  StorageArticleSrcDetail,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,

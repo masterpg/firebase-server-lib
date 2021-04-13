@@ -1,4 +1,3 @@
-
 POST {{apiHost}}/gql_lv1
 Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
@@ -165,10 +164,12 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "MoveStorageDir",
-  "query": "mutation MoveStorageDir($fromDirPath: String!, $toDirPath: String!) { moveStorageDir(fromDirPath: $fromDirPath, toDirPath: $toDirPath) }",
+  "query": "mutation MoveStorageDir($input: MoveStorageDirInput!) { moveStorageDir(input: $input) }",
   "variables": {
-    "fromDirPath": "test-files/d1/d11",
-    "toDirPath": "test-files/d1/d1X"
+    "input": {
+      "fromDir": "test-files/d1/d11",
+      "toDir": "test-files/d1/d1X"
+    }
   }
 }
 
@@ -195,10 +196,12 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RenameStorageDir",
-  "query": "mutation RenameStorageDir($dirPath: String!, $newName: String!) { renameStorageDir(dirPath: $dirPath, newName: $newName) }",
+  "query": "mutation RenameStorageDir($input: RenameStorageDirInput!) { renameStorageDir(input: $input) }",
   "variables": {
-    "dirPath": "test-files/d1/d11",
-    "newName": "d1X"
+    "input": {
+      "dir": "test-files/d1/d11",
+      "name": "d1X"
+    }
   }
 }
 
@@ -210,10 +213,12 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "RenameStorageFile",
-  "query": "mutation RenameStorageFile($filePath: String!, $newName: String!) { renameStorageFile(filePath: $filePath, newName: $newName) { id nodeType name dir path contentType size share { isPublic readUIds writeUIds } articleNodeName articleNodeType articleSortOrder isArticleFile version createdAt updatedAt } }",
+  "query": "mutation RenameStorageFile($input: RenameStorageFileInput!) { renameStorageFile(input: $input) { id, path } }",
   "variables": {
-    "filePath": "test-files/d1/fileA.txt",
-    "newName": "fileB.txt"
+    "input": {
+      "file": "test-files/d1/fileA.txt",
+      "name": "fileB.txt"
+    }
   }
 }
 
@@ -363,14 +368,16 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "SaveArticleMasterSrcFile",
-  "query": "mutation SaveArticleMasterSrcFile($input: SaveArticleMasterSrcFileInput!) { saveArticleMasterSrcFile(input: $input) { article { id path } master { id path } draft { id path } } }",
+  "operationName": "SaveArticleSrcContent",
+  "query": "mutation SaveArticleSrcContent($key: StorageNodeGetKeyInput!, $input: SaveArticleSrcContentInput!) { saveArticleSrcContent(key: $key, input: $input) { id path } }",
   "variables": {
+    "key": {
+      "id": "12345678901234567890"
+    },
     "input": {
       "lang": "ja",
-      "articleId": "12345678901234567890",
       "srcContent": "test",
-      "textContent": "test"
+      "searchContent": "test"
     }
   }
 }
@@ -382,16 +389,37 @@ Content-Type: application/json
 Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
 
 {
-  "operationName": "SaveArticleDraftSrcFile",
-  "query": "mutation SaveArticleDraftSrcFile($input: SaveArticleDraftSrcFileInput!) { saveArticleDraftSrcFile(input: $input) { article { id path } draft { id path } } }",
+  "operationName": "SaveArticleDraftContent",
+  "query": "mutation SaveArticleDraftContent($key: StorageNodeGetKeyInput!, $input: SaveArticleDraftContentInput!) { saveArticleDraftContent(key: $key, input: $input) { id path } }",
   "variables": {
+    "key": {
+      "id": "12345678901234567890"
+    },
     "input": {
       "lang": "ja",
-      "articleId": "12345678901234567890",
-      "srcContent": "test"
+      "draftContent": "test"
     }
   }
 }
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
+
+{
+  "operationName": "GetArticleContentsNode",
+  "query": "query GetArticleContentsNode($key: StorageNodeGetKeyInput!, $input: GetArticleContentsNodeInput!) { articleContentsNode(key: $key, input: $input) { id path } }",
+  "variables": {
+    "key": { "id": "12345678901234567890" },
+    "input": {
+      "lang": "ja",
+      "contentTypes": ["Src"]
+    }
+  }
+}
+
 
 ###
 

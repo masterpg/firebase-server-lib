@@ -101,17 +101,24 @@ class CoreStorageService<
   protected readonly userHelper = new UserHelper(this.client)
 
   /**
-   * データベースからの取得ノードに含めるフィールドを指定します。
+   * データベースからの取得ノードで除外するフィールドを指定します。
    */
-  protected get includeNodeFields(): string[] {
+  protected get sourceExcludes(): string[] {
     return []
   }
 
-  /**
-   * データベースからの取得ノードで除外するフィールドを指定します。
-   */
-  protected get excludeNodeFields(): string[] {
-    return []
+  protected mergeSourceExcludes(sourceIncludes?: string[]): string[] {
+    const result = [...this.sourceExcludes]
+    if (!sourceIncludes) return result
+    for (let i = 0; i < sourceIncludes.length; i++) {
+      const sourceInclude = sourceIncludes[i]
+      const foundIndex = result.indexOf(sourceInclude)
+      if (foundIndex >= 0) {
+        result.splice(foundIndex, 1)
+        i--
+      }
+    }
+    return result
   }
 
   //----------------------------------------------------------------------
@@ -123,19 +130,21 @@ class CoreStorageService<
   /**
    * 指定されたノードを取得します。
    * @param idToken
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  getNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<NODE | undefined>
+  getNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE | undefined>
 
   /**
    * @see getNode
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  getNode(input: StorageNodeGetKeyInput): Promise<NODE | undefined>
+  getNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE | undefined>
 
-  async getNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<NODE | undefined> {
-    const _getNode = async (input: StorageNodeGetKeyInput) => {
-      const { id, path } = input
+  async getNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<NODE | undefined> {
+    const _getNode = async (key: StorageNodeGetKeyInput, sourceIncludes?: string[]) => {
+      const { id, path } = key
 
       const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         index: CoreStorageSchema.IndexAlias,
@@ -144,8 +153,7 @@ class CoreStorageService<
             term: id ? { _id: id } : { path },
           },
         },
-        _source_includes: this.includeNodeFields,
-        _source_excludes: this.excludeNodeFields,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
 
       const nodes = this.dbResponseToNodes(response)
@@ -153,25 +161,28 @@ class CoreStorageService<
     }
 
     let idToken: IdToken | undefined
-    let input: StorageNodeGetKeyInput
+    let key: StorageNodeGetKeyInput
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
+      sourceIncludes = arg3
     } else {
-      input = arg1
+      key = arg1
+      sourceIncludes = arg2 as string[] | undefined
     }
 
-    if (!input.id && !input.path) {
+    if (!key.id && !key.path) {
       return undefined
     }
 
     let result: NODE | undefined
-    if (input.id) {
-      result = await _getNode({ id: input.id })
+    if (key.id) {
+      result = await _getNode({ id: key.id }, sourceIncludes)
     } else {
-      CoreStorageService.validateNodePath(input.path)
-      input.path = removeBothEndsSlash(input.path)
-      result = await _getNode({ path: input.path })
+      CoreStorageService.validateNodePath(key.path)
+      key.path = removeBothEndsSlash(key.path)
+      result = await _getNode({ path: key.path }, sourceIncludes)
     }
 
     if (result) {
@@ -186,34 +197,39 @@ class CoreStorageService<
    * 指定されたノードを取得します。
    * 指定されたノードが見つからなかった場合、例外がスローされます。
    * @param idToken
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  sgetNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<NODE>
+  sgetNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE>
 
   /**
    * 指定されたノードを取得します。
    * 指定されたノードが見つからなかった場合、例外がスローされます。
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  sgetNode(input: StorageNodeGetKeyInput): Promise<NODE>
+  sgetNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE>
 
-  async sgetNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<NODE> {
+  async sgetNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<NODE> {
     let idToken: IdToken | undefined
-    let input: StorageNodeGetKeyInput
+    let key: StorageNodeGetKeyInput
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
+      sourceIncludes = arg3
     } else {
-      input = arg1
+      key = arg1
+      sourceIncludes = arg2 as string[] | undefined
     }
 
-    if (!input.id && !input.path) {
+    if (!key.id && !key.path) {
       throw new AppError(`Either 'id' or 'path' must be specified.`)
     }
 
-    const node = await this.getNode(input)
+    const node = await this.getNode(key, sourceIncludes)
     if (!node) {
-      throw new AppError(`There is no node in the specified key.`, input)
+      throw new AppError(`There is no node in the specified key.`, key)
     }
 
     idToken && (await this.validateBrowsable(idToken, node.path))
@@ -224,20 +240,22 @@ class CoreStorageService<
   /**
    * 指定されたノードリストを取得します。
    * @param idToken
-   * @param input
+   * @param keys
+   * @param sourceIncludes
    */
-  getNodes(idToken: IdToken, input: StorageNodeGetKeysInput): Promise<NODE[]>
+  getNodes(idToken: IdToken, keys: StorageNodeGetKeysInput, sourceIncludes?: string[]): Promise<NODE[]>
 
   /**
    * 指定されたノードリストを取得します。
-   * @param input
+   * @param keys
+   * @param sourceIncludes
    */
-  getNodes(input: StorageNodeGetKeysInput): Promise<NODE[]>
+  getNodes(keys: StorageNodeGetKeysInput, sourceIncludes?: string[]): Promise<NODE[]>
 
-  async getNodes(arg1: IdToken | StorageNodeGetKeysInput, arg2?: StorageNodeGetKeysInput): Promise<NODE[]> {
-    const _getNodes = async (input: StorageNodeGetKeysInput) => {
-      const ids = input.ids || []
-      let paths = input.paths || []
+  async getNodes(arg1: IdToken | StorageNodeGetKeysInput, arg2?: StorageNodeGetKeysInput | string[], arg3?: string[]): Promise<NODE[]> {
+    const _getNodes = async (keys: StorageNodeGetKeysInput, sourceIncludes?: string[]) => {
+      const ids = keys.ids || []
+      let paths = keys.paths || []
       const size = 1000
 
       // 指定されたパスのバリデーションチェック
@@ -254,8 +272,7 @@ class CoreStorageService<
           body: {
             query: { terms: { id: chunk } },
           },
-          _source_includes: this.includeNodeFields,
-          _source_excludes: this.excludeNodeFields,
+          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         })
         nodes.push(...this.dbResponseToNodes(response))
       }
@@ -268,8 +285,7 @@ class CoreStorageService<
           body: {
             query: { terms: { path: chunk } },
           },
-          _source_includes: this.includeNodeFields,
-          _source_excludes: this.excludeNodeFields,
+          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         })
         nodes.push(...this.dbResponseToNodes(response))
       }
@@ -295,15 +311,18 @@ class CoreStorageService<
     }
 
     let idToken: IdToken | undefined
-    let input: StorageNodeGetKeysInput
+    let keys: StorageNodeGetKeysInput
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      keys = arg2 as StorageNodeGetKeysInput
+      sourceIncludes = arg3
     } else {
-      input = arg1
+      keys = arg1
+      sourceIncludes = arg2 as string[] | undefined
     }
 
-    const nodes = await _getNodes(input)
+    const nodes = await _getNodes(keys, sourceIncludes)
 
     if (idToken) {
       await this.validateBrowsable(
@@ -318,31 +337,39 @@ class CoreStorageService<
   /**
    * 指定されたファイルノードを取得します。
    * @param idToken
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  getFileNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
+  getFileNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE | undefined>
 
   /**
    * 指定されたファイルノードを取得します。
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  getFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
+  getFileNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE | undefined>
 
-  async getFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
+  async getFileNode(
+    arg1: IdToken | StorageNodeGetKeyInput,
+    arg2?: StorageNodeGetKeyInput | string[],
+    arg3?: string[]
+  ): Promise<FILE_NODE | undefined> {
     let idToken: IdToken | undefined
-    let input: StorageNodeGetKeyInput
+    let key: StorageNodeGetKeyInput
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
     } else {
-      input = arg1
+      key = arg1
+      sourceIncludes = arg3 as string[] | undefined
     }
 
     let fileNode: NODE | undefined
     if (idToken) {
-      fileNode = await this.getNode(idToken, input)
+      fileNode = await this.getNode(idToken, key, sourceIncludes)
     } else {
-      fileNode = await this.getNode(input)
+      fileNode = await this.getNode(key, sourceIncludes)
     }
     if (!fileNode) return undefined
 
@@ -355,36 +382,40 @@ class CoreStorageService<
   /**
    * @see sgetFileNode
    * @param idToken
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  sgetFileNode(idToken: IdToken, input: StorageNodeGetKeyInput): Promise<FILE_NODE>
+  sgetFileNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE>
 
   /**
    * 指定されたファイルノードを取得します。
    * 指定されたファイルノードが見つからなかった場合、例外がスローされます。
-   * @param input
+   * @param key
+   * @param sourceIncludes
    */
-  sgetFileNode(input: StorageNodeGetKeyInput): Promise<FILE_NODE>
+  sgetFileNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE>
 
-  async sgetFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE> {
+  async sgetFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
-    let input: StorageNodeGetKeyInput
+    let key: StorageNodeGetKeyInput
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      input = arg2!
+      key = arg2 as StorageNodeGetKeyInput
     } else {
-      input = arg1
+      key = arg1
+      sourceIncludes = arg3 as string[] | undefined
     }
 
     let node: FILE_NODE | undefined
     if (idToken) {
-      node = await this.getFileNode(idToken, input)
+      node = await this.getFileNode(idToken, key, sourceIncludes)
     } else {
-      node = await this.getFileNode(input)
+      node = await this.getFileNode(key, sourceIncludes)
     }
 
     if (!node) {
-      throw new AppError(`There is no node in the specified key.`, { key: input })
+      throw new AppError(`There is no node in the specified key.`, { key })
     }
 
     return node
@@ -407,31 +438,42 @@ class CoreStorageService<
    * @param idToken
    * @param input
    * @param pagination
+   * @param sourceIncludes
    */
-  async getDescendants(idToken: IdToken, input: StorageNodeGetUnderInput, pagination?: PaginationInput): Promise<PaginationResult<NODE>>
+  async getDescendants(
+    idToken: IdToken,
+    input: StorageNodeGetUnderInput,
+    pagination?: PaginationInput,
+    sourceIncludes?: string[]
+  ): Promise<PaginationResult<NODE>>
 
   /**
    * @see getDescendants
    * @param input
    * @param pagination
+   * @param sourceIncludes
    */
-  async getDescendants(input: StorageNodeGetUnderInput, pagination?: PaginationInput): Promise<PaginationResult<NODE>>
+  async getDescendants(input: StorageNodeGetUnderInput, pagination?: PaginationInput, sourceIncludes?: string[]): Promise<PaginationResult<NODE>>
 
   async getDescendants(
     arg1: IdToken | StorageNodeGetUnderInput,
     arg2?: StorageNodeGetUnderInput | PaginationInput,
-    arg3?: PaginationInput
+    arg3?: PaginationInput | string[],
+    arg4?: string[]
   ): Promise<PaginationResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
     let pagination: PaginationInput | undefined
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3
+      pagination = arg3 as PaginationInput | undefined
+      sourceIncludes = arg4
     } else {
       input = arg1
       pagination = arg2 as PaginationInput | undefined
+      sourceIncludes = arg3 as string[] | undefined
     }
 
     let path: string
@@ -454,20 +496,21 @@ class CoreStorageService<
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
-        return this.getDescendantsImpl({ path: path, includeBase }, pagination)
+        return this.getDescendantsImpl({ path: path, includeBase }, pagination, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getDescendantsImpl({ path, includeBase }, pagination)
+      return this.getDescendantsImpl({ path, includeBase }, pagination, sourceIncludes)
     }
   }
 
   protected async getDescendantsImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: PaginationInput
+    pagination?: PaginationInput,
+    sourceIncludes?: string[]
   ): Promise<PaginationResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
@@ -522,8 +565,7 @@ class CoreStorageService<
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
-        _source_includes: this.includeNodeFields,
-        _source_excludes: this.excludeNodeFields,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -665,31 +707,42 @@ class CoreStorageService<
    * @param idToken
    * @param input
    * @param pagination
+   * @param sourceIncludes
    */
-  async getChildren(idToken: IdToken, input: StorageNodeGetUnderInput, pagination?: PaginationInput): Promise<PaginationResult<NODE>>
+  async getChildren(
+    idToken: IdToken,
+    input: StorageNodeGetUnderInput,
+    pagination?: PaginationInput,
+    sourceIncludes?: string[]
+  ): Promise<PaginationResult<NODE>>
 
   /**
    * 指定されたディレクトリ直下のノードを取得します。
    * @param input
    * @param pagination
+   * @param sourceIncludes
    */
-  async getChildren(input: StorageNodeGetUnderInput, pagination?: PaginationInput): Promise<PaginationResult<NODE>>
+  async getChildren(input: StorageNodeGetUnderInput, pagination?: PaginationInput, sourceIncludes?: string[]): Promise<PaginationResult<NODE>>
 
   async getChildren(
     arg1: IdToken | StorageNodeGetUnderInput,
     arg2?: StorageNodeGetUnderInput | PaginationInput,
-    arg3?: PaginationInput
+    arg3?: PaginationInput | string[],
+    arg4?: string[]
   ): Promise<PaginationResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
     let pagination: PaginationInput | undefined
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3
+      pagination = arg3 as PaginationInput | undefined
+      sourceIncludes = arg4
     } else {
       input = arg1
       pagination = arg2 as PaginationInput | undefined
+      sourceIncludes = arg3 as string[] | undefined
     }
 
     let path: string
@@ -712,20 +765,21 @@ class CoreStorageService<
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
-        return this.getChildrenImpl({ path, includeBase }, pagination)
+        return this.getChildrenImpl({ path, includeBase }, pagination, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getChildrenImpl({ path, includeBase }, pagination)
+      return this.getChildrenImpl({ path, includeBase }, pagination, sourceIncludes)
     }
   }
 
   protected async getChildrenImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: PaginationInput
+    pagination?: PaginationInput,
+    sourceIncludes?: string[]
   ): Promise<PaginationResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
@@ -779,8 +833,7 @@ class CoreStorageService<
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
-        _source_includes: this.includeNodeFields,
-        _source_excludes: this.excludeNodeFields,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -921,23 +974,28 @@ class CoreStorageService<
    * 指定されたノードとその階層構造を形成するノードを取得します。
    * @param idToken
    * @param nodePath
+   * @param sourceIncludes
    */
-  getHierarchicalNodes(idToken: IdToken, nodePath: string): Promise<NODE[]>
+  getHierarchicalNodes(idToken: IdToken, nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
 
   /**
    * 指定されたノードとその階層構造を形成するノードを取得します。
    * @param nodePath
+   * @param sourceIncludes
    */
-  getHierarchicalNodes(nodePath: string): Promise<NODE[]>
+  getHierarchicalNodes(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
 
-  async getHierarchicalNodes(arg1: IdToken | string, arg2?: string): Promise<NODE[]> {
+  async getHierarchicalNodes(arg1: IdToken | string, arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
     let idToken: IdToken | undefined
     let nodePath: string
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      nodePath = arg2!
+      nodePath = arg2 as string
+      sourceIncludes = arg3
     } else {
       nodePath = arg1
+      sourceIncludes = arg2 as string[] | undefined
     }
 
     if (!nodePath) return []
@@ -950,18 +1008,18 @@ class CoreStorageService<
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootUnder(idToken, nodePath) || idToken.isAppAdmin) {
-        return this.getHierarchicalNodesImpl(nodePath)
+        return this.getHierarchicalNodesImpl(nodePath, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getHierarchicalNodesImpl(nodePath)
+      return this.getHierarchicalNodesImpl(nodePath, sourceIncludes)
     }
   }
 
-  protected async getHierarchicalNodesImpl(nodePath: string): Promise<NODE[]> {
+  protected async getHierarchicalNodesImpl(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]> {
     // 指定されたパスのバリデーションチェック
     nodePath = removeBothEndsSlash(nodePath)
     CoreStorageService.validateNodePath(nodePath)
@@ -973,14 +1031,14 @@ class CoreStorageService<
     ancestorDirPaths.pop()
 
     // 引数ノードを取得
-    const node = await this.getNode({ path: nodePath })
+    const node = await this.getNode({ path: nodePath }, sourceIncludes)
 
     let nodes: NODE[]
 
     // 引数ノードが存在する場合
     // ※引数ノードが存在するので、祖先ディレクトリも存在しなくてはならない
     if (node) {
-      const ancestorDirNodes = await this.getNodes({ paths: ancestorDirPaths })
+      const ancestorDirNodes = await this.getNodes({ paths: ancestorDirPaths }, sourceIncludes)
       // 欠けているディレクトリがあった場合
       if (ancestorDirNodes.length !== ancestorDirPaths.length) {
         throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
@@ -993,7 +1051,7 @@ class CoreStorageService<
     // 引数ノードが存在しない場合
     // ※引数ノードは存在しないので、実際に存在する祖先ディレクトリのみを取得する
     else {
-      nodes = await this.getNodes({ paths: ancestorDirPaths })
+      nodes = await this.getNodes({ paths: ancestorDirPaths }, sourceIncludes)
     }
 
     return CoreStorageService.sortNodes(nodes) as NODE[]
@@ -1003,23 +1061,30 @@ class CoreStorageService<
    * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
    * @param idToken
    * @param nodePath
+   * @param sourceIncludes
    */
-  getAncestorDirs(idToken: IdToken, nodePath: string): Promise<NODE[]>
+  getAncestorDirs(idToken: IdToken, nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
 
   /**
    * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
    * @param nodePath
+   * @param sourceIncludes
    */
-  getAncestorDirs(nodePath: string): Promise<NODE[]>
+  getAncestorDirs(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
 
-  async getAncestorDirs(arg1: IdToken | string, arg2?: string): Promise<NODE[]> {
+  async getAncestorDirs(arg1: IdToken | string, arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
     let result: NODE[]
+    let idToken: IdToken | undefined
     let nodePath: string
+    let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
-      nodePath = arg2!
-      result = await this.getHierarchicalNodes(arg1, nodePath)
+      idToken = arg1
+      nodePath = arg2 as string
+      sourceIncludes = arg3
+      result = await this.getHierarchicalNodes(idToken, nodePath, sourceIncludes)
     } else {
       nodePath = arg1
+      sourceIncludes = arg2 as string[] | undefined
       result = await this.getHierarchicalNodes(nodePath)
     }
     return result.filter(node => node.path !== nodePath)

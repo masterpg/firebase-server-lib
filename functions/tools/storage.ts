@@ -92,7 +92,7 @@ function printInOneLine(nodes: StorageNode[], specifiedPath?: string): void {
   const toDisplayPath = (node: StorageNode) => {
     return splitHierarchicalPaths(node.path).reduce((result, nodePath) => {
       const node = nodeDict[nodePath]
-      const name = StorageService.getArticleLangLabel('ja', node.article?.dir?.label) || node.name
+      const name = StorageService.getArticleLangLabel('ja', node.article?.label) || node.name
       return result ? `${result}/${name}` : name
     }, '')
   }

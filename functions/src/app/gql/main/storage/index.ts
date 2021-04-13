@@ -7,6 +7,7 @@ import {
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
+  GetArticleContentsNodeInput,
   GetUserArticleListInput,
   GetUserArticleTableOfContentsInput,
   IdToken,
@@ -17,10 +18,8 @@ import {
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
-  SaveArticleDraftSrcFileInput,
-  SaveArticleDraftSrcFileResult,
-  SaveArticleMasterSrcFileInput,
-  SaveArticleMasterSrcFileResult,
+  SaveArticleDraftContentInput,
+  SaveArticleSrcContentInput,
   SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
@@ -63,14 +62,14 @@ class StorageResolver {
 
   @Query()
   @UseGuards(AuthGuard)
-  async storageNode(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
-    return this.storageService.getNode(idToken, input)
+  async storageNode(@UserArg() idToken: IdToken, @Args('key') key: StorageNodeGetKeyInput): Promise<StorageNode | undefined> {
+    return this.storageService.getNode(idToken, key)
   }
 
   @Query()
   @UseGuards(AuthGuard)
-  async storageNodes(@UserArg() idToken: IdToken, @Args('input') input: StorageNodeGetKeysInput): Promise<StorageNode[]> {
-    return this.storageService.getNodes(idToken, input)
+  async storageNodes(@UserArg() idToken: IdToken, @Args('keys') keys: StorageNodeGetKeysInput): Promise<StorageNode[]> {
+    return this.storageService.getNodes(idToken, keys)
   }
 
   @Query()
@@ -211,20 +210,32 @@ class StorageResolver {
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async saveArticleMasterSrcFile(
+  async saveArticleSrcContent(
     @UserArg() idToken: IdToken,
-    @Args('input') input: SaveArticleMasterSrcFileInput
-  ): Promise<SaveArticleMasterSrcFileResult> {
-    return this.storageService.saveArticleMasterSrcFile(idToken, input)
+    @Args('key') key: StorageNodeGetKeyInput,
+    @Args('input') input: SaveArticleSrcContentInput
+  ): Promise<StorageNode> {
+    return this.storageService.saveArticleSrcContent(idToken, key, input)
   }
 
   @Mutation()
   @UseGuards(AuthGuard)
-  async saveArticleDraftSrcFile(
+  async saveArticleDraftContent(
     @UserArg() idToken: IdToken,
-    @Args('input') input: SaveArticleDraftSrcFileInput
-  ): Promise<SaveArticleDraftSrcFileResult> {
-    return this.storageService.saveArticleDraftSrcFile(idToken, input)
+    @Args('key') key: StorageNodeGetKeyInput,
+    @Args('input') input: SaveArticleDraftContentInput
+  ): Promise<StorageNode> {
+    return this.storageService.saveArticleDraftContent(idToken, key, input)
+  }
+
+  @Query()
+  @UseGuards(AuthGuard)
+  async articleContentsNode(
+    @UserArg() idToken: IdToken,
+    @Args('key') key: StorageNodeGetKeyInput,
+    @Args('input') input: GetArticleContentsNodeInput
+  ): Promise<StorageNode | undefined> {
+    return this.storageService.getArticleContentsNode(idToken, key, input)
   }
 
   @Query()

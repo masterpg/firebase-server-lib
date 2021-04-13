@@ -28,13 +28,14 @@ import {
   CreateStorageDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  GetArticleContentsNodeInput,
   GetUserArticleListInput,
   MoveStorageFileInput,
   PaginationResult,
   RenameArticleTypeDirInput,
   RenameStorageFileInput,
-  SaveArticleDraftSrcFileInput,
-  SaveArticleMasterSrcFileInput,
+  SaveArticleDraftContentInput,
+  SaveArticleSrcContentInput,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
@@ -101,8 +102,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('GQL Schema', () => {
     const gql = {
       query: `
-        query GetStorageNodes($input: StorageNodeGetKeysInput!) {
-          storageNodes(input: $input) {
+        query GetStorageNodes($keys: StorageNodeGetKeysInput!) {
+          storageNodes(keys: $keys) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -115,54 +116,43 @@ describe('Lv1 Storage Resolver', () => {
         const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
         const bundle = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
           article: {
-            dir: {
-              label: { ja: 'リストバンドル' },
-              type: 'ListBundle',
-              sortOrder: 1,
-            },
+            label: { ja: 'リストバンドル' },
+            type: 'ListBundle',
+            sortOrder: 1,
           },
         })
         const art1 = h.newDirNode(`${bundle.path}/${StorageSchema.generateId()}`, {
           article: {
-            dir: {
-              label: { ja: '記事1' },
-              type: 'Article',
-              sortOrder: 1,
-            },
+            label: { ja: '記事1' },
+            type: 'Article',
+            sortOrder: 1,
             src: {
               ja: {
-                masterId: StorageSchema.generateId(),
-                draftId: StorageSchema.generateId(),
+                srcContent: '# 記事1',
+                draftContent: '# 記事下書き1',
+                searchContent: '記事1',
                 createdAt: dayjs('2020-01-02T00:00:00.000Z'),
                 updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
               },
             },
           },
         })
-        const art1_master = h.newDirNode(StorageService.toArticleMasterSrcPath(art1.path), {
-          id: art1.article?.src?.['ja']?.masterId,
-          article: { file: { type: 'MasterSrc' } },
-        })
-        const art1_draft = h.newDirNode(StorageService.toArticleDraftSrcPath(art1.path), {
-          id: art1.article?.src?.['ja']?.draftId,
-          article: { file: { type: 'DraftSrc' } },
-        })
 
-        const input: StorageNodeGetKeysInput = { ids: [bundle.id, art1.id, art1_master.id, art1_draft.id] }
+        const keys: StorageNodeGetKeysInput = { ids: [bundle.id, art1.id] }
 
         const getNodes = td.replace(storageService, 'getNodes')
-        td.when(getNodes(StorageUserToken(), input)).thenResolve([bundle, art1, art1_master, art1_draft])
+        td.when(getNodes(StorageUserToken(), keys)).thenResolve([bundle, art1])
 
         const response = await requestGQL(
           app,
           {
             ...gql,
-            variables: { input },
+            variables: { keys },
           },
           { headers: StorageUserHeader() }
         )
 
-        expect(response.body.data.storageNodes).toEqual(toGQLResponseStorageNodes([bundle, art1, art1_master, art1_draft]))
+        expect(response.body.data.storageNodes).toEqual(toGQLResponseStorageNodes([bundle, art1]))
       })
     })
   })
@@ -170,8 +160,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageNode', () => {
     const gql = {
       query: `
-        query GetStorageNode($input: StorageNodeGetKeyInput!) {
-          storageNode(input: $input) {
+        query GetStorageNode($key: StorageNodeGetKeyInput!) {
+          storageNode(key: $key) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -181,16 +171,16 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const d1 = h.newDirNode('d1')
-      const input: StorageNodeGetKeyInput = { path: d1.path }
+      const key: StorageNodeGetKeyInput = { path: d1.path }
 
       const getNode = td.replace(storageService, 'getNode')
-      td.when(getNode(AppAdminUserToken(), { path: d1.path })).thenResolve(d1)
+      td.when(getNode(AppAdminUserToken(), key)).thenResolve(d1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input },
+          variables: { key },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -200,16 +190,16 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認 - 結果が空だった場合', async () => {
       const d1 = h.newDirNode(`d1`)
-      const input: StorageNodeGetKeyInput = { path: d1.path }
+      const key: StorageNodeGetKeyInput = { path: d1.path }
 
       const getNode = td.replace(storageService, 'getNode')
-      td.when(getNode(AppAdminUserToken(), { path: d1.path })).thenResolve(undefined)
+      td.when(getNode(AppAdminUserToken(), key)).thenResolve(undefined)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input },
+          variables: { key },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -219,11 +209,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const d1 = h.newDirNode(`d1`)
-      const input: StorageNodeGetKeyInput = { path: d1.path }
+      const key: StorageNodeGetKeyInput = { path: d1.path }
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { input },
+        variables: { key },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -233,8 +223,8 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageNodes', () => {
     const gql = {
       query: `
-        query GetStorageNodes($input: StorageNodeGetKeysInput!) {
-          storageNodes(input: $input) {
+        query GetStorageNodes($keys: StorageNodeGetKeysInput!) {
+          storageNodes(keys: $keys) {
             ...${StorageNodeFieldsName}
           }
         }
@@ -244,16 +234,16 @@ describe('Lv1 Storage Resolver', () => {
 
     it('疎通確認', async () => {
       const d1 = h.newDirNode('d1')
-      const input: StorageNodeGetKeysInput = { paths: [d1.path] }
+      const keys: StorageNodeGetKeysInput = { paths: [d1.path] }
 
       const getNodes = td.replace(storageService, 'getNodes')
-      td.when(getNodes(AppAdminUserToken(), { paths: [d1.path] })).thenResolve([d1])
+      td.when(getNodes(AppAdminUserToken(), keys)).thenResolve([d1])
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input },
+          variables: { keys },
         },
         { headers: AppAdminUserHeader() }
       )
@@ -263,11 +253,11 @@ describe('Lv1 Storage Resolver', () => {
 
     it('サインインしていない場合', async () => {
       const d1 = h.newDirNode('d1')
-      const input: StorageNodeGetKeysInput = { paths: [d1.path] }
+      const keys: StorageNodeGetKeysInput = { paths: [d1.path] }
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { input },
+        variables: { keys },
       })
 
       expect(getGQLErrorStatus(response)).toBe(401)
@@ -1006,11 +996,9 @@ describe('Lv1 Storage Resolver', () => {
       }
       const bundle = h.newDirNode(`${input.dir}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: input.label },
-            type: input.type,
-            sortOrder: 1,
-          },
+          label: { ja: input.label },
+          type: input.type,
+          sortOrder: 1,
         },
       })
 
@@ -1117,16 +1105,14 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ1' },
-            type: 'Category',
-            sortOrder: 1,
-          },
+          label: { ja: 'カテゴリ1' },
+          type: 'Category',
+          sortOrder: 1,
         },
       })
 
       const renameArticleTypeDir = td.replace(storageService, 'renameArticleTypeDir')
-      td.when(renameArticleTypeDir(StorageUserToken(), { lang: 'ja', dir: cat1.path, label: cat1.article!.dir!.label.ja! })).thenResolve(cat1)
+      td.when(renameArticleTypeDir(StorageUserToken(), { lang: 'ja', dir: cat1.path, label: cat1.article!.label.ja! })).thenResolve(cat1)
 
       const response = await requestGQL(
         app,
@@ -1136,7 +1122,7 @@ describe('Lv1 Storage Resolver', () => {
             input: <RenameArticleTypeDirInput>{
               lang: 'ja',
               dir: cat1.path,
-              label: cat1.article!.dir!.label.ja!,
+              label: cat1.article!.label.ja!,
             },
           },
         },
@@ -1151,11 +1137,9 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ1' },
-            type: 'Category',
-            sortOrder: 1,
-          },
+          label: { ja: 'カテゴリ1' },
+          type: 'Category',
+          sortOrder: 1,
         },
       })
 
@@ -1165,7 +1149,7 @@ describe('Lv1 Storage Resolver', () => {
           input: <RenameArticleTypeDirInput>{
             lang: 'ja',
             dir: cat1.path,
-            label: cat1.article!.dir!.label.ja!,
+            label: cat1.article!.label.ja!,
           },
         },
       })
@@ -1188,20 +1172,16 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ1' },
-            type: 'Category',
-            sortOrder: 2,
-          },
+          label: { ja: 'カテゴリ1' },
+          type: 'Category',
+          sortOrder: 2,
         },
       })
       const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ2' },
-            type: 'Category',
-            sortOrder: 1,
-          },
+          label: { ja: 'カテゴリ2' },
+          type: 'Category',
+          sortOrder: 1,
         },
       })
       const orderNodePaths = [cat1.path, cat2.path]
@@ -1229,20 +1209,16 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const cat1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ1' },
-            type: 'Category',
-            sortOrder: 2,
-          },
+          label: { ja: 'カテゴリ1' },
+          type: 'Category',
+          sortOrder: 2,
         },
       })
       const cat2 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: 'カテゴリ2' },
-            type: 'Category',
-            sortOrder: 1,
-          },
+          label: { ja: 'カテゴリ2' },
+          type: 'Category',
+          sortOrder: 1,
         },
       })
       const orderNodePaths = [cat1.path, cat2.path]
@@ -1256,20 +1232,12 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('saveArticleMasterSrcFile', () => {
+  describe('saveArticleSrcContent', () => {
     const gql = {
       query: `
-        mutation SaveArticleMasterSrcFile($input: SaveArticleMasterSrcFileInput!) {
-          saveArticleMasterSrcFile(input: $input) {
-            article {
-              ...${StorageNodeFieldsName}
-            }
-            master {
-              ...${StorageNodeFieldsName}
-            }
-            draft {
-              ...${StorageNodeFieldsName}
-            }
+        mutation SaveArticleSrcContent($key: StorageNodeGetKeyInput!, $input: SaveArticleSrcContentInput!) {
+          saveArticleSrcContent(key: $key, input: $input) {
+            ...${StorageNodeFieldsName}
           }
         }
         ${StorageNodeFields}
@@ -1281,85 +1249,73 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: '記事1' },
-            type: 'Article',
-            sortOrder: 1,
-          },
+          label: { ja: '記事1' },
+          type: 'Article',
+          sortOrder: 1,
           src: {
             ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
+              srcContent: '# 記事1',
+              draftContent: undefined,
+              searchContent: '記事1',
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
           },
         },
       })
-      const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        id: art1.article?.src?.ja?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-      const art1_draft = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        id: art1.article?.src?.ja?.draftId,
-        article: { file: { type: 'DraftSrc' } },
-      })
-      return { art1, art1_master, art1_draft }
+      return { art1 }
     }
 
     it('疎通確認', async () => {
-      const { art1, art1_master, art1_draft } = newArticleNodes(StorageUserToken())
-      const articleId = art1.id
-      const srcContent = '# header1'
-      const textContent = 'header1'
+      const { art1 } = newArticleNodes(StorageUserToken())
+      const srcContent = art1.article!.src!.ja!.srcContent!
+      const searchContent = art1.article!.src!.ja!.searchContent!
 
-      const saveArticleMasterSrcFile = td.replace(storageService, 'saveArticleMasterSrcFile')
+      const saveArticleSrcContent = td.replace(storageService, 'saveArticleSrcContent')
       td.when(
-        saveArticleMasterSrcFile(StorageUserToken(), {
-          lang: 'ja',
-          articleId,
-          srcContent,
-          textContent,
-        })
-      ).thenResolve({ article: art1, master: art1_master, draft: art1_draft })
+        saveArticleSrcContent(
+          StorageUserToken(),
+          { id: art1.id },
+          {
+            lang: 'ja',
+            srcContent,
+            searchContent,
+          }
+        )
+      ).thenResolve(art1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
           variables: {
-            input: <SaveArticleMasterSrcFileInput>{
+            key: { id: art1.id },
+            input: <SaveArticleSrcContentInput>{
               lang: 'ja',
-              articleId,
               srcContent,
-              textContent,
+              searchContent,
             },
           },
         },
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleMasterSrcFile).toEqual({
-        article: toGQLResponseStorageNode(art1),
-        master: toGQLResponseStorageNode(art1_master),
-        draft: toGQLResponseStorageNode(art1_draft),
-      })
+      expect(response.body.data.saveArticleSrcContent).toEqual(toGQLResponseStorageNode(art1))
     })
 
     it('サインインしていない場合', async () => {
       const { art1 } = newArticleNodes(StorageUserToken())
-      const articleId = art1.id
-      const srcContent = '# header1'
-      const textContent = 'header1'
+      const srcContent = art1.article!.src!.ja!.srcContent!
+      const searchContent = art1.article!.src!.ja!.searchContent!
 
       const response = await requestGQL(app, {
         ...gql,
         variables: {
-          input: <SaveArticleMasterSrcFileInput>{
+          key: { id: art1.id },
+          input: <SaveArticleSrcContentInput>{
             lang: 'ja',
-            articleId,
             srcContent,
-            textContent,
+            searchContent,
           },
         },
       })
@@ -1368,17 +1324,12 @@ describe('Lv1 Storage Resolver', () => {
     })
   })
 
-  describe('saveArticleDraftSrcFile', () => {
+  describe('saveArticleDraftContent', () => {
     const gql = {
       query: `
-        mutation SaveArticleDraftSrcFile($input: SaveArticleDraftSrcFileInput!) {
-          saveArticleDraftSrcFile(input: $input) {
-            article {
-              ...${StorageNodeFieldsName}
-            }
-            draft {
-              ...${StorageNodeFieldsName}
-            }
+        mutation SaveArticleDraftContent($key: StorageNodeGetKeyInput!, $input: SaveArticleDraftContentInput!) {
+          saveArticleDraftContent(key: $key, input: $input) {
+            ...${StorageNodeFieldsName}
           }
         }
         ${StorageNodeFields}
@@ -1390,114 +1341,180 @@ describe('Lv1 Storage Resolver', () => {
       const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
       const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
         article: {
-          dir: {
-            label: { ja: '記事1' },
-            type: 'Article',
-            sortOrder: 1,
-          },
+          label: { ja: '記事1' },
+          type: 'Article',
+          sortOrder: 1,
           src: {
             ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
+              srcContent: '# 記事1',
+              searchContent: '# 記事下書き1',
+              draftContent: '記事1',
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
           },
         },
       })
-      const art1_master = h.newFileNode(StorageService.toArticleMasterSrcPath(art1.path), {
-        id: art1.article?.src?.ja?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-      const art1_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(art1.path), {
-        id: art1.article?.src?.ja?.draftId,
-        article: { file: { type: 'DraftSrc' } },
-      })
-      return { art1, art1_master, art1_draft }
+      return { art1 }
     }
 
     it('疎通確認', async () => {
-      const { art1, art1_draft } = newArticleNodes(StorageUserToken())
-      const articleId = art1.id
-      const srcContent = '# header1'
+      const { art1 } = newArticleNodes(StorageUserToken())
 
-      const saveArticleDraftSrcFile = td.replace(storageService, 'saveArticleDraftSrcFile')
+      const saveArticleDraftContent = td.replace(storageService, 'saveArticleDraftContent')
       td.when(
-        saveArticleDraftSrcFile(StorageUserToken(), {
-          lang: 'ja',
-          articleId,
-          srcContent,
-        })
-      ).thenResolve({ article: art1, draft: art1_draft })
+        saveArticleDraftContent(
+          StorageUserToken(),
+          { id: art1.id },
+          {
+            lang: 'ja',
+            draftContent: art1.article!.src!.ja!.draftContent!,
+          }
+        )
+      ).thenResolve(art1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
           variables: {
-            input: <SaveArticleDraftSrcFileInput>{
+            key: { id: art1.id },
+            input: <SaveArticleDraftContentInput>{
               lang: 'ja',
-              articleId,
-              srcContent,
+              draftContent: art1.article!.src!.ja!.draftContent!,
             },
           },
         },
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleDraftSrcFile).toEqual({
-        article: toGQLResponseStorageNode(art1),
-        draft: toGQLResponseStorageNode(art1_draft),
-      })
+      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponseStorageNode(art1))
     })
 
     it('疎通確認 - srcContentにnullを指定した場合', async () => {
-      const { art1, art1_draft } = newArticleNodes(StorageUserToken())
-      const articleId = art1.id
+      const { art1 } = newArticleNodes(StorageUserToken())
+      art1.article!.src!.ja!.draftContent = undefined
 
-      const saveArticleDraftSrcFile = td.replace(storageService, 'saveArticleDraftSrcFile')
+      const saveArticleDraftContent = td.replace(storageService, 'saveArticleDraftContent')
       td.when(
-        saveArticleDraftSrcFile(StorageUserToken(), {
-          lang: 'ja',
-          articleId,
-          srcContent: null,
-        })
-      ).thenResolve({ article: art1, draft: art1_draft })
+        saveArticleDraftContent(
+          StorageUserToken(),
+          { id: art1.id },
+          {
+            lang: 'ja',
+            draftContent: null,
+          }
+        )
+      ).thenResolve(art1)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
           variables: {
-            input: <SaveArticleDraftSrcFileInput>{
+            key: { id: art1.id },
+            input: <SaveArticleDraftContentInput>{
               lang: 'ja',
-              articleId,
-              srcContent: null,
+              draftContent: null,
             },
           },
         },
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleDraftSrcFile).toEqual({
-        article: toGQLResponseStorageNode(art1),
-        draft: toGQLResponseStorageNode(art1_draft),
-      })
+      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponseStorageNode(art1))
     })
 
     it('サインインしていない場合', async () => {
       const { art1 } = newArticleNodes(StorageUserToken())
-      const articleId = art1.id
-      const srcContent = 'test'
 
       const response = await requestGQL(app, {
         ...gql,
         variables: {
-          input: <SaveArticleDraftSrcFileInput>{
+          key: { id: art1.id },
+          input: <SaveArticleDraftContentInput>{
             lang: 'ja',
-            articleId,
-            srcContent,
+            draftContent: art1.article!.src!.ja!.draftContent!,
           },
+        },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('articleContentsNode', () => {
+    const gql = {
+      query: `
+        query GetArticleContentsNode($key: StorageNodeGetKeyInput!, $input: GetArticleContentsNodeInput!) {
+          articleContentsNode(key: $key, input: $input) {
+            ...${StorageNodeFieldsName}
+          }
+        }
+        ${StorageNodeFields}
+      `,
+    }
+
+    function newArticleNodes(user: UserIdClaims) {
+      const articleRootPath = StorageService.toArticleRootPath(user)
+      const bundlePath = `${articleRootPath}/${StorageSchema.generateId()}`
+      const art1 = h.newDirNode(`${bundlePath}/${StorageSchema.generateId()}`, {
+        article: {
+          label: { ja: '記事1' },
+          type: 'Article',
+          sortOrder: 1,
+          src: {
+            ja: {
+              srcContent: '# 記事1',
+              searchContent: '# 記事下書き1',
+              draftContent: '記事1',
+              createdAt: dayjs('2020-01-02T00:00:00.000Z'),
+              updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
+            },
+          },
+        },
+      })
+      return { art1 }
+    }
+
+    it('疎通確認', async () => {
+      const { art1 } = newArticleNodes(StorageUser())
+
+      const input: GetArticleContentsNodeInput = {
+        lang: 'ja',
+        contentTypes: ['Src', 'Draft'],
+      }
+      const getArticleContentsNode = td.replace(storageService, 'getArticleContentsNode')
+      td.when(getArticleContentsNode(StorageUserToken(), { id: art1.id }, input)).thenResolve(art1)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: {
+            key: { id: art1.id },
+            input,
+          },
+        },
+        { headers: StorageUserHeader() }
+      )
+
+      expect(response.body.data.articleContentsNode).toEqual(toGQLResponseStorageNode(art1))
+    })
+
+    it('サインインしていない場合', async () => {
+      const { art1 } = newArticleNodes(StorageUser())
+
+      const input: GetArticleContentsNodeInput = {
+        lang: 'ja',
+        contentTypes: ['Src', 'Draft'],
+      }
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: {
+          key: { id: art1.id },
+          input,
         },
       })
 

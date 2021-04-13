@@ -11,14 +11,14 @@ import {
   StorageUserToken,
 } from '../../../../helpers/app'
 import {
+  ArticleContentFields,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
-  GetArticleSrcResult,
-  StorageFileNode,
+  GetArticleSrcContentResult,
   StorageService,
   StorageServiceDI,
 } from '../../../../../src/app/services'
-import { LangCode, OmitTimestamp } from 'web-base-lib'
+import { LangCode, ToDeepRawDate } from 'web-base-lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../src/app/gql/main/lv1'
 import { Response } from 'supertest'
@@ -35,7 +35,7 @@ initApp()
 //
 //========================================================================
 
-type RawGetArticleSrcResult = OmitTimestamp<GetArticleSrcResult> & { createdAt: string; updatedAt: string }
+type RawGetArticleSrcContentResult = ToDeepRawDate<GetArticleSrcContentResult>
 
 //========================================================================
 //
@@ -70,7 +70,7 @@ describe('StorageService - HTTP関連のテスト', () => {
     td.reset()
   })
 
-  describe('getArticleSrc', () => {
+  describe('serveArticle', () => {
     let app: any
 
     beforeEach(async () => {
@@ -96,31 +96,37 @@ describe('StorageService - HTTP関連のテスト', () => {
         label: '記事1',
         type: 'Article',
       })
-      // 記事1の本文ノード
-      let art1_master!: StorageFileNode
-      await storageService
-        .saveArticleMasterSrcFile({ lang, articleId: art1.id, srcContent: '# header1', textContent: 'header1' })
-        .then(async ({ article, master }) => {
-          art1 = article
-          art1_master = await storageService.sgetFileNode(master)
-        })
+      await storageService.saveArticleSrcContent(art1, {
+        lang,
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+      })
+      await storageService.saveArticleDraftContent(art1, {
+        lang,
+        draftContent: '# 記事下書き1',
+      })
+      art1 = await storageService.sgetNode(art1, [
+        ArticleContentFields[lang].SrcContent,
+        ArticleContentFields[lang].DraftContent,
+        ArticleContentFields[lang].SearchContent,
+      ])
 
       // 記事1のレスポンス
-      const art1_response: RawGetArticleSrcResult = {
+      const art1_response: RawGetArticleSrcContentResult = {
         id: art1.id,
-        label: art1.article!.dir!.label[lang]!,
-        src: '# header1',
-        dir: [{ id: bundle.id, label: bundle.article!.dir!.label[lang]! }],
+        label: art1.article!.label[lang]!,
+        srcContent: art1.article!.src![lang]!.srcContent!,
+        dir: [{ id: bundle.id, label: bundle.article!.label[lang]! }],
         path: [
-          { id: bundle.id, label: bundle.article!.dir!.label[lang]! },
-          { id: art1.id, label: art1.article!.dir!.label[lang]! },
+          { id: bundle.id, label: bundle.article!.label[lang]! },
+          { id: art1.id, label: art1.article!.label[lang]! },
         ],
         isPublic: false,
         createdAt: art1.article!.src![lang]!.createdAt!.toISOString(),
         updatedAt: art1.article!.src![lang]!.updatedAt!.toISOString(),
       }
 
-      return { bundle, art1, art1_master, art1_response }
+      return { bundle, art1, art1_response }
     }
 
     it('記事は公開設定 -> 誰でもアクセス可能', async () => {
@@ -130,11 +136,11 @@ describe('StorageService - HTTP関連のテスト', () => {
       await storageService.setDirShareDetail(art1, { isPublic: true })
 
       // Authorizationヘッダーを設定しない
-      return request(app.getHttpServer())
+      await request(app.getHttpServer())
         .get(`/articles/${art1.id}?lang=ja`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.body).toEqual<RawGetArticleSrcResult>({
+          expect(res.body).toEqual<RawGetArticleSrcContentResult>({
             ...art1_response,
             isPublic: true,
           })
@@ -150,7 +156,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       return (
         request(app.getHttpServer())
           .get(`/articles/${art1.id}?lang=ja`)
-          // 他ユーザーを設定
+          // 他ユーザーを指定
           .set({ ...AppAdminUserHeader() })
           .expect(403)
       )
@@ -169,7 +175,7 @@ describe('StorageService - HTTP関連のテスト', () => {
           .set({ ...GeneralUserHeader() })
           .expect(200)
           .then((res: Response) => {
-            expect(res.body).toEqual<RawGetArticleSrcResult>(art1_response)
+            expect(res.body).toEqual<RawGetArticleSrcContentResult>(art1_response)
           })
       )
     })
@@ -177,7 +183,14 @@ describe('StorageService - HTTP関連のテスト', () => {
     it('存在しない記事を指定した場合', async () => {
       await setupArticleNodes('ja')
 
-      return request(app.getHttpServer()).get(`/articles/12345678901234567890`).expect(404)
+      return request(app.getHttpServer()).get(`/articles/12345678901234567890?lang=ja`).expect(404)
+    })
+
+    it('記事以外を指定した場合', async () => {
+      const { bundle } = await setupArticleNodes('ja')
+
+      // 記事ではなくバンドルを指定
+      return request(app.getHttpServer()).get(`/articles/${bundle.id}?lang=ja`).expect(404)
     })
 
     it('304 Not Modified の検証 - 公開', async () => {
@@ -223,7 +236,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         .get(`/articles/${art1.id}?lang=ja`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.body).toEqual<RawGetArticleSrcResult>({
+          expect(res.body).toEqual<RawGetArticleSrcContentResult>({
             ...art1_response,
             isPublic: true,
           })
@@ -241,7 +254,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         .get(`/articles/${art1.id}?lang=en`)
         .expect(200)
         .then((res: Response) => {
-          expect(res.body).toEqual<RawGetArticleSrcResult>({
+          expect(res.body).toEqual<RawGetArticleSrcContentResult>({
             ...art1_response,
             isPublic: true,
           })
@@ -254,7 +267,7 @@ describe('StorageService - HTTP関連のテスト', () => {
       // 記事に非公開設定
       const { art1 } = await setupArticleNodes('ja')
       await storageService.setDirShareDetail(art1, { isPublic: false })
-      const hierarchicalNodes = await storageService.getHierarchicalNodes(art1.path)
+      const hierarchicalNodes = await storageService.getHierarchicalNodes(art1.path, [ArticleContentFields.ja.SrcContent])
 
       // テスト対象実行
       return request(app.getHttpServer())

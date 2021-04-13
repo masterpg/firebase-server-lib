@@ -11,16 +11,18 @@ import {
 } from '../../../../helpers/app'
 import { AppError, initApp } from '../../../../../src/app/base'
 import {
+  ArticleContentFields,
+  ArticleDirLabelByLang,
   ArticleListItem,
   ArticleTableOfContentsItem,
   CreateArticleTypeDirInput,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
-  GetArticleSrcResult,
+  GetArticleSrcContentResult,
   GetUserArticleListInput,
-  SaveArticleMasterSrcFileInput,
-  StorageArticleDirLabelByLang,
+  SaveArticleSrcContentInput,
   StorageNode,
+  StorageNodeGetKeyInput,
   StorageSchema,
   StorageService,
   StorageServiceDI,
@@ -28,9 +30,11 @@ import {
   StorageUploadDataItem,
 } from '../../../../../src/app/services'
 import { LangCode, pickProps, removeBothEndsSlash, shuffleArray } from 'web-base-lib'
+import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import dayjs = require('dayjs')
+import EmptyShareDetail = StorageSchema.EmptyShareDetail
 
 jest.setTimeout(30000)
 initApp()
@@ -86,9 +90,10 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(1)
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(1)
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -106,7 +111,7 @@ describe('StorageService', () => {
         }
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
       })
 
       it('ベーシックケース - 英語', async () => {
@@ -123,7 +128,7 @@ describe('StorageService', () => {
         }
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ en: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ en: input.label })
       })
 
       it('共有設定を指定した場合', async () => {
@@ -164,8 +169,8 @@ describe('StorageService', () => {
           type: 'ListBundle',
         })
 
-        expect(bundle1.article?.dir?.sortOrder).toBe(1)
-        expect(bundle2.article?.dir?.sortOrder).toBe(2)
+        expect(bundle1.article!.sortOrder).toBe(1)
+        expect(bundle2.article!.sortOrder).toBe(2)
       })
 
       it('同じ名前のバンドルを作成', async () => {
@@ -187,9 +192,10 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(2)
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(2)
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -290,9 +296,10 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(1)
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(1)
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -327,9 +334,10 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(1)
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(1)
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -356,7 +364,7 @@ describe('StorageService', () => {
         // テスト対象実行
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
       })
 
       it('ベーシックケース - 英語', async () => {
@@ -382,7 +390,7 @@ describe('StorageService', () => {
         // テスト対象実行
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ en: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ en: input.label })
       })
 
       it('共有設定を指定した場合', async () => {
@@ -438,8 +446,8 @@ describe('StorageService', () => {
           type: 'Category',
         })
 
-        expect(cat1.article?.dir?.sortOrder).toBe(1)
-        expect(cat2.article?.dir?.sortOrder).toBe(2)
+        expect(cat1.article!.sortOrder).toBe(1)
+        expect(cat2.article!.sortOrder).toBe(2)
       })
 
       it('同じ名前のカテゴリを作成', async () => {
@@ -468,9 +476,10 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(2)
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(2)
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -683,10 +692,11 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(1)
-        expect(actual.article?.src).toBeUndefined()
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(1)
+        expect(actual.article!.src).toBeUndefined()
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -721,10 +731,11 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir!.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir!.type).toBe(input.type)
-        expect(actual.article?.dir!.sortOrder).toBe(1)
-        expect(actual.article?.src).toBeUndefined()
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(1)
+        expect(actual.article!.src).toBeUndefined()
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -751,7 +762,7 @@ describe('StorageService', () => {
         // テスト対象実行
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir!.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
       })
 
       it('ベーシックケース - 英語', async () => {
@@ -777,7 +788,7 @@ describe('StorageService', () => {
         // テスト対象実行
         const actual = await storageService.createArticleTypeDir(input)
 
-        expect(actual.article?.dir!.label).toEqual<StorageArticleDirLabelByLang>({ en: input.label })
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ en: input.label })
       })
 
       it('共有設定を指定した場合', async () => {
@@ -833,8 +844,8 @@ describe('StorageService', () => {
           type: 'Article',
         })
 
-        expect(art1.article?.dir?.sortOrder).toBe(1)
-        expect(art2.article?.dir?.sortOrder).toBe(2)
+        expect(art1.article!.sortOrder).toBe(1)
+        expect(art2.article!.sortOrder).toBe(2)
       })
 
       it('同じ名前の記事を作成', async () => {
@@ -863,10 +874,11 @@ describe('StorageService', () => {
 
         expect(actual.path).toBe(`${actual.dir}/${actual.id}`)
         expect(actual.id === actual.name).toBeTruthy()
-        expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: input.label })
-        expect(actual.article?.dir?.type).toBe(input.type)
-        expect(actual.article?.dir?.sortOrder).toBe(2)
-        expect(actual.article?.src).toBeUndefined()
+        expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
+        expect(actual.article!.type).toBe(input.type)
+        expect(actual.article!.sortOrder).toBe(2)
+        expect(actual.article!.src).toBeUndefined()
+        expect(actual.share).toEqual(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -1351,7 +1363,7 @@ describe('StorageService', () => {
       const actual = await storageService.renameArticleTypeDir({ lang: 'ja', dir: art1.path, label: 'Article1' })
 
       // 戻り値の検証
-      expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: 'Article1' })
+      expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: 'Article1' })
       expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
       expect(actual.version).toBe(art1.version + 1)
       await h.existsNodes([actual])
@@ -1373,7 +1385,7 @@ describe('StorageService', () => {
       const actual = await storageService.renameArticleTypeDir({ lang: 'ja', dir: bundle.path, label: 'ばんどる' })
 
       // 戻り値の検証
-      expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ ja: 'ばんどる' })
+      expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: 'ばんどる' })
     })
 
     it('ベーシックケース - 英語', async () => {
@@ -1392,10 +1404,10 @@ describe('StorageService', () => {
       const actual = await storageService.renameArticleTypeDir({ lang: 'en', dir: bundle.path, label: 'bundle' })
 
       // 戻り値の検証
-      expect(actual.article?.dir?.label).toEqual<StorageArticleDirLabelByLang>({ en: 'bundle' })
+      expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ en: 'bundle' })
     })
 
-    it('記事ソースファイルの名前を変更しようとした場合', async () => {
+    it('記事配下にあるファイルの名前を変更しようとした場合', async () => {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       await storageService.createHierarchicalDirs([articleRootPath])
@@ -1413,24 +1425,58 @@ describe('StorageService', () => {
         label: '記事1',
         type: 'Article',
       })
-      // 記事1のソースファイルを取得
-      const { master: art1_master } = await storageService.saveArticleMasterSrcFile({
-        lang: 'ja',
-        articleId: art1.id,
-        srcContent: 'test',
-        textContent: 'test',
-      })
+      // 記事1の配下にファイルを配置
+      const [fileA] = await storageService.uploadDataItems([
+        {
+          data: 'test',
+          contentType: 'text/plain; charset=utf-8',
+          path: `${art1.path}/fileA.txt`,
+        },
+      ])
 
       let actual!: AppError
       try {
-        // 記事ソースファイルの名前変更を試みる
-        await storageService.renameArticleTypeDir({ lang: 'ja', dir: `${art1_master.path}`, label: 'dummy' })
+        // 記事1の配下にあるファイルの名前変更を試みる
+        await storageService.renameArticleTypeDir({ lang: 'ja', dir: `${fileA.path}`, label: 'dummy' })
       } catch (err) {
         actual = err
       }
 
       expect(actual.cause).toBe(`The specified path is not a directory.`)
-      expect(actual.data).toEqual({ specifiedPath: art1_master.path })
+      expect(actual.data).toEqual({ dir: fileA.path })
+    })
+
+    it('記事配下にあるディレクトリの名前を変更しようとした場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${articleRootPath}`,
+        label: 'バンドル',
+        type: 'ListBundle',
+      })
+      // 記事1を作成
+      const art1 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事1',
+        type: 'Article',
+      })
+      // 記事1の配下にディレクトリを作成
+      const d1 = await storageService.createArticleGeneralDir({ dir: `${art1.path}/d1` })
+
+      let actual!: AppError
+      try {
+        // 記事1の配下にあるディレクトリの名前変更を試みる
+        await storageService.renameArticleTypeDir({ lang: 'ja', dir: `${d1.path}`, label: 'dummy' })
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.cause).toBe(`The specified path is not a article type directory.`)
+      expect(actual.data).toEqual({ dir: d1.path })
     })
 
     it('記事ルート配下でないノードの名前を変更しようとした場合', async () => {
@@ -1500,7 +1546,7 @@ describe('StorageService', () => {
 
         const actual = await storageService.renameArticleTypeDir(StorageUserToken(), { lang: 'ja', dir: `${storage.blog.path}`, label: 'Blog' })
 
-        expect(actual.article?.dir?.label.ja).toBe('Blog')
+        expect(actual.article!.label.ja).toBe('Blog')
       })
 
       it('他ユーザーの記事系ディレクトリを名前変更', async () => {
@@ -1573,7 +1619,7 @@ describe('StorageService', () => {
       const nodes = (await storageService.getChildren({ path: bundle.path })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
-      expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
+      expect(nodes.map(node => node.article!.sortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - カテゴリ直下のノードにソート順を設定', async () => {
@@ -1623,7 +1669,7 @@ describe('StorageService', () => {
       const nodes = (await storageService.getChildren({ path: cat1.path })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([art3.path, art2.path, art1.path])
-      expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
+      expect(nodes.map(node => node.article!.sortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - 記事ルート直下のノードにソート順を設定', async () => {
@@ -1667,7 +1713,7 @@ describe('StorageService', () => {
       const nodes = (await storageService.getChildren({ path: `${articleRootPath}` })).list.filter(node => Boolean(node.article))
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([bundle3.path, bundle2.path, bundle1.path])
-      expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
+      expect(nodes.map(node => node.article!.sortOrder)).toEqual([3, 2, 1])
     })
 
     it('ベーシックケース - カテゴリと記事の混在したディレクトリでソート順を設定', async () => {
@@ -1712,7 +1758,7 @@ describe('StorageService', () => {
       const nodes = (await storageService.getChildren({ path: `${bundle.path}` })).list
       StorageService.sortNodes(nodes)
       expect(nodes.map(node => node.path)).toEqual([cat1.path, art2.path, art1.path])
-      expect(nodes.map(node => node.article?.dir?.sortOrder)).toEqual([3, 2, 1])
+      expect(nodes.map(node => node.article!.sortOrder)).toEqual([3, 2, 1])
     })
 
     it('親が違うノードにソート順を設定しようとした場合', async () => {
@@ -1941,7 +1987,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('saveArticleMasterSrcFile', () => {
+  describe('saveArticleSrcContent', () => {
     async function setupArticleTypeNodes() {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -1968,267 +2014,238 @@ describe('StorageService', () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# header1'
-      const textContent = 'header1'
-      const actual = await storageService.saveArticleMasterSrcFile({
+      const srcContent = '# 記事1'
+      const searchContent = '記事1'
+      const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
-        articleId: art1.id,
         srcContent,
-        textContent,
+        searchContent,
       })
 
-      const expected_timestamp = actual.article.updatedAt // 記事ノードの更新日
-
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.id).toBe(art1.id)
-        expect(actual.article.article?.src?.['ja']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.version).toBe(art1.version + 1)
-        // 本文ノード
-        expect(actual.master.id).toBeDefined()
-        expect(actual.master.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
-        expect(actual.master.contentType).toBe('text/markdown')
-        expect(actual.master.share.isPublic).toBeNull()
-        expect(actual.master.article?.file?.type).toBe('MasterSrc')
-        expect(actual.master.createdAt).toEqual(expected_timestamp)
-        expect(actual.master.updatedAt).toEqual(expected_timestamp)
-        expect(actual.master.version).toBe(1)
-        // 下書きノード
-        expect(actual.draft.id).toBeDefined()
-        expect(actual.draft.size).toBe(0)
-        expect(actual.draft.contentType).toBe('text/markdown')
-        expect(actual.draft.share.isPublic).toBeFalsy()
-        expect(actual.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual.draft.createdAt).toEqual(expected_timestamp)
-        expect(actual.draft.updatedAt).toEqual(expected_timestamp)
-        expect(actual.draft.version).toBe(1)
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
-      {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          master: await storageService.sgetFileNode({ path: StorageService.toArticleMasterSrcPath(art1.path) }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.id).toBe(art1.id)
-        expect(actual.article.article?.src?.['ja']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.version).toBe(art1.version + 1)
-        // 本文ノード
-        expect(actual.master.id).toBeDefined()
-        expect(actual.master.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
-        expect(actual.master.contentType).toBe('text/markdown')
-        expect(actual.master.share.isPublic).toBeNull()
-        expect(actual.master.article?.file?.type).toBe('MasterSrc')
-        expect(actual.master.createdAt).toEqual(expected_timestamp)
-        expect(actual.master.updatedAt).toEqual(expected_timestamp)
-        expect(actual.master.version).toBe(1)
-        const art1_master_src = (await actual.master.file.download()).toString()
-        expect(art1_master_src).toBe(srcContent)
-        // 下書きノード
-        expect(actual.draft.id).toBeDefined()
-        expect(actual.draft.size).toBe(0)
-        expect(actual.draft.contentType).toBe('text/markdown')
-        expect(actual.draft.share.isPublic).toBeFalsy()
-        expect(actual.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual.draft.createdAt).toEqual(expected_timestamp)
-        expect(actual.draft.updatedAt).toEqual(expected_timestamp)
-        expect(actual.draft.version).toBe(1)
-        const art1_draft_src = (await actual.draft.file.download()).toString()
-        expect(art1_draft_src).toBe('')
-      }
-
-      await h.existsNodes(Object.values(actual))
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual).toEqual(actual)
     })
 
     it('2回目以降の保存の場合', async () => {
-      const { art1 } = await setupArticleTypeNodes()
+      let { art1 } = await setupArticleTypeNodes()
 
       // 1回目の保存
-      const srcContent1 = '# header1'
-      const textContent1 = 'header1'
-      const actual1 = await storageService.saveArticleMasterSrcFile({
+      art1 = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
-        articleId: art1.id,
-        srcContent: srcContent1,
-        textContent: textContent1,
+        srcContent: '# 記事1',
+        searchContent: '記事1',
       })
 
       // 2回目の保存
-      const srcContent2 = '# header2'
-      const textContent2 = 'header2'
-      const actual2 = await storageService.saveArticleMasterSrcFile({
+      const srcContent = '# Article1'
+      const searchContent = 'Article1'
+      const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
-        articleId: art1.id,
-        srcContent: srcContent2,
-        textContent: textContent2,
+        srcContent,
+        searchContent,
       })
 
-      const expected_createdAt = actual1.article.article!.src!['ja']!.updatedAt // 1回目の記事本文の更新日
-      const expected_updatedAt = actual2.article.article!.src!['ja']!.updatedAt // 2回目の記事本文の更新日
-
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBe(actual2.master.id)
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toEqual(expected_createdAt)
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.article.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.article.version).toBe(art1.version + 2)
-        // 本文ノード
-        expect(actual2.master.id).toBeDefined()
-        expect(actual2.master.size).toBe(Buffer.byteLength(srcContent2, 'utf-8'))
-        expect(actual2.master.contentType).toBe('text/markdown')
-        expect(actual2.master.share.isPublic).toBeNull()
-        expect(actual2.master.article?.file?.type).toBe('MasterSrc')
-        expect(actual2.master.createdAt).toEqual(expected_createdAt)
-        expect(actual2.master.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.master.version).toBe(2)
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(0)
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual2.draft.createdAt).toEqual(expected_createdAt)
-        expect(actual2.draft.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.draft.version).toBe(2)
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.updatedAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
-      {
-        const actual2 = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          master: await storageService.sgetFileNode({ path: StorageService.toArticleMasterSrcPath(art1.path) }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual).toEqual(actual)
+    })
 
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBe(actual2.master.id)
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toEqual(expected_createdAt)
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.article.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.article.version).toBe(art1.version + 2)
-        // 本文ノード
-        expect(actual2.master.id).toBeDefined()
-        expect(actual2.master.size).toBe(Buffer.byteLength(srcContent2, 'utf-8'))
-        expect(actual2.master.contentType).toBe('text/markdown')
-        expect(actual2.master.share.isPublic).toBeNull()
-        expect(actual2.master.article?.file?.type).toBe('MasterSrc')
-        expect(actual2.master.createdAt).toEqual(expected_createdAt)
-        expect(actual2.master.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.master.version).toBe(2)
-        const art1_master_src = (await actual2.master.file.download()).toString()
-        expect(art1_master_src).toBe(srcContent2)
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(0)
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual2.draft.createdAt).toEqual(expected_createdAt)
-        expect(actual2.draft.updatedAt).toEqual(expected_updatedAt)
-        expect(actual2.draft.version).toBe(2)
-        const art1_draft_src = (await actual2.draft.file.download()).toString()
-        expect(art1_draft_src).toBe('')
-      }
+    it('下書きがある場合', async () => {
+      let { art1 } = await setupArticleTypeNodes()
 
-      await h.existsNodes(Object.values(actual2))
+      // 下書き保存
+      art1 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '# 記事下書き1',
+      })
+
+      // テスト対象実行
+      const srcContent = '# 記事1'
+      const searchContent = '記事1'
+      const actual = await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent,
+        searchContent,
+      })
+
+      // 戻り値の検証
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // 下書きはクリアされる
+      expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
+
+      // 格納値の検証
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(_actual.article!.src!.ja!.draftContent).toBeUndefined() // 下書きはクリアされる
+      expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(_actual.share).toEqual(EmptyShareDetail())
+    })
+
+    it('対象言語以外の記事がある場合', async () => {
+      const { art1 } = await setupArticleTypeNodes()
+
+      //
+      // 英語記事の保存
+      //
+      const actual1 = await storageService.saveArticleSrcContent(art1, {
+        lang: 'en',
+        srcContent: '# Article1',
+        searchContent: 'Article1',
+      })
+      // 戻り値の検証
+      expect(actual1.id).toBe(art1.id)
+
+      // - 英語
+      expect(actual1.article!.src!.en!.srcContent).toBe('# Article1')
+      expect(actual1.article!.src!.en!.draftContent).toBeUndefined()
+      expect(actual1.article!.src!.en!.searchContent).toBe('Article1')
+      expect(dayjs.isDayjs(actual1.article!.src!.en!.createdAt)).toBeTruthy()
+      expect(dayjs.isDayjs(actual1.article!.src!.en!.updatedAt)).toBeTruthy()
+      // - 日本語
+      expect(actual1.article!.src!.ja).toBeUndefined()
+
+      //
+      // 日本語記事の保存
+      //
+      const actual2 = await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+      })
+
+      // 戻り値の検証
+      expect(actual2.id).toBe(art1.id)
+      // - 英語
+      expect(actual2.article!.src!.en!.srcContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.draftContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.searchContent).toBeUndefined()
+      expect(dayjs.isDayjs(actual2.article!.src!.en!.createdAt)).toBeTruthy()
+      expect(dayjs.isDayjs(actual2.article!.src!.en!.updatedAt)).toBeTruthy()
+      // - 日本語
+      expect(actual2.article!.src!.ja!.srcContent).toBe('# 記事1')
+      expect(actual2.article!.src!.ja!.draftContent).toBeUndefined()
+      expect(actual2.article!.src!.ja!.searchContent).toBe('記事1')
+      expect(dayjs.isDayjs(actual2.article!.src!.ja!.createdAt)).toBeTruthy()
+      expect(dayjs.isDayjs(actual2.article!.src!.ja!.updatedAt)).toBeTruthy()
+
+      //
+      // 格納値の検証
+      //
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.en.SrcContent,
+        ArticleContentFields.en.DraftContent,
+        ArticleContentFields.en.SearchContent,
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      // - 英語
+      expect(_actual.article!.src!.en).toEqual(actual1.article!.src!.en)
+      // - 日本語
+      expect(_actual.article!.src!.ja).toEqual(actual2.article!.src!.ja)
     })
 
     it('日本語', async () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# ヘッダー1'
-      const textContent = 'ヘッダー1'
-      const actual = await storageService.saveArticleMasterSrcFile({
+      const srcContent = '# 記事1'
+      const searchContent = '記事1'
+      const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
-        articleId: art1.id,
         srcContent,
-        textContent,
+        searchContent,
       })
 
-      const expected_timestamp = actual.article.updatedAt
-
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.article?.src?.['ja']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toEqual(expected_timestamp)
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
 
       // 格納値の検証
-      {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          master: await storageService.sgetFileNode({ path: StorageService.toArticleMasterSrcPath(art1.path) }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.article?.src?.['ja']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toEqual(expected_timestamp)
-      }
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(_actual.article!.src!.ja!.draftContent).toBeUndefined()
+      expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent)
     })
 
     it('英語', async () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# header1'
-      const textContent = 'header1'
-      const actual = await storageService.saveArticleMasterSrcFile({
+      const srcContent = '# 記事1'
+      const searchContent = '記事1'
+      const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'en',
-        articleId: art1.id,
         srcContent,
-        textContent,
+        searchContent,
       })
 
-      const expected_timestamp = actual.article.updatedAt
-
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.article?.src?.['en']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['en']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['en']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['en']?.updatedAt).toEqual(expected_timestamp)
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.en!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.en!.draftContent).toBeUndefined()
+      expect(actual.article!.src!.en!.searchContent).toBe(searchContent)
 
       // 格納値の検証
-      {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          master: await storageService.sgetFileNode({ path: StorageService.toArticleMasterSrcPath(art1.path) }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.article?.src?.['en']?.masterId).toBe(actual.master.id)
-        expect(actual.article.article?.src?.['en']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['en']?.createdAt).toEqual(expected_timestamp)
-        expect(actual.article.article?.src?.['en']?.updatedAt).toEqual(expected_timestamp)
-      }
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.en.SrcContent,
+        ArticleContentFields.en.DraftContent,
+        ArticleContentFields.en.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      expect(_actual.article!.src!.en!.srcContent).toBe(srcContent)
+      expect(_actual.article!.src!.en!.draftContent).toBeUndefined()
+      expect(_actual.article!.src!.en!.searchContent).toBe(searchContent)
     })
 
     describe('権限の検証', () => {
@@ -2275,16 +2292,16 @@ describe('StorageService', () => {
       it('自ユーザーの記事本文の保存', async () => {
         const { storage } = await setupArticleNodes()
 
-        const actual = await storageService.saveArticleMasterSrcFile(StorageUserToken(), {
+        const srcContent = '# 記事1'
+        const searchContent = '記事1'
+        const actual = await storageService.saveArticleSrcContent(StorageUserToken(), storage.note1, {
           lang: 'ja',
-          articleId: storage.note1.id,
-          srcContent: 'test',
-          textContent: 'test',
+          srcContent,
+          searchContent,
         })
 
-        expect(actual.article.id).toBe(storage.note1.id)
-        expect(actual.master.dir).toBe(storage.note1.path)
-        expect(actual.draft.dir).toBe(storage.note1.path)
+        expect(actual.id).toBe(storage.note1.id)
+        expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       })
 
       it('他ユーザーの記事本文の保存', async () => {
@@ -2292,11 +2309,12 @@ describe('StorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.saveArticleMasterSrcFile(GeneralUserToken(), {
+          const srcContent = '# 記事1'
+          const searchContent = '記事1'
+          await storageService.saveArticleSrcContent(GeneralUserToken(), storage.note1, {
             lang: 'ja',
-            articleId: storage.note1.id,
-            srcContent: 'test',
-            textContent: 'test',
+            srcContent,
+            searchContent,
           })
         } catch (err) {
           actual = err
@@ -2310,11 +2328,12 @@ describe('StorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.saveArticleMasterSrcFile(AppAdminUserToken(), {
+          const srcContent = '# 記事1'
+          const searchContent = '記事1'
+          await storageService.saveArticleSrcContent(AppAdminUserToken(), storage.note1, {
             lang: 'ja',
-            articleId: storage.note1.id,
-            srcContent: 'test',
-            textContent: 'test',
+            srcContent,
+            searchContent,
           })
         } catch (err) {
           actual = err
@@ -2325,7 +2344,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('saveArticleDraftSrcFile', () => {
+  describe('saveArticleDraftContent', () => {
     async function setupArticleTypeNodes() {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -2352,285 +2371,289 @@ describe('StorageService', () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# header1'
-      const actual = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent })
-
-      const expected_timestamp = actual.article.updatedAt // 記事ノードの更新日
+      const draftContent = '# 記事下書き1'
+      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent })
 
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.id).toBe(art1.id)
-        expect(actual.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        // ---> 下書き保存では設定されない
-        expect(actual.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // <---
-        expect(actual.article.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.version).toBe(art1.version + 1)
-
-        // 下書きノード
-        expect(actual.draft.id).toBeDefined()
-        expect(actual.draft.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
-        expect(actual.draft.contentType).toBe('text/markdown')
-        expect(actual.draft.share.isPublic).toBeFalsy()
-        expect(actual.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual.draft.createdAt).toEqual(expected_timestamp)
-        expect(actual.draft.updatedAt).toEqual(expected_timestamp)
-        expect(actual.draft.version).toBe(1)
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.createdAt).toBeUndefined()
+      expect(actual.article!.src!.ja!.updatedAt).toBeUndefined()
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
-      {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.id).toBe(art1.id)
-        expect(actual.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        // ---> 下書き保存では設定されない
-        expect(actual.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // <---
-        expect(actual.article.updatedAt).toEqual(expected_timestamp)
-        expect(actual.article.version).toBe(art1.version + 1)
-
-        // 下書きノード
-        expect(actual.draft.id).toBeDefined()
-        expect(actual.draft.size).toBe(Buffer.byteLength(srcContent, 'utf-8'))
-        expect(actual.draft.contentType).toBe('text/markdown')
-        expect(actual.draft.share.isPublic).toBeFalsy()
-        expect(actual.draft.article?.file?.type).toBe('DraftSrc')
-        expect(actual.draft.createdAt).toEqual(expected_timestamp)
-        expect(actual.draft.updatedAt).toEqual(expected_timestamp)
-        expect(actual.draft.version).toBe(1)
-        const art1_draft_src = (await actual.draft.file.download()).toString()
-        expect(art1_draft_src).toBe(srcContent)
-      }
-
-      await h.existsNodes(Object.values(actual))
+      const _actual = await storageService.sgetNode({ path: art1.path }, [ArticleContentFields.ja.SrcContent, ArticleContentFields.ja.DraftContent])
+      expect(_actual).toEqual(actual)
     })
 
     it('2回目以降の保存の場合', async () => {
-      const { art1 } = await setupArticleTypeNodes()
+      let { art1 } = await setupArticleTypeNodes()
 
       // 1回目の保存
-      const srcContent1 = '# header1'
-      const actual1 = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent: srcContent1 })
+      art1 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '# 記事下書き1',
+      })
 
       // 2回目の保存
-      const srcContent2 = '# header2'
-      const actual2 = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent: srcContent2 })
+      const draftContent = '# ArticleDraft1'
+      const actual = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent,
+      })
 
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.article.updatedAt).toEqual(actual1.article.updatedAt)
-        expect(actual2.article.version).toBe(actual1.article.version)
-        // <---
-
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(Buffer.byteLength(srcContent2, 'utf-8'))
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.draft.createdAt).toEqual(actual1.draft.updatedAt)
-        // <---
-        // ---> 更新される
-        expect(actual2.draft.updatedAt.isAfter(actual1.draft.updatedAt)).toBeTruthy()
-        expect(actual2.draft.version).toBe(actual1.draft.version + 1)
-        // <---
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.createdAt).toBeUndefined()
+      expect(actual.article!.src!.ja!.updatedAt).toBeUndefined()
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
-      {
-        const actual2 = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.article.updatedAt).toEqual(actual1.article.updatedAt)
-        expect(actual2.article.version).toBe(actual1.article.version)
-        // <---
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(Buffer.byteLength(srcContent2, 'utf-8'))
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.draft.createdAt).toEqual(actual1.draft.updatedAt)
-        // <---
-        // ---> 更新される
-        expect(actual2.draft.updatedAt.isAfter(actual1.draft.updatedAt)).toBeTruthy()
-        expect(actual2.draft.version).toBe(actual1.draft.version + 1)
-        // <---
-        const art1_draft_src = (await actual2.draft.file.download()).toString()
-        expect(art1_draft_src).toBe(srcContent2)
-      }
-
-      await h.existsNodes(Object.values(actual2))
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual).toEqual(actual)
     })
 
-    it('下書きを破棄した場合', async () => {
-      const { art1 } = await setupArticleTypeNodes()
+    it('本文がある場合', async () => {
+      let { art1 } = await setupArticleTypeNodes()
 
-      // 下書きの保存
-      const srcContent1 = '# header1'
-      const actual1 = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent: srcContent1 })
+      // 本文保存
+      const srcContent = '# 記事1'
+      const searchContent = '記事1'
+      art1 = await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent,
+        searchContent,
+      })
 
-      // 下書きの破棄
-      const srcContent2 = null
-      const actual2 = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent: srcContent2 })
+      // テスト対象実行
+      const draftContent = '# 記事下書き1'
+      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent })
 
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.article.updatedAt).toEqual(actual1.article.updatedAt)
-        expect(actual2.article.version).toBe(actual1.article.version)
-        // <---
-
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(0) // 破棄されたのでサイズは0
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.draft.createdAt).toEqual(actual1.draft.updatedAt)
-        // <---
-        // ---> 更新される
-        expect(actual2.draft.updatedAt.isAfter(actual1.draft.updatedAt)).toBeTruthy()
-        expect(actual2.draft.version).toBe(actual1.draft.version + 1)
-        // <---
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
+      expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined() // 戻り値にテキストは設定されない
+      expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
-      {
-        const actual2 = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent) // DBに本文は存在する
+      expect(_actual.article!.src!.ja!.draftContent).toBe(draftContent)
+      expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent) // DBにテキストは存在する
+      expect(_actual.share).toEqual(EmptyShareDetail())
+    })
 
-        // 記事ノード
-        expect(actual2.article.id).toBe(art1.id)
-        expect(actual2.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.draftId).toBe(actual2.draft.id)
-        expect(actual2.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual2.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.article.updatedAt).toEqual(actual1.article.updatedAt)
-        expect(actual2.article.version).toBe(actual1.article.version)
-        // <---
+    it('対象言語以外の記事がある場合', async () => {
+      const { art1 } = await setupArticleTypeNodes()
 
-        // 下書きノード
-        expect(actual2.draft.id).toBeDefined()
-        expect(actual2.draft.size).toBe(0) // 破棄されたのでサイズは0
-        expect(actual2.draft.contentType).toBe('text/markdown')
-        expect(actual2.draft.share.isPublic).toBeFalsy()
-        expect(actual2.draft.article?.file?.type).toBe('DraftSrc')
-        // ---> 1回目と2回目で変化なし
-        expect(actual2.draft.createdAt).toEqual(actual1.draft.updatedAt)
-        // <---
-        // ---> 更新される
-        expect(actual2.draft.updatedAt.isAfter(actual1.draft.updatedAt)).toBeTruthy()
-        expect(actual2.draft.version).toBe(actual1.draft.version + 1)
-        // <---
-        const art1_draft_src = (await actual2.draft.file.download()).toString()
-        expect(art1_draft_src).toBe('')
-      }
+      //
+      // 英語記事の保存
+      //
+      const actual1 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'en',
+        draftContent: '# ArticleDraft1',
+      })
+      // 戻り値の検証
+      expect(actual1.id).toBe(art1.id)
 
-      await h.existsNodes(Object.values(actual2))
+      // - 英語
+      expect(actual1.article!.src!.en!.srcContent).toBeUndefined()
+      expect(actual1.article!.src!.en!.draftContent).toBe('# ArticleDraft1')
+      expect(actual1.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual1.article!.src!.en!.createdAt).toBeUndefined()
+      expect(actual1.article!.src!.en!.updatedAt).toBeUndefined()
+      // - 日本語
+      expect(actual1.article!.src!.ja).toBeUndefined()
+
+      //
+      // 日本語記事の保存
+      //
+      const actual2 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '# 記事下書き1',
+      })
+
+      // 戻り値の検証
+      expect(actual2.id).toBe(art1.id)
+      // - 英語
+      expect(actual2.article!.src!.en!.srcContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.draftContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.createdAt).toBeUndefined()
+      expect(actual2.article!.src!.en!.updatedAt).toBeUndefined()
+      // - 日本語
+      expect(actual2.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual2.article!.src!.ja!.draftContent).toBe('# 記事下書き1')
+      expect(actual2.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual2.article!.src!.ja!.createdAt).toBeUndefined()
+      expect(actual2.article!.src!.ja!.updatedAt).toBeUndefined()
+
+      //
+      // 格納値の検証
+      //
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.en.SrcContent,
+        ArticleContentFields.en.DraftContent,
+        ArticleContentFields.en.SearchContent,
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual.id).toBe(art1.id)
+      // - 英語
+      expect(_actual.article!.src!.en).toEqual(actual1.article!.src!.en)
+      // - 日本語
+      expect(_actual.article!.src!.ja).toEqual(actual2.article!.src!.ja)
+    })
+
+    it('下書きを破棄した場合 - nullを指定', async () => {
+      let { art1 } = await setupArticleTypeNodes()
+
+      // 下書きの保存
+      art1 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '# 記事1',
+      })
+
+      // 下書きの破棄
+      const actual = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: null,
+      })
+
+      // 戻り値の検証
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // undefinedになる
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
+
+      // 格納値の検証
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual).toEqual(actual)
+    })
+
+    it('下書きを破棄した場合 - 空文字を指定', async () => {
+      let { art1 } = await setupArticleTypeNodes()
+
+      // 下書きの保存
+      art1 = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '# 記事下書き1',
+      })
+
+      // 下書きの破棄
+      const actual = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent: '',
+      })
+
+      // 戻り値の検証
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // undefinedになる
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
+      expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
+      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
+      expect(actual.version).toBe(art1.version + 1)
+
+      // 格納値の検証
+      const _actual = await storageService.sgetNode({ path: art1.path }, [
+        ArticleContentFields.ja.SrcContent,
+        ArticleContentFields.ja.DraftContent,
+        ArticleContentFields.ja.SearchContent,
+      ])
+      expect(_actual).toEqual(actual)
     })
 
     it('日本語', async () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# ヘッダー1'
-      const actual = await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: art1.id, srcContent })
-
-      const expected_timestamp = actual.article.updatedAt // 記事ノードの更新日
+      const draftContent = '# 記事下書き1'
+      const actual = await storageService.saveArticleDraftContent(art1, {
+        lang: 'ja',
+        draftContent,
+      })
 
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
 
       // 格納値の検証
       {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.article?.src?.['ja']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['ja']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['ja']?.updatedAt).toBeUndefined()
+        const _actual = await storageService.sgetNode({ path: art1.path }, [
+          ArticleContentFields.ja.SrcContent,
+          ArticleContentFields.ja.DraftContent,
+          ArticleContentFields.ja.SearchContent,
+        ])
+        expect(_actual.article!.src!.ja!.srcContent).toBeUndefined()
+        expect(_actual.article!.src!.ja!.draftContent).toBe(draftContent)
+        expect(_actual.article!.src!.ja!.searchContent).toBeUndefined()
       }
     })
 
-    it('英語', async () => {
+    it('英語 ', async () => {
       const { art1 } = await setupArticleTypeNodes()
 
       // テスト対象実行
-      const srcContent = '# header1'
-      const actual = await storageService.saveArticleDraftSrcFile({ lang: 'en', articleId: art1.id, srcContent })
-
-      const expected_timestamp = actual.article.updatedAt // 記事ノードの更新日
+      const draftContent = '# Article1'
+      const actual = await storageService.saveArticleDraftContent(art1, {
+        lang: 'en',
+        draftContent,
+      })
 
       // 戻り値の検証
-      {
-        // 記事ノード
-        expect(actual.article.article?.src?.['en']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['en']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['en']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['en']?.updatedAt).toBeUndefined()
-      }
+      expect(actual.id).toBe(art1.id)
+      expect(actual.article!.src!.en!.srcContent).toBeUndefined()
+      expect(actual.article!.src!.en!.draftContent).toBe(draftContent)
+      expect(actual.article!.src!.en!.searchContent).toBeUndefined()
 
       // 格納値の検証
       {
-        const actual = {
-          article: await storageService.sgetNode({ path: art1.path }),
-          draft: await storageService.sgetFileNode({ path: StorageService.toArticleDraftSrcPath(art1.path) }),
-        }
-
-        // 記事ノード
-        expect(actual.article.article?.src?.['en']?.masterId).toBeUndefined()
-        expect(actual.article.article?.src?.['en']?.draftId).toBe(actual.draft.id)
-        expect(actual.article.article?.src?.['en']?.createdAt).toBeUndefined()
-        expect(actual.article.article?.src?.['en']?.updatedAt).toBeUndefined()
+        const _actual = await storageService.sgetNode({ path: art1.path }, [
+          ArticleContentFields.en.SrcContent,
+          ArticleContentFields.en.DraftContent,
+          ArticleContentFields.en.SearchContent,
+        ])
+        expect(_actual.article!.src!.en!.srcContent).toBeUndefined()
+        expect(_actual.article!.src!.en!.draftContent).toBe(draftContent)
+        expect(_actual.article!.src!.en!.searchContent).toBeUndefined()
       }
     })
 
@@ -2678,14 +2701,14 @@ describe('StorageService', () => {
       it('自ユーザーの記事下書きの保存', async () => {
         const { storage } = await setupArticleNodes()
 
-        const actual = await storageService.saveArticleDraftSrcFile(StorageUserToken(), {
+        const draftContent = '記事下書き1'
+        const actual = await storageService.saveArticleDraftContent(StorageUserToken(), storage.note1, {
           lang: 'ja',
-          articleId: storage.note1.id,
-          srcContent: 'test',
+          draftContent,
         })
 
-        expect(actual.article.id).toBe(storage.note1.id)
-        expect(actual.draft.dir).toBe(storage.note1.path)
+        expect(actual.id).toBe(storage.note1.id)
+        expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
       })
 
       it('他ユーザーの記事下書きの保存', async () => {
@@ -2693,10 +2716,9 @@ describe('StorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.saveArticleDraftSrcFile(GeneralUserToken(), {
+          await storageService.saveArticleDraftContent(GeneralUserToken(), storage.note1, {
             lang: 'ja',
-            articleId: storage.note1.id,
-            srcContent: 'test',
+            draftContent: '記事下書き1',
           })
         } catch (err) {
           actual = err
@@ -2710,10 +2732,9 @@ describe('StorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.saveArticleDraftSrcFile(AppAdminUserToken(), {
+          await storageService.saveArticleDraftContent(AppAdminUserToken(), storage.note1, {
             lang: 'ja',
-            articleId: storage.note1.id,
-            srcContent: 'test',
+            draftContent: '記事下書き1',
           })
         } catch (err) {
           actual = err
@@ -2724,61 +2745,297 @@ describe('StorageService', () => {
     })
   })
 
-  describe('getArticleSrc', () => {
-    async function setupArticleNodes() {
+  describe('getArticleContentsNode', () => {
+    async function setupArticleNodes(lang: LangCode) {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       await storageService.createHierarchicalDirs([articleRootPath])
       // バンドル
       const bundle = await storageService.createArticleTypeDir({
-        lang: 'ja',
+        lang,
         dir: `${articleRootPath}`,
         label: 'バンドル',
         type: 'ListBundle',
       })
       // 記事1
       let art1 = await storageService.createArticleTypeDir({
-        lang: 'ja',
+        lang,
         dir: `${bundle.path}`,
         label: '記事1',
         type: 'Article',
       })
-      // 記事1のマスターファイル
-      let art1_master!: StorageNode
-      await storageService
-        .saveArticleMasterSrcFile({ lang: 'ja', articleId: art1.id, srcContent: '# header1', textContent: 'header1' })
-        .then(({ article, master }) => {
-          art1 = article
-          art1_master = master
-        })
+      await storageService.saveArticleSrcContent(art1, {
+        lang,
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+      })
+      await storageService.saveArticleDraftContent(art1, {
+        lang,
+        draftContent: '# 記事下書き1',
+      })
+      art1 = await storageService.sgetNode(art1, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
 
-      // 記事1のレスポンス
-      const art1_result: GetArticleSrcResult = {
-        id: art1.id,
-        label: art1.article!.dir!.label['ja']!,
-        src: '# header1',
-        dir: [{ id: bundle.id, label: bundle.article!.dir!.label['ja']! }],
-        path: [
-          { id: bundle.id, label: bundle.article!.dir!.label['ja']! },
-          { id: art1.id, label: art1.article!.dir!.label['ja']! },
-        ],
-        isPublic: false,
-        createdAt: art1.article!.src!.ja!.createdAt!,
-        updatedAt: art1.article!.src!.ja!.updatedAt!,
-      }
-
-      return { bundle, art1, art1_master, art1_result }
+      return { bundle, art1 }
     }
 
-    it('ベーシックケース', async () => {
-      const { art1, art1_result } = await setupArticleNodes()
+    it('本文と下書きを指定', async () => {
+      const { art1 } = await setupArticleNodes('ja')
+
+      // 本文と下書きを指定
+      const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+        lang: 'ja',
+        contentTypes: ['Src', 'Draft'],
+      })
+
+      expect(actual!.article!.src!.ja!.srcContent).toEqual(art1.article!.src!.ja!.srcContent)
+      expect(actual!.article!.src!.ja!.draftContent).toEqual(art1.article!.src!.ja!.draftContent)
+    })
+
+    it('本文のみを指定', async () => {
+      const { art1 } = await setupArticleNodes('ja')
+
+      // 本文のみを指定
+      const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+        lang: 'ja',
+        contentTypes: ['Src'],
+      })
+
+      expect(actual!.article!.src!.ja!.srcContent).toEqual(art1.article!.src!.ja!.srcContent)
+      expect(actual!.article!.src!.ja!.draftContent).toBeUndefined()
+    })
+
+    it('下書きのみを指定', async () => {
+      const { art1 } = await setupArticleNodes('ja')
+
+      // 下書きのみを指定
+      const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+        lang: 'ja',
+        contentTypes: ['Draft'],
+      })
+
+      expect(actual!.article!.src!.ja!.srcContent).toBeUndefined()
+      expect(actual!.article!.src!.ja!.draftContent).toEqual(art1.article!.src!.ja!.draftContent)
+    })
+
+    it('存在しない記事を指定した場合', async () => {
+      await setupArticleNodes('ja')
+
+      const actual = await storageService.getArticleContentsNode(
+        GeneralUserToken(),
+        { id: '12345678901234567890' },
+        {
+          lang: 'ja',
+          contentTypes: ['Src'],
+        }
+      )
+
+      expect(actual).toBeUndefined()
+    })
+
+    it('記事以外を指定した場合', async () => {
+      const { bundle } = await setupArticleNodes('ja')
+
+      // 記事ではなくバンドルを指定
+      const actual = await storageService.getArticleContentsNode(GeneralUserToken(), bundle, {
+        lang: 'ja',
+        contentTypes: ['Src'],
+      })
+
+      expect(actual).toBeUndefined()
+    })
+
+    it('日本語', async () => {
+      const { art1 } = await setupArticleNodes('ja')
+
+      const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+        lang: 'ja',
+        contentTypes: ['Src', 'Draft'],
+      })
+
+      expect(actual!.article!.src!.ja!.srcContent).toEqual(art1.article!.src!.ja!.srcContent)
+      expect(actual!.article!.src!.ja!.draftContent).toEqual(art1.article!.src!.ja!.draftContent)
+    })
+
+    it('英語', async () => {
+      const { art1 } = await setupArticleNodes('en')
+
+      const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+        lang: 'en',
+        contentTypes: ['Src', 'Draft'],
+      })
+
+      expect(actual!.article!.src!.en!.srcContent).toEqual(art1.article!.src!.en!.srcContent)
+      expect(actual!.article!.src!.en!.draftContent).toEqual(art1.article!.src!.en!.draftContent)
+    })
+
+    describe('権限の検証', () => {
+      it('自ユーザーのノードを検索', async () => {
+        const { art1 } = await setupArticleNodes('ja')
+
+        const actual = await storageService.getArticleContentsNode(StorageUserToken(), art1, {
+          lang: 'ja',
+          contentTypes: ['Src', 'Draft'],
+        })
+
+        expect(actual!.path).toBe(art1.path)
+      })
+
+      it('他ユーザーのノードを検索', async () => {
+        const { art1 } = await setupArticleNodes('ja')
+
+        let actual!: HttpException
+        try {
+          await await storageService.getArticleContentsNode(GeneralUserToken(), art1, {
+            lang: 'ja',
+            contentTypes: ['Src', 'Draft'],
+          })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+
+      it('アプリケーション管理者で他ユーザーのノードを検索', async () => {
+        const { art1 } = await setupArticleNodes('ja')
+
+        let actual!: HttpException
+        try {
+          await await storageService.getArticleContentsNode(AppAdminUserToken(), art1, {
+            lang: 'ja',
+            contentTypes: ['Src', 'Draft'],
+          })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+    })
+  })
+
+  describe('getArticleSrcContent', () => {
+    async function setupArticleNodes(lang: LangCode) {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // バンドル
+      const bundle = await storageService.createArticleTypeDir({
+        lang,
+        dir: `${articleRootPath}`,
+        label: 'バンドル',
+        type: 'ListBundle',
+      })
+      // 記事1
+      let art1 = await storageService.createArticleTypeDir({
+        lang,
+        dir: `${bundle.path}`,
+        label: '記事1',
+        type: 'Article',
+      })
+      await storageService.saveArticleSrcContent(art1, {
+        lang,
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+      })
+      await storageService.saveArticleDraftContent(art1, {
+        lang,
+        draftContent: '# 記事下書き1',
+      })
+      art1 = await storageService.sgetNode(art1, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
+
+      // 記事1のレスポンス
+      const art1_result: GetArticleSrcContentResult = {
+        id: art1.id,
+        label: art1.article!.label[lang]!,
+        srcContent: art1.article!.src![lang]!.srcContent!,
+        dir: [{ id: bundle.id, label: bundle.article!.label[lang]! }],
+        path: [
+          { id: bundle.id, label: bundle.article!.label[lang]! },
+          { id: art1.id, label: art1.article!.label[lang]! },
+        ],
+        isPublic: false,
+        createdAt: art1.article!.src![lang]!.createdAt!,
+        updatedAt: art1.article!.src![lang]!.updatedAt!,
+      }
+
+      return { bundle, art1, art1_result }
+    }
+
+    it('記事は公開設定 -> 誰でもアクセス可能', async () => {
+      const { art1, art1_result } = await setupArticleNodes('ja')
 
       // 記事を公開設定
       await storageService.setDirShareDetail(art1, { isPublic: true })
 
-      const actual = await storageService.getArticleSrc(StorageUserToken(), { lang: 'ja', articleId: art1.id })
+      const actual = await storageService.getArticleSrcContent(StorageUserToken(), { lang: 'ja', articleId: art1.id })
 
-      expect(actual).toEqual<GetArticleSrcResult>({
+      expect(actual).toEqual<GetArticleSrcContentResult>({
+        ...art1_result,
+        isPublic: true,
+      })
+    })
+
+    it('記事は非公開設定 -> 他ユーザーはアクセス不可', async () => {
+      const { art1 } = await setupArticleNodes('ja')
+
+      // 記事を公開未設定
+      await storageService.setDirShareDetail(art1, { isPublic: false })
+
+      let actual!: HttpException
+      try {
+        // 他ユーザーを指定
+        await storageService.getArticleSrcContent(GeneralUserToken(), { lang: 'ja', articleId: art1.id })
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.getStatus()).toBe(403)
+    })
+
+    it('記事に読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
+      const { art1, art1_result } = await setupArticleNodes('ja')
+
+      // 記事に読み込み権限設定
+      await storageService.setDirShareDetail(art1, { readUIds: [GeneralUser().uid] })
+
+      // 読み込み権限に設定した他ユーザーを指定
+      const actual = await storageService.getArticleSrcContent(GeneralUserToken(), { lang: 'ja', articleId: art1.id })
+
+      expect(actual).toEqual(art1_result)
+    })
+
+    it('存在しない記事を指定した場合', async () => {
+      await setupArticleNodes('ja')
+
+      const actual = await storageService.getArticleSrcContent(GeneralUserToken(), { lang: 'ja', articleId: '12345678901234567890' })
+
+      expect(actual).toBeUndefined()
+    })
+
+    it('日本語', async () => {
+      const { art1, art1_result } = await setupArticleNodes('ja')
+
+      // 記事を公開設定
+      await storageService.setDirShareDetail(art1, { isPublic: true })
+
+      const actual = await storageService.getArticleSrcContent(StorageUserToken(), { lang: 'ja', articleId: art1.id })
+
+      expect(actual).toEqual<GetArticleSrcContentResult>({
+        ...art1_result,
+        isPublic: true,
+      })
+    })
+
+    it('英語', async () => {
+      const { art1, art1_result } = await setupArticleNodes('en')
+
+      // 記事を公開設定
+      await storageService.setDirShareDetail(art1, { isPublic: true })
+
+      const actual = await storageService.getArticleSrcContent(StorageUserToken(), { lang: 'en', articleId: art1.id })
+
+      expect(actual).toEqual<GetArticleSrcContentResult>({
         ...art1_result,
         isPublic: true,
       })
@@ -2787,13 +3044,13 @@ describe('StorageService', () => {
     it('読み込み権限の検証が行われているか確認', async () => {
       const validateReadable = td.replace(storageService, 'validateReadable')
 
-      // 記事に非公開設定
-      const { art1 } = await setupArticleNodes()
+      // 記事を非公開設定
+      const { art1 } = await setupArticleNodes('ja')
       await storageService.setDirShareDetail(art1, { isPublic: false })
-      const hierarchicalNodes = await storageService.getHierarchicalNodes(art1.path)
+      const hierarchicalNodes = await storageService.getHierarchicalNodes(art1.path, [ArticleContentFields.ja.SrcContent])
 
       // テスト対象実行
-      await storageService.getArticleSrc(StorageUserToken(), { lang: 'ja', articleId: art1.id })
+      await storageService.getArticleSrcContent(StorageUserToken(), { lang: 'ja', articleId: art1.id })
 
       const exp = td.explain(validateReadable)
       expect(exp.calls.length).toBe(1)
@@ -2855,9 +3112,11 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 3,
       })
-      ts_interface = (
-        await storageService.saveArticleMasterSrcFile({ lang, articleId: ts_interface.id, srcContent: 'Interface', textContent: 'Interface' })
-      ).article
+      ts_interface = await storageService.saveArticleSrcContent(ts_interface, {
+        lang,
+        srcContent: 'Interface',
+        searchContent: 'Interface',
+      })
 
       // Class
       ts_class = await storageService.createArticleTypeDir({
@@ -2867,7 +3126,11 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       })
-      ts_class = (await storageService.saveArticleMasterSrcFile({ lang, articleId: ts_class.id, srcContent: 'Class', textContent: 'Class' })).article
+      ts_class = await storageService.saveArticleSrcContent(ts_class, {
+        lang,
+        srcContent: 'Class',
+        searchContent: 'Class',
+      })
 
       // Types
       ts_types = await storageService.createArticleTypeDir({
@@ -2893,9 +3156,9 @@ describe('StorageService', () => {
       expect(actual.name).toBe(expected.name)
       expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
       expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
-      expect(actual.label).toBe(expected.article?.dir?.label?.[lang])
-      expect(actual.createdAt).toEqual(expected.article?.src?.[lang]?.createdAt)
-      expect(actual.updatedAt).toEqual(expected.article?.src?.[lang]?.updatedAt)
+      expect(actual.label).toBe(expected.article!.label![lang])
+      expect(actual.createdAt).toEqual(expected.article!.src![lang]!.createdAt)
+      expect(actual.updatedAt).toEqual(expected.article!.src![lang]!.updatedAt)
     }
 
     describe('他ユーザーによる記事リスト取得', () => {
@@ -3041,7 +3304,10 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       })
-      ts_interface = (await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: ts_interface.id, srcContent: 'Interface' })).article
+      ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
+        lang: 'ja',
+        draftContent: 'Interface',
+      })
 
       // Class (本文あり)
       ts_class = await storageService.createArticleTypeDir({
@@ -3051,8 +3317,11 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       })
-      ts_class = (await storageService.saveArticleMasterSrcFile({ lang: 'ja', articleId: ts_class.id, srcContent: 'Class', textContent: 'Class' }))
-        .article
+      ts_class = await storageService.saveArticleSrcContent(ts_class, {
+        lang: 'ja',
+        srcContent: 'Class',
+        searchContent: 'Class',
+      })
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'ja',
@@ -3108,11 +3377,10 @@ describe('StorageService', () => {
             type: 'Article',
             sortOrder: i + 1,
           })
-          await storageService.saveArticleMasterSrcFile({
+          await storageService.saveArticleSrcContent(articleNode, {
             lang: 'ja',
-            articleId: articleNode.id,
             srcContent: label,
-            textContent: label,
+            searchContent: label,
           })
         })
       )
@@ -3165,25 +3433,18 @@ describe('StorageService', () => {
     async function setupArticleTypeNodes(lang: LangCode): Promise<void> {
       // users
       // └test.storage
-      //   ├articles
-      //   │├Blog
-      //   ││└Note2
-      //   │││└master-src.md
-      //   ││└Note1
-      //   ││  └master-src.md
-      //   │├JavaScript
-      //   ││└Variable
-      //   ││  └master-src.md
-      //   │└TypeScript
-      //   │  ├Interface
-      //   │  │└master-src.md
-      //   │  ├Class
-      //   │  │└master-src.md
-      //   │  └Types
-      //   │    ├PrimitiveType
-      //   │    │└master-src.md
-      //   │    └LiteralType
-      //   ︙      └master-src.md
+      //   └articles
+      //     ├Blog
+      //     │├Note2
+      //     │└Note1
+      //     ├JavaScript
+      //     │└Variable
+      //     └TypeScript
+      //       ├Interface
+      //       ├Class
+      //       └Types
+      //         ├PrimitiveType
+      //         └LiteralType
 
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
@@ -3240,11 +3501,13 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       }
-      const input_js_variable_master: SaveArticleMasterSrcFileInput = {
-        lang,
-        articleId: input_js_variable.id!,
-        srcContent: 'Variable',
-        textContent: 'Variable',
+      const input_js_variable_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_js_variable,
+        input: {
+          lang,
+          srcContent: 'Variable',
+          searchContent: 'Variable',
+        },
       }
 
       // TypeScript
@@ -3266,11 +3529,13 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 3,
       }
-      const input_ts_interface_master: SaveArticleMasterSrcFileInput = {
-        lang,
-        articleId: input_ts_interface.id!,
-        srcContent: 'Interface',
-        textContent: 'Interface',
+      const input_ts_interface_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_ts_interface,
+        input: {
+          lang,
+          srcContent: 'Interface',
+          searchContent: 'Interface',
+        },
       }
 
       // TypeScript/Class
@@ -3282,11 +3547,13 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       }
-      const input_ts_class_master: SaveArticleMasterSrcFileInput = {
-        lang,
-        articleId: input_ts_class.id!,
-        srcContent: 'Class',
-        textContent: 'Class',
+      const input_ts_class_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_ts_class,
+        input: {
+          lang,
+          srcContent: 'Class',
+          searchContent: 'Class',
+        },
       }
 
       // TypeScript/Types
@@ -3308,11 +3575,13 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       }
-      const input_ts_types_primitive_master: SaveArticleMasterSrcFileInput = {
-        lang,
-        articleId: input_ts_types_primitive.id!,
-        srcContent: 'PrimitiveType',
-        textContent: 'PrimitiveType',
+      const input_ts_types_primitive_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_ts_types_primitive,
+        input: {
+          lang,
+          srcContent: 'PrimitiveType',
+          searchContent: 'PrimitiveType',
+        },
       }
 
       // TypeScript/Types/LiteralType
@@ -3324,11 +3593,13 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 1,
       }
-      const input_ts_types_literal_master: SaveArticleMasterSrcFileInput = {
-        lang,
-        articleId: input_ts_types_literal.id!,
-        srcContent: 'LiteralType',
-        textContent: 'LiteralType',
+      const input_ts_types_literal_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_ts_types_literal,
+        input: {
+          lang,
+          srcContent: 'LiteralType',
+          searchContent: 'LiteralType',
+        },
       }
 
       try {
@@ -3350,11 +3621,11 @@ describe('StorageService', () => {
           storageService.createArticleTypeDir(input_ts_types_literal).then(node => (ts_types_literal = node)),
         ])
         await Promise.all([
-          storageService.saveArticleMasterSrcFile(input_js_variable_master),
-          storageService.saveArticleMasterSrcFile(input_ts_interface_master),
-          storageService.saveArticleMasterSrcFile(input_ts_class_master),
-          storageService.saveArticleMasterSrcFile(input_ts_types_primitive_master),
-          storageService.saveArticleMasterSrcFile(input_ts_types_literal_master),
+          storageService.saveArticleSrcContent(input_js_variable_src.key, input_js_variable_src.input),
+          storageService.saveArticleSrcContent(input_ts_interface_src.key, input_ts_interface_src.input),
+          storageService.saveArticleSrcContent(input_ts_class_src.key, input_ts_class_src.input),
+          storageService.saveArticleSrcContent(input_ts_types_primitive_src.key, input_ts_types_primitive_src.input),
+          storageService.saveArticleSrcContent(input_ts_types_literal_src.key, input_ts_types_literal_src.input),
         ])
       } catch (err) {
         console.log(err)
@@ -3366,8 +3637,8 @@ describe('StorageService', () => {
       expect(actual.name).toBe(expected.name)
       expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
       expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
-      expect(actual.label).toBe(expected.article?.dir?.label?.[lang])
-      expect(actual.type).toBe(expected.article?.dir?.type)
+      expect(actual.label).toBe(expected.article!.label![lang])
+      expect(actual.type).toBe(expected.article!.type)
     }
 
     describe('他ユーザーによる目次取得', () => {
@@ -3443,7 +3714,10 @@ describe('StorageService', () => {
           type: 'Article',
           sortOrder: 2,
         })
-        ts_interface = (await storageService.saveArticleDraftSrcFile({ lang: 'ja', articleId: ts_interface.id, srcContent: 'Interface' })).article
+        ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
+          lang: 'ja',
+          draftContent: 'Interface',
+        })
 
         // Class (本文あり)
         ts_class = await storageService.createArticleTypeDir({
@@ -3453,8 +3727,11 @@ describe('StorageService', () => {
           type: 'Article',
           sortOrder: 1,
         })
-        ts_class = (await storageService.saveArticleMasterSrcFile({ lang: 'ja', articleId: ts_class.id, srcContent: 'Class', textContent: 'Class' }))
-          .article
+        ts_class = await storageService.saveArticleSrcContent(ts_class, {
+          lang: 'ja',
+          srcContent: 'Class',
+          searchContent: 'Class',
+        })
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
@@ -3594,25 +3871,17 @@ describe('StorageService', () => {
       //   ├articles
       //   │├blog
       //   ││├artA
-      //   │││├draft-src.md
-      //   │││├master-src.md
       //   │││├images
       //   ││││├picA.png
       //   ││││└picB.png
       //   │││└memo.txt
       //   ││└artB
-      //   ││  ├draft-src.md
-      //   ││  └master-src.md
       //   │├programming
       //   ││├artC
       //   ││├artD
       //   ││├TypeScript
       //   │││├artE
-      //   ││││├draft-src.md
-      //   ││││└master-src.md
       //   │││└artF
-      //   ││││├draft-src.md
-      //   ││││└master-src.md
       //   ││└JavaScript
       //   │└assets
       //   │  ├picC.png
@@ -3633,31 +3902,16 @@ describe('StorageService', () => {
       const articleRoot = h.newDirNode(StorageService.toArticleRootPath(StorageUserToken()))
 
       const blog = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'blog' }, type: 'ListBundle', sortOrder: 2 } },
+        article: { label: { ja: 'blog' }, type: 'ListBundle', sortOrder: 2 },
       })
 
       const blog_artA = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 },
-          src: {
-            ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
+          label: { ja: 'art1' },
+          type: 'Article',
+          sortOrder: 2,
+          src: { ja: { createdAt: now, updatedAt: now } },
         },
-      })
-
-      const blog_artA_master = h.newFileNode(StorageService.toArticleMasterSrcPath(blog_artA.path), {
-        id: blog_artA.article?.src?.['ja']?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-
-      const blog_artA_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(blog_artA.path), {
-        id: blog_artA.article?.src?.['ja']?.draftId,
-        article: { file: { type: 'DraftSrc' } },
       })
 
       const blog_artA_images = h.newDirNode(`${blog_artA.path}/images`)
@@ -3670,94 +3924,49 @@ describe('StorageService', () => {
 
       const blog_artB = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 },
-          src: {
-            ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
+          label: { ja: 'art2' },
+          type: 'Article',
+          sortOrder: 1,
+          src: { ja: { createdAt: now, updatedAt: now } },
         },
       })
 
-      const blog_artB_master = h.newFileNode(StorageService.toArticleMasterSrcPath(blog_artB.path), {
-        id: blog_artB.article?.src?.['ja']?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-
-      const blog_artB_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(blog_artB.path), {
-        id: blog_artB.article?.src?.['ja']?.draftId,
-        article: { file: { type: 'DraftSrc' } },
-      })
-
       const programming = h.newDirNode(`${articleRoot.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'programming' }, type: 'TreeBundle', sortOrder: 1 } },
+        article: { label: { ja: 'programming' }, type: 'TreeBundle', sortOrder: 1 },
       })
 
       const programming_artC = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 4 } },
+        article: { label: { ja: 'art1' }, type: 'Article', sortOrder: 4 },
       })
 
       const programming_artD = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 3 } },
+        article: { label: { ja: 'art2' }, type: 'Article', sortOrder: 3 },
       })
 
       const programming_ts = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'TypeScript' }, type: 'Category', sortOrder: 2 } },
+        article: { label: { ja: 'TypeScript' }, type: 'Category', sortOrder: 2 },
       })
 
       const programming_ts_artE = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 },
-          src: {
-            ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
+          label: { ja: 'art1' },
+          type: 'Article',
+          sortOrder: 2,
+          src: { ja: { createdAt: now, updatedAt: now } },
         },
-      })
-
-      const programming_ts_artE_master = h.newFileNode(StorageService.toArticleMasterSrcPath(programming_ts_artE.path), {
-        id: programming_ts_artE.article?.src?.['ja']?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-
-      const programming_ts_artE_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(programming_ts_artE.path), {
-        id: programming_ts_artE.article?.src?.['ja']?.draftId,
-        article: { file: { type: 'DraftSrc' } },
       })
 
       const programming_ts_artF = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
         article: {
-          dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 },
-          src: {
-            ja: {
-              masterId: StorageSchema.generateId(),
-              draftId: StorageSchema.generateId(),
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
+          label: { ja: 'art2' },
+          type: 'Article',
+          sortOrder: 1,
+          src: { ja: { createdAt: now, updatedAt: now } },
         },
       })
 
-      const programming_ts_artF_master = h.newFileNode(StorageService.toArticleMasterSrcPath(programming_ts_artF.path), {
-        id: programming_ts_artF.article?.src?.['ja']?.masterId,
-        article: { file: { type: 'MasterSrc' } },
-      })
-
-      const programming_ts_artF_draft = h.newFileNode(StorageService.toArticleDraftSrcPath(programming_ts_artF.path), {
-        id: programming_ts_artF.article?.src?.['ja']?.draftId,
-        article: { file: { type: 'DraftSrc' } },
-      })
-
       const programming_js = h.newDirNode(`${programming.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'JavaScript' }, type: 'Category', sortOrder: 1 } },
+        article: { label: { ja: 'JavaScript' }, type: 'Category', sortOrder: 1 },
       })
 
       const assets = h.newDirNode(StorageService.toArticleAssetsPath(StorageUserToken()))
@@ -3777,25 +3986,17 @@ describe('StorageService', () => {
         articleRoot,
         blog,
         blog_artA,
-        blog_artA_draft,
-        blog_artA_master,
         blog_artA_images,
         blog_artA_images_picA,
         blog_artA_images_picB,
         blog_artA_memo,
         blog_artB,
-        blog_artB_draft,
-        blog_artB_master,
         programming,
         programming_artC,
         programming_artD,
         programming_ts,
         programming_ts_artE,
-        programming_ts_artE_draft,
-        programming_ts_artE_master,
         programming_ts_artF,
-        programming_ts_artF_draft,
-        programming_ts_artF_master,
         programming_js,
         assets,
         assets_picC,
@@ -3816,35 +4017,27 @@ describe('StorageService', () => {
       expect(nodes[2]).toBe(articleRoot)
       expect(nodes[3]).toBe(blog)
       expect(nodes[4]).toBe(blog_artA)
-      expect(nodes[5]).toBe(blog_artA_draft)
-      expect(nodes[6]).toBe(blog_artA_master)
-      expect(nodes[7]).toBe(blog_artA_images)
-      expect(nodes[8]).toBe(blog_artA_images_picA)
-      expect(nodes[9]).toBe(blog_artA_images_picB)
-      expect(nodes[10]).toBe(blog_artA_memo)
-      expect(nodes[11]).toBe(blog_artB)
-      expect(nodes[12]).toBe(blog_artB_draft)
-      expect(nodes[13]).toBe(blog_artB_master)
-      expect(nodes[14]).toBe(programming)
-      expect(nodes[15]).toBe(programming_artC)
-      expect(nodes[16]).toBe(programming_artD)
-      expect(nodes[17]).toBe(programming_ts)
-      expect(nodes[18]).toBe(programming_ts_artE)
-      expect(nodes[19]).toBe(programming_ts_artE_draft)
-      expect(nodes[20]).toBe(programming_ts_artE_master)
-      expect(nodes[21]).toBe(programming_ts_artF)
-      expect(nodes[22]).toBe(programming_ts_artF_draft)
-      expect(nodes[23]).toBe(programming_ts_artF_master)
-      expect(nodes[24]).toBe(programming_js)
-      expect(nodes[25]).toBe(assets)
-      expect(nodes[26]).toBe(assets_picC)
-      expect(nodes[27]).toBe(assets_picD)
-      expect(nodes[28]).toBe(tmp)
-      expect(nodes[29]).toBe(d1)
-      expect(nodes[30]).toBe(f11)
-      expect(nodes[31]).toBe(f12)
-      expect(nodes[32]).toBe(d2)
-      expect(nodes[33]).toBe(f1)
+      expect(nodes[5]).toBe(blog_artA_images)
+      expect(nodes[6]).toBe(blog_artA_images_picA)
+      expect(nodes[7]).toBe(blog_artA_images_picB)
+      expect(nodes[8]).toBe(blog_artA_memo)
+      expect(nodes[9]).toBe(blog_artB)
+      expect(nodes[10]).toBe(programming)
+      expect(nodes[11]).toBe(programming_artC)
+      expect(nodes[12]).toBe(programming_artD)
+      expect(nodes[13]).toBe(programming_ts)
+      expect(nodes[14]).toBe(programming_ts_artE)
+      expect(nodes[15]).toBe(programming_ts_artF)
+      expect(nodes[16]).toBe(programming_js)
+      expect(nodes[17]).toBe(assets)
+      expect(nodes[18]).toBe(assets_picC)
+      expect(nodes[19]).toBe(assets_picD)
+      expect(nodes[20]).toBe(tmp)
+      expect(nodes[21]).toBe(d1)
+      expect(nodes[22]).toBe(f11)
+      expect(nodes[23]).toBe(f12)
+      expect(nodes[24]).toBe(d2)
+      expect(nodes[25]).toBe(f1)
     })
 
     it('パターン②', async () => {
@@ -3862,28 +4055,28 @@ describe('StorageService', () => {
       const programmingPath = `${articleRootPath}/programming`
 
       const programming_art1 = h.newDirNode(`${programmingPath}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 4 } },
+        article: { label: { ja: 'art1' }, type: 'Article', sortOrder: 4 },
       })
       const programming_art2 = h.newDirNode(`${programmingPath}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 3 } },
+        article: { label: { ja: 'art2' }, type: 'Article', sortOrder: 3 },
       })
       const programming_ts = h.newDirNode(`${programmingPath}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'TypeScript' }, type: 'Category', sortOrder: 2 } },
+        article: { label: { ja: 'TypeScript' }, type: 'Category', sortOrder: 2 },
       })
       const programming_ts_art1 = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 } },
+        article: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 },
       })
       const programming_ts_art2 = h.newDirNode(`${programming_ts.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 } },
+        article: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 },
       })
       const programming_js = h.newDirNode(`${programmingPath}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'JavaScript' }, type: 'Category', sortOrder: 1 } },
+        article: { label: { ja: 'JavaScript' }, type: 'Category', sortOrder: 1 },
       })
       const programming_js_art1 = h.newDirNode(`${programming_js.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 } },
+        article: { label: { ja: 'art1' }, type: 'Article', sortOrder: 2 },
       })
       const programming_js_art2 = h.newDirNode(`${programming_js.path}/${StorageSchema.generateId()}`, {
-        article: { dir: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 } },
+        article: { label: { ja: 'art2' }, type: 'Article', sortOrder: 1 },
       })
 
       // 配列に上位ディレクトリがなくてもソートできるか検証するために、
@@ -4066,16 +4259,13 @@ describe('StorageService', () => {
     let articleRoot: StorageNode
     let programming: StorageNode
     let introduction: StorageNode
-    let introduction_master: StorageNode
-    let introduction_draft: StorageNode
     let js: StorageNode
     let variable: StorageNode
-    let variable_master: StorageNode
-    let variable_draft: StorageNode
+    let iteration: StorageNode
     let ts: StorageNode
     let clazz: StorageNode
-    let clazz_master: StorageNode
-    let clazz_draft: StorageNode
+    let image1: StorageNode
+    let image2: StorageNode
     let py: StorageNode
     let tmp: StorageNode
 
@@ -4085,16 +4275,13 @@ describe('StorageService', () => {
       //   ├articles
       //   │└programming
       //   │  ├introduction
-      //   │  │├master-src.md
-      //   │  │└draft-src.md
       //   │  ├js
-      //   │  │└variable
-      //   │  │  ├master-src.md
-      //   │  │  └draft-src.md
+      //   │  │├variable
+      //   │  │└iteration
       //   │  ├ts
       //   │  │└class
-      //   │  │  ├master-src.md
-      //   │  │  └draft-src.md
+      //   │  │  ├image1.png
+      //   │  │  └image2.png
       //   │  └py
       //   └tmp
 
@@ -4121,15 +4308,31 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 4,
       })
-      // introduction/master-src.md
-      // introduction/draft-src.md
-      await storageService
-        .saveArticleMasterSrcFile({ lang: 'ja', articleId: introduction.id, srcContent: 'Introduction', textContent: 'Introduction' })
-        .then(({ article, master, draft }) => {
-          introduction = article
-          introduction_master = master
-          introduction_draft = draft
-        })
+
+      // js
+      js = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${programming.path}`,
+        label: 'js',
+        type: 'Category',
+        sortOrder: 3,
+      })
+      // js/variable
+      variable = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${js.path}`,
+        label: 'variable',
+        type: 'Article',
+        sortOrder: 2,
+      })
+      // js/iteration
+      iteration = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${js.path}`,
+        label: 'iteration',
+        type: 'Article',
+        sortOrder: 1,
+      })
 
       // ts
       ts = await storageService.createArticleTypeDir({
@@ -4137,7 +4340,7 @@ describe('StorageService', () => {
         dir: `${programming.path}`,
         label: 'ts',
         type: 'Category',
-        sortOrder: 3,
+        sortOrder: 2,
       })
       // ts/class
       clazz = await storageService.createArticleTypeDir({
@@ -4146,39 +4349,14 @@ describe('StorageService', () => {
         label: 'class',
         type: 'Article',
       })
-      // ts/class/master-src.md
-      // ts/class/draft-src.md
       await storageService
-        .saveArticleMasterSrcFile({ lang: 'ja', articleId: clazz.id, srcContent: 'Class', textContent: 'Class' })
-        .then(({ article, master, draft }) => {
-          clazz = article
-          clazz_master = master
-          clazz_draft = draft
-        })
-
-      // js
-      js = await storageService.createArticleTypeDir({
-        lang: 'ja',
-        dir: `${programming.path}`,
-        label: 'js',
-        type: 'Category',
-        sortOrder: 2,
-      })
-      // js/variable
-      variable = await storageService.createArticleTypeDir({
-        lang: 'ja',
-        dir: `${js.path}`,
-        label: 'variable',
-        type: 'Article',
-      })
-      // js/variable/master-src.md
-      // js/variable/draft-src.md
-      await storageService
-        .saveArticleMasterSrcFile({ lang: 'ja', articleId: variable.id, srcContent: 'Variable', textContent: 'Variable' })
-        .then(({ article, master, draft }) => {
-          variable = article
-          variable_master = master
-          variable_draft = draft
+        .uploadDataItems([
+          { data: '', contentType: 'image/png', path: `${clazz.path}/image1.png` },
+          { data: '', contentType: 'image/png', path: `${clazz.path}/image2.png` },
+        ])
+        .then(([_image1, _image2]) => {
+          image1 = _image1
+          image2 = _image2
         })
 
       // py
@@ -4200,7 +4378,7 @@ describe('StorageService', () => {
      * @param node
      */
     function toErrorNodeData(node: StorageNode) {
-      const article = node.article ? pickProps(node.article, ['dir', 'file']) : undefined
+      const article = node.article ? pickProps(node.article, ['type', 'label']) : undefined
       return { ...pickProps(node, ['id', 'path']), article }
     }
 
@@ -4225,7 +4403,7 @@ describe('StorageService', () => {
     describe('カテゴリの移動', () => {
       it('ベーシックケース', async () => {
         // 移動前の'programming/ts'のソート順を検証
-        expect(ts.article?.dir?.sortOrder).toBe(3)
+        expect(ts.article!.sortOrder).toBe(2)
 
         // カテゴリを別のカテゴリへ移動
         // 'programming/ts'を'programming/js/ts'へ移動
@@ -4238,12 +4416,12 @@ describe('StorageService', () => {
         expect(toNodes.length).toBe(4)
         expect(toNodes[0].path).toBe(`${js.path}/${ts.name}`)
         expect(toNodes[1].path).toBe(`${js.path}/${ts.name}/${clazz.name}`)
-        expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_draft.name}`)
-        expect(toNodes[3].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${clazz_master.name}`)
+        expect(toNodes[2].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${image1.name}`)
+        expect(toNodes[3].path).toBe(`${js.path}/${ts.name}/${clazz.name}/${image2.name}`)
 
         // 移動後の'programming/js/ts'のソート順を検証
         const _ts = toNodes[0]
-        expect(_ts.article?.dir?.sortOrder).toBe(2)
+        expect(_ts.article!.sortOrder).toBe(3)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {
@@ -4267,7 +4445,7 @@ describe('StorageService', () => {
     describe('記事の移動', () => {
       it('ベーシックケース', async () => {
         // 移動前の'programming/js/variable'のソート順を検証
-        expect(variable.article?.dir?.sortOrder).toBe(1)
+        expect(variable.article!.sortOrder).toBe(2)
 
         // 記事をカテゴリ直下へ移動
         // 'programming/js/variable'を'programming/ts/variable'へ移動
@@ -4277,14 +4455,12 @@ describe('StorageService', () => {
         // 移動後の'programming/ts/variable'＋配下ノードを検証
         const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })
         StorageService.sortNodes(toNodes)
-        expect(toNodes.length).toBe(3)
+        expect(toNodes.length).toBe(1)
         expect(toNodes[0].path).toBe(`${ts.path}/${variable.name}`)
-        expect(toNodes[1].path).toBe(`${ts.path}/${variable.name}/${variable_draft.name}`)
-        expect(toNodes[2].path).toBe(`${ts.path}/${variable.name}/${variable_master.name}`)
 
         // 移動後の'programming/ts/variable'のソート順を検証
         const _variable = toNodes[0]
-        expect(_variable.article?.dir?.sortOrder).toBe(2)
+        expect(_variable.article!.sortOrder).toBe(2)
       })
 
       it('移動不可なディレクトリへ移動しようとした場合', async () => {

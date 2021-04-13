@@ -1,4 +1,4 @@
-import { ArticleListItem, ArticleTableOfContentsItem, StorageArticleDetail, StorageArticleSrcDetail, StorageNode } from '../../../../src/app/services'
+import { ArticleDetail, ArticleListItem, ArticleSrcDetail, ArticleTableOfContentsItem, StorageNode } from '../../../../src/app/services'
 import { ToDeepRawDate, ToStrictDeepNull, toRawDate } from 'web-base-lib'
 
 //========================================================================
@@ -28,27 +28,24 @@ const StorageNodeFields = `
       writeUIds
     }
     article {
-      dir {
-        label {
-          ja
-          en
-        }
-        type
-        sortOrder
+      type
+      label {
+        ja
+        en
       }
-      file {
-        type
-      }
+      sortOrder
       src {
         ja {
-          masterId
-          draftId
+          srcContent
+          draftContent
+          searchContent
           createdAt
           updatedAt
         }
         en {
-          masterId
-          draftId
+          srcContent
+          draftContent
+          searchContent
           createdAt
           updatedAt
         }
@@ -94,12 +91,13 @@ const ArticleTableOfContentsItemFields = `
 //========================================================================
 
 function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
-  function toArticle(articleDetail?: StorageArticleDetail): ToGQLResponse<StorageArticleDetail> | null {
-    function toSrc(srcDetail?: StorageArticleSrcDetail): ToGQLResponse<StorageArticleSrcDetail> | null {
+  function toArticle(articleDetail?: ArticleDetail): ToGQLResponse<ArticleDetail> | null {
+    function toSrc(srcDetail?: ArticleSrcDetail): ToGQLResponse<ArticleSrcDetail> | null {
       if (!srcDetail) return null
       return {
-        masterId: srcDetail?.masterId ?? null,
-        draftId: srcDetail?.draftId ?? null,
+        srcContent: srcDetail?.srcContent ?? null,
+        draftContent: srcDetail?.draftContent ?? null,
+        searchContent: srcDetail?.searchContent ?? null,
         createdAt: toRawDate(srcDetail?.createdAt) ?? null,
         updatedAt: toRawDate(srcDetail?.updatedAt) ?? null,
       }
@@ -107,18 +105,12 @@ function toGQLResponseStorageNode(node: StorageNode): ResponseStorageNode {
 
     if (!articleDetail) return null
     return {
-      dir: (() => {
-        if (!articleDetail?.dir) return null
-        return {
-          type: articleDetail.dir.type,
-          sortOrder: articleDetail.dir.sortOrder,
-          label: {
-            ja: articleDetail.dir.label.ja ?? null,
-            en: articleDetail.dir.label.en ?? null,
-          },
-        }
-      })(),
-      file: articleDetail?.file ?? null,
+      type: articleDetail.type,
+      sortOrder: articleDetail.sortOrder,
+      label: {
+        ja: articleDetail.label.ja ?? null,
+        en: articleDetail.label.en ?? null,
+      },
       src: (() => {
         if (!articleDetail?.src) return null
         return {
