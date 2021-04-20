@@ -25,6 +25,7 @@ import { CoreStorageSchema, UserHelper } from './base'
 import {
   DeepPartial,
   arrayToDict,
+  pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
   splitArrayChunk,
@@ -495,7 +496,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
         return this.getDescendantsImpl({ path: path, includeBase }, pagination, sourceIncludes)
       }
       // 他ユーザーのノードを検索
@@ -644,7 +645,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
         return this.getDescendantsCountImpl({ path: path, includeBase })
       }
       // 他ユーザーのノードを検索
@@ -764,7 +765,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
         return this.getChildrenImpl({ path, includeBase }, pagination, sourceIncludes)
       }
       // 他ユーザーのノードを検索
@@ -912,7 +913,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, path) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
         return this.getChildrenCountImpl({ path, includeBase })
       }
       // 他ユーザーのノードを検索
@@ -1007,7 +1008,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, nodePath) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, nodePath) || idToken.isAppAdmin) {
         return this.getHierarchicalNodesImpl(nodePath, sourceIncludes)
       }
       // 他ユーザーのノードを検索
@@ -1120,7 +1121,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードに対する処理
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, input.dir) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, input.dir) || idToken.isAppAdmin) {
         return this.createDirImpl(input)
       }
       // 他ユーザーのノードに対する処理
@@ -1233,7 +1234,7 @@ class CoreStorageService<
       for (const dir of dirs) {
         // 自ユーザーのノードに対する処理
         // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-        if (CoreStorageService.isOwnUserRootUnder(idToken, dir) || idToken.isAppAdmin) {
+        if (CoreStorageService.isOwnUserRootFamily(idToken, dir) || idToken.isAppAdmin) {
           ownDirPaths.push(dir)
         }
         // 他ユーザーのノードに対する処理
@@ -1341,7 +1342,7 @@ class CoreStorageService<
     if (idToken) {
       // 自ユーザーのノードに対する処理
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, dirNode.path) || idToken.isAppAdmin) {
+      if (CoreStorageService.isOwnUserRootFamily(idToken, dirNode.path) || idToken.isAppAdmin) {
         return this.removeDirImpl(dirNode, pagination)
       }
       // 他ユーザーのノードに対する処理
@@ -1526,17 +1527,25 @@ class CoreStorageService<
     CoreStorageService.validateNodePath(input.toDir)
 
     if (idToken) {
-      // 自ユーザーのノードに対する処理
-      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (
-        (CoreStorageService.isOwnUserRootUnder(idToken, input.fromDir) && CoreStorageService.isOwnUserRootUnder(idToken, input.toDir)) ||
-        idToken.isAppAdmin
-      ) {
+      // アプリケーション管理者の場合
+      if (idToken.isAppAdmin) {
         return this.moveDirImpl(input, options)
       }
-      // 他ユーザーのノードに対する処理
+      // アプリケーション管理者以外の場合
       else {
-        throw new AppError(`Not implemented yet.`)
+        // ユーザールートに対する処理
+        if (CoreStorageService.isUserRoot(input.fromDir)) {
+          throw new AppError(`You do not have permission to move the user root directory.`, { uid: idToken.uid })
+        }
+
+        // 自ユーザーのノードに対する処理
+        if (CoreStorageService.isOwnUserRootFamily(idToken, input.fromDir) && CoreStorageService.isOwnUserRootUnder(idToken, input.toDir)) {
+          return this.moveDirImpl(input, options)
+        }
+        // 他ユーザーのノードに対する処理
+        else {
+          throw new AppError(`Not implemented yet.`)
+        }
       }
     } else {
       return this.moveDirImpl(input, options)
@@ -1564,6 +1573,14 @@ class CoreStorageService<
       throw new AppError(`The destination directory is its own subdirectory: '${_path.join(fromDirPath)}' -> '${_path.join(toDirPath)}'`)
     }
 
+    const fromDir = await this.getNode({ path: fromDirPath })
+    if (!fromDir) {
+      throw new AppError(`The node to be moved does not exist.`, { path: fromDirPath })
+    }
+    if (fromDir.nodeType !== 'Dir') {
+      throw new AppError(`The node to be moved is not directory.`, { from: pickProps(fromDir, ['id', 'path', 'nodeType']) })
+    }
+
     // 移動先の所属ディレクトリの存在確認
     // ※バケット直下への移動時はディレクトリの存在確認はしない
     const toParentPath = removeStartDirChars(_path.dirname(toDirPath))
@@ -1571,6 +1588,9 @@ class CoreStorageService<
       const toParentNode = await this.getNode({ path: toParentPath })
       if (!toParentNode) {
         throw new AppError(`The destination directory does not exist: '${toParentPath}'`)
+      }
+      if (toParentNode.nodeType !== 'Dir') {
+        throw new AppError(`The destination node is not directory.`, { to: pickProps(toParentNode, ['id', 'path', 'nodeType']) })
       }
     }
 
@@ -1739,6 +1759,9 @@ class CoreStorageService<
       if (!toParentNode) {
         throw new AppError(`The destination directory does not exist: '${toParentPath}'`)
       }
+      if (toParentNode.nodeType !== 'Dir') {
+        throw new AppError(`The destination node is not directory.`, { to: pickProps(toParentNode, ['id', 'path', 'nodeType']) })
+      }
     }
 
     // 移動先に同名のファイルが存在している場合
@@ -1822,14 +1845,25 @@ class CoreStorageService<
     CoreStorageService.validateNodePath(input.dir)
 
     if (idToken) {
-      // 自ユーザーのノードに対する処理
-      // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootUnder(idToken, input.dir) || idToken.isAppAdmin) {
+      // アプリケーション管理者の場合
+      if (idToken.isAppAdmin) {
         return this.renameDirImpl(input, options)
       }
-      // 他ユーザーのノードに対する処理
+      // アプリケーション管理者以外の場合
       else {
-        throw new AppError(`Not implemented yet.`)
+        // ユーザールートに対する処理
+        if (CoreStorageService.isUserRoot(input.dir)) {
+          throw new AppError(`You do not have permission to rename the user root directory.`, { uid: idToken.uid })
+        }
+
+        // 自ユーザーのノードに対する処理
+        if (CoreStorageService.isOwnUserRootFamily(idToken, input.dir)) {
+          return this.renameDirImpl(input, options)
+        }
+        // 他ユーザーのノードに対する処理
+        else {
+          throw new AppError(`Not implemented yet.`)
+        }
       }
     } else {
       return this.renameDirImpl(input, options)
@@ -1962,19 +1996,30 @@ class CoreStorageService<
     }
 
     const dirNode = await this.sgetNode(key)
+    if (dirNode.nodeType !== 'Dir') {
+      throw new AppError(`The node to be shared is not directory.`, { to: pickProps(dirNode, ['id', 'path', 'nodeType']) })
+    }
 
     if (idToken) {
-      // アプリケーションノードに対する処理
-      if (CoreStorageService.isAppNode(dirNode.path) && idToken.isAppAdmin) {
+      // アプリケーション管理者の場合
+      if (idToken.isAppAdmin) {
         return this.setDirShareDetailImpl(dirNode, input)
       }
-      // 自ユーザーのノードに対する処理
-      else if (CoreStorageService.isOwnUserRootUnder(idToken, dirNode.path)) {
-        return this.setDirShareDetailImpl(dirNode, input)
-      }
-      // 他ユーザーのノードに対する処理
+      // アプリケーション管理者以外の場合
       else {
-        throw new AppError(`Not implemented yet.`)
+        // ユーザールートに対する処理
+        if (CoreStorageService.isUserRoot(dirNode.path)) {
+          throw new AppError(`You do not have permission to set share detail the user root directory.`, { uid: idToken.uid })
+        }
+
+        // 自ユーザーのノードに対する処理
+        if (CoreStorageService.isOwnUserRootUnder(idToken, dirNode.path)) {
+          return this.setDirShareDetailImpl(dirNode, input)
+        }
+        // 他ユーザーのノードに対する処理
+        else {
+          throw new AppError(`Not implemented yet.`)
+        }
       }
     } else {
       return this.setDirShareDetailImpl(dirNode, input)
@@ -2034,6 +2079,9 @@ class CoreStorageService<
     }
 
     const fileNode = await this.sgetNode(key)
+    if (fileNode.nodeType !== 'File') {
+      throw new AppError(`The node to be shared is not file.`, { to: pickProps(fileNode, ['id', 'path', 'nodeType']) })
+    }
 
     if (idToken) {
       // 自ユーザーのノードに対する処理
@@ -3102,6 +3150,15 @@ class CoreStorageService<
   static isAppNode(nodePath: string): boolean {
     // ユーザーノード以外はアプリケーションノードと判定
     return !this.isUserRootFamily(nodePath)
+  }
+
+  /**
+   * 指定されたパスがあるユーザーのユーザールートか否かを取得します。
+   * @param nodePath
+   */
+  static isUserRoot(nodePath: string): boolean {
+    const reg = new RegExp(`^${config.storage.user.rootName}/[^/]+$`)
+    return reg.test(nodePath)
   }
 
   /**
