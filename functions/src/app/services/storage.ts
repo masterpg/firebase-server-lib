@@ -965,7 +965,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         query: {
           bool: {
-            must: [
+            filter: [
               { term: { dir: articleRootPath } },
               {
                 terms: { 'article.type': ['ListBundle', 'TreeBundle'] },
@@ -980,18 +980,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     //
     // バンドルディレクトリ配下の「カテゴリ」「記事」を取得
-    // ・ツリーバンドル配下のカテゴリ、記事は全て取得する
-    // ・リストバンドル配下の記事は取得しない
     //
     const queryBody: string[] = []
     for (const bundleNode of bundleDirs) {
-      if (bundleNode.article?.type === 'ListBundle') continue
       const header = { index: StorageSchema.IndexAlias }
       const body = {
         size: 10000,
         query: {
           bool: {
-            must: [
+            filter: [
               { wildcard: { path: `${bundleNode.path}/*` } },
               {
                 terms: { 'article.type': ['Category', 'Article'] },
@@ -1007,26 +1004,21 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       queryBody.push(JSON.stringify(body))
     }
 
-    // バンドルディレクトリ配下に記事系ディレクトリがない場合
-    if (!queryBody.length) {
-      // 検索されたバンドルディレクトリの中からリストバンドルのみを返す
-      return toArticleTableOfContentsItems(
-        lang,
-        bundleDirs.filter(bundleDir => bundleDir.article?.type === 'ListBundle')
+    let bundleUnderCategoryAndArticle: StorageNode[] = []
+    let allNodeDict: { [path: string]: StorageNode } = {}
+    if (queryBody.length) {
+      const response2 = await this.client.msearch<ElasticMSearchResponse<DBStorageNode>, string[]>({
+        body: queryBody,
+      })
+      bundleUnderCategoryAndArticle = this.dbResponseToNodes(response2)
+      allNodeDict = [...articleRootHierarchicalNodes, ...bundleDirs, ...bundleUnderCategoryAndArticle].reduce<{ [path: string]: StorageNode }>(
+        (result, node) => {
+          result[node.path] = node
+          return result
+        },
+        {}
       )
     }
-
-    const response2 = await this.client.msearch<ElasticMSearchResponse<DBStorageNode>, string[]>({
-      body: queryBody,
-    })
-    const bundleUnderCategoryAndArticle = this.dbResponseToNodes(response2)
-    const allNodeDict = [...articleRootHierarchicalNodes, ...bundleDirs, ...bundleUnderCategoryAndArticle].reduce<{ [path: string]: StorageNode }>(
-      (result, node) => {
-        result[node.path] = node
-        return result
-      },
-      {}
-    )
 
     //
     // リクエスターがアクセス可能な「記事」に絞り込み
@@ -1049,10 +1041,21 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     // 取得した記事系ディレクトリを階層構造化
     //
-    const accessibleDirNodes = [...bundleDirs.filter(node => node.article?.type === 'ListBundle'), ...accessibleArticles]
-    const summarizedPaths = summarizeFamilyPaths(accessibleDirNodes.map(node => node.path))
+    const summarizedPaths = summarizeFamilyPaths(accessibleArticles.map(node => node.path))
     const allAccessiblePaths = splitHierarchicalPaths(...summarizedPaths).filter(isArticleRootUnder)
-    const allAccessibleNodes = allAccessiblePaths.map(path => allNodeDict[path])
+    const allAccessibleNodes = allAccessiblePaths.reduce((result, nodePath) => {
+      const node = allNodeDict[nodePath]
+      if (node.article!.type === 'Article') {
+        const parentNode = allNodeDict[node.dir]
+        // 記事の親がリストバンドル場合、その記事は戻り値に設定しない
+        if (parentNode.article!.type !== 'ListBundle') {
+          result.push(node)
+        }
+      } else {
+        result.push(node)
+      }
+      return result
+    }, [] as StorageNode[])
     StorageService.sortNodes(allAccessibleNodes)
 
     return toArticleTableOfContentsItems(lang, allAccessibleNodes)
@@ -1233,7 +1236,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         ...pickProps(input, ['type', 'type', 'sortOrder']),
         label: <ArticleDirLabelByLang>{ [input.lang]: input.label },
       },
-      { share: input.share }
+      {
+        share: {
+          isPublic: false,
+          ...input.share,
+        },
+      }
     )
   }
 

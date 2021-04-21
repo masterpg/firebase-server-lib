@@ -2773,10 +2773,13 @@ class CoreStorageService<
     const getResult = (hierarchicalNodes: NODE[]) => {
       hierarchicalNodes = CoreStorageService.sortNodes([...hierarchicalNodes]) as NODE[]
 
-      const result: Required<StorageNodeShareDetail> = { isPublic: false, readUIds: null, writeUIds: null }
+      const result: Required<StorageNodeShareDetail> = { isPublic: null, readUIds: null, writeUIds: null }
       for (const node of hierarchicalNodes) {
         if (typeof node.share.isPublic === 'boolean') {
-          result.isPublic = node.share.isPublic
+          // 上位で明示的に非公開が設定されている場合、下位公開設定は無視される
+          if (result.isPublic !== false) {
+            result.isPublic = node.share.isPublic
+          }
         }
         if (node.share.readUIds) {
           result.readUIds = node.share.readUIds

@@ -5814,7 +5814,20 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+      it('上位ディレクトリに公開未設定 + ノードは公開設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+        const { d1, d11, d12 } = await setupAppNodes()
+
+        // 上位ディレクトリに公開未設定
+        await storageService.setDirShareDetail(d1, { isPublic: null })
+        // ノードに公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+        await storageService.setDirShareDetail(d12, { isPublic: true })
+
+        // アプリケーション管理者以外で検証
+        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+      })
+
+      it('上位ディレクトリに公開設定 + ノードは公開未設定 -> アプリケーション管理者以外もアクセス可能', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに公開設定
@@ -5827,7 +5840,7 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは非公開設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
+      it('上位ディレクトリに公開設定 + ノードは非公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに公開設定
@@ -5846,7 +5859,7 @@ describe('CoreStorageService', () => {
         expect(actual.getStatus()).toBe(403)
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに読み込み権限設定 -> アプリケーション管理者以外もアクセス可能', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードは公開未設定 -> アプリケーション管理者以外もアクセス可能', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -5859,7 +5872,7 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6010,7 +6023,20 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーもアクセス可能', async () => {
+      it('上位ディレクトリに公開未設定 + ノードは公開設定 -> 他ユーザーもアクセス可能', async () => {
+        const { d1, d11, d12 } = await setupUserNodes()
+
+        // 上位ディレクトリに公開未設定
+        await storageService.setDirShareDetail(d1, { isPublic: null })
+        // ノードを公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+        await storageService.setDirShareDetail(d12, { isPublic: true })
+
+        // 他ユーザーで検証
+        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+      })
+
+      it('上位ディレクトリに公開設定 + ノードは公開未設定 -> 他ユーザーもアクセス可能', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに公開設定
@@ -6023,7 +6049,7 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーはアクセス不可', async () => {
+      it('上位ディレクトリに公開設定 + ノードは非公開設定 -> 他ユーザーはアクセス不可', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに公開設定
@@ -6043,7 +6069,7 @@ describe('CoreStorageService', () => {
         expect(actual.getStatus()).toBe(403)
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーもアクセス可能', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードは公開未設定 -> 他ユーザーもアクセス可能', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6056,7 +6082,7 @@ describe('CoreStorageService', () => {
         await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6304,7 +6330,20 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外も読み込み可能', async () => {
+      it('上位ディレクトリに公開未設定 + ノードは公開設定 -> アプリケーション管理者以外も読み込み可能', async () => {
+        const { d1, d11, d12 } = await setupAppNodes()
+
+        // 上位ディレクトリに公開未設定
+        await storageService.setDirShareDetail(d1, { isPublic: null })
+        // ノードに公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+        await storageService.setDirShareDetail(d12, { isPublic: true })
+
+        // アプリケーション管理者以外で検証
+        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+      })
+
+      it('上位ディレクトリに公開設定 + ノードは公開未設定 -> アプリケーション管理者以外も読み込み可能', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに公開設定
@@ -6317,7 +6356,7 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは非公開設定 + 上位ディレクトリに公開設定 -> アプリケーション管理者以外は読み込み不可', async () => {
+      it('上位ディレクトリに公開設定 + ノードは非公開設定 -> アプリケーション管理者以外は読み込み不可', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに公開設定
@@ -6336,7 +6375,7 @@ describe('CoreStorageService', () => {
         expect(actual.getStatus()).toBe(403)
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに読み込み権限設定 -> アプリケーション管理者以外も読み込み可能', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードは公開未設定 -> アプリケーション管理者以外も読み込み可能', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6349,7 +6388,7 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーも読み込み不可', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーも読み込み不可', async () => {
         const { d1, d11, d12 } = await setupAppNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6514,7 +6553,20 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに公開設定 -> 他ユーザーも読み込み可能', async () => {
+      it('上位ディレクトリに公開未設定 + ノードは公開設定 -> 他ユーザーも読み込み可能', async () => {
+        const { d1, d11, d12 } = await setupUserNodes()
+
+        // 上位ディレクトリに公開未設定
+        await storageService.setDirShareDetail(d1, { isPublic: null })
+        // ノードを公開設定
+        await storageService.setDirShareDetail(d11, { isPublic: true })
+        await storageService.setDirShareDetail(d12, { isPublic: true })
+
+        // 他ユーザーで検証
+        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+      })
+
+      it('上位ディレクトリに公開設定 + ノードは公開未設定 -> 他ユーザーも読み込み可能', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに公開設定
@@ -6527,7 +6579,7 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードは非公開設定 + 上位ディレクトリに公開設定 -> 他ユーザーは読み込み不可', async () => {
+      it('上位ディレクトリに公開設定 + ノードは非公開設定 -> 他ユーザーは読み込み不可', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに公開設定
@@ -6547,7 +6599,7 @@ describe('CoreStorageService', () => {
         expect(actual.getStatus()).toBe(403)
       })
 
-      it('ノードは公開未設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーも読み込み可能', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードは公開未設定 -> 他ユーザーも読み込み可能', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに読み込み権限設定
@@ -6560,7 +6612,7 @@ describe('CoreStorageService', () => {
         await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
       })
 
-      it('ノードに読み込み権限設定 + 上位ディレクトリに読み込み権限設定 -> 他ユーザーは読み込み不可', async () => {
+      it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーは読み込み不可', async () => {
         const { d1, d11, d12 } = await setupUserNodes()
 
         // 上位ディレクトリに読み込み権限設定

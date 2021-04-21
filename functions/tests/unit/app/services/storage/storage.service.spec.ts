@@ -93,7 +93,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual({ isPublic: false, readUIds: null, writeUIds: null })
         await h.existsNodes([actual])
       })
 
@@ -195,7 +195,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(2)
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual({ isPublic: false, readUIds: null, writeUIds: null })
         await h.existsNodes([actual])
       })
 
@@ -2925,6 +2925,7 @@ describe('StorageService', () => {
         dir: `${articleRootPath}`,
         label: 'バンドル',
         type: 'ListBundle',
+        share: { isPublic: null }, // 公開未設定
       })
       // 記事1
       let art1 = await storageService.createArticleTypeDir({
@@ -3471,6 +3472,14 @@ describe('StorageService', () => {
         type: 'Article',
         sortOrder: 2,
       }
+      const input_blog_note2_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_blog_note2,
+        input: {
+          lang,
+          srcContent: 'Note2',
+          searchContent: 'Note2',
+        },
+      }
 
       // Blog/Note1
       const input_blog_note1: CreateArticleTypeDirInput = {
@@ -3480,6 +3489,14 @@ describe('StorageService', () => {
         label: 'Note1',
         type: 'Article',
         sortOrder: 1,
+      }
+      const input_blog_note1_src: { key: StorageNodeGetKeyInput; input: SaveArticleSrcContentInput } = {
+        key: input_blog_note1,
+        input: {
+          lang,
+          srcContent: 'Note1',
+          searchContent: 'Note1',
+        },
       }
 
       // JavaScript
@@ -3621,6 +3638,8 @@ describe('StorageService', () => {
           storageService.createArticleTypeDir(input_ts_types_literal).then(node => (ts_types_literal = node)),
         ])
         await Promise.all([
+          storageService.saveArticleSrcContent(input_blog_note2_src.key, input_blog_note2_src.input),
+          storageService.saveArticleSrcContent(input_blog_note1_src.key, input_blog_note1_src.input),
           storageService.saveArticleSrcContent(input_js_variable_src.key, input_js_variable_src.input),
           storageService.saveArticleSrcContent(input_ts_interface_src.key, input_ts_interface_src.input),
           storageService.saveArticleSrcContent(input_ts_class_src.key, input_ts_class_src.input),
@@ -3647,45 +3666,174 @@ describe('StorageService', () => {
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
-        // リストバンドルは権限がなくても取得される！
+        expect(actual.length).toBe(0)
+      })
+
+      it('リストバンドルを公開設定 - リストバンドル配下に公開記事がある場合', async () => {
+        await setupArticleTypeNodes('ja')
+
+        await Promise.all([
+          // リストバンドルを公開未設定
+          storageService.setDirShareDetail(blog, { isPublic: null }),
+          // リストバンドル配下の記事を一部公開設定
+          storageService.setDirShareDetail(blog_note1, { isPublic: true }),
+          storageService.setDirShareDetail(blog_note2, { isPublic: false }),
+          // ツリーバンドルを非公開設定
+          storageService.setDirShareDetail(js, { isPublic: false }),
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
+
+        // リストバンドルは取得される
         expect(actual.length).toBe(1)
         verifyArticleTableOfContentsItem('ja', actual[0], blog)
       })
 
-      it('カテゴリを公開設定 - カテゴリ配下に読み込み可能な記事がある場合', async () => {
+      it('リストバンドルを公開設定 - リストバンドル配下に公開記事がない場合', async () => {
+        await setupArticleTypeNodes('ja')
+
+        await Promise.all([
+          // リストバンドルを公開未設定
+          storageService.setDirShareDetail(blog, { isPublic: null }),
+          // リストバンドル配下の記事を非公開設定
+          storageService.setDirShareDetail(blog_note1, { isPublic: false }), // 非公開
+          storageService.setDirShareDetail(blog_note2, { isPublic: null }), // 未設定
+          // ツリーバンドルを非公開設定
+          storageService.setDirShareDetail(js, { isPublic: false }),
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
+
+        // リストバンドル配下に読み込み可能な記事がないのでリストバンドルは取得されない
+        expect(actual.length).toBe(0)
+      })
+
+      it('リストバンドルを公開設定 - 記事に下書きしかない場合', async () => {
+        const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+        const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+        users = articleRootNodes[0]
+        userRoot = articleRootNodes[1]
+        articleRoot = articleRootNodes[2]
+
+        // Blog
+        blog = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          id: StorageSchema.generateId(),
+          dir: `${articleRoot.path}`,
+          label: 'Blog',
+          type: 'ListBundle',
+          sortOrder: 3,
+          share: { isPublic: true }, // 公開設定
+        })
+
+        // Blog/Note2 (下書きのみ)
+        blog_note2 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          id: StorageSchema.generateId(),
+          dir: `${articleRoot.path}/${blog.id}`,
+          label: 'Note2',
+          type: 'Article',
+          sortOrder: 2,
+          share: { isPublic: true }, // 公開設定
+        })
+
+        // Blog/Note1 (下書きのみ)
+        blog_note1 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          id: StorageSchema.generateId(),
+          dir: `${articleRoot.path}/${blog.id}`,
+          label: 'Note1',
+          type: 'Article',
+          sortOrder: 1,
+          share: { isPublic: null }, // 公開未設定
+        })
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
+
+        // リストバンドル配下に下書きしかない場合、リストバンドルは取得されない
+        expect(actual.length).toBe(0)
+      })
+
+      it('リストバンドルを非公開設定 - リストバンドル配下に公開記事がある場合', async () => {
+        await setupArticleTypeNodes('ja')
+
+        await Promise.all([
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
+          // リストバンドル配下の記事を非公開設定
+          storageService.setDirShareDetail(blog_note1, { isPublic: true }), // 公開
+          storageService.setDirShareDetail(blog_note2, { isPublic: null }), // 未設定
+          // ツリーバンドルを非公開設定
+          storageService.setDirShareDetail(js, { isPublic: false }),
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
+
+        // リストバンドルが非公開だと配下の記事が公開されていてもそのリストバンドルは取得されない
+        expect(actual.length).toBe(0)
+      })
+
+      it('リストバンドルを非公開設定 - リストバンドル配下に読み込み権限設定された記事がある場合', async () => {
+        await setupArticleTypeNodes('ja')
+
+        await Promise.all([
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
+          // リストバンドル配下のノードを読み込み権限設定
+          storageService.setDirShareDetail(blog_note1, { readUIds: [GeneralUserToken().uid] }),
+          // ツリーバンドルを非公開設定
+          storageService.setDirShareDetail(js, { isPublic: false }),
+          storageService.setDirShareDetail(ts, { isPublic: false }),
+        ])
+
+        const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
+
+        // リストバンドルが非公開でも配下の記事が読み込み権限設定されていればそのリストバンドルが取得される
+        expect(actual.length).toBe(1)
+        verifyArticleTableOfContentsItem('ja', actual[0], blog)
+      })
+
+      it('カテゴリを公開設定 - カテゴリ配下に読公開記事がある場合', async () => {
         await setupArticleTypeNodes('ja')
 
         await Promise.all([
           // カテゴリを公開設定
           storageService.setDirShareDetail(ts, { isPublic: true }),
-          // カテゴリ配下のノードの一部を非公開設定
+          // カテゴリ配下の記事を一部公開設定
+          storageService.setDirShareDetail(ts_interface, { isPublic: true }),
           storageService.setDirShareDetail(ts_class, { isPublic: false }),
           storageService.setDirShareDetail(ts_types, { isPublic: false }),
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
         ])
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
-        expect(actual.length).toBe(3)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts)
-        verifyArticleTableOfContentsItem('ja', actual[2], ts_interface)
+        expect(actual.length).toBe(2)
+        verifyArticleTableOfContentsItem('ja', actual[0], ts)
+        verifyArticleTableOfContentsItem('ja', actual[1], ts_interface)
       })
 
-      it('カテゴリを公開設定 - カテゴリ配下に読み込み可能な記事がない場合', async () => {
+      it('カテゴリを公開設定 - カテゴリ配下に公開記事がない場合', async () => {
         await setupArticleTypeNodes('ja')
 
         await Promise.all([
           // カテゴリを公開設定
-          storageService.setDirShareDetail(js, { isPublic: true }),
-          // カテゴリ配下のノードを非公開設定
-          storageService.setDirShareDetail(js_variable, { isPublic: false }),
+          storageService.setDirShareDetail(ts, { isPublic: true }),
+          // カテゴリ配下の記事を非公開設定
+          storageService.setDirShareDetail(ts_interface, { isPublic: false }), // 非公開
+          storageService.setDirShareDetail(ts_class, { isPublic: false }), // 非公開
+          storageService.setDirShareDetail(ts_types, { isPublic: false }), // 非公開
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
         ])
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
-        // カテゴリ配下に読み込み可能な「記事」がない場合、カテゴリは取得されない
-        expect(actual.length).toBe(1)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
+        expect(actual.length).toBe(0)
       })
 
       it('カテゴリを公開設定 - 記事に下書きしかない場合', async () => {
@@ -3703,7 +3851,7 @@ describe('StorageService', () => {
           label: 'TypeScript',
           type: 'TreeBundle',
           sortOrder: 1,
-          share: { isPublic: true },
+          share: { isPublic: true }, // 公開設定
         })
 
         // Interface (下書きのみ)
@@ -3713,6 +3861,7 @@ describe('StorageService', () => {
           label: 'Interface',
           type: 'Article',
           sortOrder: 2,
+          share: { isPublic: true }, // 公開設定
         })
         ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
           lang: 'ja',
@@ -3726,6 +3875,7 @@ describe('StorageService', () => {
           label: 'Class',
           type: 'Article',
           sortOrder: 1,
+          share: { isPublic: null }, // 公開未設定
         })
         ts_class = await storageService.saveArticleSrcContent(ts_class, {
           lang: 'ja',
@@ -3747,18 +3897,16 @@ describe('StorageService', () => {
           // カテゴリを非公開設定
           storageService.setDirShareDetail(ts, { isPublic: false }),
           storageService.setDirShareDetail(ts_types, { isPublic: false }),
-          // カテゴリ配下のノードを公開設定
+          // カテゴリ配下の記事を公開設定
           storageService.setDirShareDetail(ts_types_primitive, { isPublic: true }),
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
         ])
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
-        // カテゴリが非公開でも配下の記事が公開されていればその階層構造が取得される
-        expect(actual.length).toBe(4)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts)
-        verifyArticleTableOfContentsItem('ja', actual[2], ts_types)
-        verifyArticleTableOfContentsItem('ja', actual[3], ts_types_primitive)
+        // カテゴリが非公開だと配下の記事が公開されていてもそのカテゴリの階層は取得されない
+        expect(actual.length).toBe(0)
       })
 
       it('カテゴリを非公開設定 - カテゴリ配下に読み込み権限設定された記事がある場合', async () => {
@@ -3768,18 +3916,19 @@ describe('StorageService', () => {
           // カテゴリを非公開設定
           storageService.setDirShareDetail(ts, { isPublic: false }),
           storageService.setDirShareDetail(ts_types, { isPublic: false }),
-          // カテゴリ配下のノードを読み込み権限設定
+          // カテゴリ配下の記事に読み込み権限設定
           storageService.setDirShareDetail(ts_types_primitive, { readUIds: [GeneralUserToken().uid] }),
+          // リストバンドルを非公開設定
+          storageService.setDirShareDetail(blog, { isPublic: false }),
         ])
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
         // カテゴリが非公開でも配下の記事が読み込み権限設定されていればその階層が取得される
-        expect(actual.length).toBe(4)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts)
-        verifyArticleTableOfContentsItem('ja', actual[2], ts_types)
-        verifyArticleTableOfContentsItem('ja', actual[3], ts_types_primitive)
+        expect(actual.length).toBe(3)
+        verifyArticleTableOfContentsItem('ja', actual[0], ts)
+        verifyArticleTableOfContentsItem('ja', actual[1], ts_types)
+        verifyArticleTableOfContentsItem('ja', actual[2], ts_types_primitive)
       })
     })
 
@@ -3804,9 +3953,12 @@ describe('StorageService', () => {
       await setupArticleTypeNodes('ja')
 
       await Promise.all([
+        // リストバンドルを公開設定
+        storageService.setDirShareDetail(blog, { isPublic: true }),
         // カテゴリを公開設定
         storageService.setDirShareDetail(ts, { isPublic: true }),
         // カテゴリ配下のノードの一部を非公開設定
+        storageService.setDirShareDetail(ts_interface, { isPublic: true }),
         storageService.setDirShareDetail(ts_class, { isPublic: false }),
         storageService.setDirShareDetail(ts_types, { isPublic: false }),
       ])
@@ -3843,10 +3995,9 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleTableOfContents(undefined, { lang: 'ja', userName: StorageUser().userName })
 
-      expect(actual.length).toBe(3)
-      verifyArticleTableOfContentsItem('ja', actual[0], blog)
-      verifyArticleTableOfContentsItem('ja', actual[1], js)
-      verifyArticleTableOfContentsItem('ja', actual[2], js_variable)
+      expect(actual.length).toBe(2)
+      verifyArticleTableOfContentsItem('ja', actual[0], js)
+      verifyArticleTableOfContentsItem('ja', actual[1], js_variable)
     })
 
     it('英語 ', async () => {
@@ -3857,10 +4008,9 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleTableOfContents(undefined, { lang: 'en', userName: StorageUser().userName })
 
-      expect(actual.length).toBe(3)
-      verifyArticleTableOfContentsItem('en', actual[0], blog)
-      verifyArticleTableOfContentsItem('en', actual[1], js)
-      verifyArticleTableOfContentsItem('en', actual[2], js_variable)
+      expect(actual.length).toBe(2)
+      verifyArticleTableOfContentsItem('en', actual[0], js)
+      verifyArticleTableOfContentsItem('en', actual[1], js_variable)
     })
   })
 

@@ -88,6 +88,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         dir: `${articleRootPath}`,
         label: 'バンドル',
         type: 'ListBundle',
+        share: { isPublic: null }, // 公開未設定
       })
       // 記事1
       let art1 = await storageService.createArticleTypeDir({
