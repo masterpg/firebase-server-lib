@@ -425,9 +425,11 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         query: {
           bool: {
-            must: [{ term: { dir: parentPath } }],
-            // ソート順を設定できるのは記事系ディレクトリのみなのでフィルターする
-            filter: [{ exists: { field: 'article' } }],
+            filter: [
+              { term: { dir: parentPath } },
+              // ソート順を設定できるのは記事系ディレクトリのみ
+              { exists: { field: 'article' } },
+            ],
           },
         },
       },
@@ -836,7 +838,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     { lang, userName, articleTypeDirId }: GetUserArticleListInput,
     pagination?: PaginationInput
   ): Promise<PaginationResult<ArticleListItem>> {
-    const maxChunk = pagination?.maxChunk || StorageService.MaxChunk
+    const pageSize = pagination?.pageSize || StorageService.PageSize
     const from = pagination?.pageToken ? Number(pagination.pageToken) : 0
 
     // ユーザー名をキーにしてユーザーを取得
@@ -848,11 +850,11 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
     // 指定された記事系ディレクトリを取得
     const articleTypeDir = await this.getNode({ id: articleTypeDirId })
-    if (!articleTypeDir || !articleTypeDir.article) return { list: [] }
+    if (!articleTypeDir || !articleTypeDir.article) return { list: [], total: 0 }
 
     // 指定された記事系ディレクトリが「記事」の場合は無視
     const articleType = articleTypeDir.article.type
-    if (articleType === 'Article') return { list: [] }
+    if (articleType === 'Article') return { list: [], total: 0 }
 
     // 指定された記事系ディレクトリとその上位階層を取得
     const hierarchicalNodes = await this.getHierarchicalNodes(articleTypeDir.path)
@@ -860,12 +862,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     // 指定された記事系ディレクトリ直下の記事を取得
     const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: StorageSchema.IndexAlias,
-      size: maxChunk,
+      size: pageSize,
       from,
       body: {
         query: {
           bool: {
-            must: [{ term: { dir: articleTypeDir.path } }, { term: { 'article.type': 'Article' } }],
+            filter: [{ term: { dir: articleTypeDir.path } }, { term: { 'article.type': 'Article' } }],
           },
         },
         sort: [{ 'article.sortOrder': 'desc' }],
@@ -901,13 +903,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     let nextPageToken: string | undefined
-    if (articleList.length === 0 || articleList.length < maxChunk) {
+    if (articleList.length === 0 || articleList.length < pageSize) {
       nextPageToken = undefined
     } else {
       nextPageToken = String(from + articleList.length)
     }
 
-    return { list: articleList, nextPageToken }
+    return { list: articleList, nextPageToken, total: response.body.hits.total.value }
   }
 
   /**
@@ -961,7 +963,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     const response1 = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
       index: StorageSchema.IndexAlias,
-      size: 10000,
+      size: StorageService.ChunkSize,
       body: {
         query: {
           bool: {
@@ -985,7 +987,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     for (const bundleNode of bundleDirs) {
       const header = { index: StorageSchema.IndexAlias }
       const body = {
-        size: 10000,
+        size: StorageService.ChunkSize,
         query: {
           bool: {
             filter: [
@@ -1087,7 +1089,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     return super.createHierarchicalDirsImpl(dirPaths)
   }
 
-  protected async moveDirImpl(input: MoveStorageDirInput, options?: { maxChunk?: number }): Promise<void> {
+  protected async moveDirImpl(input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void> {
     /**
      * 指定されたノードをエラー情報用ノードに変換します。
      */
@@ -1517,7 +1519,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       body: {
         query: {
           bool: {
-            must: [
+            filter: [
               { term: { dir: parentPath } },
               {
                 bool: { must_not: [{ term: { path: nodePath } }] },

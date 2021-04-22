@@ -3389,11 +3389,11 @@ describe('StorageService', () => {
       // 大量データを想定して検索を行う
       const actual: ArticleListItem[] = []
       const input: GetUserArticleListInput = { lang: 'ja', userName: StorageUser().userName, articleTypeDirId: js.id }
-      let fetched = await storageService.getUserArticleList(StorageUserToken(), input, { maxChunk: 3 })
+      let fetched = await storageService.getUserArticleList(StorageUserToken(), input, { pageSize: 3 })
       fetched.list
       actual.push(...fetched.list)
       while (fetched.nextPageToken) {
-        fetched = await storageService.getUserArticleList(StorageUserToken(), input, { maxChunk: 3, pageToken: fetched.nextPageToken })
+        fetched = await storageService.getUserArticleList(StorageUserToken(), input, { pageSize: 3, pageToken: fetched.nextPageToken })
         actual.push(...fetched.list)
       }
 
@@ -4704,7 +4704,7 @@ describe('StorageService', () => {
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
       const toNodePath = `dA/d1`
-      await storageService.moveDir({ fromDir: `d1`, toDir: toNodePath }, { maxChunk: 3 })
+      await storageService.moveDir({ fromDir: `d1`, toDir: toNodePath }, { pageSize: 3 })
 
       // 移動後の'dA/d1'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: toNodePath, includeBase: true })

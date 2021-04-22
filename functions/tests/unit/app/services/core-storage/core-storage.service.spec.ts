@@ -665,7 +665,7 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 強制的にページングをタイムアウトさせる
-      const pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { maxChunk: 3 })
+      const pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3 })
       const pageToken = decodePageToken(pagination.nextPageToken)
       await closePointInTime(storageService.client, pageToken.pit.id)
 
@@ -673,7 +673,7 @@ describe('CoreStorageService', () => {
       const actual = await storageService.getDescendants(
         { path: `d1`, includeBase: true },
         {
-          maxChunk: 3,
+          pageSize: 3,
           pageToken: pagination.nextPageToken,
         }
       )
@@ -720,10 +720,10 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: CoreStorageNode[] = []
-      let pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { maxChunk: 3 })
+      let pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3 })
       actual.push(...pagination.list)
       while (pagination.nextPageToken) {
-        pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3, pageToken: pagination.nextPageToken })
         actual.push(...pagination.list)
       }
 
@@ -1250,7 +1250,7 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 強制的にページングをタイムアウトさせる
-      const pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { maxChunk: 3 })
+      const pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3 })
       const pageToken = decodePageToken(pagination.nextPageToken)
       await closePointInTime(storageService.client, pageToken.pit.id)
 
@@ -1258,7 +1258,7 @@ describe('CoreStorageService', () => {
       const actual = await storageService.getChildren(
         { path: `d1`, includeBase: true },
         {
-          maxChunk: 3,
+          pageSize: 3,
           pageToken: pagination.nextPageToken,
         }
       )
@@ -1303,10 +1303,10 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して検索を行う
       const actual: CoreStorageNode[] = []
-      let pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { maxChunk: 3 })
+      let pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3 })
       actual.push(...pagination.list)
       while (pagination.nextPageToken) {
-        pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { maxChunk: 3, pageToken: pagination.nextPageToken })
+        pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3, pageToken: pagination.nextPageToken })
         actual.push(...pagination.list)
       }
 
@@ -2314,7 +2314,7 @@ describe('CoreStorageService', () => {
 
       // テスト対象実行
       // 大量データを想定して分割で削除を行う
-      await storageService.removeDir({ path: `d1` }, { maxChunk: 3 })
+      await storageService.removeDir({ path: `d1` }, { pageSize: 3 })
 
       // 削除後の対象ノードを検証
       const removedNodes = await storageService.getDescendants({ path: `d1`, includeBase: true })
@@ -2985,7 +2985,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
-      await storageService.moveDir({ fromDir: `d1`, toDir: `dA/d1` }, { maxChunk: 3 })
+      await storageService.moveDir({ fromDir: `d1`, toDir: `dA/d1` }, { pageSize: 3 })
 
       // 移動後の'dA'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `dA/d1`, includeBase: true })
@@ -3613,7 +3613,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割でリネームを行う
       // 'dA'を'dB'へリネーム
-      await storageService.renameDir({ dir: `dA`, name: `dB` }, { maxChunk: 3 })
+      await storageService.renameDir({ dir: `dA`, name: `dB` }, { pageSize: 3 })
 
       // 移動後の'dB'＋配下ノードを検証
       const renamedNodes = (await storageService.getDescendants({ path: `dB`, includeBase: true })).list
@@ -6874,7 +6874,7 @@ describe('大量データのテスト', () => {
       await storageService.createHierarchicalDirs([ToDirPath])
 
       const start = performance.now()
-      await storageService.moveDir({ fromDir: FromDirPath, toDir: ToDirPath }, { maxChunk: 100 })
+      await storageService.moveDir({ fromDir: FromDirPath, toDir: ToDirPath }, { pageSize: 100 })
       const end = performance.now()
       console.log(`removeDir: ${(end - start) / 1000}s`)
 

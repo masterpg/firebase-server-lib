@@ -14,13 +14,14 @@ type JSON = any
 type JSONObject = any
 
 interface PaginationInput {
-  maxChunk?: number
+  pageSize?: number
   pageToken?: string
 }
 
 interface PaginationResult<T = any> {
   list: T[]
   nextPageToken?: string
+  total: number
   isPaginationTimeout?: boolean
 }
 

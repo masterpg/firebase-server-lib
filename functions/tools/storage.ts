@@ -267,7 +267,7 @@ program
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
-      const { list } = await storageService.getDescendants({ path: nodePath, includeBase: true }, { maxChunk: count })
+      const { list } = await storageService.getDescendants({ path: nodePath, includeBase: true }, { pageSize: count })
       StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }
@@ -317,7 +317,7 @@ program
       if (count > 1000) {
         if (!(await confirm(`There are ${count} search results. Do you want to display them?`))) return
       }
-      const { list } = await storageService.getChildren({ path: nodePath, includeBase: true }, { maxChunk: count })
+      const { list } = await storageService.getChildren({ path: nodePath, includeBase: true }, { pageSize: count })
       StorageService.sortNodes(list)
       print([...ancestors, ...list], cmdObj.format, nodePath)
     }

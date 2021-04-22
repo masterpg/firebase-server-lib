@@ -1,5 +1,5 @@
 input PaginationInput {
-  maxChunk: Int
+  pageSize: Int
   pageToken: String
 }
 
@@ -160,6 +160,7 @@ type StorageNode implements TimestampEntity {
 type StoragePaginationResult {
   list: [StorageNode!]!
   nextPageToken: String
+  total: Int
   isPaginationTimeout: Boolean
 }
 
@@ -242,6 +243,7 @@ input GetUserArticleListInput {
 type ArticleListPaginationResult {
   list: [ArticleListItem!]!
   nextPageToken: String
+  total: Int
 }
 
 type ArticleTableOfContentsItem {

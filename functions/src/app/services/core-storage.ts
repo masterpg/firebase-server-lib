@@ -257,7 +257,7 @@ class CoreStorageService<
     const _getNodes = async (keys: StorageNodeGetKeysInput, sourceIncludes?: string[]) => {
       const ids = keys.ids || []
       let paths = keys.paths || []
-      const size = 1000
+      const size = CoreStorageService.ChunkSize
 
       // 指定されたパスのバリデーションチェック
       paths.forEach(path => CoreStorageService.validateNodePath(path))
@@ -486,7 +486,7 @@ class CoreStorageService<
 
     if (input.id) {
       const node = await this.getNode({ id: input.id })
-      if (!node) return { list: [] }
+      if (!node) return { list: [], total: 0 }
       path = node.path
     } else {
       CoreStorageService.validateNodePath(input.path)
@@ -517,7 +517,7 @@ class CoreStorageService<
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
 
-    const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
+    const pageSize = pagination?.pageSize || CoreStorageService.PageSize
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
@@ -541,7 +541,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  filter: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { wildcard: { path: `${path}/*` } },
@@ -560,7 +560,7 @@ class CoreStorageService<
     let response!: ElasticSearchAPIResponse<DB_NODE>
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        size: maxChunk,
+        size: pageSize,
         body: {
           query,
           sort: [{ path: 'asc' }],
@@ -570,7 +570,7 @@ class CoreStorageService<
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
-        return { list: [], isPaginationTimeout: true }
+        return { list: [], total: 0, isPaginationTimeout: true }
       } else {
         throw err
       }
@@ -582,14 +582,14 @@ class CoreStorageService<
       // 指定ディレクトリパスのノードが存在しない場合
       if (!nodes.some(node => node.path === path)) {
         // 検索結果なしで終了
-        return { list: [] }
+        return { list: [], total: 0 }
       }
     }
 
     // 次ページのページトークンを取得
     let nextPageToken: string | undefined
     const searchAfter = retrieveSearchAfter(response)
-    if (nodes.length === 0 || nodes.length < maxChunk) {
+    if (nodes.length === 0 || nodes.length < pageSize) {
       nextPageToken = undefined
       searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
     } else {
@@ -600,7 +600,7 @@ class CoreStorageService<
       }
     }
 
-    return { nextPageToken, list: nodes }
+    return { nextPageToken, list: nodes, total: response.body.hits.total.value }
   }
 
   /**
@@ -679,7 +679,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  filter: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { wildcard: { path: `${path}/*` } },
@@ -755,7 +755,7 @@ class CoreStorageService<
 
     if (input.id) {
       const node = await this.getNode({ id: input.id })
-      if (!node) return { list: [] }
+      if (!node) return { list: [], total: 0 }
       path = node.path
     } else {
       CoreStorageService.validateNodePath(input.path)
@@ -786,7 +786,7 @@ class CoreStorageService<
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
 
-    const maxChunk = pagination?.maxChunk || CoreStorageService.MaxChunk
+    const pageSize = pagination?.pageSize || CoreStorageService.PageSize
 
     const pageToken = decodePageToken(pagination?.pageToken)
     if (!pageToken.pit) {
@@ -810,7 +810,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  filter: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { term: { dir: path } },
@@ -828,7 +828,7 @@ class CoreStorageService<
     let response!: ElasticSearchAPIResponse<DB_NODE>
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
-        size: maxChunk,
+        size: pageSize,
         body: {
           query,
           sort: [{ path: 'asc' }],
@@ -838,7 +838,7 @@ class CoreStorageService<
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
-        return { list: [], isPaginationTimeout: true }
+        return { list: [], total: 0, isPaginationTimeout: true }
       } else {
         throw err
       }
@@ -850,14 +850,14 @@ class CoreStorageService<
       // 指定ディレクトリパスのノードが存在しない場合
       if (!nodes.some(node => node.path === path)) {
         // 検索結果なしで終了
-        return { list: [] }
+        return { list: [], total: 0 }
       }
     }
 
     // 次ページのページトークンを取得
     let nextPageToken: string | undefined
     const searchAfter = retrieveSearchAfter(response)
-    if (nodes.length === 0 || nodes.length < maxChunk) {
+    if (nodes.length === 0 || nodes.length < pageSize) {
       nextPageToken = undefined
       searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
     } else {
@@ -868,7 +868,7 @@ class CoreStorageService<
       }
     }
 
-    return { nextPageToken, list: nodes }
+    return { nextPageToken, list: nodes, total: response.body.hits.total.value }
   }
 
   /**
@@ -947,7 +947,7 @@ class CoreStorageService<
             should: [
               {
                 bool: {
-                  must: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
+                  filter: [{ term: { path } }, { term: { nodeType: 'Dir' } }],
                 },
               },
               { term: { dir: path } },
@@ -1310,30 +1310,30 @@ class CoreStorageService<
    * @param key
    * @param pagination
    */
-  removeDir(idToken: IdToken, key: StorageNodeGetKeyInput, pagination?: { maxChunk?: number }): Promise<void>
+  removeDir(idToken: IdToken, key: StorageNodeGetKeyInput, pagination?: { pageSize?: number }): Promise<void>
 
   /**
    * @see removeDir
    * @param key
    * @param pagination
    */
-  removeDir(key: StorageNodeGetKeyInput, pagination?: { maxChunk?: number }): Promise<void>
+  removeDir(key: StorageNodeGetKeyInput, pagination?: { pageSize?: number }): Promise<void>
 
   async removeDir(
     arg1: IdToken | StorageNodeGetKeyInput,
-    arg2?: StorageNodeGetKeyInput | { maxChunk?: number },
-    arg3?: { maxChunk?: number }
+    arg2?: StorageNodeGetKeyInput | { pageSize?: number },
+    arg3?: { pageSize?: number }
   ): Promise<void> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
-    let pagination: { maxChunk?: number } | undefined
+    let pagination: { pageSize?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       key = arg2 as StorageNodeGetKeyInput
       pagination = arg3
     } else {
       key = arg1
-      pagination = arg2 as { maxChunk?: number } | undefined
+      pagination = arg2 as { pageSize?: number } | undefined
     }
 
     const dirNode = await this.getNode(key)
@@ -1354,9 +1354,9 @@ class CoreStorageService<
     }
   }
 
-  protected async removeDirImpl(dirNode: NODE, pagination?: { maxChunk?: number }): Promise<void> {
+  protected async removeDirImpl(dirNode: NODE, pagination?: { pageSize?: number }): Promise<void> {
     const bucket = admin.storage().bucket()
-    const size = pagination?.maxChunk ?? 1000
+    const size = pagination?.pageSize ?? CoreStorageService.ChunkSize
     let nodes: { id: string; path: string }[]
     const pageToken: ElasticPageToken = {
       pit: await openPointInTime(this.client, CoreStorageSchema.IndexAlias),
@@ -1494,30 +1494,30 @@ class CoreStorageService<
    * @param input
    * @param options
    */
-  moveDir(idToken: IdToken, input: MoveStorageDirInput, options?: { maxChunk?: number }): Promise<void>
+  moveDir(idToken: IdToken, input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void>
 
   /**
    * @see moveDir
    * @param input
    * @param options
    */
-  moveDir(input: MoveStorageDirInput, options?: { maxChunk?: number }): Promise<void>
+  moveDir(input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void>
 
   async moveDir(
     arg1: IdToken | MoveStorageDirInput,
-    arg2?: MoveStorageDirInput | { maxChunk?: number },
-    arg3?: { maxChunk?: number } | undefined
+    arg2?: MoveStorageDirInput | { pageSize?: number },
+    arg3?: { pageSize?: number } | undefined
   ): Promise<void> {
     let idToken: IdToken | undefined
     let input: MoveStorageDirInput
-    let options: { maxChunk?: number } | undefined
+    let options: { pageSize?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as MoveStorageDirInput
       options = arg3
     } else {
       input = arg1
-      options = arg2 as { maxChunk?: number } | undefined
+      options = arg2 as { pageSize?: number } | undefined
     }
 
     // 指定されたパスのバリデーションチェック
@@ -1552,14 +1552,14 @@ class CoreStorageService<
     }
   }
 
-  protected async moveDirImpl({ fromDir: fromDirPath, toDir: toDirPath }: MoveStorageDirInput, options?: { maxChunk?: number }): Promise<void> {
+  protected async moveDirImpl({ fromDir: fromDirPath, toDir: toDirPath }: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void> {
     // 指定されたパスのバリデーションチェック
     fromDirPath = removeBothEndsSlash(fromDirPath)
     CoreStorageService.validateNodePath(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     CoreStorageService.validateNodePath(toDirPath)
 
-    const maxChunk = options?.maxChunk ?? 1000
+    const pageSize = options?.pageSize ?? 1000
 
     // 移動元と移動先が同じでないことを確認
     if (fromDirPath === toDirPath) {
@@ -1594,12 +1594,12 @@ class CoreStorageService<
       }
     }
 
-    let pagination: PaginationResult<NODE> = { nextPageToken: undefined, list: [] }
+    let pagination: PaginationResult<NODE> = { nextPageToken: undefined, list: [], total: 0 }
     do {
       pagination = await this.getDescendantsImpl(
         { path: fromDirPath, includeBase: true },
         {
-          maxChunk,
+          pageSize,
           pageToken: pagination.nextPageToken,
         }
       )
@@ -1814,30 +1814,30 @@ class CoreStorageService<
    * @param input
    * @param options
    */
-  renameDir(idToken: IdToken, input: RenameStorageDirInput, options?: { maxChunk?: number }): Promise<void>
+  renameDir(idToken: IdToken, input: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void>
 
   /**
    * @see renameDir
    * @param input
    * @param options
    */
-  renameDir(input: RenameStorageDirInput, options?: { maxChunk?: number }): Promise<void>
+  renameDir(input: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void>
 
   async renameDir(
     arg1: IdToken | RenameStorageDirInput,
-    arg2?: RenameStorageDirInput | { maxChunk?: number },
-    arg3?: { maxChunk?: number }
+    arg2?: RenameStorageDirInput | { pageSize?: number },
+    arg3?: { pageSize?: number }
   ): Promise<void> {
     let idToken: IdToken | undefined
     let input: RenameStorageDirInput
-    let options: { maxChunk?: number } | undefined
+    let options: { pageSize?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as RenameStorageDirInput
       options = arg3
     } else {
       input = arg1
-      options = arg2 as { maxChunk?: number } | undefined
+      options = arg2 as { pageSize?: number } | undefined
     }
 
     // 指定されたパスのバリデーションチェック
@@ -1870,7 +1870,7 @@ class CoreStorageService<
     }
   }
 
-  protected async renameDirImpl({ dir: fromDirPath, name: newName }: RenameStorageDirInput, options?: { maxChunk?: number }): Promise<void> {
+  protected async renameDirImpl({ dir: fromDirPath, name: newName }: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void> {
     // 指定されたパスのバリデーションチェック
     fromDirPath = removeBothEndsSlash(fromDirPath)
     CoreStorageService.validateNodePath(fromDirPath)
@@ -2365,9 +2365,9 @@ class CoreStorageService<
    * 指定されたユーザーのディレクトリを削除します。
    * このメソッドはユーザーの削除時に使用されることを想定しています。
    * @param uid
-   * @param maxChunk
+   * @param pageSize
    */
-  async deleteUserDir(uid: string, maxChunk = CoreStorageService.MaxChunk): Promise<void> {
+  async deleteUserDir(uid: string, pageSize = CoreStorageService.PageSize): Promise<void> {
     const userRootPath = CoreStorageService.toUserRootPath({ uid })
     await this.removeDir({ path: userRootPath })
   }
@@ -2662,7 +2662,7 @@ class CoreStorageService<
     }
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
-    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.MaxChunk)) {
+    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.PageSize)) {
       await Promise.all(
         chunk.map(async uploadItem => {
           const fileNode = await this.saveGCSFileAndFileNode(
@@ -2701,7 +2701,7 @@ class CoreStorageService<
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     const bucket = admin.storage().bucket()
-    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.MaxChunk)) {
+    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.PageSize)) {
       await Promise.all(
         chunk.map(async uploadItem => {
           const { localFilePath, fileNodePath } = uploadItem
@@ -3061,7 +3061,9 @@ class CoreStorageService<
   //
   //----------------------------------------------------------------------
 
-  static readonly MaxChunk = 50
+  static readonly PageSize = 50
+
+  static readonly ChunkSize = 3000
 
   /**
    * ノードパスの検証を行います。

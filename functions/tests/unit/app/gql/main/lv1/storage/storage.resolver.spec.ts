@@ -273,6 +273,7 @@ describe('Lv1 Storage Resolver', () => {
               ...${StorageNodeFieldsName}
             }
             nextPageToken
+            total
             isPaginationTimeout
           }
         }
@@ -286,9 +287,10 @@ describe('Lv1 Storage Resolver', () => {
       const input = { path: d1.path, includeBase: true }
 
       const getDescendants = td.replace(storageService, 'getDescendants')
-      td.when(getDescendants(AppAdminUserToken(), input, { maxChunk: 3 })).thenResolve({
+      td.when(getDescendants(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
+        total: 10,
       } as PaginationResult)
 
       const response = await requestGQL(
@@ -297,7 +299,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            pagination: { maxChunk: 3 },
+            pagination: { pageSize: 3 },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -305,6 +307,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageDescendants.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageDescendants.total).toBe(10)
       expect(response.body.data.storageDescendants.isPaginationTimeout).toBeNull()
     })
 
@@ -316,7 +319,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          pagination: { maxChunk: 3 },
+          pagination: { pageSize: 3 },
         },
       })
 
@@ -333,6 +336,7 @@ describe('Lv1 Storage Resolver', () => {
               ...${StorageNodeFieldsName}
             }
             nextPageToken
+            total
             isPaginationTimeout
           }
         }
@@ -346,9 +350,10 @@ describe('Lv1 Storage Resolver', () => {
       const input = { path: d1.path, includeBase: true }
 
       const getChildren = td.replace(storageService, 'getChildren')
-      td.when(getChildren(AppAdminUserToken(), input, { maxChunk: 3 })).thenResolve({
+      td.when(getChildren(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve({
         list: [d1, d11],
         nextPageToken: 'abcdefg',
+        total: 10,
       })
 
       const response = await requestGQL(
@@ -357,7 +362,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            pagination: { maxChunk: 3 },
+            pagination: { pageSize: 3 },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -365,6 +370,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.storageChildren.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
       expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.storageChildren.total).toBe(10)
       expect(response.body.data.storageChildren.isPaginationTimeout).toBeNull()
     })
 
@@ -376,7 +382,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          pagination: { maxChunk: 3 },
+          pagination: { pageSize: 3 },
         },
       })
 
@@ -1531,6 +1537,7 @@ describe('Lv1 Storage Resolver', () => {
               ...${ArticleListItemFieldsName}
             }
             nextPageToken
+            total
           }
         }
         ${ArticleListItemFields}
@@ -1558,11 +1565,12 @@ describe('Lv1 Storage Resolver', () => {
         userName: StorageUser().userName,
         articleTypeDirId: blog.id,
       }
-      const pagination = { maxChunk: 3 }
+      const pagination = { pageSize: 3 }
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(getUserArticleList(StorageUserToken(), input, pagination)).thenResolve({
         list: [art1],
         nextPageToken: 'abcdefg',
+        total: 10,
       })
 
       const response = await requestGQL(
@@ -1576,6 +1584,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
       expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.userArticleList.total).toBe(10)
     })
 
     it('サインインしていない場合', async () => {
@@ -1586,11 +1595,12 @@ describe('Lv1 Storage Resolver', () => {
         userName: StorageUser().userName,
         articleTypeDirId: blog.id,
       }
-      const pagination = { maxChunk: 3 }
+      const pagination = { pageSize: 3 }
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(getUserArticleList(undefined, input, pagination)).thenResolve({
         list: [art1],
         nextPageToken: 'abcdefg',
+        total: 10,
       })
 
       const response = await requestGQL(app, {
@@ -1600,6 +1610,7 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
       expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.userArticleList.total).toBe(10)
     })
   })
 
