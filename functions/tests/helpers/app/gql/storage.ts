@@ -63,8 +63,8 @@ const ArticleListItemFields = `
   fragment ${ArticleListItemFieldsName} on ArticleListItem {
     id
     name
-    dir
-    path
+    dir { id label }
+    path { id label }
     label
     createdAt
     updatedAt
@@ -78,8 +78,8 @@ const ArticleTableOfContentsItemFields = `
     id
     type
     name
-    dir
-    path
+    dir { id label }
+    path { id label }
     label
   }
 `

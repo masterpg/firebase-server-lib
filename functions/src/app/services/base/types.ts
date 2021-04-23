@@ -278,6 +278,11 @@ interface GetArticleSrcContentInput {
   articleId: string
 }
 
+interface ArticlePathDetail {
+  id: string
+  label: string
+}
+
 interface GetArticleSrcContentResult extends ArticlePathDetail {
   id: string
   label: string
@@ -289,16 +294,11 @@ interface GetArticleSrcContentResult extends ArticlePathDetail {
   updatedAt: Dayjs
 }
 
-interface ArticlePathDetail {
-  id: string
-  label: string
-}
-
 interface ArticleListItem {
   id: string
   name: string
-  dir: string
-  path: string
+  dir: ArticlePathDetail[]
+  path: ArticlePathDetail[]
   label: string
   createdAt: Dayjs
   updatedAt: Dayjs
@@ -314,8 +314,8 @@ interface ArticleTableOfContentsItem {
   id: string
   type: ArticleDirType
   name: string
-  dir: string
-  path: string
+  dir: ArticlePathDetail[]
+  path: ArticlePathDetail[]
   label: string
 }
 

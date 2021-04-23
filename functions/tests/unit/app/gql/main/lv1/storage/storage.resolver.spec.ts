@@ -23,6 +23,8 @@ import {
   toGQLResponseStorageNodes,
 } from '../../../../../../helpers/app'
 import {
+  ArticleListItem,
+  ArticleTableOfContentsItem,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
@@ -37,6 +39,7 @@ import {
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
   SignedUploadUrlInput,
+  StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeKeyInput,
@@ -46,12 +49,12 @@ import {
   StorageServiceDI,
   UserIdClaims,
 } from '../../../../../../../src/app/services'
+import { LangCode, arrayToDict, pickProps } from 'web-base-lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
 import { config } from '../../../../../../../src/config'
 import dayjs = require('dayjs')
 import { initApp } from '../../../../../../../src/app/base'
-import { pickProps } from 'web-base-lib'
 
 jest.setTimeout(5000)
 initApp()
@@ -1546,15 +1549,42 @@ describe('Lv1 Storage Resolver', () => {
 
     function createTestData() {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const blog = h.newArticleListItem({
-        path: `${articleRootPath}/${StorageSchema.generateId()}`,
-        label: 'ブログ',
+      const blog = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'ListBundle',
+          label: { ja: 'ツリーバンドル1' },
+          sortOrder: 1,
+        },
       })
-      const art1 = h.newArticleListItem({
-        path: `${blog.path}/${StorageSchema.generateId()}`,
-        label: '記事1',
+      const art1 = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'Article',
+          label: { ja: '記事1' },
+          sortOrder: 1,
+        },
       })
-      return { blog, art1 }
+
+      const allNodes = [blog, art1]
+      return {
+        blog: newArticleListItem('ja', blog.path, allNodes),
+        art1: newArticleListItem('ja', art1.path, allNodes),
+      }
+    }
+
+    function newArticleListItem(lang: LangCode, nodePath: string, hierarchicalNodes: StorageNode[]): ArticleListItem {
+      const nodeDict = arrayToDict(hierarchicalNodes, 'path')
+      const node = nodeDict[nodePath]
+      const now = dayjs()
+
+      return {
+        id: node.id,
+        name: node.name,
+        dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+        path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+        label: StorageService.getArticleLangLabel(lang, node.article!.label!),
+        createdAt: now,
+        updatedAt: now,
+      }
     }
 
     it('疎通確認', async () => {
@@ -1628,22 +1658,48 @@ describe('Lv1 Storage Resolver', () => {
 
     function createTestData() {
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const treeBundle = h.newTableOfContentsItems({
-        path: `${articleRootPath}/${StorageSchema.generateId()}`,
-        type: 'TreeBundle',
-        label: 'ツリーバンドル1',
+      const treeBundle = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'TreeBundle',
+          label: { ja: 'ツリーバンドル1' },
+          sortOrder: 1,
+        },
       })
-      const cat1 = h.newTableOfContentsItems({
-        path: `${treeBundle.path}/${StorageSchema.generateId()}`,
-        type: 'Category',
-        label: 'カテゴリ1',
+      const cat1 = h.newDirNode(`${treeBundle.path}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'Category',
+          label: { ja: 'カテゴリ1' },
+          sortOrder: 2,
+        },
       })
-      const art1 = h.newTableOfContentsItems({
-        path: `${cat1.path}/${StorageSchema.generateId()}`,
-        type: 'Article',
-        label: '記事1',
+      const art1 = h.newDirNode(`${cat1.path}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'Article',
+          label: { ja: '記事1' },
+          sortOrder: 1,
+        },
       })
-      return { treeBundle, cat1, art1 }
+
+      const allNodes = [treeBundle, cat1, art1]
+      return {
+        treeBundle: newTableOfContentsItems('ja', treeBundle.path, allNodes),
+        cat1: newTableOfContentsItems('ja', cat1.path, allNodes),
+        art1: newTableOfContentsItems('ja', art1.path, allNodes),
+      }
+    }
+
+    function newTableOfContentsItems(lang: LangCode, nodePath: string, hierarchicalNodes: StorageNode[]): ArticleTableOfContentsItem {
+      const nodeDict = arrayToDict(hierarchicalNodes, 'path')
+      const node = nodeDict[nodePath]
+
+      return {
+        id: node.id,
+        type: node.article!.type,
+        name: node.name,
+        dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+        path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+        label: StorageService.getArticleLangLabel(lang, node.article!.label!),
+      }
     }
 
     it('疎通確認', async () => {

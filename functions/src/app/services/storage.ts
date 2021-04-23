@@ -5,6 +5,7 @@ import {
   ArticleDirLabelByLang,
   ArticleDirType,
   ArticleListItem,
+  ArticlePathDetail,
   ArticleSrcByLang,
   ArticleTableOfContentsItem,
   CreateArticleGeneralDirInput,
@@ -213,7 +214,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     StorageService.validateNodePath(dir)
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
-    this.m_validateArticleRootUnder(dir)
+    this.validateArticleRootUnder(dir)
 
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
@@ -337,7 +338,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
 
     // 引数ディレクトリのパスが記事ルート配下のものか検証
-    this.m_validateArticleRootUnder(dir)
+    this.validateArticleRootUnder(dir)
 
     // 引数ディレクトリが記事系ディレクトリか検証
     if (!dirNode.article?.type) {
@@ -877,13 +878,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     const articleNodes = this.dbResponseToNodes(response)
 
     // 取得された記事とその階層を形成するノードをマップ化
-    const nodeDict = arrayToDict([...hierarchicalNodes, ...articleNodes], 'path')
+    const allNodes = [...hierarchicalNodes, ...articleNodes]
+    const allNodeDict = arrayToDict(allNodes, 'path')
 
     // 取得された記事から戻り値を作成
     const articleList: ArticleListItem[] = []
     for (const articleNode of articleNodes) {
       // 記事とその階層を形成するノードを取得
-      const articleHierarchicalNodes = this.retrieveHierarchicalNodes(nodeDict, articleNode.path)
+      const articleHierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, articleNode.path)
       // リクエスターが指定されたノードを読み込み可能か検証
       const validated = await this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
       if (validated) continue
@@ -894,8 +896,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
       articleList.push({
         ...pickProps(articleNode, ['id', 'name']),
-        dir: removeBothEndsSlash(articleNode.dir.replace(articleRootPath, '')),
-        path: removeBothEndsSlash(articleNode.path.replace(articleRootPath, '')),
+        dir: StorageService.toArticlePathDetails(lang, articleNode.dir, allNodes),
+        path: StorageService.toArticlePathDetails(lang, articleNode.path, allNodes),
         label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
         createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
         updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
@@ -944,8 +946,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       return nodes.map(node => {
         const result: ArticleTableOfContentsItem = {
           ...pickProps(node, ['id', 'name']),
-          dir: removeBothEndsSlash(node.dir.replace(articleRootPath, '')),
-          path: removeBothEndsSlash(node.path.replace(articleRootPath, '')),
+          dir: StorageService.toArticlePathDetails(lang, node.dir, nodes),
+          path: StorageService.toArticlePathDetails(lang, node.path, nodes),
           label: StorageService.getArticleLangLabel(lang, node.article!.label),
           type: node.article!.type,
         }
@@ -1030,7 +1032,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       // 記事以外のノードの場合は次へ移動
       if (node.article?.type !== 'Article') continue
       // リクエスターが記事を読み込み可能かを検証
-      const hierarchicalNodes = this.retrieveHierarchicalNodes(allNodeDict, node.path)
+      const hierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, node.path)
       const error = await this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
       if (error) continue
       // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
@@ -1206,10 +1208,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
   //  Internal methods
   //
   //----------------------------------------------------------------------
-
-  //--------------------------------------------------
-  //  Article
-  //--------------------------------------------------
 
   /**
    * バンドルを作成します。
@@ -1393,14 +1391,14 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       StorageService.validateNodePath(dirPath)
       dirPath = removeBothEndsSlash(dirPath)
       // 引数パスが記事ルート配下のものか検証
-      this.m_validateArticleRootUnder(dirPath)
+      this.validateArticleRootUnder(dirPath)
       // 引数パスの階層構造形成に必要なノードを取得
       hierarchicalDirNodes = await this.getRequiredHierarchicalDirNodes(dirPath)
     } else {
       hierarchicalDirNodes = dirPath_or_hierarchicalDirNodes
       dirPath = hierarchicalDirNodes[hierarchicalDirNodes.length - 1].path
       // 引数パスが記事ルート配下のものか検証
-      this.m_validateArticleRootUnder(dirPath)
+      this.validateArticleRootUnder(dirPath)
     }
 
     const hierarchicalDirNodeDict = arrayToDict(hierarchicalDirNodes, 'path')
@@ -1453,7 +1451,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
    * 指定されたパスが記事ルート配下のノードであることを検証します。
    * @param nodePath
    */
-  protected m_validateArticleRootUnder(nodePath: string): void {
+  protected validateArticleRootUnder(nodePath: string): void {
     nodePath = removeBothEndsSlash(nodePath)
     const userRootName = config.storage.user.rootName
     const articleRootName = config.storage.article.rootName
@@ -1463,34 +1461,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     if (!reg.test(nodePath)) {
       throw new AppError(`The specified path is not under article root: '${nodePath}'`)
     }
-  }
-
-  /**
-   * 指定されたパスが所属するバンドルを取得します。
-   * @param nodePath
-   */
-  protected async m_getBelongToArticleBundle(nodePath: string): Promise<StorageNode | undefined> {
-    nodePath = removeBothEndsSlash(nodePath)
-    const userRootName = config.storage.user.rootName
-    const articleRootName = config.storage.article.rootName
-
-    // 引数パスからバンドルのパスを取得
-    const reg = new RegExp(`(?<bundlePath>^${userRootName}/[^/]+/${articleRootName}/[^/]+)/`)
-    const regResult = reg.exec(nodePath)
-    const bundlePath = regResult?.groups?.bundlePath
-    if (!bundlePath) {
-      return undefined
-    }
-
-    // 上記で取得したパスからバンドルを取得
-    const bundle = await this.getNode({ path: bundlePath })
-    const bundleArticleDirTyp = bundle?.article?.type
-    if (!bundle) return undefined
-    if (!(bundleArticleDirTyp === 'ListBundle' || bundleArticleDirTyp === 'TreeBundle')) {
-      return undefined
-    }
-
-    return bundle
   }
 
   /**
@@ -1574,6 +1544,34 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       _source: false as any,
     })
     return parseInt(res.body.aggregations.maxArticleSortOrder.value) || 0
+  }
+
+  /**
+   * 指定されたパスが所属するバンドルを取得します。
+   * @param nodePath
+   */
+  protected async getBelongToArticleBundle(nodePath: string): Promise<StorageNode | undefined> {
+    nodePath = removeBothEndsSlash(nodePath)
+    const userRootName = config.storage.user.rootName
+    const articleRootName = config.storage.article.rootName
+
+    // 引数パスからバンドルのパスを取得
+    const reg = new RegExp(`(?<bundlePath>^${userRootName}/[^/]+/${articleRootName}/[^/]+)/`)
+    const regResult = reg.exec(nodePath)
+    const bundlePath = regResult?.groups?.bundlePath
+    if (!bundlePath) {
+      return undefined
+    }
+
+    // 上記で取得したパスからバンドルを取得
+    const bundle = await this.getNode({ path: bundlePath })
+    const bundleArticleDirTyp = bundle?.article?.type
+    if (!bundle) return undefined
+    if (!(bundleArticleDirTyp === 'ListBundle' || bundleArticleDirTyp === 'TreeBundle')) {
+      return undefined
+    }
+
+    return bundle
   }
 
   //----------------------------------------------------------------------
@@ -1668,6 +1666,32 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       if (label) return label
     }
     return ''
+  }
+
+  /**
+   * 指定された記事系ディレクトリのパスデータを生成します。
+   * 生成されるパスデータは「記事ルート配下」が対象となり、「記事ルート含め上位」は除外されます。
+   * @param lang 対象言語を指定します。
+   * @param nodePath 対象の記事系ディレクトリを指定します。
+   * @param hierarchicalNodes 指定された記事系ディレクトリを構成するノードを含む必要があります。
+   *   ただし「記事ルート含め上位」のノードを含む必要ありません。
+   */
+  static toArticlePathDetails(lang: LangCode, nodePath: string, hierarchicalNodes: StorageNode[]): ArticlePathDetail[] {
+    const nodeDict = arrayToDict(hierarchicalNodes, 'path')
+    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+    return hierarchicalPaths.reduce((result, path) => {
+      if (StorageService.isArticleRootUnder(path)) {
+        const node = nodeDict[path]
+        if (!node) {
+          throw new AppError(`There is no node in the specified key.`, { path })
+        }
+        result.push({
+          id: node.id,
+          label: StorageService.getArticleLangLabel(lang, node.article!.label),
+        })
+      }
+      return result
+    }, [] as ArticlePathDetail[])
   }
 
   /**

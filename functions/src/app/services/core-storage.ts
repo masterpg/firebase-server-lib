@@ -2546,7 +2546,7 @@ class CoreStorageService<
     // 指定されたノードと階層を構成するディレクトリを取得
     let nodeDict: { [path: string]: NODE } = {}
     if (hierarchicalNodes) {
-      this.validateHierarchicalNodes(hierarchicalNodes)
+      CoreStorageService.validateHierarchicalNodes(hierarchicalNodes)
       nodeDict = arrayToDict(hierarchicalNodes, 'path')
     } else {
       const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
@@ -2558,7 +2558,7 @@ class CoreStorageService<
       // 対象ノードを取得
       const node = nodeDict[nodePath]
       // 対象ノードとその上位ディレクトリを加味した共有設定を取得
-      const hierarchicalNodes = this.retrieveHierarchicalNodes(nodeDict, node.path)
+      const hierarchicalNodes = CoreStorageService.retrieveHierarchicalNodes(nodeDict, node.path)
       const share = this.getInheritedShareDetail(hierarchicalNodes)
       // リクエスターがノードにアクセスできるか検証
       const error = validate({ idToken, node, share })
@@ -3008,7 +3008,8 @@ class CoreStorageService<
   /**
    * 指定されたノードが 304 Not Modified かチェックします。
    * @param req
-   * @param updatedAt
+   * @param updatedA
+   * t
    */
   protected checkNotModified(req: Request, updatedAt: Dayjs): { result: boolean; status: number; lastModified: string } {
     const lastModified = updatedAt.toString()
@@ -3018,41 +3019,6 @@ class CoreStorageService<
       return { result: true, status: 304, lastModified }
     }
     return { result: false, status: NaN, lastModified }
-  }
-
-  /**
-   * ノードマップの中から、指定されたノードとそのノードを形成するディレクトリを取得します。
-   * @param nodeDict
-   * @param nodePath
-   * @protected
-   */
-  protected retrieveHierarchicalNodes(nodeDict: { [path: string]: NODE }, nodePath: string): NODE[] {
-    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
-    return hierarchicalPaths.reduce<NODE[]>((result, path) => {
-      const node = nodeDict[path]
-      node && result.push(node)
-      return result
-    }, [])
-  }
-
-  /**
-   * 指定された階層構造ノードの中に欠けているノードがないか検証します。
-   * @param hierarchicalNodes
-   */
-  protected validateHierarchicalNodes(hierarchicalNodes: NODE[]): void {
-    const summarizedPaths = summarizeFamilyPaths(hierarchicalNodes.map(node => node.path))
-    const nodeDict = arrayToDict(hierarchicalNodes, 'path')
-
-    for (const summarizedPath of summarizedPaths) {
-      for (const nodePath of splitHierarchicalPaths(summarizedPath)) {
-        if (!nodeDict[nodePath]) {
-          throw new AppError(`There is a missing node in the hierarchy.`, {
-            hierarchicalNodes: hierarchicalNodes!.map(node => node.path),
-            missingNode: nodePath,
-          })
-        }
-      }
-    }
   }
 
   //----------------------------------------------------------------------
@@ -3246,6 +3212,40 @@ class CoreStorageService<
     const reg = new RegExp(`^${config.storage.user.rootName}/(?<uid>[^/]+)`)
     const execArray = reg.exec(nodePath)
     return execArray?.groups?.uid ?? ''
+  }
+
+  /**
+   * ノードマップの中から、指定されたノードとそのノードを形成するディレクトリを取得します。
+   * @param nodeDict
+   * @param nodePath
+   */
+  static retrieveHierarchicalNodes<NODE extends CoreStorageNode>(nodeDict: { [path: string]: NODE }, nodePath: string): NODE[] {
+    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+    return hierarchicalPaths.reduce<NODE[]>((result, path) => {
+      const node = nodeDict[path]
+      node && result.push(node)
+      return result
+    }, [])
+  }
+
+  /**
+   * 指定された階層構造ノードの中に欠けているノードがないか検証します。
+   * @param hierarchicalNodes
+   */
+  static validateHierarchicalNodes<NODE extends CoreStorageNode>(hierarchicalNodes: NODE[]): void {
+    const summarizedPaths = summarizeFamilyPaths(hierarchicalNodes.map(node => node.path))
+    const nodeDict = arrayToDict(hierarchicalNodes, 'path')
+
+    for (const summarizedPath of summarizedPaths) {
+      for (const nodePath of splitHierarchicalPaths(summarizedPath)) {
+        if (!nodeDict[nodePath]) {
+          throw new AppError(`There is a missing node in the hierarchy.`, {
+            hierarchicalNodes: hierarchicalNodes!.map(node => node.path),
+            missingNode: nodePath,
+          })
+        }
+      }
+    }
   }
 }
 

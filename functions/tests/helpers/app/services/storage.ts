@@ -1,21 +1,11 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import {
-  ArticleDirType,
-  ArticleListItem,
-  ArticleTableOfContentsItem,
-  CoreStorageNode,
-  StorageNode,
-  StorageService,
-  StorageServiceDI,
-} from '../../../../src/app/services'
+import { CoreStorageNode, StorageNode, StorageService, StorageServiceDI } from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
-import { Dayjs } from 'dayjs'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
-import toPathData = CoreStorageSchema.toPathData
 
 //========================================================================
 //
@@ -31,8 +21,8 @@ type CoreStorageTestService = CoreStorageService & {
 
 type StorageTestService = StorageService &
   CoreStorageTestService & {
-    m_validateArticleRootUnder: StorageServiceDI.type['m_validateArticleRootUnder']
-    m_getBelongToArticleBundle: StorageServiceDI.type['m_getBelongToArticleBundle']
+    validateArticleRootUnder: StorageServiceDI.type['validateArticleRootUnder']
+    getBelongToArticleBundle: StorageServiceDI.type['getBelongToArticleBundle']
   }
 
 //========================================================================
@@ -248,30 +238,6 @@ class StorageTestHelper extends CoreStorageTestHelper {
     data.article && (result.article = data.article)
 
     return result
-  }
-
-  newArticleListItem(data: { path: string; label: string; createdAt?: Dayjs; updatedAt?: Dayjs }): ArticleListItem {
-    const pathData = toPathData(data.path)
-    const now = dayjs()
-
-    return {
-      id: pathData.name,
-      ...pathData,
-      label: data.label,
-      createdAt: data.createdAt ?? now,
-      updatedAt: data.updatedAt ?? now,
-    }
-  }
-
-  newTableOfContentsItems(data: { path: string; type: ArticleDirType; label: string }): ArticleTableOfContentsItem {
-    const pathData = toPathData(data.path)
-
-    return {
-      id: pathData.name,
-      ...pathData,
-      type: data.type,
-      label: data.label,
-    }
   }
 }
 

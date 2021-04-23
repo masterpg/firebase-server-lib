@@ -3073,20 +3073,28 @@ describe('StorageService', () => {
       await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
     })
 
+    async function verifyArticleListItem(lang: LangCode, actual: ArticleListItem, expected: StorageNode): Promise<void> {
+      const allNodes = (await storageService.getDescendants({ path: '' })).list
+
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toEqual(StorageService.toArticlePathDetails('ja', expected.dir, allNodes))
+      expect(actual.path).toEqual(StorageService.toArticlePathDetails('ja', expected.path, allNodes))
+      expect(actual.label).toBe(expected.article!.label![lang])
+      expect(actual.createdAt).toEqual(expected.article!.src![lang]!.createdAt)
+      expect(actual.updatedAt).toEqual(expected.article!.src![lang]!.updatedAt)
+    }
+
     async function setupArticleTypeNodes(lang: LangCode): Promise<void> {
       // users
       // └test.storage
       //   ├articles
       //   │├TypeScript
       //   ││├Interface
-      //   │││└master-src.md
       //   ││├Class
-      //   │││└master-src.md
       //   ││└Types
       //   ││  ├PrimitiveType
-      //   ││  │└master-src.md
       //   ││  └LiteralType
-      //   ││    └master-src.md
       //   │└JavaScript
       //   ︙  ︙
 
@@ -3152,16 +3160,6 @@ describe('StorageService', () => {
       })
     }
 
-    function verifyArticleListItem(lang: LangCode, actual: ArticleListItem, expected: StorageNode): void {
-      expect(actual.id).toBe(expected.id)
-      expect(actual.name).toBe(expected.name)
-      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
-      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
-      expect(actual.label).toBe(expected.article!.label![lang])
-      expect(actual.createdAt).toEqual(expected.article!.src![lang]!.createdAt)
-      expect(actual.updatedAt).toEqual(expected.article!.src![lang]!.updatedAt)
-    }
-
     describe('他ユーザーによる記事リスト取得', () => {
       it('対象カテゴリを公開設定', async () => {
         await setupArticleTypeNodes('ja')
@@ -3177,8 +3175,8 @@ describe('StorageService', () => {
 
         expect(actual.nextPageToken).toBeUndefined()
         expect(actual.list.length).toBe(2)
-        verifyArticleListItem('ja', actual.list[0], ts_interface)
-        verifyArticleListItem('ja', actual.list[1], ts_class)
+        await verifyArticleListItem('ja', actual.list[0], ts_interface)
+        await verifyArticleListItem('ja', actual.list[1], ts_class)
       })
 
       it('対象カテゴリを公開設定 - 記事の一部を非公開設定', async () => {
@@ -3197,7 +3195,7 @@ describe('StorageService', () => {
 
         expect(actual.nextPageToken).toBeUndefined()
         expect(actual.list.length).toBe(1)
-        verifyArticleListItem('ja', actual.list[0], ts_class)
+        await verifyArticleListItem('ja', actual.list[0], ts_class)
       })
 
       it('対象カテゴリを公開設定 - 記事の一部に読み込み権限設定', async () => {
@@ -3216,7 +3214,7 @@ describe('StorageService', () => {
 
         expect(actual.nextPageToken).toBeUndefined()
         expect(actual.list.length).toBe(1)
-        verifyArticleListItem('ja', actual.list[0], ts_interface)
+        await verifyArticleListItem('ja', actual.list[0], ts_interface)
       })
     })
 
@@ -3231,8 +3229,8 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(2)
-      verifyArticleListItem('ja', actual.list[0], ts_interface)
-      verifyArticleListItem('ja', actual.list[1], ts_class)
+      await verifyArticleListItem('ja', actual.list[0], ts_interface)
+      await verifyArticleListItem('ja', actual.list[1], ts_class)
     })
 
     it('サインインしていないユーザーによる記事リスト取得', async () => {
@@ -3249,8 +3247,8 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(2)
-      verifyArticleListItem('ja', actual.list[0], ts_interface)
-      verifyArticleListItem('ja', actual.list[1], ts_class)
+      await verifyArticleListItem('ja', actual.list[0], ts_interface)
+      await verifyArticleListItem('ja', actual.list[1], ts_class)
     })
 
     it('対象カテゴリに記事がない場合', async () => {
@@ -3332,7 +3330,7 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(1)
-      verifyArticleListItem('ja', actual.list[0], ts_class)
+      await verifyArticleListItem('ja', actual.list[0], ts_class)
     })
 
     it('日本語', async () => {
@@ -3346,8 +3344,8 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(2)
-      verifyArticleListItem('ja', actual.list[0], ts_interface)
-      verifyArticleListItem('ja', actual.list[1], ts_class)
+      await verifyArticleListItem('ja', actual.list[0], ts_interface)
+      await verifyArticleListItem('ja', actual.list[1], ts_class)
     })
 
     it('英語', async () => {
@@ -3361,8 +3359,8 @@ describe('StorageService', () => {
 
       expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(2)
-      verifyArticleListItem('en', actual.list[0], ts_interface)
-      verifyArticleListItem('en', actual.list[1], ts_class)
+      await verifyArticleListItem('en', actual.list[0], ts_interface)
+      await verifyArticleListItem('en', actual.list[1], ts_class)
     })
 
     it('大量データの場合', async () => {
@@ -3430,6 +3428,17 @@ describe('StorageService', () => {
     beforeAll(async () => {
       await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
     })
+
+    async function verifyArticleTableOfContentsItem(lang: LangCode, actual: ArticleTableOfContentsItem, expected: StorageNode): Promise<void> {
+      const allNodes = (await storageService.getDescendants({ path: '' })).list
+
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toEqual(StorageService.toArticlePathDetails(lang, expected.dir, allNodes))
+      expect(actual.path).toEqual(StorageService.toArticlePathDetails(lang, expected.path, allNodes))
+      expect(actual.label).toBe(expected.article!.label![lang])
+      expect(actual.type).toBe(expected.article!.type)
+    }
 
     async function setupArticleTypeNodes(lang: LangCode): Promise<void> {
       // users
@@ -3651,15 +3660,6 @@ describe('StorageService', () => {
       }
     }
 
-    function verifyArticleTableOfContentsItem(lang: LangCode, actual: ArticleTableOfContentsItem, expected: StorageNode): void {
-      expect(actual.id).toBe(expected.id)
-      expect(actual.name).toBe(expected.name)
-      expect(actual.dir).toBe(removeBothEndsSlash(expected.dir.replace(articleRoot.path, '')))
-      expect(actual.path).toBe(removeBothEndsSlash(expected.path.replace(articleRoot.path, '')))
-      expect(actual.label).toBe(expected.article!.label![lang])
-      expect(actual.type).toBe(expected.article!.type)
-    }
-
     describe('他ユーザーによる目次取得', () => {
       it('全ての記事系ディレクトリは公開未設定', async () => {
         await setupArticleTypeNodes('ja')
@@ -3687,7 +3687,7 @@ describe('StorageService', () => {
 
         // リストバンドルは取得される
         expect(actual.length).toBe(1)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
+        await verifyArticleTableOfContentsItem('ja', actual[0], blog)
       })
 
       it('リストバンドルを公開設定 - リストバンドル配下に公開記事がない場合', async () => {
@@ -3793,7 +3793,7 @@ describe('StorageService', () => {
 
         // リストバンドルが非公開でも配下の記事が読み込み権限設定されていればそのリストバンドルが取得される
         expect(actual.length).toBe(1)
-        verifyArticleTableOfContentsItem('ja', actual[0], blog)
+        await verifyArticleTableOfContentsItem('ja', actual[0], blog)
       })
 
       it('カテゴリを公開設定 - カテゴリ配下に読公開記事がある場合', async () => {
@@ -3813,8 +3813,8 @@ describe('StorageService', () => {
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
         expect(actual.length).toBe(2)
-        verifyArticleTableOfContentsItem('ja', actual[0], ts)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts_interface)
+        await verifyArticleTableOfContentsItem('ja', actual[0], ts)
+        await verifyArticleTableOfContentsItem('ja', actual[1], ts_interface)
       })
 
       it('カテゴリを公開設定 - カテゴリ配下に公開記事がない場合', async () => {
@@ -3886,8 +3886,8 @@ describe('StorageService', () => {
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
         expect(actual.length).toBe(2)
-        verifyArticleTableOfContentsItem('ja', actual[0], ts)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts_class)
+        await verifyArticleTableOfContentsItem('ja', actual[0], ts)
+        await verifyArticleTableOfContentsItem('ja', actual[1], ts_class)
       })
 
       it('カテゴリを非公開設定 - カテゴリ配下に公開記事がある場合', async () => {
@@ -3926,9 +3926,9 @@ describe('StorageService', () => {
 
         // カテゴリが非公開でも配下の記事が読み込み権限設定されていればその階層が取得される
         expect(actual.length).toBe(3)
-        verifyArticleTableOfContentsItem('ja', actual[0], ts)
-        verifyArticleTableOfContentsItem('ja', actual[1], ts_types)
-        verifyArticleTableOfContentsItem('ja', actual[2], ts_types_primitive)
+        await verifyArticleTableOfContentsItem('ja', actual[0], ts)
+        await verifyArticleTableOfContentsItem('ja', actual[1], ts_types)
+        await verifyArticleTableOfContentsItem('ja', actual[2], ts_types_primitive)
       })
     })
 
@@ -3938,15 +3938,15 @@ describe('StorageService', () => {
       const actual = await storageService.getUserArticleTableOfContents(StorageUserToken(), { lang: 'ja', userName: StorageUser().userName })
 
       expect(actual.length).toBe(9)
-      verifyArticleTableOfContentsItem('ja', actual[0], blog)
-      verifyArticleTableOfContentsItem('ja', actual[1], js)
-      verifyArticleTableOfContentsItem('ja', actual[2], js_variable)
-      verifyArticleTableOfContentsItem('ja', actual[3], ts)
-      verifyArticleTableOfContentsItem('ja', actual[4], ts_interface)
-      verifyArticleTableOfContentsItem('ja', actual[5], ts_class)
-      verifyArticleTableOfContentsItem('ja', actual[6], ts_types)
-      verifyArticleTableOfContentsItem('ja', actual[7], ts_types_primitive)
-      verifyArticleTableOfContentsItem('ja', actual[8], ts_types_literal)
+      await verifyArticleTableOfContentsItem('ja', actual[0], blog)
+      await verifyArticleTableOfContentsItem('ja', actual[1], js)
+      await verifyArticleTableOfContentsItem('ja', actual[2], js_variable)
+      await verifyArticleTableOfContentsItem('ja', actual[3], ts)
+      await verifyArticleTableOfContentsItem('ja', actual[4], ts_interface)
+      await verifyArticleTableOfContentsItem('ja', actual[5], ts_class)
+      await verifyArticleTableOfContentsItem('ja', actual[6], ts_types)
+      await verifyArticleTableOfContentsItem('ja', actual[7], ts_types_primitive)
+      await verifyArticleTableOfContentsItem('ja', actual[8], ts_types_literal)
     })
 
     it('サインインしていないユーザーによる目次取得', async () => {
@@ -3966,9 +3966,9 @@ describe('StorageService', () => {
       const actual = await storageService.getUserArticleTableOfContents(undefined, { lang: 'ja', userName: StorageUser().userName })
 
       expect(actual.length).toBe(3)
-      verifyArticleTableOfContentsItem('ja', actual[0], blog)
-      verifyArticleTableOfContentsItem('ja', actual[1], ts)
-      verifyArticleTableOfContentsItem('ja', actual[2], ts_interface)
+      await verifyArticleTableOfContentsItem('ja', actual[0], blog)
+      await verifyArticleTableOfContentsItem('ja', actual[1], ts)
+      await verifyArticleTableOfContentsItem('ja', actual[2], ts_interface)
     })
 
     it('目次がない場合', async () => {
@@ -3996,8 +3996,8 @@ describe('StorageService', () => {
       const actual = await storageService.getUserArticleTableOfContents(undefined, { lang: 'ja', userName: StorageUser().userName })
 
       expect(actual.length).toBe(2)
-      verifyArticleTableOfContentsItem('ja', actual[0], js)
-      verifyArticleTableOfContentsItem('ja', actual[1], js_variable)
+      await verifyArticleTableOfContentsItem('ja', actual[0], js)
+      await verifyArticleTableOfContentsItem('ja', actual[1], js_variable)
     })
 
     it('英語 ', async () => {
@@ -4009,8 +4009,8 @@ describe('StorageService', () => {
       const actual = await storageService.getUserArticleTableOfContents(undefined, { lang: 'en', userName: StorageUser().userName })
 
       expect(actual.length).toBe(2)
-      verifyArticleTableOfContentsItem('en', actual[0], js)
-      verifyArticleTableOfContentsItem('en', actual[1], js_variable)
+      await verifyArticleTableOfContentsItem('en', actual[0], js)
+      await verifyArticleTableOfContentsItem('en', actual[1], js_variable)
     })
   })
 
@@ -4728,7 +4728,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('m_validateArticleRootUnder', () => {
+  describe('validateArticleRootUnder', () => {
     it('ベーシックケース - 記事ルート直下', async () => {
       // 記事ルートのパスを作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -4738,7 +4738,7 @@ describe('StorageService', () => {
       let actual!: AppError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootUnder(bundlePath)
+        await storageService.validateArticleRootUnder(bundlePath)
       } catch (err) {
         actual = err
       }
@@ -4758,7 +4758,7 @@ describe('StorageService', () => {
       let actual!: AppError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootUnder(art1Path)
+        await storageService.validateArticleRootUnder(art1Path)
       } catch (err) {
         actual = err
       }
@@ -4775,7 +4775,7 @@ describe('StorageService', () => {
       let actual!: AppError
       try {
         // テスト対象実行
-        await storageService.m_validateArticleRootUnder(bundlePath)
+        await storageService.validateArticleRootUnder(bundlePath)
       } catch (err) {
         actual = err
       }
@@ -4785,7 +4785,7 @@ describe('StorageService', () => {
     })
   })
 
-  describe('m_getBelongToArticleBundle', () => {
+  describe('getBelongToArticleBundle', () => {
     it('ベーシックケース', async () => {
       // 記事ルートの作成
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
@@ -4814,7 +4814,7 @@ describe('StorageService', () => {
 
       // テスト対象実行
       // ※引数ノードにバンドル配下のディレクトリを指定
-      const actual = (await storageService.m_getBelongToArticleBundle(`${art1.path}`))!
+      const actual = (await storageService.getBelongToArticleBundle(`${art1.path}`))!
 
       expect(actual.path).toBe(bundle.path)
     })
@@ -4827,9 +4827,72 @@ describe('StorageService', () => {
 
       // テスト対象実行
       // ※引数ノードにバンドル配下のディレクトリを指定
-      const actual = await storageService.m_getBelongToArticleBundle(`${userRootPath}/art1`)
+      const actual = await storageService.getBelongToArticleBundle(`${userRootPath}/art1`)
 
       expect(actual).toBeUndefined()
+    })
+  })
+
+  describe('toArticlePathDetails', () => {
+    let users: StorageNode
+    let userRoot: StorageNode
+    let articleRoot: StorageNode
+    let ts: StorageNode
+    let ts_types: StorageNode
+    let ts_types_primitive: StorageNode
+
+    async function setupArticleTypeNodes(lang: LangCode): Promise<void> {
+      // users
+      // └test.storage
+      //   └articles
+      //     └TypeScript
+      //       └Types
+      //         └PrimitiveType
+
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      users = articleRootNodes[0]
+      userRoot = articleRootNodes[1]
+      articleRoot = articleRootNodes[2]
+
+      // TypeScript
+      ts = await storageService.createArticleTypeDir({
+        lang,
+        dir: `${articleRoot.path}`,
+        label: 'TypeScript',
+        type: 'TreeBundle',
+        sortOrder: 1,
+      })
+
+      // TypeScript/Types
+      ts_types = await storageService.createArticleTypeDir({
+        lang,
+        dir: `${ts.path}`,
+        label: 'Types',
+        type: 'Category',
+        sortOrder: 1,
+      })
+
+      // TypeScript/Types/PrimitiveType
+      ts_types_primitive = await storageService.createArticleTypeDir({
+        lang,
+        id: StorageSchema.generateId(),
+        dir: `${ts_types.path}`,
+        label: 'PrimitiveType',
+        type: 'Article',
+        sortOrder: 1,
+      })
+    }
+
+    it('ベーシックケース', async () => {
+      await setupArticleTypeNodes('ja')
+      const allNodes = (await storageService.getDescendants({ path: '' })).list
+
+      const actual = await StorageService.toArticlePathDetails('ja', ts_types_primitive.path, allNodes)
+
+      expect(actual[0]).toEqual({ id: ts.id, label: ts.article!.label!['ja'] })
+      expect(actual[1]).toEqual({ id: ts_types.id, label: ts_types.article!.label!['ja'] })
+      expect(actual[2]).toEqual({ id: ts_types_primitive.id, label: ts_types_primitive.article!.label!['ja'] })
     })
   })
 })

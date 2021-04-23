@@ -224,11 +224,16 @@ input GetArticleContentsNodeInput {
   contentTypes: [ArticleContentType!]!
 }
 
+type ArticlePathDetail {
+  id: String
+  label: String
+}
+
 type ArticleListItem {
   id: String!
   name: String!
-  dir: String!
-  path: String!
+  dir: [ArticlePathDetail!]!
+  path: [ArticlePathDetail!]!
   label: String!
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -249,8 +254,8 @@ type ArticleListPaginationResult {
 type ArticleTableOfContentsItem {
   id: ID!
   name: String!
-  dir: String!
-  path: String!
+  dir: [ArticlePathDetail!]!
+  path: [ArticlePathDetail!]!
   label: String!
   type: ArticleDirType!
 }
