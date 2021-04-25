@@ -355,6 +355,14 @@ class CoreStorageService<
     arg2?: StorageNodeGetKeyInput | string[],
     arg3?: string[]
   ): Promise<FILE_NODE | undefined> {
+    const _getNode = async (idToken: IdToken | undefined, key: StorageNodeGetKeyInput, sourceIncludes: string[] | undefined) => {
+      if (idToken) {
+        return this.getNode(idToken, key, sourceIncludes)
+      } else {
+        return this.getNode(key, sourceIncludes)
+      }
+    }
+
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
     let sourceIncludes: string[] | undefined
@@ -366,18 +374,25 @@ class CoreStorageService<
       sourceIncludes = arg3 as string[] | undefined
     }
 
-    let fileNode: NODE | undefined
-    if (idToken) {
-      fileNode = await this.getNode(idToken, key, sourceIncludes)
+    let node: CoreStorageNode | undefined
+    let file: File | undefined
+
+    if (key.id) {
+      await Promise.all([
+        _getNode(idToken, key, sourceIncludes).then(n => (node = n)),
+        this.getStorageFile(key.id).then(ret => {
+          ret.exists && (file = ret.file)
+        }),
+      ])
     } else {
-      fileNode = await this.getNode(key, sourceIncludes)
+      node = await _getNode(idToken, key, sourceIncludes)
+      if (!node) return undefined
+      const { file: f, exists } = await this.getStorageFile(node.id)
+      exists && (file = f)
     }
-    if (!fileNode) return undefined
+    if (!(node && file)) return undefined
 
-    const { file, exists } = await this.getStorageFile(fileNode.id)
-    if (!exists) return undefined
-
-    return { ...fileNode, file } as FILE_NODE
+    return { ...node, file } as FILE_NODE
   }
 
   /**
@@ -1025,37 +1040,29 @@ class CoreStorageService<
     nodePath = removeBothEndsSlash(nodePath)
     CoreStorageService.validateNodePath(nodePath)
 
-    // 引数ノードの祖先ディレクトリを取得
-    const ancestorDirPaths = splitHierarchicalPaths(nodePath)
-    // 最後尾のノード(引数ノード)のパスを削除
-    // ※引数ノードは以下で別に取得するため
-    ancestorDirPaths.pop()
+    // 引数ノードとその階層を取得
+    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+    const hierarchicalNodes = await this.getNodes({ paths: hierarchicalPaths }, sourceIncludes)
+    if (!hierarchicalNodes.length) return []
 
     // 引数ノードを取得
-    const node = await this.getNode({ path: nodePath }, sourceIncludes)
-
-    let nodes: NODE[]
-
+    const node = hierarchicalNodes[hierarchicalNodes.length - 1]
     // 引数ノードが存在する場合
-    // ※引数ノードが存在するので、祖先ディレクトリも存在しなくてはならない
-    if (node) {
-      const ancestorDirNodes = await this.getNodes({ paths: ancestorDirPaths }, sourceIncludes)
-      // 欠けているディレクトリがあった場合
-      if (ancestorDirNodes.length !== ancestorDirPaths.length) {
-        throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
-          nodePath,
-          ancestorPaths: ancestorDirNodes.map(node => node.path),
-        })
+    // ※引数ノードが存在するので、祖先ノードも存在しなくてはならない
+    if (node.path === nodePath) {
+      // 欠けている祖先ノードがあった場合
+      const hierarchicalNodeDict = arrayToDict(hierarchicalNodes, 'path')
+      for (const hierarchicalPath of hierarchicalPaths) {
+        if (!hierarchicalNodeDict[hierarchicalPath]) {
+          throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
+            node: { path: nodePath },
+            ancestor: { path: hierarchicalPath },
+          })
+        }
       }
-      nodes = [...ancestorDirNodes, node]
-    }
-    // 引数ノードが存在しない場合
-    // ※引数ノードは存在しないので、実際に存在する祖先ディレクトリのみを取得する
-    else {
-      nodes = await this.getNodes({ paths: ancestorDirPaths }, sourceIncludes)
     }
 
-    return CoreStorageService.sortNodes(nodes) as NODE[]
+    return CoreStorageService.sortNodes(hierarchicalNodes) as NODE[]
   }
 
   /**

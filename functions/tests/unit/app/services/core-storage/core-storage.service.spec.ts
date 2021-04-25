@@ -36,6 +36,14 @@ const performance = require('perf_hooks').performance
 jest.setTimeout(25000)
 initApp()
 
+it('aaa', async () => {
+  let str = ''
+  for (let i = 1; i <= 1000; i++) {
+    str += `${CoreStorageSchema.generateId()},`
+  }
+  console.log(str)
+})
+
 //========================================================================
 //
 //  Test data
@@ -469,20 +477,106 @@ describe('CoreStorageService', () => {
       return { users, userRoot, d1, fileA }
     }
 
-    it('ベーシックケース', async () => {
-      const { fileA } = await setupAppNodes()
+    describe('ID検索', () => {
+      it('IDトークン指定なし', async () => {
+        const { fileA } = await setupUserNodes()
 
-      const actual = (await storageService.getFileNode(fileA))!
+        const actual = (await storageService.getFileNode({ id: fileA.id }))!
 
-      expect(actual.path).toBe(actual.path)
-      expect(actual.file.name).toBe(actual.id)
-      await h.existsNodes([actual])
+        expect(actual.path).toBe(actual.path)
+        expect(actual.file.name).toBe(actual.id)
+        await h.existsNodes([actual])
+      })
+
+      it('IDトークン指定あり - 権限あり', async () => {
+        const { fileA } = await setupUserNodes()
+
+        // 権限ありユーザーのIDトークンを指定
+        const actual = (await storageService.getFileNode(StorageUserToken(), { id: fileA.id }))!
+
+        expect(actual.path).toBe(actual.path)
+        expect(actual.file.name).toBe(actual.id)
+        await h.existsNodes([actual])
+      })
+
+      it('IDトークン指定あり - 権限なし', async () => {
+        const { fileA } = await setupUserNodes()
+
+        let actual!: HttpException
+        try {
+          // 権限なしユーザーのIDトークンを指定
+          await storageService.getFileNode(GeneralUserToken(), { id: fileA.id })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+
+      it('引数ノードが存在しない場合', async () => {
+        const actual = await storageService.getFileNode({ id: '12345678901234567890' })
+
+        expect(actual).toBeUndefined()
+      })
+
+      it('引数ノードは存在するが、ファイルは存在しない場合', async () => {
+        const [d1] = await storageService.createHierarchicalDirs([`d1`])
+
+        const actual = await storageService.getFileNode({ id: d1.id })
+
+        expect(actual).toBeUndefined()
+      })
     })
 
-    it('引数ノードが存在しない場合', async () => {
-      const actual = await storageService.getFileNode({ id: '12345678901234567890' })
+    describe('パス検索', () => {
+      it('IDトークン指定なし', async () => {
+        const { fileA } = await setupUserNodes()
 
-      expect(actual).toBeUndefined()
+        const actual = (await storageService.getFileNode({ path: fileA.path }))!
+
+        expect(actual.path).toBe(actual.path)
+        expect(actual.file.name).toBe(actual.id)
+        await h.existsNodes([actual])
+      })
+
+      it('IDトークン指定あり - 権限あり', async () => {
+        const { fileA } = await setupUserNodes()
+
+        // 権限ありユーザーのIDトークンを指定
+        const actual = (await storageService.getFileNode(StorageUserToken(), { path: fileA.path }))!
+
+        expect(actual.path).toBe(actual.path)
+        expect(actual.file.name).toBe(actual.id)
+        await h.existsNodes([actual])
+      })
+
+      it('IDトークン指定あり - 権限なし', async () => {
+        const { fileA } = await setupUserNodes()
+
+        let actual!: HttpException
+        try {
+          // 権限なしユーザーのIDトークンを指定
+          await storageService.getFileNode(GeneralUserToken(), { path: fileA.path })
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.getStatus()).toBe(403)
+      })
+
+      it('引数ノードが存在しない場合', async () => {
+        const actual = await storageService.getFileNode({ path: 'aaa/bbb/ccc.txt' })
+
+        expect(actual).toBeUndefined()
+      })
+
+      it('引数ノードは存在するが、ファイルは存在しない場合', async () => {
+        const [d1] = await storageService.createHierarchicalDirs([`d1`])
+
+        const actual = await storageService.getFileNode({ path: d1.path })
+
+        expect(actual).toBeUndefined()
+      })
     })
   })
 
@@ -1768,8 +1862,8 @@ describe('CoreStorageService', () => {
 
       expect(actual.cause).toBe(`The ancestor of the node you are trying to retrieve does not exist.`)
       expect(actual.data).toEqual({
-        nodePath: `d1/d11/d111/fileA.txt`,
-        ancestorPaths: ['d1', 'd1/d11/d111'],
+        node: { path: `d1/d11/d111/fileA.txt` },
+        ancestor: { path: `d1/d11` },
       })
     })
 
