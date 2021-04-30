@@ -13,16 +13,28 @@ import { IsPositive } from 'class-validator'
 type JSON = any
 type JSONObject = any
 
-interface PaginationInput {
-  pageSize?: number
+interface NextTokenPaginationInput {
   pageToken?: string
+  pageSize?: number
 }
 
-interface PaginationResult<T = any> {
+interface NextTokenPaginationResult<T = any> {
   list: T[]
   nextPageToken?: string
   total: number
   isPaginationTimeout?: boolean
+}
+
+interface OffsetTokenPaginationInput {
+  pageToken?: string
+  offset?: number
+  pageSize?: number
+}
+
+interface OffsetTokenPaginationResult<T = any> {
+  list: T[]
+  pageToken?: string
+  total: number
 }
 
 //--------------------------------------------------
@@ -306,8 +318,7 @@ interface ArticleListItem {
 
 interface GetUserArticleListInput {
   lang: LangCode
-  userName: string
-  articleTypeDirId: string
+  articleDirId: string
 }
 
 interface ArticleTableOfContentsItem {
@@ -402,6 +413,7 @@ export { JSON, JSONObject }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export {
   ArticleContentFields,
+  ArticleContentType,
   ArticleDetail,
   ArticleDirLabelByLang,
   ArticleDirType,
@@ -415,15 +427,16 @@ export {
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
   GetArticleContentsNodeInput,
-  ArticleContentType,
   GetArticleSrcContentInput,
   GetArticleSrcContentResult,
   GetUserArticleListInput,
   GetUserArticleTableOfContentsInput,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  PaginationInput,
-  PaginationResult,
+  NextTokenPaginationInput,
+  NextTokenPaginationResult,
+  OffsetTokenPaginationInput,
+  OffsetTokenPaginationResult,
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,

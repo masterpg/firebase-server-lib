@@ -1,5 +1,11 @@
-input PaginationInput {
+input NextTokenPaginationInput {
   pageSize: Int
+  pageToken: String
+}
+
+input OffsetTokenPaginationInput {
+  pageSize: Int
+  offset: Int
   pageToken: String
 }
 
@@ -239,16 +245,15 @@ type ArticleListItem {
   updatedAt: DateTime!
 }
 
-input GetUserArticleListInput {
-  lang: LangCode!
-  userName: String!
-  articleTypeDirId: String!
-}
-
 type ArticleListPaginationResult {
   list: [ArticleListItem!]!
-  nextPageToken: String
+  pageToken: String
   total: Int
+}
+
+input GetUserArticleListInput {
+  lang: LangCode!
+  articleDirId: String!
 }
 
 type ArticleTableOfContentsItem {

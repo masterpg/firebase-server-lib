@@ -33,7 +33,7 @@ import {
   GetArticleContentsNodeInput,
   GetUserArticleListInput,
   MoveStorageFileInput,
-  PaginationResult,
+  NextTokenPaginationResult,
   RenameArticleTypeDirInput,
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
@@ -270,7 +270,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) {
+        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: NextTokenPaginationInput) {
           storageDescendants(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
@@ -290,11 +290,11 @@ describe('Lv1 Storage Resolver', () => {
       const input = { path: d1.path, includeBase: true }
 
       const getDescendants = td.replace(storageService, 'getDescendants')
-      td.when(getDescendants(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve({
+      td.when(getDescendants(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve(<NextTokenPaginationResult>{
         list: [d1, d11],
         nextPageToken: 'abcdefg',
         total: 10,
-      } as PaginationResult)
+      })
 
       const response = await requestGQL(
         app,
@@ -333,7 +333,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) {
+        query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: NextTokenPaginationInput) {
           storageChildren(input: $input, pagination: $pagination) {
             list {
               ...${StorageNodeFieldsName}
@@ -1534,12 +1534,12 @@ describe('Lv1 Storage Resolver', () => {
   describe('userArticleList', () => {
     const gql = {
       query: `
-        query GetUserArticleList($input: GetUserArticleListInput!, $pagination: PaginationInput) {
+        query GetUserArticleList($input: GetUserArticleListInput!, $pagination: OffsetTokenPaginationInput) {
           userArticleList(input: $input, pagination: $pagination) {
             list {
               ...${ArticleListItemFieldsName}
             }
-            nextPageToken
+            pageToken
             total
           }
         }
@@ -1592,14 +1592,13 @@ describe('Lv1 Storage Resolver', () => {
 
       const input: GetUserArticleListInput = {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: blog.id,
+        articleDirId: blog.id,
       }
       const pagination = { pageSize: 3 }
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(getUserArticleList(StorageUserToken(), input, pagination)).thenResolve({
         list: [art1],
-        nextPageToken: 'abcdefg',
+        pageToken: 'abcdefg',
         total: 10,
       })
 
@@ -1613,7 +1612,7 @@ describe('Lv1 Storage Resolver', () => {
       )
 
       expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
-      expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
       expect(response.body.data.userArticleList.total).toBe(10)
     })
 
@@ -1622,14 +1621,13 @@ describe('Lv1 Storage Resolver', () => {
 
       const input: GetUserArticleListInput = {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: blog.id,
+        articleDirId: blog.id,
       }
       const pagination = { pageSize: 3 }
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(getUserArticleList(undefined, input, pagination)).thenResolve({
         list: [art1],
-        nextPageToken: 'abcdefg',
+        pageToken: 'abcdefg',
         total: 10,
       })
 
@@ -1639,7 +1637,7 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
-      expect(response.body.data.userArticleList.nextPageToken).toBe('abcdefg')
+      expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
       expect(response.body.data.userArticleList.total).toBe(10)
     })
   })

@@ -36,14 +36,6 @@ const performance = require('perf_hooks').performance
 jest.setTimeout(25000)
 initApp()
 
-it('aaa', async () => {
-  let str = ''
-  for (let i = 1; i <= 1000; i++) {
-    str += `${CoreStorageSchema.generateId()},`
-  }
-  console.log(str)
-})
-
 //========================================================================
 //
 //  Test data

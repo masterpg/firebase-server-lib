@@ -429,7 +429,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetUserArticleList",
-  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $pagination: PaginationInput) { userArticleList(input: $input, pagination: $pagination) { list { id path } nextPageToken } }",
+  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $pagination: OffsetTokenPaginationInput) { userArticleList(input: $input, pagination: $pagination) { list { id name } pageToken total } }",
   "variables": {
     "input": {
       "lang": "ja",

@@ -18,8 +18,8 @@ import {
   GetUserArticleTableOfContentsInput,
   IdToken,
   MoveStorageDirInput,
-  PaginationInput,
-  PaginationResult,
+  OffsetTokenPaginationInput,
+  OffsetTokenPaginationResult,
   RenameArticleTypeDirInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
@@ -43,6 +43,7 @@ import {
 import { ElasticMSearchAPIResponse, ElasticMSearchResponse, ElasticSearchAPIResponse, ElasticSearchResponse } from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { compress, decompress } from 'lz-string'
 import { AppError } from '../base'
 import { AuthHelper } from './base/auth'
 import { CoreStorageService } from './core-storage'
@@ -836,82 +837,136 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
   async getUserArticleList(
     idToken: IdToken | undefined,
-    { lang, userName, articleTypeDirId }: GetUserArticleListInput,
-    pagination?: PaginationInput
-  ): Promise<PaginationResult<ArticleListItem>> {
-    const pageSize = pagination?.pageSize || StorageService.PageSize
-    const from = pagination?.pageToken ? Number(pagination.pageToken) : 0
+    { lang, articleDirId }: GetUserArticleListInput,
+    pagination?: OffsetTokenPaginationInput
+  ): Promise<OffsetTokenPaginationResult<ArticleListItem>> {
+    /**
+     * リクエスターが読み込み可能な記事リストを取得します。
+     */
+    const getArticleList = async (allNodeDict: { [path: string]: StorageNode }, articleNodes: StorageNode[]) => {
+      const result: ArticleListItem[] = []
+      for (const articleNode of articleNodes) {
+        // 記事とその階層を形成するノードを取得
+        const articleHierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, articleNode.path)
+        // リクエスターが指定されたノードを読み込み可能か検証
+        const validated = await this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
+        if (validated) continue
 
-    // ユーザー名をキーにしてユーザーを取得
-    const user = await this.userHelper.getUser({ userName })
-    if (!user) {
-      throw new AppError(`The user with the specified 'userName' does not exist.`, { userName })
+        // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
+        const srcDetail = articleNode.article?.src?.[lang]
+        if (!srcDetail?.createdAt) continue
+
+        result.push({
+          ...pickProps(articleNode, ['id', 'name']),
+          dir: StorageService.toArticlePathDetails(lang, articleNode.dir, articleHierarchicalNodes),
+          path: StorageService.toArticlePathDetails(lang, articleNode.path, articleHierarchicalNodes),
+          label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
+          createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
+          updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
+        })
+      }
+      return result
     }
-    const articleRootPath = StorageService.toArticleRootPath({ uid: user.id })
+
+    const pageSize = pagination?.pageSize || StorageService.PageSize
+    const from = pagination?.offset ?? 0
 
     // 指定された記事系ディレクトリを取得
-    const articleTypeDir = await this.getNode({ id: articleTypeDirId })
-    if (!articleTypeDir || !articleTypeDir.article) return { list: [], total: 0 }
+    const articleDir = await this.getNode({ id: articleDirId })
+    if (!articleDir || !articleDir.article) return { list: [], total: 0 }
 
     // 指定された記事系ディレクトリが「記事」の場合は無視
-    const articleType = articleTypeDir.article.type
-    if (articleType === 'Article') return { list: [], total: 0 }
+    if (articleDir.article.type === 'Article') return { list: [], total: 0 }
 
-    // 指定された記事系ディレクトリとその上位階層を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(articleTypeDir.path)
+    // 指定された記事系ディレクトリとその階層を取得
+    const hierarchicalNodes = await this.getHierarchicalNodes(articleDir.path)
 
-    // 指定された記事系ディレクトリ直下の記事を取得
-    const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
-      index: StorageSchema.IndexAlias,
-      size: pageSize,
-      from,
-      body: {
-        query: {
-          bool: {
-            filter: [{ term: { dir: articleTypeDir.path } }, { term: { 'article.type': 'Article' } }],
+    //
+    // 初回検索の場合
+    //
+    if (!pagination?.pageToken) {
+      // 指定された記事系ディレクトリ直下の「全記事」を取得
+      const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+        index: StorageSchema.IndexAlias,
+        size: StorageService.ChunkSize,
+        from: 0,
+        body: {
+          query: {
+            bool: {
+              filter: [{ term: { dir: articleDir.path } }, { term: { 'article.type': 'Article' } }],
+            },
           },
+          sort: [{ 'article.sortOrder': 'desc' }],
         },
-        sort: [{ 'article.sortOrder': 'desc' }],
-      },
-      _source_excludes: this.sourceExcludes,
-    })
-    const articleNodes = this.dbResponseToNodes(response)
-
-    // 取得された記事とその階層を形成するノードをマップ化
-    const allNodes = [...hierarchicalNodes, ...articleNodes]
-    const allNodeDict = arrayToDict(allNodes, 'path')
-
-    // 取得された記事から戻り値を作成
-    const articleList: ArticleListItem[] = []
-    for (const articleNode of articleNodes) {
-      // 記事とその階層を形成するノードを取得
-      const articleHierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, articleNode.path)
-      // リクエスターが指定されたノードを読み込み可能か検証
-      const validated = await this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
-      if (validated) continue
-
-      // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
-      const srcDetail = articleNode.article?.src?.[lang]
-      if (!srcDetail?.createdAt) continue
-
-      articleList.push({
-        ...pickProps(articleNode, ['id', 'name']),
-        dir: StorageService.toArticlePathDetails(lang, articleNode.dir, allNodes),
-        path: StorageService.toArticlePathDetails(lang, articleNode.path, allNodes),
-        label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
-        createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
-        updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
+        _source_excludes: this.sourceExcludes,
       })
-    }
+      const allArticleNodes = this.dbResponseToNodes(response)
 
-    let nextPageToken: string | undefined
-    if (articleList.length === 0 || articleList.length < pageSize) {
-      nextPageToken = undefined
-    } else {
-      nextPageToken = String(from + articleList.length)
-    }
+      // 取得された記事とその階層をマップ化
+      const allNodes = [...hierarchicalNodes, ...allArticleNodes]
+      const allNodeDict = arrayToDict(allNodes, 'path')
 
-    return { list: articleList, nextPageToken, total: response.body.hits.total.value }
+      // 読み込み可能な全記事リストを取得
+      const allArticleList = await getArticleList(allNodeDict, allArticleNodes)
+      // 1ページ分だけの記事リストを取得
+      const articleList = allArticleList.slice(from, from + pageSize)
+
+      // ページトークンを生成
+      let pageToken: string | undefined
+      if (articleList.length === 0 || articleList.length < pageSize) {
+        pageToken = undefined
+      } else {
+        // 全記事リストのノードIDを圧縮したものをトークンとする
+        pageToken = compress(allArticleList.map(node => node.id).join(','))
+      }
+
+      return { list: articleList, pageToken, total: allArticleList.length }
+    }
+    //
+    // 2回目以降の検索の場合
+    //
+    else {
+      // ページトークンから全記事リストのノードIDを取得
+      const nodeIds = decompress(pagination.pageToken)!
+        .split(',')
+        .reduce((result, nodeId) => {
+          nodeId.trim() && result.push(nodeId.trim())
+          return result
+        }, [] as string[])
+      // 次ページ分の記事ノードを取得
+      const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+        index: StorageSchema.IndexAlias,
+        size: pageSize,
+        from,
+        body: {
+          query: {
+            bool: {
+              filter: { terms: { id: nodeIds } },
+            },
+          },
+          sort: [{ 'article.sortOrder': 'desc' }],
+        },
+        _source_excludes: this.sourceExcludes,
+      })
+      const articleNodes = this.dbResponseToNodes(response)
+
+      // 取得された記事ノードとその階層をマップ化
+      const allNodes = [...hierarchicalNodes, ...articleNodes]
+      const allNodeDict = arrayToDict(allNodes, 'path')
+
+      // 次ページ分の記事リストを取得
+      const articleList = await getArticleList(allNodeDict, articleNodes)
+
+      // ページトークンを取得
+      let pageToken: string | undefined
+      if (articleList.length === 0 || articleList.length < pageSize) {
+        pageToken = undefined
+      } else {
+        pageToken = pagination.pageToken
+      }
+
+      return { list: articleList, pageToken, total: nodeIds.length }
+    }
   }
 
   /**
@@ -1281,7 +1336,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
 
   /**
    * 記事を作成します。
-   * ※記事ディレクトリには記事に必要なファイルが格納されることになります。
+   * ※記事のディレクトリには記事に必要なファイルが格納されることになります。
    * @param input
    */
   private async m_createArticle(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {

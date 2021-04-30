@@ -13,8 +13,10 @@ import {
   IdToken,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  PaginationInput,
-  PaginationResult,
+  NextTokenPaginationInput,
+  NextTokenPaginationResult,
+  OffsetTokenPaginationInput,
+  OffsetTokenPaginationResult,
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
@@ -77,8 +79,8 @@ class StorageResolver {
   async storageDescendants(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: PaginationInput
-  ): Promise<PaginationResult<StorageNode>> {
+    @Args('pagination') pagination?: NextTokenPaginationInput
+  ): Promise<NextTokenPaginationResult<StorageNode>> {
     return this.storageService.getDescendants(idToken, input, pagination)
   }
 
@@ -87,8 +89,8 @@ class StorageResolver {
   async storageChildren(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: PaginationInput
-  ): Promise<PaginationResult<StorageNode>> {
+    @Args('pagination') pagination?: NextTokenPaginationInput
+  ): Promise<NextTokenPaginationResult<StorageNode>> {
     return this.storageService.getChildren(idToken, input, pagination)
   }
 
@@ -242,8 +244,8 @@ class StorageResolver {
   async userArticleList(
     @UserArg() idToken: IdToken | undefined,
     @Args('input') input: GetUserArticleListInput,
-    @Args('pagination') pagination?: PaginationInput
-  ): Promise<PaginationResult<ArticleListItem>> {
+    @Args('pagination') pagination?: OffsetTokenPaginationInput
+  ): Promise<OffsetTokenPaginationResult<ArticleListItem>> {
     return this.storageService.getUserArticleList(idToken, input, pagination)
   }
 

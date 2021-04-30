@@ -19,7 +19,7 @@ import {
   DevUtilsServiceDI,
   DevUtilsServiceModule,
   GetArticleSrcContentResult,
-  GetUserArticleListInput,
+  OffsetTokenPaginationResult,
   SaveArticleSrcContentInput,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -3169,11 +3169,11 @@ describe('StorageService', () => {
 
         const actual = await storageService.getUserArticleList(GeneralUserToken(), {
           lang: 'ja',
-          userName: StorageUser().userName,
-          articleTypeDirId: ts.id,
+          articleDirId: ts.id,
         })
 
-        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.pageToken).toBeUndefined()
+        expect(actual.total).toBe(2)
         expect(actual.list.length).toBe(2)
         await verifyArticleListItem('ja', actual.list[0], ts_interface)
         await verifyArticleListItem('ja', actual.list[1], ts_class)
@@ -3189,11 +3189,11 @@ describe('StorageService', () => {
 
         const actual = await storageService.getUserArticleList(GeneralUserToken(), {
           lang: 'ja',
-          userName: StorageUser().userName,
-          articleTypeDirId: ts.id,
+          articleDirId: ts.id,
         })
 
-        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.pageToken).toBeUndefined()
+        expect(actual.total).toBe(1)
         expect(actual.list.length).toBe(1)
         await verifyArticleListItem('ja', actual.list[0], ts_class)
       })
@@ -3208,11 +3208,11 @@ describe('StorageService', () => {
 
         const actual = await storageService.getUserArticleList(GeneralUserToken(), {
           lang: 'ja',
-          userName: StorageUser().userName,
-          articleTypeDirId: ts.id,
+          articleDirId: ts.id,
         })
 
-        expect(actual.nextPageToken).toBeUndefined()
+        expect(actual.pageToken).toBeUndefined()
+        expect(actual.total).toBe(1)
         expect(actual.list.length).toBe(1)
         await verifyArticleListItem('ja', actual.list[0], ts_interface)
       })
@@ -3223,11 +3223,11 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(2)
       expect(actual.list.length).toBe(2)
       await verifyArticleListItem('ja', actual.list[0], ts_interface)
       await verifyArticleListItem('ja', actual.list[1], ts_class)
@@ -3241,11 +3241,11 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(undefined, {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(2)
       expect(actual.list.length).toBe(2)
       await verifyArticleListItem('ja', actual.list[0], ts_interface)
       await verifyArticleListItem('ja', actual.list[1], ts_class)
@@ -3270,11 +3270,11 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(0)
       expect(actual.list.length).toBe(0)
     })
 
@@ -3324,11 +3324,11 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(1)
       expect(actual.list.length).toBe(1)
       await verifyArticleListItem('ja', actual.list[0], ts_class)
     })
@@ -3338,11 +3338,11 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'ja',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(2)
       expect(actual.list.length).toBe(2)
       await verifyArticleListItem('ja', actual.list[0], ts_interface)
       await verifyArticleListItem('ja', actual.list[1], ts_class)
@@ -3353,59 +3353,158 @@ describe('StorageService', () => {
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
         lang: 'en',
-        userName: StorageUser().userName,
-        articleTypeDirId: ts.id,
+        articleDirId: ts.id,
       })
 
-      expect(actual.nextPageToken).toBeUndefined()
+      expect(actual.pageToken).toBeUndefined()
+      expect(actual.total).toBe(2)
       expect(actual.list.length).toBe(2)
       await verifyArticleListItem('en', actual.list[0], ts_interface)
       await verifyArticleListItem('en', actual.list[1], ts_class)
     })
 
-    it('大量データの場合', async () => {
-      await setupArticleTypeNodes('ja')
+    describe('大量データの場合', () => {
+      it('ベーシックケース', async () => {
+        const pageSize = 3
+        await setupArticleTypeNodes('ja')
 
-      await Promise.all(
-        [...Array(10)].map(async (_, i) => {
-          const label = `art${(i + 1).toString().padStart(2, '0')}`
-          const articleNode = await storageService.createArticleTypeDir({
-            lang: 'ja',
-            dir: `${js.path}`,
-            label,
-            type: 'Article',
-            sortOrder: i + 1,
+        await Promise.all(
+          [...Array(10)].map(async (_, i) => {
+            const label = `art${(i + 1).toString().padStart(2, '0')}`
+            const articleNode = await storageService.createArticleTypeDir({
+              lang: 'ja',
+              dir: `${js.path}`,
+              label,
+              type: 'Article',
+              sortOrder: i + 1,
+            })
+            await storageService.saveArticleSrcContent(articleNode, {
+              lang: 'ja',
+              srcContent: label,
+              searchContent: label,
+            })
           })
-          await storageService.saveArticleSrcContent(articleNode, {
-            lang: 'ja',
-            srcContent: label,
-            searchContent: label,
+        )
+
+        // 大量データを想定して検索を行う
+        const actual: ArticleListItem[] = []
+        let offset = 0
+        let fetched: OffsetTokenPaginationResult<ArticleListItem> = { list: [], total: 0 }
+        do {
+          fetched = await storageService.getUserArticleList(
+            StorageUserToken(), // 自ユーザーを指定
+            { lang: 'ja', articleDirId: js.id },
+            { pageSize, pageToken: fetched.pageToken, offset }
+          )
+          expect(fetched.total).toBe(10)
+          actual.push(...fetched.list)
+          offset += pageSize
+        } while (fetched.pageToken)
+
+        expect(actual.length).toBe(10)
+        expect(actual[0].label).toBe(`art10`)
+        expect(actual[1].label).toBe(`art09`)
+        expect(actual[2].label).toBe(`art08`)
+        expect(actual[3].label).toBe(`art07`)
+        expect(actual[4].label).toBe(`art06`)
+        expect(actual[5].label).toBe(`art05`)
+        expect(actual[6].label).toBe(`art04`)
+        expect(actual[7].label).toBe(`art03`)
+        expect(actual[8].label).toBe(`art02`)
+        expect(actual[9].label).toBe(`art01`)
+      })
+
+      it('読み込みできない記事が含まれている場合', async () => {
+        const pageSize = 3
+        await setupArticleTypeNodes('ja')
+
+        // 対象バンドルを公開設定
+        await storageService.setDirShareDetail(js, { isPublic: true })
+
+        // art3とart7は非公開にする
+        const privateNodes = [2, 6]
+
+        await Promise.all(
+          [...Array(10)].map(async (_, i) => {
+            const label = `art${(i + 1).toString().padStart(2, '0')}`
+            const articleNode = await storageService.createArticleTypeDir({
+              lang: 'ja',
+              dir: `${js.path}`,
+              label,
+              type: 'Article',
+              sortOrder: i + 1,
+              share: { isPublic: !privateNodes.includes(i) },
+            })
+            await storageService.saveArticleSrcContent(articleNode, {
+              lang: 'ja',
+              srcContent: label,
+              searchContent: label,
+            })
           })
-        })
-      )
+        )
 
-      // 大量データを想定して検索を行う
-      const actual: ArticleListItem[] = []
-      const input: GetUserArticleListInput = { lang: 'ja', userName: StorageUser().userName, articleTypeDirId: js.id }
-      let fetched = await storageService.getUserArticleList(StorageUserToken(), input, { pageSize: 3 })
-      fetched.list
-      actual.push(...fetched.list)
-      while (fetched.nextPageToken) {
-        fetched = await storageService.getUserArticleList(StorageUserToken(), input, { pageSize: 3, pageToken: fetched.nextPageToken })
-        actual.push(...fetched.list)
-      }
+        // 大量データを想定して検索を行う
+        const actual: ArticleListItem[] = []
+        let offset = 0
+        let fetched: OffsetTokenPaginationResult<ArticleListItem> = { list: [], total: 0 }
+        do {
+          fetched = await storageService.getUserArticleList(
+            GeneralUserToken(), // 他ユーザーを指定
+            { lang: 'ja', articleDirId: js.id },
+            { pageSize, pageToken: fetched.pageToken, offset }
+          )
+          expect(fetched.total).toBe(8) // 非公開分を除くと8件
+          actual.push(...fetched.list)
+          offset += pageSize
+        } while (fetched.pageToken)
 
-      expect(actual.length).toBe(10)
-      expect(actual[0].label).toBe(`art10`)
-      expect(actual[1].label).toBe(`art09`)
-      expect(actual[2].label).toBe(`art08`)
-      expect(actual[3].label).toBe(`art07`)
-      expect(actual[4].label).toBe(`art06`)
-      expect(actual[5].label).toBe(`art05`)
-      expect(actual[6].label).toBe(`art04`)
-      expect(actual[7].label).toBe(`art03`)
-      expect(actual[8].label).toBe(`art02`)
-      expect(actual[9].label).toBe(`art01`)
+        expect(actual.length).toBe(8)
+        expect(actual[0].label).toBe(`art10`)
+        expect(actual[1].label).toBe(`art09`)
+        expect(actual[2].label).toBe(`art08`)
+        expect(actual[3].label).toBe(`art06`)
+        expect(actual[4].label).toBe(`art05`)
+        expect(actual[5].label).toBe(`art04`)
+        expect(actual[6].label).toBe(`art02`)
+        expect(actual[7].label).toBe(`art01`)
+      })
+
+      it('初回検索でオフセット指定されている場合', async () => {
+        const pageSize = 3
+        await setupArticleTypeNodes('ja')
+
+        await Promise.all(
+          [...Array(10)].map(async (_, i) => {
+            const label = `art${(i + 1).toString().padStart(2, '0')}`
+            const articleNode = await storageService.createArticleTypeDir({
+              lang: 'ja',
+              dir: `${js.path}`,
+              label,
+              type: 'Article',
+              sortOrder: i + 1,
+            })
+            await storageService.saveArticleSrcContent(articleNode, {
+              lang: 'ja',
+              srcContent: label,
+              searchContent: label,
+            })
+          })
+        )
+
+        // 初回検索でオフセットを指定
+        const actual = await await storageService.getUserArticleList(
+          StorageUserToken(), // 自ユーザーを指定
+          { lang: 'ja', articleDirId: js.id },
+          { pageSize, offset: 3 }
+        )
+
+        expect(actual.pageToken).toBeDefined()
+        expect(actual.total).toBe(10)
+        expect(actual.list.length).toBe(3)
+        expect(actual.list[0].label).toBe(`art07`)
+        expect(actual.list[1].label).toBe(`art06`)
+        expect(actual.list[2].label).toBe(`art05`)
+      })
     })
   })
 

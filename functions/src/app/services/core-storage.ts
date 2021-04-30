@@ -8,8 +8,8 @@ import {
   IdToken,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  PaginationInput,
-  PaginationResult,
+  NextTokenPaginationInput,
+  NextTokenPaginationResult,
   RenameStorageDirInput,
   RenameStorageFileInput,
   SetShareDetailInput,
@@ -459,9 +459,9 @@ class CoreStorageService<
   async getDescendants(
     idToken: IdToken,
     input: StorageNodeGetUnderInput,
-    pagination?: PaginationInput,
+    pagination?: NextTokenPaginationInput,
     sourceIncludes?: string[]
-  ): Promise<PaginationResult<NODE>>
+  ): Promise<NextTokenPaginationResult<NODE>>
 
   /**
    * @see getDescendants
@@ -469,26 +469,30 @@ class CoreStorageService<
    * @param pagination
    * @param sourceIncludes
    */
-  async getDescendants(input: StorageNodeGetUnderInput, pagination?: PaginationInput, sourceIncludes?: string[]): Promise<PaginationResult<NODE>>
+  async getDescendants(
+    input: StorageNodeGetUnderInput,
+    pagination?: NextTokenPaginationInput,
+    sourceIncludes?: string[]
+  ): Promise<NextTokenPaginationResult<NODE>>
 
   async getDescendants(
     arg1: IdToken | StorageNodeGetUnderInput,
-    arg2?: StorageNodeGetUnderInput | PaginationInput,
-    arg3?: PaginationInput | string[],
+    arg2?: StorageNodeGetUnderInput | NextTokenPaginationInput,
+    arg3?: NextTokenPaginationInput | string[],
     arg4?: string[]
-  ): Promise<PaginationResult<NODE>> {
+  ): Promise<NextTokenPaginationResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
-    let pagination: PaginationInput | undefined
+    let pagination: NextTokenPaginationInput | undefined
     let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3 as PaginationInput | undefined
+      pagination = arg3 as NextTokenPaginationInput | undefined
       sourceIncludes = arg4
     } else {
       input = arg1
-      pagination = arg2 as PaginationInput | undefined
+      pagination = arg2 as NextTokenPaginationInput | undefined
       sourceIncludes = arg3 as string[] | undefined
     }
 
@@ -525,9 +529,9 @@ class CoreStorageService<
 
   protected async getDescendantsImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: PaginationInput,
+    pagination?: NextTokenPaginationInput,
     sourceIncludes?: string[]
-  ): Promise<PaginationResult<NODE>> {
+  ): Promise<NextTokenPaginationResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
@@ -728,9 +732,9 @@ class CoreStorageService<
   async getChildren(
     idToken: IdToken,
     input: StorageNodeGetUnderInput,
-    pagination?: PaginationInput,
+    pagination?: NextTokenPaginationInput,
     sourceIncludes?: string[]
-  ): Promise<PaginationResult<NODE>>
+  ): Promise<NextTokenPaginationResult<NODE>>
 
   /**
    * 指定されたディレクトリ直下のノードを取得します。
@@ -738,26 +742,30 @@ class CoreStorageService<
    * @param pagination
    * @param sourceIncludes
    */
-  async getChildren(input: StorageNodeGetUnderInput, pagination?: PaginationInput, sourceIncludes?: string[]): Promise<PaginationResult<NODE>>
+  async getChildren(
+    input: StorageNodeGetUnderInput,
+    pagination?: NextTokenPaginationInput,
+    sourceIncludes?: string[]
+  ): Promise<NextTokenPaginationResult<NODE>>
 
   async getChildren(
     arg1: IdToken | StorageNodeGetUnderInput,
-    arg2?: StorageNodeGetUnderInput | PaginationInput,
-    arg3?: PaginationInput | string[],
+    arg2?: StorageNodeGetUnderInput | NextTokenPaginationInput,
+    arg3?: NextTokenPaginationInput | string[],
     arg4?: string[]
-  ): Promise<PaginationResult<NODE>> {
+  ): Promise<NextTokenPaginationResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
-    let pagination: PaginationInput | undefined
+    let pagination: NextTokenPaginationInput | undefined
     let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3 as PaginationInput | undefined
+      pagination = arg3 as NextTokenPaginationInput | undefined
       sourceIncludes = arg4
     } else {
       input = arg1
-      pagination = arg2 as PaginationInput | undefined
+      pagination = arg2 as NextTokenPaginationInput | undefined
       sourceIncludes = arg3 as string[] | undefined
     }
 
@@ -794,9 +802,9 @@ class CoreStorageService<
 
   protected async getChildrenImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: PaginationInput,
+    pagination?: NextTokenPaginationInput,
     sourceIncludes?: string[]
-  ): Promise<PaginationResult<NODE>> {
+  ): Promise<NextTokenPaginationResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
@@ -1601,7 +1609,7 @@ class CoreStorageService<
       }
     }
 
-    let pagination: PaginationResult<NODE> = { nextPageToken: undefined, list: [], total: 0 }
+    let pagination: NextTokenPaginationResult<NODE> = { nextPageToken: undefined, list: [], total: 0 }
     do {
       pagination = await this.getDescendantsImpl(
         { path: fromDirPath, includeBase: true },
