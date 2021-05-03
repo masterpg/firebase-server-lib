@@ -1005,6 +1005,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           path: StorageService.toArticlePathDetails(lang, node.path, nodes),
           label: StorageService.getArticleLangLabel(lang, node.article!.label),
           type: node.article!.type,
+          sortOrder: node.article!.sortOrder,
         }
         return result
       })

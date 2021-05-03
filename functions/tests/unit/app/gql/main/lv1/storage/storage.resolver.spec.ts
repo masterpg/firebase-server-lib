@@ -1697,6 +1697,7 @@ describe('Lv1 Storage Resolver', () => {
         dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
         path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
         label: StorageService.getArticleLangLabel(lang, node.article!.label!),
+        sortOrder: node.article!.sortOrder,
       }
     }
 

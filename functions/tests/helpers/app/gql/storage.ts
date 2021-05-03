@@ -81,6 +81,7 @@ const ArticleTableOfContentsItemFields = `
     dir { id label }
     path { id label }
     label
+    sortOrder
   }
 `
 
@@ -169,6 +170,7 @@ function toGQLResponseArticleTableOfContentsItem(item: ArticleTableOfContentsIte
     dir: item.dir,
     path: item.path,
     label: item.label,
+    sortOrder: item.sortOrder,
   }
 }
 

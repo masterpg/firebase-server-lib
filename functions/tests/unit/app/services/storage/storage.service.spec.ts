@@ -3537,6 +3537,7 @@ describe('StorageService', () => {
       expect(actual.path).toEqual(StorageService.toArticlePathDetails(lang, expected.path, allNodes))
       expect(actual.label).toBe(expected.article!.label![lang])
       expect(actual.type).toBe(expected.article!.type)
+      expect(actual.sortOrder).toBe(expected.article!.sortOrder)
     }
 
     async function setupArticleTypeNodes(lang: LangCode): Promise<void> {

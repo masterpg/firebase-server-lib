@@ -263,6 +263,7 @@ type ArticleTableOfContentsItem {
   path: [ArticlePathDetail!]!
   label: String!
   type: ArticleDirType!
+  sortOrder: Long!
 }
 
 input GetUserArticleTableOfContentsInput {

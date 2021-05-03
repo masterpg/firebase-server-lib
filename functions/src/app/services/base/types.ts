@@ -328,6 +328,7 @@ interface ArticleTableOfContentsItem {
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   label: string
+  sortOrder: number
 }
 
 interface GetUserArticleTableOfContentsInput {
