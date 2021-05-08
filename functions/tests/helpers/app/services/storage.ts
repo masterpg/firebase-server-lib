@@ -6,6 +6,7 @@ import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
+import escapeStringRegexp = require('escape-string-regexp')
 
 //========================================================================
 //
@@ -127,7 +128,7 @@ class CoreStorageTestHelper {
 
     await Promise.all(
       fromNodes.map(async fromNode => {
-        const reg = new RegExp(`^${fromNodePath}`)
+        const reg = new RegExp(`^${escapeStringRegexp(fromNodePath)}`)
         const newNodePath = fromNode.path.replace(reg, toNodePath)
         const toNode = await this.storageService.sgetNode({ path: newNodePath })
 

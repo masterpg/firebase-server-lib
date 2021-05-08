@@ -54,6 +54,7 @@ import { Dayjs } from 'dayjs'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../config'
 import dayjs = require('dayjs')
+import escapeStringRegexp = require('escape-string-regexp')
 import DBStorageNode = CoreStorageSchema.DBStorageNode
 
 //========================================================================
@@ -1620,7 +1621,7 @@ class CoreStorageService<
       )
 
       // 移動元ノードのパスを移動先のパスへ変換するための正規表現
-      const reg = new RegExp(`^${fromDirPath}`)
+      const reg = new RegExp(`^${escapeStringRegexp(fromDirPath)}`)
 
       // 以降の処理を行いやすくするためにデータ加工
       const { toNodes, toFileNodes } = pagination.list.reduce(
@@ -1893,7 +1894,7 @@ class CoreStorageService<
     CoreStorageService.validateNodeName(newName)
 
     // リネームした際のパスを作成
-    const reg = new RegExp(`${_path.basename(fromDirPath)}$`)
+    const reg = new RegExp(`${escapeStringRegexp(_path.basename(fromDirPath))}$`)
     const toDirPath = fromDirPath.replace(reg, newName)
 
     // 既に同じ名前のディレクトリがある場合
@@ -1966,7 +1967,7 @@ class CoreStorageService<
     CoreStorageService.validateNodeName(newName)
 
     // リネームした際のパスを作成
-    const reg = new RegExp(`${_path.basename(fromFilePath)}$`)
+    const reg = new RegExp(`${escapeStringRegexp(_path.basename(fromFilePath))}$`)
     const toFilePath = fromFilePath.replace(reg, newName)
 
     // 既に同じ名前のファイルがある場合

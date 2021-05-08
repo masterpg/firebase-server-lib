@@ -3024,6 +3024,33 @@ describe('CoreStorageService', () => {
       })
     })
 
+    it('ディレクトリ名に正規表現でエスケープが必要な文字が含まれている場合', async () => {
+      // ファイルをアップロード
+      await storageService.createHierarchicalDirs([`(d1)`, `(d2)`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `(d1)/fileA.txt`,
+        },
+      ])
+
+      // 移動前のノードを取得
+      const { list: fromNodes } = await storageService.getDescendants({ path: `(d1)`, includeBase: true })
+      expect(fromNodes.length).toBe(2)
+
+      // '(d1)'を'(d2)/(d1)'へ移動
+      await storageService.moveDir({ fromDir: `(d1)`, toDir: `(d2)/(d1)` })
+
+      // 移動後の'(d2)/(d1)'＋配下ノードを検証
+      const { list: toNodes } = await storageService.getDescendants({ path: `(d2)/(d1)`, includeBase: true })
+      CoreStorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`(d2)/(d1)`)
+      expect(toNodes[1].path).toBe(`(d2)/(d1)/fileA.txt`)
+      await h.verifyMoveNodes(fromNodes, `(d2)/(d1)`)
+    })
+
     it('移動先ディレクトリパスへのバリデーション実行確認', async () => {
       await storageService.createHierarchicalDirs([`d1`])
       await storageService.uploadDataItems([
@@ -3660,6 +3687,31 @@ describe('CoreStorageService', () => {
       await h.verifyMoveNodes(fromNodes, `d1XXX`)
     })
 
+    it('ディレクトリ名に正規表現でエスケープが必要な文字が含まれている場合', async () => {
+      await storageService.createHierarchicalDirs([`(d1)`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `(d1)/fileA.txt`,
+        },
+      ])
+
+      // リネーム前のノードを取得
+      const { list: fromNodes } = await storageService.getDescendants({ path: `(d1)`, includeBase: true })
+
+      // '(d1)'を'(d2)'へリネーム
+      await storageService.renameDir({ dir: `(d1)`, name: `(d2)` })
+
+      // リネーム後の'(d2)'＋配下ノードを検証
+      const { list: toNodes } = await storageService.getDescendants({ path: `(d2)`, includeBase: true })
+      CoreStorageService.sortNodes(toNodes)
+      expect(toNodes.length).toBe(2)
+      expect(toNodes[0].path).toBe(`(d2)`)
+      expect(toNodes[1].path).toBe(`(d2)/fileA.txt`)
+      await h.verifyMoveNodes(fromNodes, `(d2)`)
+    })
+
     it('リネームディレクトリパスへのバリデーション実行確認', async () => {
       // ディレクトリを作成
       await storageService.createHierarchicalDirs([`d1`])
@@ -3888,6 +3940,26 @@ describe('CoreStorageService', () => {
       // 'fileA.txt'が'fileB.txt'に名前変更されたことを確認
       expect(actual!.path).toBe(`d1/fileA.txt/fileB.txt`)
       await h.verifyMoveNodes([fromNode], 'd1/fileA.txt/fileB.txt')
+    })
+
+    it('ファイル名に正規表現でエスケープが必要な文字が含まれている場合', async () => {
+      await storageService.createHierarchicalDirs([`(d1)`])
+      await storageService.uploadDataItems([
+        {
+          data: 'testA',
+          contentType: 'text/plain; charset=utf-8',
+          path: `(d1)/(fileA).txt`, // ファイル名にエスケープが必要な文字を含む
+        },
+      ])
+
+      // リネーム前のノードを取得
+      const fromNode = await storageService.sgetFileNode({ path: `(d1)/(fileA).txt` })
+
+      // '(d1)/(fileA).txt'を'(d1)/(fileB).txt'へリネーム
+      const actual = await storageService.renameFile({ file: `(d1)/(fileA).txt`, name: `(fileB).txt` })
+
+      expect(actual.path).toBe(`(d1)/(fileB).txt`)
+      await h.verifyMoveNodes([fromNode], `(d1)/(fileB).txt`)
     })
 
     it('リネームディレクトリパスへのバリデーション実行確認', async () => {

@@ -40,6 +40,7 @@
     "class-transformer": "^0.3.1",
     "class-validator": "^0.12.2",
     "convert-hrtime": "^3.0.0",
+    "escape-string-regexp": "^4.0.0",
     "firebase-admin": "^9.4.1",
     "firebase-functions": "^3.11.0",
     "firebase-tools": "^8.16.2",
