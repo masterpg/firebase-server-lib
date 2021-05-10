@@ -3073,6 +3073,12 @@ class CoreStorageService<
       throw new AppError('The specified node name is empty.')
     }
 
+    if (Buffer.byteLength(nodeName) > 255) {
+      throw new AppError('The specified node name is too long.', {
+        'nodeName.byteLength': Buffer.byteLength(nodeName),
+      })
+    }
+
     // 改行、タブが含まれないことを検証
     if (/\r?\n|\t/g.test(nodeName)) {
       throw new AppError('The specified node name is invalid.', {
@@ -3080,9 +3086,9 @@ class CoreStorageService<
       })
     }
 
-    // '/'が含まれないことを検証
-    if (/\//g.test(nodeName!)) {
-      throw new AppError('The specified directory name is invalid.', { nodeName })
+    // 『 \ / : * ? " < > | 』が含まれないことを検証
+    if (/[\\/:*?"<>|]/g.test(nodeName)) {
+      throw new AppError('The specified node name is invalid.', { nodeName })
     }
   }
 

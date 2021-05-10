@@ -6937,6 +6937,57 @@ describe('CoreStorageService', () => {
       })
     })
   })
+
+  describe('validateNodeName', () => {
+    it('255バイトを超えていた場合', async () => {
+      let nodeName = 'node'
+      while (Buffer.byteLength(nodeName) <= 255) {
+        nodeName += 'A' // 「A」は適当な文字
+      }
+
+      let actual!: AppError
+      try {
+        await StorageService.validateNodeName(nodeName)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.cause).toBe(`The specified node name is too long.`)
+      expect(actual.data).toEqual({ 'nodeName.byteLength': 256 })
+    })
+
+    it('改行、タブを含んでいる場合', async () => {
+      for (const char of ['\r\n', '\n', '\t']) {
+        const nodeName = `node${char}`
+
+        let actual!: AppError
+        try {
+          await StorageService.validateNodeName(nodeName)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`The specified node name is invalid.`)
+        expect(actual.data).toEqual({ nodeName })
+      }
+    })
+
+    it('禁則文字を含んでいる場合', async () => {
+      for (const char of ['\\', '/', ':', '*', '?', '"', '<', '>', '|']) {
+        const nodeName = `node${char}`
+
+        let actual!: AppError
+        try {
+          await StorageService.validateNodeName(nodeName)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`The specified node name is invalid.`)
+        expect(actual.data).toEqual({ nodeName })
+      }
+    })
+  })
 })
 
 describe('大量データのテスト', () => {
