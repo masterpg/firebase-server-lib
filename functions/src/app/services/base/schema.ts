@@ -1,10 +1,12 @@
 import * as _path from 'path'
 import { ArticleSrcByLang, CoreStorageNode, StorageNode, StorageNodeShareDetail, User } from './index'
-import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse } from '../../base/elastic'
+import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse, ElasticSearchHit } from '../../base/elastic'
 import {
+  DeepPartial,
   Entities,
   LangCodes,
   ToDeepRawDate,
+  ToEntityTimestamp,
   ToRawTimestamp,
   pickProps,
   removeBothEndsSlash,
@@ -17,7 +19,23 @@ import {
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
 import { merge } from 'lodash'
-const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
+const { keyword_lowercase, kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
+
+//========================================================================
+//
+//  Interfaces
+//
+//========================================================================
+
+type OmitEntity<T> = Omit<T, 'id' | 'version'>
+
+type EditParam<T> = DeepPartial<OmitEntity<T>>
+
+type EditDoc<T> = ToDeepRawDate<OmitEntity<T>>
+
+type Doc<T> = ToDeepRawDate<OmitEntity<T>>
+
+type Entity<T> = ToEntityTimestamp<T & { id: string; version: number }>
 
 //========================================================================
 //
@@ -25,30 +43,45 @@ const { kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = Base
 //
 //========================================================================
 
+function hitToEntity<DOC>(hit: ElasticSearchHit<DOC>): Entity<DOC> {
+  return toEntityTimestamp({
+    id: hit._id,
+    version: hit._version ?? 0,
+    ...hit._source,
+  })
+}
+
+function entityToDoc<ENTITY>(entity: ENTITY): ToRawTimestamp<OmitEntity<ENTITY>> {
+  const _entity = { ...entity }
+  delete (_entity as any).id
+  delete (_entity as any).version
+  return toRawTimestamp(_entity)
+}
+
 /**
  * データベースレスポンスから取得したエンティティデータを取り出し、アプリケーションで扱われる形式へ変換します。
  * @param apiResponse
  * @param convertor
  */
-function _dbResponseToEntities<APP_ENTITY, DB_ENTITY>(
-  apiResponse: ElasticSearchAPIResponse<DB_ENTITY> | ElasticMSearchAPIResponse<DB_ENTITY>,
-  convertor: (dbEntity: DB_ENTITY) => APP_ENTITY
-): APP_ENTITY[] {
+function _dbResponseToEntities<ENTITY, DOC>(
+  apiResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>,
+  convertor: (hit: ElasticSearchHit<DOC>) => ENTITY
+): ENTITY[] {
   // Multi search APIのレスポンスの場合
-  if ((apiResponse as ElasticMSearchAPIResponse<DB_ENTITY>).body.responses) {
-    const multiAPIResponse = apiResponse as ElasticMSearchAPIResponse<DB_ENTITY>
-    const nodes: APP_ENTITY[] = []
+  if ((apiResponse as ElasticMSearchAPIResponse<DOC>).body.responses) {
+    const multiAPIResponse = apiResponse as ElasticMSearchAPIResponse<DOC>
+    const nodes: ENTITY[] = []
     for (const response of multiAPIResponse.body.responses) {
       if (!response.hits.hits.length) continue
-      nodes.push(...response.hits.hits.map(hit => convertor(hit._source)))
+      nodes.push(...response.hits.hits.map(hit => convertor(hit)))
     }
     return nodes
   }
   // Single search APIのレスポンスの場合
   else {
-    const singleAPIResponse = apiResponse as ElasticSearchAPIResponse<DB_ENTITY>
+    const singleAPIResponse = apiResponse as ElasticSearchAPIResponse<DOC>
     if (!singleAPIResponse.body.hits.hits.length) return []
-    return singleAPIResponse.body.hits.hits.map(hit => convertor(hit._source))
+    return singleAPIResponse.body.hits.hits.map(hit => convertor(hit))
   }
 }
 
@@ -67,6 +100,9 @@ namespace UserSchema {
         analyzer: {
           kuromoji_analyzer,
         },
+        normalizer: {
+          keyword_lowercase,
+        },
       },
     },
     mappings: {
@@ -74,9 +110,7 @@ namespace UserSchema {
         ...TimestampEntityProps,
         userName: {
           type: 'keyword',
-        },
-        userNameLower: {
-          type: 'keyword',
+          normalizer: 'keyword_lowercase',
         },
         fullName: {
           type: 'keyword',
@@ -97,26 +131,18 @@ namespace UserSchema {
     },
   }
 
-  export interface DBUser extends ToRawTimestamp<User> {}
+  export interface UserDoc extends Doc<Omit<User, 'email' | 'emailVerified'>> {}
 
-  export function toEntity(dbEntity: DBUser): Omit<User, 'email' | 'emailVerified'> {
-    return {
-      ...toEntityTimestamp({
-        ...pickProps(dbEntity, ['id', 'userName', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
-      }),
-    }
+  export function toDoc<T extends EditParam<Omit<User, 'email' | 'emailVerified'>>>(entity: T) {
+    const _entity = pickProps(entity, ['userName', 'fullName', 'isAppAdmin', 'photoURL', 'createdAt', 'updatedAt'])
+    return entityToDoc(_entity)
   }
 
-  export function toDBEntity(appEntity: Omit<User, 'email' | 'emailVerified'>): ToRawTimestamp<Omit<User, 'email' | 'emailVerified'>> {
-    return {
-      ...toRawTimestamp({
-        ...pickProps(appEntity, ['id', 'userName', 'fullName', 'isAppAdmin', 'photoURL', 'version', 'createdAt', 'updatedAt']),
-        userNameLower: appEntity.userName.toLowerCase(),
-      }),
-    }
+  export function toEntity(hit: ElasticSearchHit<UserDoc>): Omit<User, 'email' | 'emailVerified'> {
+    return hitToEntity(hit)
   }
 
-  export function dbResponseToEntities(dbResponse: ElasticSearchAPIResponse<DBUser>): Omit<User, 'email' | 'emailVerified'>[] {
+  export function toEntities(dbResponse: ElasticSearchAPIResponse<UserDoc>): Omit<User, 'email' | 'emailVerified'>[] {
     return _dbResponseToEntities(dbResponse, toEntity)
   }
 }
@@ -195,24 +221,19 @@ namespace CoreStorageSchema {
     },
   }
 
-  export interface DBStorageNode extends ToRawTimestamp<CoreStorageNode> {}
+  export interface CoreStorageNodeDoc extends Doc<CoreStorageNode> {}
 
-  export function toEntity(dbEntity: DBStorageNode): CoreStorageNode {
-    return toEntityTimestamp({
-      ...pickProps(dbEntity, ['id', 'nodeType', 'contentType', 'size', 'version', 'createdAt', 'updatedAt']),
-      ...toPathData(dbEntity.path),
-      share: dbEntity.share || EmptyShareDetail(),
-    })
+  export function toDoc<T extends EditParam<CoreStorageNode>>(entity: T) {
+    const _entity = pickProps(entity, ['nodeType', 'name', 'dir', 'path', 'contentType', 'size', 'share', 'createdAt', 'updatedAt'])
+    return entityToDoc(_entity)
   }
 
-  export function toDBEntity(appEntity: CoreStorageNode): DBStorageNode {
-    return toRawTimestamp(
-      pickProps(appEntity, ['id', 'nodeType', 'name', 'dir', 'path', 'contentType', 'size', 'share', 'version', 'createdAt', 'updatedAt'])
-    )
+  export function toEntity(hit: ElasticSearchHit<CoreStorageNodeDoc>): CoreStorageNode {
+    return hitToEntity(hit)
   }
 
-  export function dbResponseToEntities(
-    dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>
+  export function toEntities(
+    dbResponse: ElasticSearchAPIResponse<CoreStorageNodeDoc> | ElasticMSearchAPIResponse<CoreStorageNodeDoc>
   ): CoreStorageNode[] {
     return _dbResponseToEntities(dbResponse, toEntity)
   }
@@ -221,7 +242,7 @@ namespace CoreStorageSchema {
    * ノードIDを生成します。
    */
   export function generateId(): string {
-    return generateEntityId(CoreStorageSchema.IndexAlias)
+    return generateEntityId(IndexAlias)
   }
 
   /**
@@ -350,44 +371,17 @@ namespace StorageSchema {
     },
   })
 
-  export type DBStorageNode = ToDeepRawDate<StorageNode>
+  export type StorageNodeDoc = Doc<StorageNode>
 
-  export function toEntity(dbEntity: DBStorageNode): StorageNode {
-    const result: StorageNode = { ...CoreStorageSchema.toEntity(dbEntity) }
-    if (dbEntity.article) {
-      result.article = {
-        ...pickProps(dbEntity.article, ['type', 'label', 'sortOrder']),
-      }
-      if (dbEntity.article.src) {
-        result.article.src = LangCodes.reduce((result, langCode) => {
-          const srcDetail = dbEntity.article?.src?.[langCode]
-          if (srcDetail) {
-            result[langCode] = {
-              // ---> 空文字はundefinedに変換する
-              srcContent: srcDetail.srcContent || undefined,
-              draftContent: srcDetail.draftContent || undefined,
-              searchContent: srcDetail.searchContent || undefined,
-              // <---
-              createdAt: toEntityDate(srcDetail.createdAt),
-              updatedAt: toEntityDate(srcDetail.updatedAt),
-            }
-          }
-          return result
-        }, {} as ArticleSrcByLang)
-      }
-    }
-    return result
-  }
-
-  export function toDBEntity(entity: StorageNode): DBStorageNode {
-    const result: DBStorageNode = { ...CoreStorageSchema.toDBEntity(entity) }
+  export function toDoc<T extends EditParam<StorageNode>>(entity: T) {
+    const result: EditDoc<DeepPartial<StorageNode>> = { ...CoreStorageSchema.toDoc(entity) }
     if (entity.article) {
       result.article = {
         ...pickProps(entity.article, ['type', 'label', 'sortOrder']),
       }
       if (entity.article.src) {
         result.article.src = LangCodes.reduce((result, langCode) => {
-          const srcDetail = entity.article?.src?.[langCode]
+          const srcDetail = entity.article!.src![langCode]
           if (srcDetail) {
             result[langCode] = {
               // ---> undefined or null は空文字に変換する
@@ -407,12 +401,38 @@ namespace StorageSchema {
         }, {} as ToDeepRawDate<ArticleSrcByLang>)
       }
     }
+    return result as EditDoc<T>
+  }
+
+  export function toEntity(hit: ElasticSearchHit<StorageNodeDoc>): StorageNode {
+    const result: StorageNode = { ...CoreStorageSchema.toEntity(hit) }
+    const doc = hit._source
+    if (doc.article) {
+      result.article = {
+        ...pickProps(doc.article, ['type', 'label', 'sortOrder']),
+      }
+      if (doc.article.src) {
+        result.article.src = LangCodes.reduce((result, langCode) => {
+          const srcDetail = doc.article?.src?.[langCode]
+          if (srcDetail) {
+            result[langCode] = {
+              // ---> 空文字はundefinedに変換する
+              srcContent: srcDetail.srcContent || undefined,
+              draftContent: srcDetail.draftContent || undefined,
+              searchContent: srcDetail.searchContent || undefined,
+              // <---
+              createdAt: toEntityDate(srcDetail.createdAt),
+              updatedAt: toEntityDate(srcDetail.updatedAt),
+            }
+          }
+          return result
+        }, {} as ArticleSrcByLang)
+      }
+    }
     return result
   }
 
-  export function dbResponseToEntities(
-    dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>
-  ): StorageNode[] {
+  export function toEntities(dbResponse: ElasticSearchAPIResponse<StorageNodeDoc> | ElasticMSearchAPIResponse<StorageNodeDoc>): StorageNode[] {
     return _dbResponseToEntities(dbResponse, toEntity)
   }
 

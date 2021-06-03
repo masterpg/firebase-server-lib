@@ -11,6 +11,14 @@ import { config } from '../../config'
 //========================================================================
 
 namespace BaseIndexDefinitions {
+  /**
+   * `keyword`タイプの文字列を小文字にする機能です。
+   */
+  export const keyword_lowercase = {
+    type: 'custom',
+    filter: ['lowercase'],
+  }
+
   export const kuromoji_analyzer = {
     type: 'custom',
     char_filter: ['kuromoji_iteration_mark'],
@@ -26,12 +34,6 @@ namespace BaseIndexDefinitions {
   }
 
   export const TimestampEntityProps = {
-    id: {
-      type: 'keyword',
-    },
-    version: {
-      type: 'long',
-    },
     createdAt: {
       type: 'date',
     },
@@ -60,6 +62,21 @@ interface Explanation {
   details: Explanation[]
 }
 
+type ElasticSearchHit<T> = {
+  _index: string
+  _type: string
+  _id: string
+  _score: number
+  _source: T
+  _version?: number
+  _explanation?: Explanation
+  fields?: any
+  highlight?: any
+  inner_hits?: any
+  matched_queries?: string[]
+  sort?: string[]
+}
+
 interface ElasticSearchResponse<T> {
   pit_id?: string
   took: number
@@ -72,20 +89,7 @@ interface ElasticSearchResponse<T> {
       relation: 'eq' | 'gte'
     }
     max_score: number
-    hits: Array<{
-      _index: string
-      _type: string
-      _id: string
-      _score: number
-      _source: T
-      _version?: number
-      _explanation?: Explanation
-      fields?: any
-      highlight?: any
-      inner_hits?: any
-      matched_queries?: string[]
-      sort?: string[]
-    }>
+    hits: ElasticSearchHit<T>[]
   }
   aggregations?: any
 }
@@ -185,6 +189,7 @@ export {
   ElasticMSearchResponse,
   ElasticPageToken,
   ElasticSearchAPIResponse,
+  ElasticSearchHit,
   ElasticSearchResponse,
   SearchBody,
   closePointInTime,

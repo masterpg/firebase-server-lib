@@ -6,7 +6,7 @@ import { UserSchema } from './index'
 import { auth } from 'firebase-admin/lib/auth'
 import { pickProps } from 'web-base-lib'
 import UserRecord = auth.UserRecord
-import DBUser = UserSchema.DBUser
+import UserDoc = UserSchema.UserDoc
 
 //========================================================================
 //
@@ -39,16 +39,17 @@ class UserHelper {
       throw new AppError(`Neither "id" nor "userName" is specified.`)
     }
 
-    const response = await this.client.search<ElasticSearchResponse<DBUser>>({
+    const response = await this.client.search<ElasticSearchResponse<UserDoc>>({
       index: UserSchema.IndexAlias,
       body: {
         query: {
-          term: id ? { id } : { userName },
+          term: id ? { _id: id } : { userName },
         },
       },
+      version: true,
     })
 
-    const users = UserSchema.dbResponseToEntities(response)
+    const users = UserSchema.toEntities(response)
     if (!users.length) return
 
     return users[0]
