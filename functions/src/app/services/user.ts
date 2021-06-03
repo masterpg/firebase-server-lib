@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { AuthDataResult, AuthStatus, IdToken, SetUserInfoResult, SetUserInfoResultStatus, User, UserClaims, UserInput } from './base'
+import { AuthDataResult, AuthStatus, IdToken, SetUserInfoResult, User, UserClaims, UserInput } from './base'
 import { Module, UnauthorizedException } from '@nestjs/common'
 import { UserHelper, UserSchema } from './base'
 import { AppError } from '../base'
@@ -137,9 +137,11 @@ class UserService {
           bool: {
             must: [
               {
-                bool: { must_not: [{ term: { id: userRecord.uid } }] },
+                bool: {
+                  must_not: { term: { _id: userRecord.uid } },
+                },
               },
-              { term: { userNameLower: input.userName.toLowerCase() } },
+              { term: { userName: input.userName } },
             ],
           },
         },
@@ -153,22 +155,19 @@ class UserService {
     // ユーザー情報の登録
     const now = dayjs()
     const isAppAdmin = Boolean((userRecord.customClaims as UserClaims)?.isAppAdmin)
+
     await this.client.update({
       index: UserSchema.IndexAlias,
       id: userRecord.uid,
       body: {
-        doc: {
-          ...UserSchema.toDBEntity({
-            id: userRecord.uid,
-            userName: input.userName,
-            fullName: input.fullName,
-            isAppAdmin,
-            photoURL: input.photoURL,
-            version: user?.version ? user.version + 1 : 1,
-            createdAt: user?.createdAt ?? now,
-            updatedAt: now,
-          }),
-        },
+        doc: UserSchema.toDoc({
+          userName: input.userName,
+          fullName: input.fullName,
+          isAppAdmin,
+          photoURL: input.photoURL,
+          createdAt: user?.createdAt ?? now,
+          updatedAt: now,
+        }),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -236,7 +235,7 @@ class UserService {
       index: UserSchema.IndexAlias,
       body: {
         query: {
-          term: { id: uid },
+          term: { _id: uid },
         },
       },
       refresh: true,

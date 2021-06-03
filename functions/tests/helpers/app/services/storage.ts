@@ -72,7 +72,7 @@ class CoreStorageTestHelper {
         // node.path が ｢node.dir + node.name｣ と一致することを検証
         expect(node.path).toBe(removeStartDirChars(_path.join(node.dir, node.name)))
         // バージョンの検証
-        expect(node.version >= 1).toBeTruthy()
+        expect(node.version).toBeGreaterThan(0)
         // タイムスタンプの検証
         expect(dayjs.isDayjs(node.createdAt)).toBeTruthy()
         expect(dayjs.isDayjs(node.updatedAt)).toBeTruthy()

@@ -25,6 +25,7 @@ import { CoreStorageSchema, UserHelper } from './base'
 import {
   DeepPartial,
   arrayToDict,
+  notEmpty,
   pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
@@ -55,7 +56,7 @@ import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import escapeStringRegexp = require('escape-string-regexp')
-import DBStorageNode = CoreStorageSchema.DBStorageNode
+import CoreStorageNodeDoc = CoreStorageSchema.CoreStorageNodeDoc
 
 //========================================================================
 //
@@ -88,7 +89,7 @@ interface StorageUploadDataItem {
 class CoreStorageService<
   NODE extends CoreStorageNode = CoreStorageNode,
   FILE_NODE extends NODE & StorageFileNode = NODE & StorageFileNode,
-  DB_NODE extends DBStorageNode = DBStorageNode
+  DB_NODE extends CoreStorageNodeDoc = CoreStorageNodeDoc
 > {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {}
 
@@ -150,15 +151,16 @@ class CoreStorageService<
 
       const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         index: CoreStorageSchema.IndexAlias,
+        version: true,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query: {
             term: id ? { _id: id } : { path },
           },
         },
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
 
-      const nodes = this.dbResponseToNodes(response)
+      const nodes = this.toStorageNodes(response)
       return nodes.length ? nodes[0] : undefined
     }
 
@@ -256,8 +258,8 @@ class CoreStorageService<
 
   async getNodes(arg1: IdToken | StorageNodeGetKeysInput, arg2?: StorageNodeGetKeysInput | string[], arg3?: string[]): Promise<NODE[]> {
     const _getNodes = async (keys: StorageNodeGetKeysInput, sourceIncludes?: string[]) => {
-      const ids = keys.ids || []
-      let paths = keys.paths || []
+      const ids = keys.ids?.filter(notEmpty) || []
+      let paths = keys.paths?.filter(notEmpty) || []
       const size = CoreStorageService.ChunkSize
 
       // 指定されたパスのバリデーションチェック
@@ -271,12 +273,13 @@ class CoreStorageService<
         const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
           index: CoreStorageSchema.IndexAlias,
           size,
-          body: {
-            query: { terms: { id: chunk } },
-          },
+          version: true,
           _source_excludes: this.mergeSourceExcludes(sourceIncludes),
+          body: {
+            query: { terms: { _id: chunk } },
+          },
         })
-        nodes.push(...this.dbResponseToNodes(response))
+        nodes.push(...this.toStorageNodes(response))
       }
 
       for (const chunk of splitArrayChunk(paths, size)) {
@@ -284,12 +287,13 @@ class CoreStorageService<
         const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
           index: CoreStorageSchema.IndexAlias,
           size,
+          version: true,
+          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
           body: {
             query: { terms: { path: chunk } },
           },
-          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         })
-        nodes.push(...this.dbResponseToNodes(response))
+        nodes.push(...this.toStorageNodes(response))
       }
 
       const nodeIdDict: { [id: string]: NODE } = {}
@@ -581,12 +585,13 @@ class CoreStorageService<
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: pageSize,
+        version: true,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query,
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -595,7 +600,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.dbResponseToNodes(response)
+    const nodes = this.toStorageNodes(response)
 
     // 指定ディレクトリを含む検索の、初回検索だった場合
     if (includeBase && path && !pagination?.pageToken) {
@@ -853,12 +858,13 @@ class CoreStorageService<
     try {
       response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
         size: pageSize,
+        version: true,
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query,
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -867,7 +873,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.dbResponseToNodes(response)
+    const nodes = this.toStorageNodes(response)
 
     // 指定ディレクトリを含む検索の、初回検索だった場合
     if (includeBase && path && !pagination?.pageToken) {
@@ -1183,10 +1189,8 @@ class CoreStorageService<
         id,
         body: {
           doc: {
-            ...this.toDBStorageNode(dirNode),
-            id,
+            ...this.toStorageNodeDoc(dirNode),
             share: this.toDBShareDetail(share),
-            version: 1,
             createdAt: now,
             updatedAt: now,
           },
@@ -1293,9 +1297,7 @@ class CoreStorageService<
       const now = dayjs().toISOString()
       body.push({ index: { _index: CoreStorageSchema.IndexAlias, _id: id } })
       body.push({
-        ...this.toDBStorageNode(dirNode),
-        id,
-        version: 1,
+        ...this.toStorageNodeDoc(dirNode),
         createdAt: now,
         updatedAt: now,
       })
@@ -1380,7 +1382,7 @@ class CoreStorageService<
 
     do {
       // データベースから引数ディレクトリ配下のファイルノードを取得
-      const response = await this.client.search<ElasticSearchResponse<{ id: string; path: string }>>({
+      const response = await this.client.search<ElasticSearchResponse<{ path: string }>>({
         size,
         body: {
           query: {
@@ -1398,9 +1400,11 @@ class CoreStorageService<
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
-        _source: ['id', 'path'],
+        _source: ['path'],
       })
-      nodes = response.body.hits.hits.map(hit => hit._source)
+      nodes = response.body.hits.hits.map(hit => {
+        return { id: hit._id, path: hit._source.path }
+      })
 
       // ストレージからファイルを削除
       for (const chunk of splitArrayChunk(nodes, size)) {
@@ -1632,7 +1636,6 @@ class CoreStorageService<
             name: _path.basename(toNodePath),
             dir: _path.dirname(toNodePath),
             path: toNodePath,
-            version: node.version + 1,
           }
           if (toNode.nodeType === 'File') {
             result.toFileNodes.push(toNode)
@@ -1673,22 +1676,21 @@ class CoreStorageService<
         body: {
           query: {
             terms: {
-              id: toNodes.map(toNode => toNode.id),
+              _id: toNodes.map(toNode => toNode.id),
             },
           },
           script: {
             lang: 'painless',
             source: `
-              ctx._source.name = params[ctx._source.id].name;
-              ctx._source.dir = params[ctx._source.id].dir;
-              ctx._source.path = params[ctx._source.id].path;
-              ctx._source.version = params[ctx._source.id].version;
+              ctx._source.name = params[ctx._id].name;
+              ctx._source.dir = params[ctx._id].dir;
+              ctx._source.path = params[ctx._id].path;
             `,
             params: toNodes.reduce((result, toNode) => {
-              const { name, dir, path, version } = toNode
-              result[toNode.id] = { name, dir, path, version }
+              const { name, dir, path } = toNode
+              result[toNode.id] = { name, dir, path }
               return result
-            }, {} as { [id: string]: { name: string; dir: string; path: string; version: number } }),
+            }, {} as { [id: string]: { name: string; dir: string; path: string } }),
           },
         },
         refresh: true,
@@ -1797,15 +1799,11 @@ class CoreStorageService<
     }
 
     // データベースの移動元ファイルノードのパスを移動先のパスへ変更
-    const version = fileNode.version + 1
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
       body: {
-        doc: {
-          ...CoreStorageSchema.toPathData(toFilePath),
-          version,
-        },
+        doc: CoreStorageSchema.toPathData(toFilePath),
       },
       refresh: true,
     })
@@ -2053,7 +2051,6 @@ class CoreStorageService<
         doc: {
           ...CoreStorageSchema.toPathData(dirNode.path),
           share,
-          version: dirNode.version + 1,
         },
       },
       refresh: true,
@@ -2125,7 +2122,6 @@ class CoreStorageService<
         doc: {
           ...CoreStorageSchema.toPathData(fileNode.path),
           share,
-          version: fileNode.version + 1,
         },
       },
       refresh: true,
@@ -2827,19 +2823,16 @@ class CoreStorageService<
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const nodeId = file.name
     const existingNode = await this.getNode({ id: nodeId })
-    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, version: extra_version, ...extra_rest } =
-      (extra as CoreStorageNode | undefined) ?? {}
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = (extra as CoreStorageNode | undefined) ?? {}
 
     // ファイルノードに設定するタイムスタンプ+バージョンを取得
     const now = dayjs()
     const createdAt = extra_createdAt ?? existingNode?.createdAt ?? extra_updatedAt ?? now
     const updatedAt = extra_updatedAt ?? now
-    const version = extra_version ?? (existingNode ? existingNode.version + 1 : 1)
 
     // ファイルノードを作成/更新するデータを準備
-    const fileNode: CoreStorageNode = {
+    const fileNode: Omit<CoreStorageNode, 'id' | 'version'> = {
       ...(existingNode ?? {}),
-      id: nodeId,
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
       share: this.toDBShareDetail(extra_share, existingNode?.share),
@@ -2847,7 +2840,6 @@ class CoreStorageService<
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       createdAt,
       updatedAt,
-      version,
       ...extra_rest,
     }
 
@@ -2856,7 +2848,7 @@ class CoreStorageService<
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: this.toDBStorageNode(fileNode as NODE),
+        doc: this.toStorageNodeDoc(fileNode),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2884,8 +2876,7 @@ class CoreStorageService<
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const existingNode = await this.getNode({ path: fileNodePath })
     const nodeId = existingNode?.id || CoreStorageSchema.generateId()
-    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, version: extra_version, ...extra_rest } =
-      (extra as CoreStorageNode | undefined) ?? {}
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = (extra as CoreStorageNode | undefined) ?? {}
 
     //
     // ストレージファイルのコンテンツデータを保存
@@ -2900,14 +2891,12 @@ class CoreStorageService<
     const now = dayjs()
     const createdAt = extra_createdAt ?? existingNode?.createdAt ?? extra_updatedAt ?? now
     const updatedAt = extra_updatedAt ?? now
-    const version = extra_version ?? (existingNode ? existingNode.version + 1 : 1)
 
     //
     // ファイルノードを作成/更新するデータを準備
     //
-    const fileNode: CoreStorageNode = {
+    const fileNode: Omit<CoreStorageNode, 'id' | 'version'> = {
       ...(existingNode ?? {}),
-      id: nodeId,
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
       share: this.toDBShareDetail(extra_share, existingNode?.share),
@@ -2915,7 +2904,6 @@ class CoreStorageService<
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       createdAt,
       updatedAt,
-      version,
       ...extra_rest,
     }
 
@@ -2926,7 +2914,7 @@ class CoreStorageService<
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: this.toDBStorageNode(fileNode as NODE),
+        doc: this.toStorageNodeDoc(fileNode),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2943,25 +2931,16 @@ class CoreStorageService<
    * データベースのレスポンスデータからノードリストを取得します。
    * @param dbResponse
    */
-  protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
-    return CoreStorageSchema.dbResponseToEntities(dbResponse) as NODE[]
-  }
-
-  /**
-   * データベースから取得したノードの形式をアプリケーションで扱われる形式へ変換します。
-   * @param dbNode
-   * @protected
-   */
-  protected toStorageNode(dbNode: DB_NODE): NODE {
-    return CoreStorageSchema.toEntity(dbNode) as NODE
+  protected toStorageNodes(dbResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
+    return CoreStorageSchema.toEntities(dbResponse) as NODE[]
   }
 
   /**
    * ノードをデータベースへ保存するプロパティのみに絞り込みます。
    * @param node
    */
-  protected toDBStorageNode(node: NODE): DB_NODE {
-    return CoreStorageSchema.toDBEntity(node) as DB_NODE
+  protected toStorageNodeDoc(node: DeepPartial<CoreStorageNode>) {
+    return CoreStorageSchema.toDoc(node)
   }
 
   /**

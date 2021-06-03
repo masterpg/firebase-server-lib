@@ -340,10 +340,9 @@ describe('UserService', () => {
         fullName: VerifiedUser().fullName,
         photoURL: VerifiedUser().photoURL,
         isAppAdmin: VerifiedUser().isAppAdmin,
-        version: 1,
       } as User)
       // タイムスタンプの検証
-      expect(actual.user?.version).toBe(1)
+      expect(actual.user?.version).toBeGreaterThan(0)
       expect(actual.user?.createdAt.isValid()).toBeTruthy()
       expect(actual.user?.updatedAt.isValid()).toBeTruthy()
     })

@@ -51,7 +51,7 @@ import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import { merge } from 'lodash'
-import DBStorageNode = StorageSchema.DBStorageNode
+import StorageNodeDoc = StorageSchema.StorageNodeDoc
 
 //========================================================================
 //
@@ -75,7 +75,7 @@ interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
 //
 //========================================================================
 
-class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DBStorageNode> {
+class StorageService extends CoreStorageService<StorageNode, StorageFileNode, StorageNodeDoc> {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {
     super(authService)
   }
@@ -266,10 +266,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         id,
         body: {
           doc: {
-            ...this.toDBStorageNode(dirNode),
-            id,
+            ...this.toStorageNodeDoc(dirNode),
             share: this.toDBShareDetail(share),
-            version: 1,
             createdAt: now,
             updatedAt: now,
           },
@@ -355,7 +353,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
             label: { [lang]: label },
           },
           updatedAt: dayjs(),
-          version: dirNode.version + 1,
         },
       },
       refresh: true,
@@ -545,7 +542,6 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
       },
       updatedAt: now,
-      version: articleNode.version + 1,
     })
 
     // 記事ノードを更新
@@ -553,7 +549,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       index: StorageSchema.IndexAlias,
       id: articleNode.id,
       body: {
-        doc: this.toDBStorageNode(articleNode),
+        doc: this.toStorageNodeDoc(articleNode),
       },
       refresh: true,
     })
@@ -633,14 +629,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
       },
       updatedAt: now,
-      version: articleNode.version + 1,
     })
 
     // 記事ノードを更新
     await this.client.update({
       index: StorageSchema.IndexAlias,
       id: articleNode.id,
-      body: { doc: this.toDBStorageNode(articleNode) },
+      body: { doc: this.toStorageNodeDoc(articleNode) },
       refresh: true,
     })
     articleNode = await this.sgetNode(articleNode, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
@@ -886,7 +881,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     if (!pagination?.pageToken) {
       // 指定された記事系ディレクトリ直下の「全記事」を取得
-      const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+      const response = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
         index: StorageSchema.IndexAlias,
         size: StorageService.ChunkSize,
         from: 0,
@@ -900,7 +895,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
         },
         _source_excludes: this.sourceExcludes,
       })
-      const allArticleNodes = this.dbResponseToNodes(response)
+      const allArticleNodes = this.toStorageNodes(response)
 
       // 取得された記事とその階層をマップ化
       const allNodes = [...hierarchicalNodes, ...allArticleNodes]
@@ -934,21 +929,21 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
           return result
         }, [] as string[])
       // 次ページ分の記事ノードを取得
-      const response = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+      const response = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
         index: StorageSchema.IndexAlias,
         size: pageSize,
         from,
         body: {
           query: {
             bool: {
-              filter: { terms: { id: nodeIds } },
+              filter: { terms: { _id: nodeIds } },
             },
           },
           sort: [{ 'article.sortOrder': 'desc' }],
         },
         _source_excludes: this.sourceExcludes,
       })
-      const articleNodes = this.dbResponseToNodes(response)
+      const articleNodes = this.toStorageNodes(response)
 
       // 取得された記事ノードとその階層をマップ化
       const allNodes = [...hierarchicalNodes, ...articleNodes]
@@ -1019,7 +1014,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     //
     // バンドルディレクトリのみを取得
     //
-    const response1 = await this.client.search<ElasticSearchResponse<DBStorageNode>>({
+    const response1 = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
       index: StorageSchema.IndexAlias,
       size: StorageService.ChunkSize,
       body: {
@@ -1036,7 +1031,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       },
       _source_excludes: this.sourceExcludes,
     })
-    const bundleDirs = this.dbResponseToNodes(response1)
+    const bundleDirs = this.toStorageNodes(response1)
 
     //
     // バンドルディレクトリ配下の「カテゴリ」「記事」を取得
@@ -1067,10 +1062,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     let bundleUnderCategoryAndArticle: StorageNode[] = []
     let allNodeDict: { [path: string]: StorageNode } = {}
     if (queryBody.length) {
-      const response2 = await this.client.msearch<ElasticMSearchResponse<DBStorageNode>, string[]>({
+      const response2 = await this.client.msearch<ElasticMSearchResponse<StorageNodeDoc>, string[]>({
         body: queryBody,
       })
-      bundleUnderCategoryAndArticle = this.dbResponseToNodes(response2)
+      bundleUnderCategoryAndArticle = this.toStorageNodes(response2)
       allNodeDict = [...articleRootHierarchicalNodes, ...bundleDirs, ...bundleUnderCategoryAndArticle].reduce<{ [path: string]: StorageNode }>(
         (result, node) => {
           result[node.path] = node
@@ -1247,16 +1242,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
     }
   }
 
-  protected dbResponseToNodes(dbResponse: ElasticSearchAPIResponse<DBStorageNode> | ElasticMSearchAPIResponse<DBStorageNode>): StorageNode[] {
-    return StorageSchema.dbResponseToEntities(dbResponse)
+  protected toStorageNodes(dbResponse: ElasticSearchAPIResponse<StorageNodeDoc> | ElasticMSearchAPIResponse<StorageNodeDoc>): StorageNode[] {
+    return StorageSchema.toEntities(dbResponse)
   }
 
-  protected toStorageNode(dbNode: DBStorageNode): StorageNode {
-    return StorageSchema.toEntity(dbNode)
-  }
-
-  protected toDBStorageNode(node: StorageNode): DBStorageNode {
-    return StorageSchema.toDBEntity(node)
+  protected toStorageNodeDoc(node: DeepPartial<StorageNode>) {
+    return StorageSchema.toDoc(node)
   }
 
   //----------------------------------------------------------------------
@@ -1484,12 +1475,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, DB
       id,
       body: {
         doc: {
-          ...this.toDBStorageNode({
+          ...this.toStorageNodeDoc({
             ...dirNode,
-            id,
             share: this.toDBShareDetail(options?.share),
             article: input,
-            version: 1,
             createdAt: now,
             updatedAt: now,
           }),
