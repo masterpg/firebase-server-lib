@@ -5,16 +5,15 @@ import {
   DeepPartial,
   Entities,
   LangCodes,
+  ToDeepEntityDateAre,
   ToDeepRawDate,
-  ToEntityTimestamp,
-  ToRawTimestamp,
   pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
+  toDeepEntityDate,
+  toDeepRawDate,
   toEntityDate,
-  toEntityTimestamp,
   toRawDate,
-  toRawTimestamp,
 } from 'web-base-lib'
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
@@ -29,13 +28,11 @@ const { keyword_lowercase, kuromoji_analyzer, kuromoji_html_analyzer, TimestampE
 
 type OmitEntity<T> = Omit<T, 'id' | 'version'>
 
-type EditParam<T> = DeepPartial<OmitEntity<T>>
+type ToDocParam<T> = DeepPartial<OmitEntity<T>>
 
-type EditDoc<T> = ToDeepRawDate<OmitEntity<T>>
+type ToDoc<T> = ToDeepRawDate<OmitEntity<T>>
 
-type Doc<T> = ToDeepRawDate<OmitEntity<T>>
-
-type Entity<T> = ToEntityTimestamp<T & { id: string; version: number }>
+type ToEntity<T> = ToDeepEntityDateAre<T & { id: string; version: number }, 'createdAt' | 'updatedAt'>
 
 //========================================================================
 //
@@ -43,19 +40,22 @@ type Entity<T> = ToEntityTimestamp<T & { id: string; version: number }>
 //
 //========================================================================
 
-function hitToEntity<DOC>(hit: ElasticSearchHit<DOC>): Entity<DOC> {
-  return toEntityTimestamp({
-    id: hit._id,
-    version: hit._version ?? 0,
-    ...hit._source,
-  })
+function hitToEntity<DOC>(hit: ElasticSearchHit<DOC>): ToEntity<DOC> {
+  return toDeepEntityDate(
+    {
+      id: hit._id,
+      version: hit._version ?? 0,
+      ...hit._source,
+    },
+    ['createdAt', 'updatedAt']
+  )
 }
 
-function entityToDoc<ENTITY>(entity: ENTITY): ToRawTimestamp<OmitEntity<ENTITY>> {
+function entityToDoc<ENTITY>(entity: ENTITY): ToDeepRawDate<OmitEntity<ENTITY>> {
   const _entity = { ...entity }
   delete (_entity as any).id
   delete (_entity as any).version
-  return toRawTimestamp(_entity)
+  return toDeepRawDate(_entity)
 }
 
 /**
@@ -131,18 +131,18 @@ namespace UserSchema {
     },
   }
 
-  export interface UserDoc extends Doc<Omit<User, 'email' | 'emailVerified'>> {}
+  export interface UserDoc extends ToDoc<Omit<User, 'email' | 'emailVerified'>> {}
 
-  export function toDoc<T extends EditParam<Omit<User, 'email' | 'emailVerified'>>>(entity: T) {
+  export const toDoc = <ENTITY extends ToDocParam<Omit<User, 'email' | 'emailVerified'>>>(entity: ENTITY) => {
     const _entity = pickProps(entity, ['userName', 'fullName', 'isAppAdmin', 'photoURL', 'createdAt', 'updatedAt'])
     return entityToDoc(_entity)
   }
 
-  export function toEntity(hit: ElasticSearchHit<UserDoc>): Omit<User, 'email' | 'emailVerified'> {
+  export const toEntity = <DOC extends DeepPartial<UserDoc>>(hit: ElasticSearchHit<DOC>) => {
     return hitToEntity(hit)
   }
 
-  export function toEntities(dbResponse: ElasticSearchAPIResponse<UserDoc>): Omit<User, 'email' | 'emailVerified'>[] {
+  export function toEntities<DOC extends DeepPartial<UserDoc>>(dbResponse: ElasticSearchAPIResponse<DOC>): ToEntity<DOC>[] {
     return dbResponseToEntities(dbResponse, toEntity)
   }
 }
@@ -221,20 +221,20 @@ namespace CoreStorageSchema {
     },
   }
 
-  export interface CoreStorageNodeDoc extends Doc<CoreStorageNode> {}
+  export interface DocCoreStorageNode extends ToDoc<CoreStorageNode> {}
 
-  export function toDoc<T extends EditParam<CoreStorageNode>>(entity: T) {
+  export const toDoc = <ENTITY extends ToDocParam<CoreStorageNode>>(entity: ENTITY) => {
     const _entity = pickProps(entity, ['nodeType', 'name', 'dir', 'path', 'contentType', 'size', 'share', 'createdAt', 'updatedAt'])
     return entityToDoc(_entity)
   }
 
-  export function toEntity(hit: ElasticSearchHit<CoreStorageNodeDoc>): CoreStorageNode {
+  export const toEntity = <DOC extends DeepPartial<DocCoreStorageNode>>(hit: ElasticSearchHit<DOC>) => {
     return hitToEntity(hit)
   }
 
-  export function toEntities(
-    dbResponse: ElasticSearchAPIResponse<CoreStorageNodeDoc> | ElasticMSearchAPIResponse<CoreStorageNodeDoc>
-  ): CoreStorageNode[] {
+  export function toEntities<DOC extends DeepPartial<DocCoreStorageNode>>(
+    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+  ): ToEntity<DOC>[] {
     return dbResponseToEntities(dbResponse, toEntity)
   }
 
@@ -371,16 +371,16 @@ namespace StorageSchema {
     },
   })
 
-  export type StorageNodeDoc = Doc<StorageNode>
+  export type DocStorageNode = ToDoc<StorageNode>
 
-  export function toDoc<T extends EditParam<StorageNode>>(entity: T) {
-    const result: EditDoc<DeepPartial<StorageNode>> = { ...CoreStorageSchema.toDoc(entity) }
+  export const toDoc = <ENTITY extends ToDocParam<StorageNode>>(entity: ENTITY) => {
+    const doc: ToDoc<DeepPartial<StorageNode>> = CoreStorageSchema.toDoc(entity)
     if (entity.article) {
-      result.article = {
+      doc.article = {
         ...pickProps(entity.article, ['type', 'label', 'sortOrder']),
       }
       if (entity.article.src) {
-        result.article.src = LangCodes.reduce((result, langCode) => {
+        doc.article.src = LangCodes.reduce((result, langCode) => {
           const srcDetail = entity.article!.src![langCode]
           if (srcDetail) {
             result[langCode] = {
@@ -401,18 +401,19 @@ namespace StorageSchema {
         }, {} as ToDeepRawDate<ArticleSrcByLang>)
       }
     }
-    return result as EditDoc<T>
+    return doc as ToDoc<ENTITY>
   }
 
-  export function toEntity(hit: ElasticSearchHit<StorageNodeDoc>): StorageNode {
-    const result: StorageNode = { ...CoreStorageSchema.toEntity(hit) }
+  export const toEntity = <DOC extends DeepPartial<DocStorageNode>>(hit: ElasticSearchHit<DOC>) => {
     const doc = hit._source
+    const entity: ToEntity<DeepPartial<DocStorageNode>> = CoreStorageSchema.toEntity(hit)
+
     if (doc.article) {
-      result.article = {
+      entity.article = {
         ...pickProps(doc.article, ['type', 'label', 'sortOrder']),
       }
       if (doc.article.src) {
-        result.article.src = LangCodes.reduce((result, langCode) => {
+        entity.article.src = LangCodes.reduce((result, langCode) => {
           const srcDetail = doc.article?.src?.[langCode]
           if (srcDetail) {
             result[langCode] = {
@@ -429,10 +430,13 @@ namespace StorageSchema {
         }, {} as ArticleSrcByLang)
       }
     }
-    return result
+
+    return entity as ToEntity<DOC>
   }
 
-  export function toEntities(dbResponse: ElasticSearchAPIResponse<StorageNodeDoc> | ElasticMSearchAPIResponse<StorageNodeDoc>): StorageNode[] {
+  export function toEntities<DOC extends DeepPartial<DocStorageNode>>(
+    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+  ): ToEntity<DOC>[] {
     return dbResponseToEntities(dbResponse, toEntity)
   }
 

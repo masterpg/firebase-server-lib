@@ -51,7 +51,7 @@ import { File } from '@google-cloud/storage'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import { merge } from 'lodash'
-import StorageNodeDoc = StorageSchema.StorageNodeDoc
+import DocStorageNode = StorageSchema.DocStorageNode
 
 //========================================================================
 //
@@ -75,7 +75,7 @@ interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
 //
 //========================================================================
 
-class StorageService extends CoreStorageService<StorageNode, StorageFileNode, StorageNodeDoc> {
+class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {
     super(authService)
   }
@@ -266,8 +266,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
         id,
         body: {
           doc: {
-            ...this.toStorageNodeDoc(dirNode),
-            share: this.toDBShareDetail(share),
+            ...this.toDocNode(dirNode),
+            share: this.toDocShareDetail(share),
             createdAt: now,
             updatedAt: now,
           },
@@ -549,7 +549,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
       index: StorageSchema.IndexAlias,
       id: articleNode.id,
       body: {
-        doc: this.toStorageNodeDoc(articleNode),
+        doc: this.toDocNode(articleNode),
       },
       refresh: true,
     })
@@ -635,7 +635,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
     await this.client.update({
       index: StorageSchema.IndexAlias,
       id: articleNode.id,
-      body: { doc: this.toStorageNodeDoc(articleNode) },
+      body: { doc: this.toDocNode(articleNode) },
       refresh: true,
     })
     articleNode = await this.sgetNode(articleNode, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
@@ -881,7 +881,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
     //
     if (!pagination?.pageToken) {
       // 指定された記事系ディレクトリ直下の「全記事」を取得
-      const response = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
+      const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
         index: StorageSchema.IndexAlias,
         size: StorageService.ChunkSize,
         from: 0,
@@ -895,7 +895,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
         },
         _source_excludes: this.sourceExcludes,
       })
-      const allArticleNodes = this.toStorageNodes(response)
+      const allArticleNodes = this.toEntityNodes(response)
 
       // 取得された記事とその階層をマップ化
       const allNodes = [...hierarchicalNodes, ...allArticleNodes]
@@ -929,7 +929,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
           return result
         }, [] as string[])
       // 次ページ分の記事ノードを取得
-      const response = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
+      const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
         index: StorageSchema.IndexAlias,
         size: pageSize,
         from,
@@ -943,7 +943,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
         },
         _source_excludes: this.sourceExcludes,
       })
-      const articleNodes = this.toStorageNodes(response)
+      const articleNodes = this.toEntityNodes(response)
 
       // 取得された記事ノードとその階層をマップ化
       const allNodes = [...hierarchicalNodes, ...articleNodes]
@@ -1014,7 +1014,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
     //
     // バンドルディレクトリのみを取得
     //
-    const response1 = await this.client.search<ElasticSearchResponse<StorageNodeDoc>>({
+    const response1 = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
       index: StorageSchema.IndexAlias,
       size: StorageService.ChunkSize,
       body: {
@@ -1031,7 +1031,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
       },
       _source_excludes: this.sourceExcludes,
     })
-    const bundleDirs = this.toStorageNodes(response1)
+    const bundleDirs = this.toEntityNodes(response1)
 
     //
     // バンドルディレクトリ配下の「カテゴリ」「記事」を取得
@@ -1062,10 +1062,10 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
     let bundleUnderCategoryAndArticle: StorageNode[] = []
     let allNodeDict: { [path: string]: StorageNode } = {}
     if (queryBody.length) {
-      const response2 = await this.client.msearch<ElasticMSearchResponse<StorageNodeDoc>, string[]>({
+      const response2 = await this.client.msearch<ElasticMSearchResponse<DocStorageNode>, string[]>({
         body: queryBody,
       })
-      bundleUnderCategoryAndArticle = this.toStorageNodes(response2)
+      bundleUnderCategoryAndArticle = this.toEntityNodes(response2)
       allNodeDict = [...articleRootHierarchicalNodes, ...bundleDirs, ...bundleUnderCategoryAndArticle].reduce<{ [path: string]: StorageNode }>(
         (result, node) => {
           result[node.path] = node
@@ -1242,11 +1242,11 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
     }
   }
 
-  protected toStorageNodes(dbResponse: ElasticSearchAPIResponse<StorageNodeDoc> | ElasticMSearchAPIResponse<StorageNodeDoc>): StorageNode[] {
+  protected toEntityNodes<T extends DeepPartial<DocStorageNode>>(dbResponse: ElasticSearchAPIResponse<T> | ElasticMSearchAPIResponse<T>) {
     return StorageSchema.toEntities(dbResponse)
   }
 
-  protected toStorageNodeDoc(node: DeepPartial<StorageNode>) {
+  protected toDocNode(node: DeepPartial<StorageNode>) {
     return StorageSchema.toDoc(node)
   }
 
@@ -1475,9 +1475,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode, St
       id,
       body: {
         doc: {
-          ...this.toStorageNodeDoc({
+          ...this.toDocNode({
             ...dirNode,
-            share: this.toDBShareDetail(options?.share),
+            share: this.toDocShareDetail(options?.share),
             article: input,
             createdAt: now,
             updatedAt: now,

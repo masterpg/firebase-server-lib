@@ -56,7 +56,7 @@ import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import escapeStringRegexp = require('escape-string-regexp')
-import CoreStorageNodeDoc = CoreStorageSchema.CoreStorageNodeDoc
+import DocCoreStorageNode = CoreStorageSchema.DocCoreStorageNode
 
 //========================================================================
 //
@@ -86,11 +86,7 @@ interface StorageUploadDataItem {
 //
 //========================================================================
 
-class CoreStorageService<
-  NODE extends CoreStorageNode = CoreStorageNode,
-  FILE_NODE extends NODE & StorageFileNode = NODE & StorageFileNode,
-  DB_NODE extends CoreStorageNodeDoc = CoreStorageNodeDoc
-> {
+class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NODE extends NODE & StorageFileNode = NODE & StorageFileNode> {
   constructor(@Inject(AuthServiceDI.symbol) protected readonly authService: AuthServiceDI.type) {}
 
   //----------------------------------------------------------------------
@@ -149,7 +145,7 @@ class CoreStorageService<
     const _getNode = async (key: StorageNodeGetKeyInput, sourceIncludes?: string[]) => {
       const { id, path } = key
 
-      const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+      const response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         index: CoreStorageSchema.IndexAlias,
         version: true,
         _source_excludes: this.mergeSourceExcludes(sourceIncludes),
@@ -160,7 +156,7 @@ class CoreStorageService<
         },
       })
 
-      const nodes = this.toStorageNodes(response)
+      const nodes = this.toEntityNodes(response)
       return nodes.length ? nodes[0] : undefined
     }
 
@@ -180,7 +176,7 @@ class CoreStorageService<
       return undefined
     }
 
-    let result: NODE | undefined
+    let result: CoreStorageNode | undefined
     if (key.id) {
       result = await _getNode({ id: key.id }, sourceIncludes)
     } else {
@@ -191,7 +187,7 @@ class CoreStorageService<
 
     if (result) {
       idToken && (await this.validateBrowsable(idToken, result.path))
-      return result
+      return result as NODE
     } else {
       return
     }
@@ -266,11 +262,11 @@ class CoreStorageService<
       paths.forEach(path => CoreStorageService.validateNodePath(path))
       paths = paths.map(path => removeBothEndsSlash(path))
 
-      const nodes: NODE[] = []
+      const nodes: CoreStorageNode[] = []
 
       for (const chunk of splitArrayChunk(ids, size)) {
         if (!chunk.length) break
-        const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+        const response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
           index: CoreStorageSchema.IndexAlias,
           size,
           version: true,
@@ -279,12 +275,12 @@ class CoreStorageService<
             query: { terms: { _id: chunk } },
           },
         })
-        nodes.push(...this.toStorageNodes(response))
+        nodes.push(...this.toEntityNodes(response))
       }
 
       for (const chunk of splitArrayChunk(paths, size)) {
         if (!chunk.length) break
-        const response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+        const response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
           index: CoreStorageSchema.IndexAlias,
           size,
           version: true,
@@ -293,17 +289,17 @@ class CoreStorageService<
             query: { terms: { path: chunk } },
           },
         })
-        nodes.push(...this.toStorageNodes(response))
+        nodes.push(...this.toEntityNodes(response))
       }
 
-      const nodeIdDict: { [id: string]: NODE } = {}
-      const nodePathDict: { [id: string]: NODE } = {}
+      const nodeIdDict: { [id: string]: CoreStorageNode } = {}
+      const nodePathDict: { [id: string]: CoreStorageNode } = {}
       for (const node of nodes) {
         nodeIdDict[node.id] = node
         nodePathDict[node.path] = node
       }
 
-      const result: NODE[] = []
+      const result: CoreStorageNode[] = []
       for (const id of ids) {
         const node = nodeIdDict[id]
         node && result.push(node)
@@ -337,7 +333,7 @@ class CoreStorageService<
       )
     }
 
-    return nodes
+    return nodes as NODE[]
   }
 
   /**
@@ -581,9 +577,9 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticSearchAPIResponse<DB_NODE>
+    let response!: ElasticSearchAPIResponse<DocCoreStorageNode>
     try {
-      response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+      response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         size: pageSize,
         version: true,
         _source_excludes: this.mergeSourceExcludes(sourceIncludes),
@@ -600,7 +596,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.toStorageNodes(response)
+    const nodes = this.toEntityNodes(response)
 
     // 指定ディレクトリを含む検索の、初回検索だった場合
     if (includeBase && path && !pagination?.pageToken) {
@@ -625,7 +621,11 @@ class CoreStorageService<
       }
     }
 
-    return { nextPageToken, list: nodes, total: response.body.hits.total.value }
+    return {
+      nextPageToken,
+      list: nodes as NODE[],
+      total: response.body.hits.total.value,
+    }
   }
 
   /**
@@ -854,9 +854,9 @@ class CoreStorageService<
     }
 
     // データベースからノードを取得
-    let response!: ElasticSearchAPIResponse<DB_NODE>
+    let response!: ElasticSearchAPIResponse<DocCoreStorageNode>
     try {
-      response = await this.client.search<ElasticSearchResponse<DB_NODE>>({
+      response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         size: pageSize,
         version: true,
         _source_excludes: this.mergeSourceExcludes(sourceIncludes),
@@ -873,7 +873,7 @@ class CoreStorageService<
         throw err
       }
     }
-    const nodes = this.toStorageNodes(response)
+    const nodes = this.toEntityNodes(response)
 
     // 指定ディレクトリを含む検索の、初回検索だった場合
     if (includeBase && path && !pagination?.pageToken) {
@@ -898,7 +898,11 @@ class CoreStorageService<
       }
     }
 
-    return { nextPageToken, list: nodes, total: response.body.hits.total.value }
+    return {
+      nextPageToken,
+      list: nodes as NODE[],
+      total: response.body.hits.total.value,
+    }
   }
 
   /**
@@ -1189,8 +1193,8 @@ class CoreStorageService<
         id,
         body: {
           doc: {
-            ...this.toStorageNodeDoc(dirNode),
-            share: this.toDBShareDetail(share),
+            ...this.toDocNode(dirNode),
+            share: this.toDocShareDetail(share),
             createdAt: now,
             updatedAt: now,
           },
@@ -1297,7 +1301,7 @@ class CoreStorageService<
       const now = dayjs().toISOString()
       body.push({ index: { _index: CoreStorageSchema.IndexAlias, _id: id } })
       body.push({
-        ...this.toStorageNodeDoc(dirNode),
+        ...this.toDocNode(dirNode),
         createdAt: now,
         updatedAt: now,
       })
@@ -2043,7 +2047,7 @@ class CoreStorageService<
   protected async setDirShareDetailImpl(dirNode: NODE, input: SetShareDetailInput | null): Promise<NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
-    const share: StorageNodeShareDetail = this.toDBShareDetail(input, dirNode.share)
+    const share: StorageNodeShareDetail = this.toDocShareDetail(input, dirNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: dirNode.id,
@@ -2114,7 +2118,7 @@ class CoreStorageService<
   protected async setFileShareDetailImpl(fileNode: NODE, input: SetShareDetailInput | null): Promise<FILE_NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
-    const share: StorageNodeShareDetail = this.toDBShareDetail(input, fileNode.share)
+    const share: StorageNodeShareDetail = this.toDocShareDetail(input, fileNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
@@ -2835,7 +2839,7 @@ class CoreStorageService<
       ...(existingNode ?? {}),
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
-      share: this.toDBShareDetail(extra_share, existingNode?.share),
+      share: this.toDocShareDetail(extra_share, existingNode?.share),
       contentType: file.metadata.contentType ?? '',
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       createdAt,
@@ -2848,7 +2852,7 @@ class CoreStorageService<
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: this.toStorageNodeDoc(fileNode),
+        doc: this.toDocNode(fileNode),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2899,7 +2903,7 @@ class CoreStorageService<
       ...(existingNode ?? {}),
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
-      share: this.toDBShareDetail(extra_share, existingNode?.share),
+      share: this.toDocShareDetail(extra_share, existingNode?.share),
       contentType: saveOptions?.contentType ?? existingNode?.contentType ?? file.metadata.contentType ?? '',
       size: file.metadata.size ? Number(file.metadata.size) : 0,
       createdAt,
@@ -2914,7 +2918,7 @@ class CoreStorageService<
       index: CoreStorageSchema.IndexAlias,
       id: nodeId,
       body: {
-        doc: this.toStorageNodeDoc(fileNode),
+        doc: this.toDocNode(fileNode),
         doc_as_upsert: true,
       },
       refresh: true,
@@ -2931,15 +2935,15 @@ class CoreStorageService<
    * データベースのレスポンスデータからノードリストを取得します。
    * @param dbResponse
    */
-  protected toStorageNodes(dbResponse: ElasticSearchAPIResponse<DB_NODE> | ElasticMSearchAPIResponse<DB_NODE>): NODE[] {
-    return CoreStorageSchema.toEntities(dbResponse) as NODE[]
+  protected toEntityNodes<T extends DeepPartial<DocCoreStorageNode>>(dbResponse: ElasticSearchAPIResponse<T> | ElasticMSearchAPIResponse<T>) {
+    return CoreStorageSchema.toEntities(dbResponse)
   }
 
   /**
    * ノードをデータベースへ保存するプロパティのみに絞り込みます。
    * @param node
    */
-  protected toStorageNodeDoc(node: DeepPartial<CoreStorageNode>) {
+  protected toDocNode(node: DeepPartial<CoreStorageNode>) {
     return CoreStorageSchema.toDoc(node)
   }
 
@@ -2968,7 +2972,7 @@ class CoreStorageService<
    * @param input
    * @param existing
    */
-  protected toDBShareDetail(input?: SetShareDetailInput | null, existing?: StorageNodeShareDetail): StorageNodeShareDetail {
+  protected toDocShareDetail(input?: SetShareDetailInput | null, existing?: StorageNodeShareDetail): StorageNodeShareDetail {
     let share!: StorageNodeShareDetail
 
     if (input === null) {
