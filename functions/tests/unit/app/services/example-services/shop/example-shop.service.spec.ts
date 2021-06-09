@@ -265,12 +265,8 @@ describe('ExampleShop', () => {
   describe('addCartItems', () => {
     function AddInputs(): CartItemAddInput[] {
       return CartItems().map(item => {
-        delete item.id
-        delete item.uid
-        delete item.version
-        delete item.createdAt
-        delete item.updatedAt
-        return item
+        const { id, uid, version, createdAt, updatedAt, ...result } = item
+        return result
       })
     }
 

@@ -187,7 +187,7 @@ class CoreStorageTestHelper {
       ...CoreStorageSchema.toPathData(dirPath),
       contentType: data.contentType || '',
       size: data.size || 0,
-      share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
+      share: data.share || { isPublic: undefined, readUIds: undefined, writeUIds: undefined },
       version: data.version || 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
@@ -204,7 +204,7 @@ class CoreStorageTestHelper {
       ...CoreStorageSchema.toPathData(filePath),
       contentType: data.contentType || 'text/plain; charset=utf-8',
       size: data.size || 5,
-      share: data.share || { isPublic: null, readUIds: null, writeUIds: null },
+      share: data.share || { isPublic: undefined, readUIds: undefined, writeUIds: undefined },
       version: data.version || 1,
       createdAt: data.createdAt || dayjs(),
       updatedAt: data.updatedAt || dayjs(),
@@ -223,10 +223,22 @@ class StorageTestHelper extends CoreStorageTestHelper {
     data = data || {}
 
     const result: StorageNode = { ...super.newDirNode(dirPath, data) }
-    if (data.article) {
-      result.id = _path.basename(dirPath)
-      result.article = data.article
-    }
+    result.id = data.article ? _path.basename(dirPath) : result.id
+
+    result.article = data.article
+      ? {
+          type: data.article.type,
+          label: {
+            ja: data.article.label.ja ?? undefined,
+            en: data.article.label.en ?? undefined,
+          },
+          sortOrder: data.article.sortOrder,
+          src: {
+            ja: data.article.src?.ja ?? undefined,
+            en: data.article.src?.en ?? undefined,
+          },
+        }
+      : undefined
 
     return result
   }
@@ -236,7 +248,21 @@ class StorageTestHelper extends CoreStorageTestHelper {
     data = data || {}
 
     const result: StorageNode = { ...super.newFileNode(filePath, data) }
-    data.article && (result.article = data.article)
+
+    result.article = data.article
+      ? {
+          type: data.article.type,
+          label: {
+            ja: data.article.label.ja ?? undefined,
+            en: data.article.label.en ?? undefined,
+          },
+          sortOrder: data.article.sortOrder,
+          src: {
+            ja: data.article.src?.ja ?? undefined,
+            en: data.article.src?.en ?? undefined,
+          },
+        }
+      : undefined
 
     return result
   }

@@ -22,13 +22,13 @@ import {
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
-  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
+  StorageNodeShareDetailInput,
   StorageServiceDI,
   StorageServiceModule,
 } from '../../../services'
@@ -141,7 +141,7 @@ class StorageResolver {
   async setStorageDirShareDetail(
     @UserArg() idToken: IdToken,
     @Args('key') key: StorageNodeGetKeyInput,
-    @Args('input') input: SetShareDetailInput
+    @Args('input') input: StorageNodeShareDetailInput
   ): Promise<StorageNode> {
     return this.storageService.setDirShareDetail(idToken, key, input)
   }
@@ -151,7 +151,7 @@ class StorageResolver {
   async setStorageFileShareDetail(
     @UserArg() idToken: IdToken,
     @Args('key') key: StorageNodeGetKeyInput,
-    @Args('input') input: SetShareDetailInput
+    @Args('input') input: StorageNodeShareDetailInput
   ): Promise<StorageNode> {
     return this.storageService.setFileShareDetail(idToken, key, input)
   }

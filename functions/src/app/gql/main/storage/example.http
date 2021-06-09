@@ -230,7 +230,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "SetStorageDirShareDetail",
-  "query": "mutation SetStorageDirShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) { setStorageDirShareDetail(key: $key, input: $input) { id path } }",
+  "query": "mutation SetStorageDirShareDetail($key: StorageNodeGetKeyInput!, $input: StorageNodeShareDetailInput!) { setStorageDirShareDetail(key: $key, input: $input) { id path } }",
   "variables": {
     "key": { "path": "test-files/d1" },
     "input": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds": ["ichiro"] }
@@ -245,7 +245,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "SetStorageFileShareDetail",
-  "query": "mutation SetStorageFileShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) { setStorageFileShareDetail(key: $key, input: $input) { id path } }",
+  "query": "mutation SetStorageFileShareDetail($key: StorageNodeGetKeyInput!, $input: StorageNodeShareDetailInput!) { setStorageFileShareDetail(key: $key, input: $input) { id path } }",
   "variables": {
     "key": { "path": "test-files/d1/fileA.txt" },
     "input": { "isPublic": true, "readUIds":  ["ichiro"], "writeUIds":  ["ichiro"] }

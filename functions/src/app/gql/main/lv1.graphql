@@ -8,8 +8,8 @@ type Mutation {
   removeStorageFile(key: StorageNodeGetKeyInput!): StorageNode
   moveStorageFile(input: MoveStorageFileInput!): StorageNode!
   renameStorageFile(input: RenameStorageFileInput!): StorageNode!
-  setStorageDirShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
-  setStorageFileShareDetail(key: StorageNodeGetKeyInput!, input: SetShareDetailInput): StorageNode!
+  setStorageDirShareDetail(key: StorageNodeGetKeyInput!, input: StorageNodeShareDetailInput): StorageNode!
+  setStorageFileShareDetail(key: StorageNodeGetKeyInput!, input: StorageNodeShareDetailInput): StorageNode!
   handleUploadedFile(input: StorageNodeKeyInput!): StorageNode!
   setFileAccessAuthClaims(input: StorageNodeKeyInput!): String!
   removeFileAccessAuthClaims: String!

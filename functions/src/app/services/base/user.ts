@@ -6,7 +6,7 @@ import { UserSchema } from './index'
 import { auth } from 'firebase-admin/lib/auth'
 import { pickProps } from 'web-base-lib'
 import UserRecord = auth.UserRecord
-import UserDoc = UserSchema.UserDoc
+import DocUser = UserSchema.DocUser
 
 //========================================================================
 //
@@ -39,7 +39,7 @@ class UserHelper {
       throw new AppError(`Neither "id" nor "userName" is specified.`)
     }
 
-    const response = await this.client.search<ElasticSearchResponse<UserDoc>>({
+    const response = await this.client.search<ElasticSearchResponse<DocUser>>({
       index: UserSchema.IndexAlias,
       body: {
         query: {

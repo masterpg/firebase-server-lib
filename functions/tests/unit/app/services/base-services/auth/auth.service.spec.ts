@@ -1,5 +1,5 @@
 import { AppAdminUser, AppAdminUserHeader, GeneralUser, GeneralUserHeader } from '../../../../../helpers/app'
-import { AuthStatus, DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims } from '../../../../../../src/app/services'
+import { DevUtilsServiceDI, DevUtilsServiceModule, UserIdClaims } from '../../../../../../src/app/services'
 import { MockGQLModule, MockRESTModule } from '../../../../../helpers/app'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Response } from 'supertest'

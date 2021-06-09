@@ -12,18 +12,20 @@ import {
   NextTokenPaginationResult,
   RenameStorageDirInput,
   RenameStorageFileInput,
-  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNodeGetKeyInput,
   StorageNodeGetKeysInput,
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareDetail,
+  StorageNodeShareDetailInput,
   UserIdClaims,
 } from './base'
 import { CoreStorageSchema, UserHelper } from './base'
 import {
   DeepPartial,
+  Overwrite,
+  ToDeepNullable,
   arrayToDict,
   notEmpty,
   pickProps,
@@ -77,7 +79,7 @@ interface StorageUploadDataItem {
   data: string | Buffer
   path: string
   contentType: string
-  share?: SetShareDetailInput
+  share?: StorageNodeShareDetailInput
 }
 
 //========================================================================
@@ -1987,30 +1989,30 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * @param key
    * @param input
    */
-  setDirShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<NODE>
+  setDirShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<NODE>
 
   /**
    * @see setDirShareDetail
    * @param key
    * @param input
    */
-  setDirShareDetail(key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<NODE>
+  setDirShareDetail(key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<NODE>
 
   async setDirShareDetail(
     arg1: IdToken | StorageNodeGetKeyInput,
-    arg2: StorageNodeGetKeyInput | (SetShareDetailInput | null),
-    arg3?: SetShareDetailInput | null
+    arg2: StorageNodeGetKeyInput | (StorageNodeShareDetailInput | null),
+    arg3?: StorageNodeShareDetailInput | null
   ): Promise<NODE> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
-    let input: SetShareDetailInput | null
+    let input: StorageNodeShareDetailInput | null
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       key = arg2 as StorageNodeGetKeyInput
-      input = arg3 as SetShareDetailInput | null
+      input = arg3 as StorageNodeShareDetailInput | null
     } else {
       key = arg1
-      input = arg2 as SetShareDetailInput | null
+      input = arg2 as StorageNodeShareDetailInput | null
     }
 
     const dirNode = await this.sgetNode(key)
@@ -2044,10 +2046,10 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
   }
 
-  protected async setDirShareDetailImpl(dirNode: NODE, input: SetShareDetailInput | null): Promise<NODE> {
+  protected async setDirShareDetailImpl(dirNode: NODE, input: StorageNodeShareDetailInput | null): Promise<NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
-    const share: StorageNodeShareDetail = this.toDocShareDetail(input, dirNode.share)
+    const share = this.toDocShareDetail(input, dirNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: dirNode.id,
@@ -2069,30 +2071,30 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * @param key
    * @param input
    */
-  setFileShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<FILE_NODE>
+  setFileShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<FILE_NODE>
 
   /**
    * @see setFileShareDetail
    * @param key
    * @param input
    */
-  setFileShareDetail(key: StorageNodeGetKeyInput, input: SetShareDetailInput | null): Promise<FILE_NODE>
+  setFileShareDetail(key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<FILE_NODE>
 
   async setFileShareDetail(
     arg1: IdToken | StorageNodeGetKeyInput,
-    arg2: StorageNodeGetKeyInput | SetShareDetailInput | null,
-    arg3?: SetShareDetailInput | null
+    arg2: StorageNodeGetKeyInput | StorageNodeShareDetailInput | null,
+    arg3?: StorageNodeShareDetailInput | null
   ): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
-    let input: SetShareDetailInput | null
+    let input: StorageNodeShareDetailInput | null
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       key = arg2 as StorageNodeGetKeyInput
-      input = arg3 as SetShareDetailInput | null
+      input = arg3 as StorageNodeShareDetailInput | null
     } else {
       key = arg1
-      input = arg2 as SetShareDetailInput | null
+      input = arg2 as StorageNodeShareDetailInput | null
     }
 
     const fileNode = await this.sgetNode(key)
@@ -2115,10 +2117,10 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
   }
 
-  protected async setFileShareDetailImpl(fileNode: NODE, input: SetShareDetailInput | null): Promise<FILE_NODE> {
+  protected async setFileShareDetailImpl(fileNode: NODE, input: StorageNodeShareDetailInput | null): Promise<FILE_NODE> {
     CoreStorageService.validateShareDetailInput(input)
 
-    const share: StorageNodeShareDetail = this.toDocShareDetail(input, fileNode.share)
+    const share = this.toDocShareDetail(input, fileNode.share)
     await this.client.update({
       index: CoreStorageSchema.IndexAlias,
       id: fileNode.id,
@@ -2776,20 +2778,20 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
    * @param nodePath
    */
-  protected getInheritedShareDetail(nodePath: string): Promise<Required<StorageNodeShareDetail>>
+  protected getInheritedShareDetail(nodePath: string): Promise<StorageNodeShareDetail>
 
   /**
    * 指定されたノードをもとに、上位ディレクトリを加味した共有設定を取得します。
    * @param hierarchicalNodes
    *   階層構造が形成されたノードリストを指定。最後尾のノードの共有設定が取得されます。
    */
-  protected getInheritedShareDetail(hierarchicalNodes: NODE[]): Required<StorageNodeShareDetail>
+  protected getInheritedShareDetail(hierarchicalNodes: NODE[]): StorageNodeShareDetail
 
-  protected getInheritedShareDetail(arg1: string | NODE[]): Promise<Required<StorageNodeShareDetail>> | Required<StorageNodeShareDetail> {
+  protected getInheritedShareDetail(arg1: string | NODE[]): Promise<StorageNodeShareDetail> | StorageNodeShareDetail {
     const getResult = (hierarchicalNodes: NODE[]) => {
       hierarchicalNodes = CoreStorageService.sortNodes([...hierarchicalNodes]) as NODE[]
 
-      const result: Required<StorageNodeShareDetail> = { isPublic: null, readUIds: null, writeUIds: null }
+      const result: StorageNodeShareDetail = {}
       for (const node of hierarchicalNodes) {
         if (typeof node.share.isPublic === 'boolean') {
           // 上位で明示的に非公開が設定されている場合、下位公開設定は無視される
@@ -2823,11 +2825,15 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * @param file
    * @param extra
    */
-  async saveFileNode<EXTRA extends CoreStorageNode>(fileNodePath: string, file: File, extra?: DeepPartial<EXTRA>): Promise<FILE_NODE> {
+  async saveFileNode(
+    fileNodePath: string,
+    file: File,
+    extra?: DeepPartial<Overwrite<CoreStorageNode, { share: StorageNodeShareDetailInput }>>
+  ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const nodeId = file.name
     const existingNode = await this.getNode({ id: nodeId })
-    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = (extra as CoreStorageNode | undefined) ?? {}
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = extra ?? {}
 
     // ファイルノードに設定するタイムスタンプ+バージョンを取得
     const now = dayjs()
@@ -2835,8 +2841,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     const updatedAt = extra_updatedAt ?? now
 
     // ファイルノードを作成/更新するデータを準備
-    const fileNode: Omit<CoreStorageNode, 'id' | 'version'> = {
-      ...(existingNode ?? {}),
+    const fileNode: Omit<Overwrite<CoreStorageNode, { share: StorageNodeShareDetailInput }>, 'id' | 'version'> = {
+      ...existingNode,
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
       share: this.toDocShareDetail(extra_share, existingNode?.share),
@@ -2871,16 +2877,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * @param saveOptions
    * @param extra
    */
-  protected async saveGCSFileAndFileNode<EXTRA extends CoreStorageNode>(
+  protected async saveGCSFileAndFileNode(
     fileNodePath: string,
     data: any,
     saveOptions?: SaveOptions,
-    extra?: DeepPartial<EXTRA>
+    extra?: DeepPartial<Overwrite<CoreStorageNode, { share: StorageNodeShareDetailInput }>>
   ): Promise<FILE_NODE> {
     fileNodePath = removeBothEndsSlash(fileNodePath)
     const existingNode = await this.getNode({ path: fileNodePath })
     const nodeId = existingNode?.id || CoreStorageSchema.generateId()
-    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = (extra as CoreStorageNode | undefined) ?? {}
+    const { share: extra_share, createdAt: extra_createdAt, updatedAt: extra_updatedAt, ...extra_rest } = extra ?? {}
 
     //
     // ストレージファイルのコンテンツデータを保存
@@ -2899,8 +2905,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     //
     // ファイルノードを作成/更新するデータを準備
     //
-    const fileNode: Omit<CoreStorageNode, 'id' | 'version'> = {
-      ...(existingNode ?? {}),
+    const fileNode: Omit<Overwrite<CoreStorageNode, { share: StorageNodeShareDetailInput }>, 'id' | 'version'> = {
+      ...existingNode,
       ...CoreStorageSchema.toPathData(fileNodePath),
       nodeType: 'File',
       share: this.toDocShareDetail(extra_share, existingNode?.share),
@@ -2943,7 +2949,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * ノードをデータベースへ保存するプロパティのみに絞り込みます。
    * @param node
    */
-  protected toDocNode(node: DeepPartial<CoreStorageNode>) {
+  protected toDocNode(node: ToDeepNullable<CoreStorageNode>) {
     return CoreStorageSchema.toDoc(node)
   }
 
@@ -2960,7 +2966,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       ...CoreStorageSchema.toPathData(dir),
       contentType: '',
       size: 0,
-      share: { isPublic: null, readUIds: null, writeUIds: null },
+      share: {},
       version: 0,
       createdAt: dayjs(0),
       updatedAt: dayjs(0),
@@ -2972,13 +2978,13 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * @param input
    * @param existing
    */
-  protected toDocShareDetail(input?: SetShareDetailInput | null, existing?: StorageNodeShareDetail): StorageNodeShareDetail {
-    let share!: StorageNodeShareDetail
+  protected toDocShareDetail(input?: StorageNodeShareDetailInput | null, existing?: StorageNodeShareDetail): StorageNodeShareDetailInput {
+    let share!: StorageNodeShareDetailInput
 
     if (input === null) {
       share = CoreStorageSchema.EmptyShareDetail()
     } else {
-      share = { ...CoreStorageSchema.EmptyShareDetail(), ...existing }
+      share = { ...existing }
 
       if (typeof input?.isPublic !== 'undefined') {
         share.isPublic = input.isPublic
@@ -3007,8 +3013,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   /**
    * 指定されたノードが 304 Not Modified かチェックします。
    * @param req
-   * @param updatedA
-   * t
+   * @param updatedAt
    */
   protected checkNotModified(req: Request, updatedAt: Dayjs): { result: boolean; status: number; lastModified: string } {
     const lastModified = updatedAt.toString()
@@ -3079,7 +3084,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * 共有設定の入力値を検証します。
    * @param input
    */
-  static validateShareDetailInput(input?: SetShareDetailInput | null): void {
+  static validateShareDetailInput(input?: StorageNodeShareDetailInput | null): void {
     input?.readUIds?.forEach(uid => {
       if (!validateUID(uid)) {
         throw new AppError(`The specified 'readUIds' had an incorrect value: '${uid}'`)

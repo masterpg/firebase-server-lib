@@ -17,10 +17,7 @@ import {
   StorageUserToken,
   getGQLErrorStatus,
   requestGQL,
-  toGQLResponseArticleListItems,
-  toGQLResponseArticleTableOfContentsItems,
-  toGQLResponseStorageNode,
-  toGQLResponseStorageNodes,
+  toGQLResponse,
 } from '../../../../../../helpers/app'
 import {
   ArticleListItem,
@@ -155,7 +152,7 @@ describe('Lv1 Storage Resolver', () => {
           { headers: StorageUserHeader() }
         )
 
-        expect(response.body.data.storageNodes).toEqual(toGQLResponseStorageNodes([bundle, art1]))
+        expect(response.body.data.storageNodes).toEqual(toGQLResponse([bundle, art1]))
       })
     })
   })
@@ -188,7 +185,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageNode).toEqual(toGQLResponseStorageNode(d1))
+      expect(response.body.data.storageNode).toEqual(toGQLResponse(d1))
     })
 
     it('疎通確認 - 結果が空だった場合', async () => {
@@ -251,7 +248,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageNodes).toEqual(toGQLResponseStorageNodes([d1]))
+      expect(response.body.data.storageNodes).toEqual(toGQLResponse([d1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -308,7 +305,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageDescendants.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
+      expect(response.body.data.storageDescendants.list).toEqual(toGQLResponse([d1, d11]))
       expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
       expect(response.body.data.storageDescendants.total).toBe(10)
       expect(response.body.data.storageDescendants.isPaginationTimeout).toBeNull()
@@ -371,7 +368,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageChildren.list).toEqual(toGQLResponseStorageNodes([d1, d11]))
+      expect(response.body.data.storageChildren.list).toEqual(toGQLResponse([d1, d11]))
       expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
       expect(response.body.data.storageChildren.total).toBe(10)
       expect(response.body.data.storageChildren.isPaginationTimeout).toBeNull()
@@ -422,7 +419,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageHierarchicalNodes).toEqual(toGQLResponseStorageNodes([d1, d11]))
+      expect(response.body.data.storageHierarchicalNodes).toEqual(toGQLResponse([d1, d11]))
     })
 
     it('サインインしていない場合', async () => {
@@ -466,7 +463,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.storageAncestorDirs).toEqual(toGQLResponseStorageNodes([d1, d11]))
+      expect(response.body.data.storageAncestorDirs).toEqual(toGQLResponse([d1, d11]))
     })
 
     it('サインインしていない場合', async () => {
@@ -513,7 +510,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.createStorageDir).toEqual(toGQLResponseStorageNode(d1))
+      expect(response.body.data.createStorageDir).toEqual(toGQLResponse(d1))
     })
 
     it('サインインしていない場合', async () => {
@@ -558,7 +555,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.createStorageHierarchicalDirs).toEqual(toGQLResponseStorageNodes([d11, d12]))
+      expect(response.body.data.createStorageHierarchicalDirs).toEqual(toGQLResponse([d11, d12]))
     })
 
     it('サインインしていない場合', async () => {
@@ -601,7 +598,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.removeStorageFile).toEqual(toGQLResponseStorageNode(fileA))
+      expect(response.body.data.removeStorageFile).toEqual(toGQLResponse(fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -648,7 +645,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.moveStorageFile).toEqual(toGQLResponseStorageNode(fileA))
+      expect(response.body.data.moveStorageFile).toEqual(toGQLResponse(fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -698,7 +695,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.renameStorageFile).toEqual(toGQLResponseStorageNode(fileB))
+      expect(response.body.data.renameStorageFile).toEqual(toGQLResponse(fileB))
     })
 
     it('サインインしていない場合', async () => {
@@ -719,7 +716,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('setStorageDirShareDetail', () => {
     const gql = {
       query: `
-        mutation SetStorageDirShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) {
+        mutation SetStorageDirShareDetail($key: StorageNodeGetKeyInput!, $input: StorageNodeShareDetailInput!) {
           setStorageDirShareDetail(key: $key, input: $input) {
             ...${StorageNodeFieldsName}
           }
@@ -746,7 +743,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.setStorageDirShareDetail).toEqual(toGQLResponseStorageNode(d1))
+      expect(response.body.data.setStorageDirShareDetail).toEqual(toGQLResponse(d1))
     })
 
     it('サインインしていない場合', async () => {
@@ -764,7 +761,7 @@ describe('Lv1 Storage Resolver', () => {
   describe('setStorageFileShareDetail', () => {
     const gql = {
       query: `
-        mutation SetStorageFileShareDetail($key: StorageNodeGetKeyInput!, $input: SetShareDetailInput!) {
+        mutation SetStorageFileShareDetail($key: StorageNodeGetKeyInput!, $input: StorageNodeShareDetailInput!) {
           setStorageFileShareDetail(key: $key, input: $input) {
             ...${StorageNodeFieldsName}
           }
@@ -791,7 +788,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.setStorageFileShareDetail).toEqual(toGQLResponseStorageNode(fileA))
+      expect(response.body.data.setStorageFileShareDetail).toEqual(toGQLResponse(fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -837,7 +834,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: AppAdminUserHeader() }
       )
 
-      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponseStorageNode(fileA))
+      expect(response.body.data.handleUploadedFile).toEqual(toGQLResponse(fileA))
     })
 
     it('サインインしていない場合', async () => {
@@ -1023,7 +1020,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.createArticleTypeDir).toEqual(toGQLResponseStorageNode(bundle))
+      expect(response.body.data.createArticleTypeDir).toEqual(toGQLResponse(bundle))
     })
 
     it('サインインしていない場合', async () => {
@@ -1078,7 +1075,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.createArticleGeneralDir).toEqual(toGQLResponseStorageNode(d1))
+      expect(response.body.data.createArticleGeneralDir).toEqual(toGQLResponse(d1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1138,7 +1135,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.renameArticleTypeDir).toEqual(toGQLResponseStorageNode(cat1))
+      expect(response.body.data.renameArticleTypeDir).toEqual(toGQLResponse(cat1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1309,7 +1306,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleSrcContent).toEqual(toGQLResponseStorageNode(art1))
+      expect(response.body.data.saveArticleSrcContent).toEqual(toGQLResponse(art1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1397,7 +1394,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponseStorageNode(art1))
+      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponse(art1))
     })
 
     it('疎通確認 - srcContentにnullを指定した場合', async () => {
@@ -1431,7 +1428,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponseStorageNode(art1))
+      expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponse(art1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1508,7 +1505,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.articleContentsNode).toEqual(toGQLResponseStorageNode(art1))
+      expect(response.body.data.articleContentsNode).toEqual(toGQLResponse(art1))
     })
 
     it('サインインしていない場合', async () => {
@@ -1611,7 +1608,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
+      expect(response.body.data.userArticleList.list).toEqual(toGQLResponse([art1]))
       expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
       expect(response.body.data.userArticleList.total).toBe(10)
     })
@@ -1636,7 +1633,7 @@ describe('Lv1 Storage Resolver', () => {
         variables: { input, pagination },
       })
 
-      expect(response.body.data.userArticleList.list).toEqual(toGQLResponseArticleListItems([art1]))
+      expect(response.body.data.userArticleList.list).toEqual(toGQLResponse([art1]))
       expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
       expect(response.body.data.userArticleList.total).toBe(10)
     })
@@ -1723,7 +1720,7 @@ describe('Lv1 Storage Resolver', () => {
         { headers: StorageUserHeader() }
       )
 
-      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsItems([treeBundle, cat1, art1]))
+      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponse([treeBundle, cat1, art1]))
     })
 
     it('サインインしていない場合', async () => {
@@ -1744,7 +1741,7 @@ describe('Lv1 Storage Resolver', () => {
         },
       })
 
-      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponseArticleTableOfContentsItems([treeBundle, cat1, art1]))
+      expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponse([treeBundle, cat1, art1]))
     })
   })
 })

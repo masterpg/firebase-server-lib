@@ -89,7 +89,7 @@ type StorageNodeShareDetail {
   writeUIds: [String!]
 }
 
-input SetShareDetailInput {
+input StorageNodeShareDetailInput {
   isPublic: Boolean
   readUIds: [String!]
   writeUIds: [String!]
@@ -109,7 +109,7 @@ input SignedUploadUrlInput {
 
 input CreateStorageDirInput {
   dir: String!
-  share: SetShareDetailInput
+  share: StorageNodeShareDetailInput
 }
 
 input MoveStorageDirInput {
@@ -200,12 +200,12 @@ input CreateArticleTypeDirInput {
   dir: String!
   label: String!
   type: ArticleDirType!
-  share: SetShareDetailInput
+  share: StorageNodeShareDetailInput
 }
 
 input CreateArticleGeneralDirInput {
   dir: String!
-  share: SetShareDetailInput
+  share: StorageNodeShareDetailInput
 }
 
 input RenameArticleTypeDirInput {

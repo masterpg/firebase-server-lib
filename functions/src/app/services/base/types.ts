@@ -125,12 +125,12 @@ interface StorageNodeGetKeysInput {
 }
 
 interface StorageNodeShareDetail {
-  isPublic: boolean | null
-  readUIds: string[] | null
-  writeUIds: string[] | null
+  isPublic?: boolean
+  readUIds?: string[]
+  writeUIds?: string[]
 }
 
-interface SetShareDetailInput {
+interface StorageNodeShareDetailInput {
   isPublic?: boolean | null
   readUIds?: string[] | null
   writeUIds?: string[] | null
@@ -150,7 +150,7 @@ interface SignedUploadUrlInput {
 
 interface CreateStorageDirInput {
   dir: string
-  share?: SetShareDetailInput
+  share?: StorageNodeShareDetailInput
 }
 
 interface MoveStorageDirInput {
@@ -255,12 +255,12 @@ interface CreateArticleTypeDirInput {
   label: string
   type: ArticleDirType
   sortOrder?: number
-  share?: SetShareDetailInput
+  share?: StorageNodeShareDetailInput
 }
 
 interface CreateArticleGeneralDirInput {
   dir: string
-  share?: SetShareDetailInput
+  share?: StorageNodeShareDetailInput
 }
 
 interface RenameArticleTypeDirInput {
@@ -443,7 +443,7 @@ export {
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
-  SetShareDetailInput,
+  StorageNodeShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,

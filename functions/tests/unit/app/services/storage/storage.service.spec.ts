@@ -23,21 +23,35 @@ import {
   SaveArticleSrcContentInput,
   StorageNode,
   StorageNodeGetKeyInput,
+  StorageNodeShareDetail,
   StorageSchema,
   StorageService,
   StorageServiceDI,
   StorageServiceModule,
   StorageUploadDataItem,
 } from '../../../../../src/app/services'
-import { LangCode, pickProps, removeBothEndsSlash, shuffleArray } from 'web-base-lib'
+import { LangCode, pickProps, shuffleArray } from 'web-base-lib'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import dayjs = require('dayjs')
-import EmptyShareDetail = StorageSchema.EmptyShareDetail
 
 jest.setTimeout(30000)
 initApp()
+
+//========================================================================
+//
+//  Test helpers
+//
+//========================================================================
+
+export function EmptyShareDetail(): StorageNodeShareDetail {
+  return {
+    isPublic: undefined,
+    readUIds: undefined,
+    writeUIds: undefined,
+  }
+}
 
 //========================================================================
 //
@@ -93,7 +107,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
-        expect(actual.share).toEqual({ isPublic: false, readUIds: null, writeUIds: null })
+        expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: false, readUIds: undefined, writeUIds: undefined })
         await h.existsNodes([actual])
       })
 
@@ -195,7 +209,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(2)
-        expect(actual.share).toEqual({ isPublic: false, readUIds: null, writeUIds: null })
+        expect(actual.share).toEqual<StorageNodeShareDetail>({ isPublic: false, readUIds: undefined, writeUIds: undefined })
         await h.existsNodes([actual])
       })
 
@@ -299,7 +313,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -337,7 +351,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -479,7 +493,7 @@ describe('StorageService', () => {
         expect(actual.article!.label).toEqual<ArticleDirLabelByLang>({ ja: input.label })
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(2)
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -696,7 +710,7 @@ describe('StorageService', () => {
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
         expect(actual.article!.src).toBeUndefined()
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -735,7 +749,7 @@ describe('StorageService', () => {
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(1)
         expect(actual.article!.src).toBeUndefined()
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -878,7 +892,7 @@ describe('StorageService', () => {
         expect(actual.article!.type).toBe(input.type)
         expect(actual.article!.sortOrder).toBe(2)
         expect(actual.article!.src).toBeUndefined()
-        expect(actual.share).toEqual(EmptyShareDetail())
+        expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
         await h.existsNodes([actual])
       })
 
@@ -2029,7 +2043,7 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
       expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
-      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
       expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
       expect(actual.version).toBe(art1.version + 1)
 
@@ -2068,7 +2082,7 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
-      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
       expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
       expect(actual.version).toBe(art1.version + 1)
 
@@ -2106,7 +2120,7 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
       expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
-      expect(actual.share).toEqual(EmptyShareDetail())
+      expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
       expect(actual.updatedAt.isAfter(art1.updatedAt)).toBeTruthy()
       expect(actual.version).toBe(art1.version + 1)
 
@@ -2120,7 +2134,7 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(_actual.article!.src!.ja!.draftContent).toBeUndefined() // 下書きはクリアされる
       expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent)
-      expect(_actual.share).toEqual(EmptyShareDetail())
+      expect(_actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
     })
 
     it('対象言語以外の記事がある場合', async () => {
@@ -2529,7 +2543,7 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.ja).toEqual(actual2.article!.src!.ja)
     })
 
-    it('下書きを破棄した場合 - nullを指定', async () => {
+    it('下書きにnullを指定した場合', async () => {
       let { art1 } = await setupArticleTypeNodes()
 
       // 下書きの保存
@@ -2564,7 +2578,7 @@ describe('StorageService', () => {
       expect(_actual).toEqual(actual)
     })
 
-    it('下書きを破棄した場合 - 空文字を指定', async () => {
+    it('下書きに空文字を指定した場合', async () => {
       let { art1 } = await setupArticleTypeNodes()
 
       // 下書きの保存
@@ -2582,7 +2596,7 @@ describe('StorageService', () => {
       // 戻り値の検証
       expect(actual.id).toBe(art1.id)
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
-      expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // undefinedになる
+      expect(actual.article!.src!.ja!.draftContent).toBe('')
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)

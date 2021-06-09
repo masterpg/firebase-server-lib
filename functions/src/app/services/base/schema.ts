@@ -1,18 +1,18 @@
 import * as _path from 'path'
-import { ArticleSrcByLang, CoreStorageNode, StorageNode, StorageNodeShareDetail, User } from './index'
+import { ArticleSrcByLang, CoreStorageNode, StorageNode, StorageNodeShareDetailInput, User } from './index'
 import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse, ElasticSearchHit } from '../../base/elastic'
 import {
   DeepPartial,
   Entities,
   LangCodes,
   ToDeepEntityDateAre,
+  ToDeepNullable,
   ToDeepRawDate,
   pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
   toDeepEntityDate,
   toDeepRawDate,
-  toEntityDate,
   toRawDate,
 } from 'web-base-lib'
 import { config } from '../../../config'
@@ -28,7 +28,7 @@ const { keyword_lowercase, kuromoji_analyzer, kuromoji_html_analyzer, TimestampE
 
 type OmitEntity<T> = Omit<T, 'id' | 'version'>
 
-type ToDocParam<T> = DeepPartial<OmitEntity<T>>
+type ToDocParam<T> = ToDeepNullable<OmitEntity<T>>
 
 type ToDoc<T> = ToDeepRawDate<OmitEntity<T>>
 
@@ -51,7 +51,7 @@ function hitToEntity<DOC>(hit: ElasticSearchHit<DOC>): ToEntity<DOC> {
   )
 }
 
-function entityToDoc<ENTITY>(entity: ENTITY): ToDeepRawDate<OmitEntity<ENTITY>> {
+function entityToDoc<ENTITY>(entity: ENTITY): ToDoc<ENTITY> {
   const _entity = { ...entity }
   delete (_entity as any).id
   delete (_entity as any).version
@@ -131,18 +131,18 @@ namespace UserSchema {
     },
   }
 
-  export interface UserDoc extends ToDoc<Omit<User, 'email' | 'emailVerified'>> {}
+  export interface DocUser extends ToDoc<Omit<User, 'email' | 'emailVerified'>> {}
 
   export const toDoc = <ENTITY extends ToDocParam<Omit<User, 'email' | 'emailVerified'>>>(entity: ENTITY) => {
     const _entity = pickProps(entity, ['userName', 'fullName', 'isAppAdmin', 'photoURL', 'createdAt', 'updatedAt'])
     return entityToDoc(_entity)
   }
 
-  export const toEntity = <DOC extends DeepPartial<UserDoc>>(hit: ElasticSearchHit<DOC>) => {
+  export const toEntity = <DOC extends DeepPartial<DocUser>>(hit: ElasticSearchHit<DOC>) => {
     return hitToEntity(hit)
   }
 
-  export function toEntities<DOC extends DeepPartial<UserDoc>>(dbResponse: ElasticSearchAPIResponse<DOC>): ToEntity<DOC>[] {
+  export function toEntities<DOC extends DeepPartial<DocUser>>(dbResponse: ElasticSearchAPIResponse<DOC>): ToEntity<DOC>[] {
     return dbResponseToEntities(dbResponse, toEntity)
   }
 }
@@ -228,8 +228,17 @@ namespace CoreStorageSchema {
     return entityToDoc(_entity)
   }
 
-  export const toEntity = <DOC extends DeepPartial<DocCoreStorageNode>>(hit: ElasticSearchHit<DOC>) => {
-    return hitToEntity(hit)
+  export function toEntity<DOC extends DeepPartial<DocCoreStorageNode>>(hit: ElasticSearchHit<DOC>): ToEntity<DOC> {
+    const entity: ReturnType<typeof toEntity> = hitToEntity(hit)
+
+    // ---> nullをundefinedに変換する
+    entity.share ??= {}
+    entity.share.isPublic ??= undefined
+    entity.share.readUIds ??= undefined
+    entity.share.writeUIds ??= undefined
+    // <---
+
+    return entity as ToEntity<DOC>
   }
 
   export function toEntities<DOC extends DeepPartial<DocCoreStorageNode>>(
@@ -270,7 +279,7 @@ namespace CoreStorageSchema {
   /**
    * 空の共有設定を生成します。
    */
-  export function EmptyShareDetail(): StorageNodeShareDetail {
+  export function EmptyShareDetail(): StorageNodeShareDetailInput {
     return {
       isPublic: null,
       readUIds: null,
@@ -373,8 +382,9 @@ namespace StorageSchema {
 
   export type DocStorageNode = ToDoc<StorageNode>
 
-  export const toDoc = <ENTITY extends ToDocParam<StorageNode>>(entity: ENTITY) => {
-    const doc: ToDoc<DeepPartial<StorageNode>> = CoreStorageSchema.toDoc(entity)
+  export function toDoc<ENTITY extends ToDocParam<StorageNode>>(entity: ENTITY): ToDoc<ENTITY> {
+    const doc: ReturnType<typeof toDoc> = CoreStorageSchema.toDoc(entity)
+
     if (entity.article) {
       doc.article = {
         ...pickProps(entity.article, ['type', 'label', 'sortOrder']),
@@ -384,50 +394,34 @@ namespace StorageSchema {
           const srcDetail = entity.article!.src![langCode]
           if (srcDetail) {
             result[langCode] = {
-              // ---> undefined or null は空文字に変換する
-              ...(() => {
-                const result = pickProps(srcDetail, ['srcContent', 'draftContent', 'searchContent']) // キーが存在するプロパティのみ抽出
-                for (const [key, value] of Object.entries(result)) {
-                  result[key as 'srcContent' | 'draftContent' | 'searchContent'] = value ?? ''
-                }
-                return result
-              })(),
-              // <---
+              ...pickProps(srcDetail, ['srcContent', 'draftContent', 'searchContent']),
               createdAt: toRawDate(srcDetail.createdAt),
               updatedAt: toRawDate(srcDetail.updatedAt),
             }
           }
           return result
-        }, {} as ToDeepRawDate<ArticleSrcByLang>)
+        }, {} as ToDeepRawDate<ToDeepNullable<ArticleSrcByLang>>)
       }
     }
+
     return doc as ToDoc<ENTITY>
   }
 
-  export const toEntity = <DOC extends DeepPartial<DocStorageNode>>(hit: ElasticSearchHit<DOC>) => {
-    const doc = hit._source
-    const entity: ToEntity<DeepPartial<DocStorageNode>> = CoreStorageSchema.toEntity(hit)
+  export function toEntity<DOC extends DeepPartial<DocStorageNode>>(hit: ElasticSearchHit<DOC>): ToEntity<DOC> {
+    const entity: ReturnType<typeof toEntity> = CoreStorageSchema.toEntity(hit)
 
-    if (doc.article) {
-      entity.article = {
-        ...pickProps(doc.article, ['type', 'label', 'sortOrder']),
-      }
-      if (doc.article.src) {
-        entity.article.src = LangCodes.reduce((result, langCode) => {
-          const srcDetail = doc.article?.src?.[langCode]
-          if (srcDetail) {
-            result[langCode] = {
-              // ---> 空文字はundefinedに変換する
-              srcContent: srcDetail.srcContent || undefined,
-              draftContent: srcDetail.draftContent || undefined,
-              searchContent: srcDetail.searchContent || undefined,
-              // <---
-              createdAt: toEntityDate(srcDetail.createdAt),
-              updatedAt: toEntityDate(srcDetail.updatedAt),
-            }
-          }
-          return result
-        }, {} as ArticleSrcByLang)
+    if (entity.article?.src) {
+      for (const langCode of LangCodes) {
+        const srcDetail = entity.article?.src?.[langCode]
+        if (srcDetail) {
+          // ---> nullをundefinedに変換する
+          Object.assign(srcDetail, {
+            srcContent: srcDetail.srcContent ?? undefined,
+            draftContent: srcDetail.draftContent ?? undefined,
+            searchContent: srcDetail.searchContent ?? undefined,
+          })
+          // <---
+        }
       }
     }
 

@@ -23,9 +23,9 @@ import {
   RenameArticleTypeDirInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
-  SetShareDetailInput,
   StorageNode,
   StorageNodeGetKeyInput,
+  StorageNodeShareDetailInput,
   StorageSchema,
 } from './base'
 import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
@@ -33,6 +33,7 @@ import {
   DeepPartial,
   LangCode,
   RequiredAre,
+  ToDeepNullable,
   arrayToDict,
   pickProps,
   removeBothEndsSlash,
@@ -534,7 +535,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
           [lang]: {
             ...existingSrcDetail,
             srcContent,
-            draftContent: undefined,
+            draftContent: null,
             searchContent,
             createdAt: existingSrcDetail?.createdAt ?? now,
             updatedAt: now,
@@ -1246,7 +1247,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     return StorageSchema.toEntities(dbResponse)
   }
 
-  protected toDocNode(node: DeepPartial<StorageNode>) {
+  protected toDocNode(node: ToDeepNullable<StorageNode>) {
     return StorageSchema.toDoc(node)
   }
 
@@ -1394,7 +1395,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       src?: ArticleSrcByLang
     },
     options?: {
-      share?: SetShareDetailInput
+      share?: StorageNodeShareDetailInput
     }
   ): Promise<StorageNode>
 
@@ -1413,7 +1414,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       src?: ArticleSrcByLang
     },
     options?: {
-      share?: SetShareDetailInput
+      share?: StorageNodeShareDetailInput
     }
   ): Promise<StorageNode>
 
@@ -1426,7 +1427,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       src?: ArticleSrcByLang
     },
     options?: {
-      share?: SetShareDetailInput
+      share?: StorageNodeShareDetailInput
     }
   ): Promise<StorageNode> {
     // 作成するディレクトリのパスと、その階層構造を形成するのに必要なノードを取得

@@ -16,10 +16,10 @@ import {
   CoreStorageSchema,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
-  SetShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareDetail,
+  StorageNodeShareDetailInput,
   StorageService,
   StorageUploadDataItem,
   UserClaims,
@@ -2008,9 +2008,9 @@ describe('CoreStorageService', () => {
       expect(actual.contentType).toBe('')
       expect(actual.size).toBe(0)
       expect(actual.share).toEqual<StorageNodeShareDetail>({
-        isPublic: null,
-        readUIds: null,
-        writeUIds: null,
+        isPublic: undefined,
+        readUIds: undefined,
+        writeUIds: undefined,
       })
 
       await h.existsNodes([actual])
@@ -2099,7 +2099,7 @@ describe('CoreStorageService', () => {
     it('共有設定入力へのバリデーション実行確認', async () => {
       const validateShareDetailInput = td.replace(CoreStorageService, 'validateShareDetailInput')
 
-      const share: SetShareDetailInput = { isPublic: null }
+      const share: StorageNodeShareDetailInput = { isPublic: null }
       await storageService.createDir({ dir: `d1`, share })
 
       const exp = td.explain(validateShareDetailInput)
@@ -2194,9 +2194,9 @@ describe('CoreStorageService', () => {
         expect(node.contentType).toBe('')
         expect(node.size).toBe(0)
         expect(node.share).toEqual<StorageNodeShareDetail>({
-          isPublic: null,
-          readUIds: null,
-          writeUIds: null,
+          isPublic: undefined,
+          readUIds: undefined,
+          writeUIds: undefined,
         })
       }
     })
@@ -4845,7 +4845,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -4858,7 +4858,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ path: actual.path }))
@@ -4871,7 +4871,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -4885,7 +4885,7 @@ describe('CoreStorageService', () => {
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
         expect(node.share).toEqual<StorageNodeShareDetail>({
-          isPublic: null,
+          isPublic: undefined,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
@@ -4902,7 +4902,7 @@ describe('CoreStorageService', () => {
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
         expect(node.share).toEqual<StorageNodeShareDetail>({
-          isPublic: null,
+          isPublic: undefined,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
@@ -4943,7 +4943,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -4960,7 +4960,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -5012,7 +5012,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: CoreStorageNode) => {
         expect(node.path).toBe(`d1`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: null, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: undefined, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetNode({ id: actual.id }))
@@ -5174,7 +5174,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -5187,7 +5187,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ path: actual.path }))
@@ -5200,7 +5200,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -5220,7 +5220,7 @@ describe('CoreStorageService', () => {
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
         expect(node.share).toEqual<StorageNodeShareDetail>({
-          isPublic: null,
+          isPublic: undefined,
           readUIds: ['ichiro'],
           writeUIds: ['ichiro'],
         })
@@ -5275,7 +5275,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -5299,7 +5299,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: true, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
@@ -5344,7 +5344,7 @@ describe('CoreStorageService', () => {
 
       const verify = (node: StorageFileNode) => {
         expect(node.path).toBe(`d1/fileA.txt`)
-        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: null, readUIds: null, writeUIds: null })
+        expect(node.share).toEqual<StorageNodeShareDetail>({ isPublic: undefined, readUIds: undefined, writeUIds: undefined })
       }
       verify(actual)
       verify(await storageService.sgetFileNode({ id: actual.id }))
