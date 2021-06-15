@@ -2,6 +2,8 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import {
   ArticleListItem,
   ArticleTableOfContentsItem,
+  ArticleTag,
+  AuthRoleType,
   AuthServiceDI,
   AuthServiceModule,
   CreateArticleGeneralDirInput,
@@ -22,6 +24,7 @@ import {
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
+  SaveArticleTagInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -32,7 +35,7 @@ import {
   StorageServiceDI,
   StorageServiceModule,
 } from '../../../services'
-import { AuthGuard, GQLContext, GQLContextArg, UserArg } from '../../../nest'
+import { AuthGuard, GQLContext, GQLContextArg, Roles, UserArg } from '../../../nest'
 import { Inject, Module, UseGuards } from '@nestjs/common'
 
 //========================================================================
@@ -230,6 +233,13 @@ class StorageResolver {
     return this.storageService.saveArticleDraftContent(idToken, key, input)
   }
 
+  @Mutation()
+  @UseGuards(AuthGuard)
+  @Roles(AuthRoleType.AppAdmin)
+  async saveArticleTags(@Args('inputs') inputs: SaveArticleTagInput[]): Promise<ArticleTag[]> {
+    return this.storageService.saveArticleTags(inputs)
+  }
+
   @Query()
   @UseGuards(AuthGuard)
   async articleContentsNode(
@@ -255,6 +265,11 @@ class StorageResolver {
     @Args('input') input: GetUserArticleTableOfContentsInput
   ): Promise<ArticleTableOfContentsItem[]> {
     return this.storageService.getUserArticleTableOfContents(idToken, input)
+  }
+
+  @Query()
+  async suggestArticleTags(@Args('keyword') keyword: string): Promise<ArticleTag[]> {
+    return this.storageService.suggestArticleTags(keyword)
   }
 
   //----------------------------------------------------------------------

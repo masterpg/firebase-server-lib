@@ -1,6 +1,6 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
-import { StorageSchema, UserSchema } from '../../src/app/services'
+import { ArticleTagSchema, StorageSchema, UserSchema } from '../../src/app/services'
 import { newElasticClient } from '../../src/app/base/elastic'
 import { program } from 'commander'
 
@@ -12,13 +12,23 @@ inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'
 //
 //========================================================================
 
-const Indices = {
+const AllAliases = [
+  ...Object.values(UserSchema.IndexAliases),
+  ...Object.values(StorageSchema.IndexAliases),
+  ...Object.values(ArticleTagSchema.IndexAliases),
+]
+
+const AllIndices = {
   ...Object.values(UserSchema.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
     result[alias] = UserSchema.IndexDefinition
     return result
   }, {}),
   ...Object.values(StorageSchema.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
     result[alias] = StorageSchema.IndexDefinition
+    return result
+  }, {}),
+  ...Object.values(ArticleTagSchema.IndexAliases).reduce<{ [alias: string]: any }>((result, alias) => {
+    result[alias] = ArticleTagSchema.IndexDefinition
     return result
   }, {}),
 }
@@ -51,8 +61,7 @@ async function init(): Promise<void> {
 
   const client = newElasticClient()
 
-  const aliases = [...Object.values(UserSchema.IndexAliases), ...Object.values(UserSchema.IndexAliases)]
-  for (const alias of aliases) {
+  for (const alias of AllAliases) {
     const res = await client.indices.existsAlias({ name: alias })
     const exists: boolean = res.body
     if (exists) {
@@ -64,7 +73,7 @@ async function init(): Promise<void> {
     await client.indices.create({
       index,
       body: {
-        ...Indices[alias],
+        ...AllIndices[alias],
       },
     })
 
@@ -80,7 +89,7 @@ async function init(): Promise<void> {
  * @param alias 再インデックスを行うインデックスのエイリアスを指定
  */
 async function reindex(alias: string): Promise<void> {
-  const indexDefinition = Indices[alias]
+  const indexDefinition = AllIndices[alias]
   if (!indexDefinition) {
     throw new Error(`Could not find the index definition corresponding to the specified alias '${alias}'.`)
   }

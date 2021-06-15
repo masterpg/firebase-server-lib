@@ -34,6 +34,8 @@ const StorageNodeFields = `
           srcContent
           draftContent
           searchContent
+          srcTags,
+          draftTags,
           createdAt
           updatedAt
         }
@@ -41,6 +43,8 @@ const StorageNodeFields = `
           srcContent
           draftContent
           searchContent
+          srcTags,
+          draftTags,
           createdAt
           updatedAt
         }
@@ -61,6 +65,7 @@ const ArticleListItemFields = `
     dir { id label }
     path { id label }
     label
+    srcTags
     createdAt
     updatedAt
   }
@@ -77,6 +82,19 @@ const ArticleTableOfContentsItemFields = `
     path { id label }
     label
     sortOrder
+  }
+`
+
+const ArticleTagFieldsName = 'ArticleTagFieldsNameFields'
+
+const ArticleTagFields = `
+  fragment ${ArticleTagFieldsName} on ArticleTag {
+    id
+    name
+    usedCount
+    version
+    createdAt
+    updatedAt
   }
 `
 
@@ -101,6 +119,8 @@ export {
   ArticleListItemFieldsName,
   ArticleTableOfContentsItemFields,
   ArticleTableOfContentsItemFieldsName,
+  ArticleTagFields,
+  ArticleTagFieldsName,
   StorageNodeFields,
   StorageNodeFieldsName,
   toGQLResponse,

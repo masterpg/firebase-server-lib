@@ -244,6 +244,8 @@ interface ArticleSrcDetail {
   srcContent?: string
   draftContent?: string
   searchContent?: string
+  srcTags?: string[]
+  draftTags?: string[]
   createdAt?: Dayjs
   updatedAt?: Dayjs
 }
@@ -273,11 +275,13 @@ interface SaveArticleSrcContentInput {
   lang: LangCode
   srcContent: string
   searchContent: string
+  srcTags: string[] | null
 }
 
 interface SaveArticleDraftContentInput {
   lang: LangCode
   draftContent: string | null
+  draftTags: string[] | null
 }
 
 interface GetArticleContentsNodeInput {
@@ -299,6 +303,7 @@ interface GetArticleSrcContentResult extends ArticlePathDetail {
   id: string
   label: string
   srcContent: string
+  srcTags: string[]
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   isPublic: boolean
@@ -312,6 +317,7 @@ interface ArticleListItem {
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   label: string
+  srcTags: string[]
   createdAt: Dayjs
   updatedAt: Dayjs
 }
@@ -334,6 +340,19 @@ interface ArticleTableOfContentsItem {
 interface GetUserArticleTableOfContentsInput {
   lang: LangCode
   userName: string
+}
+
+//--------------------------------------------------
+//  ArticleTag
+//--------------------------------------------------
+
+interface ArticleTag extends TimestampEntity {
+  name: string
+  usedCount: number
+}
+
+interface SaveArticleTagInput {
+  name: string
 }
 
 //--------------------------------------------------
@@ -412,6 +431,7 @@ interface CartItemEditResponse extends TimestampEntity {
 
 export { JSON, JSONObject }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
+export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export {
   ArticleContentFields,
   ArticleContentType,
@@ -453,6 +473,6 @@ export {
   StorageNodeShareDetail,
   StorageNodeType,
 }
-export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
+export { ArticleTag, SaveArticleTagInput }
 export { PutTestStoreDataInput, PutTestIndexDataInput, TestSignedUploadUrlInput, TestFirebaseUserInput, TestUserInput }
 export { Product, CartItem, CartItemAddInput, CartItemUpdateInput, CartItemEditResponse }

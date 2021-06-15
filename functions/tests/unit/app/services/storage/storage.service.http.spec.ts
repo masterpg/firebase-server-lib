@@ -101,10 +101,12 @@ describe('StorageService - HTTP関連のテスト', () => {
         lang,
         srcContent: '# 記事1',
         searchContent: '記事1',
+        srcTags: ['旅行'],
       })
       await storageService.saveArticleDraftContent(art1, {
         lang,
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行', 'キャンプ'],
       })
       art1 = await storageService.sgetNode(art1, [
         ArticleContentFields[lang].SrcContent,
@@ -117,6 +119,7 @@ describe('StorageService - HTTP関連のテスト', () => {
         id: art1.id,
         label: art1.article!.label[lang]!,
         srcContent: art1.article!.src![lang]!.srcContent!,
+        srcTags: art1.article!.src![lang]!.srcTags!,
         dir: [{ id: bundle.id, label: bundle.article!.label[lang]! }],
         path: [
           { id: bundle.id, label: bundle.article!.label[lang]! },

@@ -35,6 +35,7 @@ import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import dayjs = require('dayjs')
+const performance = require('perf_hooks').performance
 
 jest.setTimeout(30000)
 initApp()
@@ -81,9 +82,14 @@ describe('StorageService', () => {
     h = new StorageTestHelper(storageService)
 
     await h.removeAllNodes()
+    await h.removeAllTags()
 
     // Cloud Storageで短い間隔のノード追加・削除を行うとエラーが発生するので間隔調整している
     // await sleep(1500)
+  })
+
+  afterEach(() => {
+    td.reset()
   })
 
   describe('createArticleTypeDir', () => {
@@ -2020,8 +2026,15 @@ describe('StorageService', () => {
         label: '記事1',
         type: 'Article',
       })
+      // 記事2を作成
+      const art2 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事2',
+        type: 'Article',
+      })
 
-      return { bundle, art1 }
+      return { bundle, art1, art2 }
     }
 
     it('初回保存の場合', async () => {
@@ -2030,10 +2043,12 @@ describe('StorageService', () => {
       // テスト対象実行
       const srcContent = '# 記事1'
       const searchContent = '記事1'
+      const srcTags = ['旅行', 'キャンプ']
       const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // 戻り値の検証
@@ -2041,6 +2056,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
       expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
@@ -2048,12 +2065,20 @@ describe('StorageService', () => {
       expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
+      // - ノード
       const _actual = await storageService.sgetNode({ path: art1.path }, [
         ArticleContentFields.ja.SrcContent,
         ArticleContentFields.ja.DraftContent,
         ArticleContentFields.ja.SearchContent,
       ])
       expect(_actual).toEqual(actual)
+      // - タグ
+      const _tags = await storageService.getArticleTags(srcTags)
+      expect(_tags.length).toBe(srcTags.length)
+      expect(_tags).toMatchObject([
+        { name: srcTags[0], usedCount: 1 },
+        { name: srcTags[1], usedCount: 1 },
+      ])
     })
 
     it('2回目以降の保存の場合', async () => {
@@ -2064,15 +2089,18 @@ describe('StorageService', () => {
         lang: 'ja',
         srcContent: '# 記事1',
         searchContent: '記事1',
+        srcTags: ['旅行'],
       })
 
       // 2回目の保存
       const srcContent = '# Article1'
       const searchContent = 'Article1'
+      const srcTags = ['旅行', 'キャンプ']
       const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // 戻り値の検証
@@ -2080,6 +2108,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
       expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
@@ -2087,12 +2117,20 @@ describe('StorageService', () => {
       expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
+      // - ノード
       const _actual = await storageService.sgetNode({ path: art1.path }, [
         ArticleContentFields.ja.SrcContent,
         ArticleContentFields.ja.DraftContent,
         ArticleContentFields.ja.SearchContent,
       ])
       expect(_actual).toEqual(actual)
+      // - タグ
+      const _tags = await storageService.getArticleTags(srcTags)
+      expect(_tags.length).toBe(srcTags.length)
+      expect(_tags).toMatchObject([
+        { name: srcTags[0], usedCount: 1 },
+        { name: srcTags[1], usedCount: 1 },
+      ])
     })
 
     it('下書きがある場合', async () => {
@@ -2102,15 +2140,18 @@ describe('StorageService', () => {
       art1 = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行'],
       })
 
       // テスト対象実行
       const srcContent = '# 記事1'
       const searchContent = '記事1'
+      const srcTags = ['旅行', 'キャンプ']
       const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // 戻り値の検証
@@ -2118,6 +2159,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // 下書きはクリアされる
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(actual.updatedAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(actual.updatedAt)
       expect(actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
@@ -2125,6 +2168,7 @@ describe('StorageService', () => {
       expect(actual.version).toBe(art1.version + 1)
 
       // 格納値の検証
+      // - ノード
       const _actual = await storageService.sgetNode({ path: art1.path }, [
         ArticleContentFields.ja.SrcContent,
         ArticleContentFields.ja.DraftContent,
@@ -2134,7 +2178,16 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(_actual.article!.src!.ja!.draftContent).toBeUndefined() // 下書きはクリアされる
       expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(_actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(_actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(_actual.share).toEqual<StorageNodeShareDetail>(EmptyShareDetail())
+      // - タグ
+      const _tags = await storageService.getArticleTags(srcTags)
+      expect(_tags.length).toBe(srcTags.length)
+      expect(_tags).toMatchObject([
+        { name: srcTags[0], usedCount: 1 },
+        { name: srcTags[1], usedCount: 1 },
+      ])
     })
 
     it('対象言語以外の記事がある場合', async () => {
@@ -2147,6 +2200,7 @@ describe('StorageService', () => {
         lang: 'en',
         srcContent: '# Article1',
         searchContent: 'Article1',
+        srcTags: ['Travel', 'Camp'],
       })
       // 戻り値の検証
       expect(actual1.id).toBe(art1.id)
@@ -2155,6 +2209,8 @@ describe('StorageService', () => {
       expect(actual1.article!.src!.en!.srcContent).toBe('# Article1')
       expect(actual1.article!.src!.en!.draftContent).toBeUndefined()
       expect(actual1.article!.src!.en!.searchContent).toBe('Article1')
+      expect(actual1.article!.src!.en!.srcTags).toEqual(['Travel', 'Camp'])
+      expect(actual1.article!.src!.en!.draftTags).toBeUndefined()
       expect(dayjs.isDayjs(actual1.article!.src!.en!.createdAt)).toBeTruthy()
       expect(dayjs.isDayjs(actual1.article!.src!.en!.updatedAt)).toBeTruthy()
       // - 日本語
@@ -2167,6 +2223,7 @@ describe('StorageService', () => {
         lang: 'ja',
         srcContent: '# 記事1',
         searchContent: '記事1',
+        srcTags: ['旅行', 'Camp'],
       })
 
       // 戻り値の検証
@@ -2175,12 +2232,16 @@ describe('StorageService', () => {
       expect(actual2.article!.src!.en!.srcContent).toBeUndefined()
       expect(actual2.article!.src!.en!.draftContent).toBeUndefined()
       expect(actual2.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.srcTags).toEqual(['Travel', 'Camp'])
+      expect(actual2.article!.src!.en!.draftTags).toBeUndefined()
       expect(dayjs.isDayjs(actual2.article!.src!.en!.createdAt)).toBeTruthy()
       expect(dayjs.isDayjs(actual2.article!.src!.en!.updatedAt)).toBeTruthy()
       // - 日本語
       expect(actual2.article!.src!.ja!.srcContent).toBe('# 記事1')
       expect(actual2.article!.src!.ja!.draftContent).toBeUndefined()
       expect(actual2.article!.src!.ja!.searchContent).toBe('記事1')
+      expect(actual2.article!.src!.ja!.srcTags).toEqual(['旅行', 'Camp'])
+      expect(actual2.article!.src!.ja!.draftTags).toBeUndefined()
       expect(dayjs.isDayjs(actual2.article!.src!.ja!.createdAt)).toBeTruthy()
       expect(dayjs.isDayjs(actual2.article!.src!.ja!.updatedAt)).toBeTruthy()
 
@@ -2200,6 +2261,41 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.en).toEqual(actual1.article!.src!.en)
       // - 日本語
       expect(_actual.article!.src!.ja).toEqual(actual2.article!.src!.ja)
+      // - タグ
+      const _tags = await storageService.getArticleTags(['Travel', '旅行', 'Camp'])
+      expect(_tags.length).toBe(3)
+      expect(_tags).toMatchObject([
+        { name: 'Travel', usedCount: 1 },
+        { name: '旅行', usedCount: 1 },
+        { name: 'Camp', usedCount: 1 }, // 日本語/英語の両方で使用されているが「1件」とカウント
+      ])
+    })
+
+    it('タグの使用件数を検証', async () => {
+      const { art1, art2 } = await setupArticleTypeNodes()
+
+      // テスト対象実行
+      await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+        srcTags: ['旅行', 'キャンプ'],
+      })
+      await storageService.saveArticleSrcContent(art2, {
+        lang: 'ja',
+        srcContent: '# 記事2',
+        searchContent: '記事2',
+        srcTags: ['旅行', 'ツアー'],
+      })
+
+      // 格納値の検証
+      const _tags = await storageService.getArticleTags(['旅行', 'キャンプ', 'ツアー'])
+      expect(_tags.length).toBe(3)
+      expect(_tags).toMatchObject([
+        { name: '旅行', usedCount: 2 },
+        { name: 'キャンプ', usedCount: 1 },
+        { name: 'ツアー', usedCount: 1 },
+      ])
     })
 
     it('日本語', async () => {
@@ -2208,10 +2304,12 @@ describe('StorageService', () => {
       // テスト対象実行
       const srcContent = '# 記事1'
       const searchContent = '記事1'
+      const srcTags = ['旅行']
       const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // 戻り値の検証
@@ -2219,8 +2317,11 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.ja!.draftContent).toBeUndefined()
       expect(actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
 
       // 格納値の検証
+      // - ノード
       const _actual = await storageService.sgetNode({ path: art1.path }, [
         ArticleContentFields.ja.SrcContent,
         ArticleContentFields.ja.DraftContent,
@@ -2230,6 +2331,12 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(_actual.article!.src!.ja!.draftContent).toBeUndefined()
       expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent)
+      expect(_actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(_actual.article!.src!.ja!.draftTags).toBeUndefined()
+      // - タグ
+      const _tags = await storageService.getArticleTags(srcTags)
+      expect(_tags.length).toBe(srcTags.length)
+      expect(_tags).toMatchObject([{ name: srcTags[0], usedCount: 1 }])
     })
 
     it('英語', async () => {
@@ -2238,10 +2345,12 @@ describe('StorageService', () => {
       // テスト対象実行
       const srcContent = '# 記事1'
       const searchContent = '記事1'
+      const srcTags = ['Travel']
       const actual = await storageService.saveArticleSrcContent(art1, {
         lang: 'en',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // 戻り値の検証
@@ -2249,8 +2358,11 @@ describe('StorageService', () => {
       expect(actual.article!.src!.en!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.en!.draftContent).toBeUndefined()
       expect(actual.article!.src!.en!.searchContent).toBe(searchContent)
+      expect(actual.article!.src!.en!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.en!.draftTags).toBeUndefined()
 
       // 格納値の検証
+      // - ノード
       const _actual = await storageService.sgetNode({ path: art1.path }, [
         ArticleContentFields.en.SrcContent,
         ArticleContentFields.en.DraftContent,
@@ -2260,6 +2372,12 @@ describe('StorageService', () => {
       expect(_actual.article!.src!.en!.srcContent).toBe(srcContent)
       expect(_actual.article!.src!.en!.draftContent).toBeUndefined()
       expect(_actual.article!.src!.en!.searchContent).toBe(searchContent)
+      expect(_actual.article!.src!.en!.srcTags).toEqual(srcTags)
+      expect(_actual.article!.src!.en!.draftTags).toBeUndefined()
+      // - タグ
+      const _tags = await storageService.getArticleTags(srcTags)
+      expect(_tags.length).toBe(srcTags.length)
+      expect(_tags).toMatchObject([{ name: srcTags[0], usedCount: 1 }])
     })
 
     describe('権限の検証', () => {
@@ -2312,6 +2430,7 @@ describe('StorageService', () => {
           lang: 'ja',
           srcContent,
           searchContent,
+          srcTags: ['旅行'],
         })
 
         expect(actual.id).toBe(storage.note1.id)
@@ -2329,6 +2448,7 @@ describe('StorageService', () => {
             lang: 'ja',
             srcContent,
             searchContent,
+            srcTags: ['旅行'],
           })
         } catch (err) {
           actual = err
@@ -2348,6 +2468,7 @@ describe('StorageService', () => {
             lang: 'ja',
             srcContent,
             searchContent,
+            srcTags: ['旅行'],
           })
         } catch (err) {
           actual = err
@@ -2386,13 +2507,16 @@ describe('StorageService', () => {
 
       // テスト対象実行
       const draftContent = '# 記事下書き1'
-      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent })
+      const draftTags = ['旅行', 'キャンプ']
+      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent, draftTags })
 
       // 戻り値の検証
       expect(actual.id).toBe(art1.id)
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftTags).toEqual(draftTags)
       expect(actual.article!.src!.ja!.createdAt).toBeUndefined()
       expect(actual.article!.src!.ja!.updatedAt).toBeUndefined()
       expect(actual.share).toEqual(EmptyShareDetail())
@@ -2411,13 +2535,16 @@ describe('StorageService', () => {
       art1 = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行', 'キャンプ'],
       })
 
       // 2回目の保存
       const draftContent = '# ArticleDraft1'
+      const draftTags = ['旅行']
       const actual = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent,
+        draftTags,
       })
 
       // 戻り値の検証
@@ -2425,6 +2552,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftTags).toEqual(draftTags)
       expect(actual.article!.src!.ja!.createdAt).toBeUndefined()
       expect(actual.article!.src!.ja!.updatedAt).toBeUndefined()
       expect(actual.share).toEqual(EmptyShareDetail())
@@ -2446,21 +2575,26 @@ describe('StorageService', () => {
       // 本文保存
       const srcContent = '# 記事1'
       const searchContent = '記事1'
+      const srcTags = ['旅行', 'キャンプ']
       art1 = await storageService.saveArticleSrcContent(art1, {
         lang: 'ja',
         srcContent,
         searchContent,
+        srcTags,
       })
 
       // テスト対象実行
       const draftContent = '# 記事下書き1'
-      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent })
+      const draftTags = ['旅行']
+      const actual = await storageService.saveArticleDraftContent(art1, { lang: 'ja', draftContent, draftTags })
 
       // 戻り値の検証
       expect(actual.id).toBe(art1.id)
       expect(actual.article!.src!.ja!.srcContent).toBe(srcContent)
       expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
-      expect(actual.article!.src!.ja!.searchContent).toBeUndefined() // 戻り値にテキストは設定されない
+      expect(actual.article!.src!.ja!.searchContent).toBeUndefined() // 戻り値に検索用コンテンツは設定されない
+      expect(actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(actual.article!.src!.ja!.draftTags).toEqual(draftTags)
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
       expect(actual.share).toEqual(EmptyShareDetail())
@@ -2476,7 +2610,9 @@ describe('StorageService', () => {
       expect(_actual.id).toBe(art1.id)
       expect(_actual.article!.src!.ja!.srcContent).toBe(srcContent) // DBに本文は存在する
       expect(_actual.article!.src!.ja!.draftContent).toBe(draftContent)
-      expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent) // DBにテキストは存在する
+      expect(_actual.article!.src!.ja!.searchContent).toBe(searchContent) // DBに検索用コンテンツは存在する
+      expect(_actual.article!.src!.ja!.srcTags).toEqual(srcTags)
+      expect(_actual.article!.src!.ja!.draftTags).toEqual(draftTags)
       expect(_actual.share).toEqual(EmptyShareDetail())
     })
 
@@ -2489,6 +2625,7 @@ describe('StorageService', () => {
       const actual1 = await storageService.saveArticleDraftContent(art1, {
         lang: 'en',
         draftContent: '# ArticleDraft1',
+        draftTags: ['Travel'],
       })
       // 戻り値の検証
       expect(actual1.id).toBe(art1.id)
@@ -2497,6 +2634,8 @@ describe('StorageService', () => {
       expect(actual1.article!.src!.en!.srcContent).toBeUndefined()
       expect(actual1.article!.src!.en!.draftContent).toBe('# ArticleDraft1')
       expect(actual1.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual1.article!.src!.en!.srcTags).toBeUndefined()
+      expect(actual1.article!.src!.en!.draftTags).toEqual(['Travel'])
       expect(actual1.article!.src!.en!.createdAt).toBeUndefined()
       expect(actual1.article!.src!.en!.updatedAt).toBeUndefined()
       // - 日本語
@@ -2508,6 +2647,7 @@ describe('StorageService', () => {
       const actual2 = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行'],
       })
 
       // 戻り値の検証
@@ -2516,12 +2656,15 @@ describe('StorageService', () => {
       expect(actual2.article!.src!.en!.srcContent).toBeUndefined()
       expect(actual2.article!.src!.en!.draftContent).toBeUndefined()
       expect(actual2.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual2.article!.src!.en!.draftTags).toEqual(['Travel'])
       expect(actual2.article!.src!.en!.createdAt).toBeUndefined()
       expect(actual2.article!.src!.en!.updatedAt).toBeUndefined()
       // - 日本語
       expect(actual2.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual2.article!.src!.ja!.draftContent).toBe('# 記事下書き1')
       expect(actual2.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual2.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual2.article!.src!.ja!.draftTags).toEqual(['旅行'])
       expect(actual2.article!.src!.ja!.createdAt).toBeUndefined()
       expect(actual2.article!.src!.ja!.updatedAt).toBeUndefined()
 
@@ -2550,12 +2693,14 @@ describe('StorageService', () => {
       art1 = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: '# 記事1',
+        draftTags: ['旅行'],
       })
 
       // 下書きの破棄
       const actual = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: null,
+        draftTags: null,
       })
 
       // 戻り値の検証
@@ -2563,6 +2708,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual.article!.src!.ja!.draftContent).toBeUndefined() // undefinedになる
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
       expect(actual.share).toEqual(EmptyShareDetail())
@@ -2585,12 +2732,14 @@ describe('StorageService', () => {
       art1 = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行'],
       })
 
       // 下書きの破棄
       const actual = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
-        draftContent: '',
+        draftContent: '', // 空文字を指定
+        draftTags: [], // 空配列を指定
       })
 
       // 戻り値の検証
@@ -2598,6 +2747,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual.article!.src!.ja!.draftContent).toBe('')
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftTags).toBeUndefined()
       expect(actual.article!.src!.ja!.createdAt).toEqual(art1.article!.src!['ja']!.createdAt)
       expect(actual.article!.src!.ja!.updatedAt).toEqual(art1.article!.src!['ja']!.updatedAt)
       expect(actual.share).toEqual(EmptyShareDetail())
@@ -2618,9 +2769,11 @@ describe('StorageService', () => {
 
       // テスト対象実行
       const draftContent = '# 記事下書き1'
+      const draftTags = ['旅行']
       const actual = await storageService.saveArticleDraftContent(art1, {
         lang: 'ja',
         draftContent,
+        draftTags,
       })
 
       // 戻り値の検証
@@ -2628,6 +2781,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.ja!.srcContent).toBeUndefined()
       expect(actual.article!.src!.ja!.draftContent).toBe(draftContent)
       expect(actual.article!.src!.ja!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.ja!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.ja!.draftTags).toEqual(draftTags)
 
       // 格納値の検証
       {
@@ -2639,6 +2794,8 @@ describe('StorageService', () => {
         expect(_actual.article!.src!.ja!.srcContent).toBeUndefined()
         expect(_actual.article!.src!.ja!.draftContent).toBe(draftContent)
         expect(_actual.article!.src!.ja!.searchContent).toBeUndefined()
+        expect(_actual.article!.src!.ja!.srcTags).toBeUndefined()
+        expect(_actual.article!.src!.ja!.draftTags).toEqual(draftTags)
       }
     })
 
@@ -2647,9 +2804,11 @@ describe('StorageService', () => {
 
       // テスト対象実行
       const draftContent = '# Article1'
+      const draftTags = ['Travel']
       const actual = await storageService.saveArticleDraftContent(art1, {
         lang: 'en',
         draftContent,
+        draftTags,
       })
 
       // 戻り値の検証
@@ -2657,6 +2816,8 @@ describe('StorageService', () => {
       expect(actual.article!.src!.en!.srcContent).toBeUndefined()
       expect(actual.article!.src!.en!.draftContent).toBe(draftContent)
       expect(actual.article!.src!.en!.searchContent).toBeUndefined()
+      expect(actual.article!.src!.en!.srcTags).toBeUndefined()
+      expect(actual.article!.src!.en!.draftTags).toEqual(draftTags)
 
       // 格納値の検証
       {
@@ -2668,6 +2829,8 @@ describe('StorageService', () => {
         expect(_actual.article!.src!.en!.srcContent).toBeUndefined()
         expect(_actual.article!.src!.en!.draftContent).toBe(draftContent)
         expect(_actual.article!.src!.en!.searchContent).toBeUndefined()
+        expect(_actual.article!.src!.en!.srcTags).toBeUndefined()
+        expect(_actual.article!.src!.en!.draftTags).toEqual(draftTags)
       }
     })
 
@@ -2716,9 +2879,11 @@ describe('StorageService', () => {
         const { storage } = await setupArticleNodes()
 
         const draftContent = '記事下書き1'
+        const draftTags = ['旅行']
         const actual = await storageService.saveArticleDraftContent(StorageUserToken(), storage.note1, {
           lang: 'ja',
           draftContent,
+          draftTags,
         })
 
         expect(actual.id).toBe(storage.note1.id)
@@ -2733,6 +2898,7 @@ describe('StorageService', () => {
           await storageService.saveArticleDraftContent(GeneralUserToken(), storage.note1, {
             lang: 'ja',
             draftContent: '記事下書き1',
+            draftTags: ['旅行'],
           })
         } catch (err) {
           actual = err
@@ -2749,6 +2915,7 @@ describe('StorageService', () => {
           await storageService.saveArticleDraftContent(AppAdminUserToken(), storage.note1, {
             lang: 'ja',
             draftContent: '記事下書き1',
+            draftTags: ['旅行'],
           })
         } catch (err) {
           actual = err
@@ -2782,10 +2949,12 @@ describe('StorageService', () => {
         lang,
         srcContent: '# 記事1',
         searchContent: '記事1',
+        srcTags: ['旅行'],
       })
       await storageService.saveArticleDraftContent(art1, {
         lang,
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行', 'キャンプ'],
       })
       art1 = await storageService.sgetNode(art1, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
 
@@ -2952,10 +3121,12 @@ describe('StorageService', () => {
         lang,
         srcContent: '# 記事1',
         searchContent: '記事1',
+        srcTags: ['旅行'],
       })
       await storageService.saveArticleDraftContent(art1, {
         lang,
         draftContent: '# 記事下書き1',
+        draftTags: ['旅行', 'キャンプ'],
       })
       art1 = await storageService.sgetNode(art1, [ArticleContentFields[lang].SrcContent, ArticleContentFields[lang].DraftContent])
 
@@ -2964,6 +3135,7 @@ describe('StorageService', () => {
         id: art1.id,
         label: art1.article!.label[lang]!,
         srcContent: art1.article!.src![lang]!.srcContent!,
+        srcTags: art1.article!.src![lang]!.srcTags!,
         dir: [{ id: bundle.id, label: bundle.article!.label[lang]! }],
         path: [
           { id: bundle.id, label: bundle.article!.label[lang]! },
@@ -3139,6 +3311,7 @@ describe('StorageService', () => {
         lang,
         srcContent: 'Interface',
         searchContent: 'Interface',
+        srcTags: [],
       })
 
       // Class
@@ -3153,6 +3326,7 @@ describe('StorageService', () => {
         lang,
         srcContent: 'Class',
         searchContent: 'Class',
+        srcTags: [],
       })
 
       // Types
@@ -3320,6 +3494,7 @@ describe('StorageService', () => {
       ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
         lang: 'ja',
         draftContent: 'Interface',
+        draftTags: [],
       })
 
       // Class (本文あり)
@@ -3334,6 +3509,7 @@ describe('StorageService', () => {
         lang: 'ja',
         srcContent: 'Class',
         searchContent: 'Class',
+        srcTags: [],
       })
 
       const actual = await storageService.getUserArticleList(StorageUserToken(), {
@@ -3396,6 +3572,7 @@ describe('StorageService', () => {
               lang: 'ja',
               srcContent: label,
               searchContent: label,
+              srcTags: [],
             })
           })
         )
@@ -3453,6 +3630,7 @@ describe('StorageService', () => {
               lang: 'ja',
               srcContent: label,
               searchContent: label,
+              srcTags: [],
             })
           })
         )
@@ -3501,6 +3679,7 @@ describe('StorageService', () => {
               lang: 'ja',
               srcContent: label,
               searchContent: label,
+              srcTags: [],
             })
           })
         )
@@ -3601,6 +3780,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'Note2',
           searchContent: 'Note2',
+          srcTags: [],
         },
       }
 
@@ -3619,6 +3799,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'Note1',
           searchContent: 'Note1',
+          srcTags: [],
         },
       }
 
@@ -3647,6 +3828,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'Variable',
           searchContent: 'Variable',
+          srcTags: [],
         },
       }
 
@@ -3675,6 +3857,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'Interface',
           searchContent: 'Interface',
+          srcTags: [],
         },
       }
 
@@ -3693,6 +3876,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'Class',
           searchContent: 'Class',
+          srcTags: [],
         },
       }
 
@@ -3721,6 +3905,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'PrimitiveType',
           searchContent: 'PrimitiveType',
+          srcTags: [],
         },
       }
 
@@ -3739,6 +3924,7 @@ describe('StorageService', () => {
           lang,
           srcContent: 'LiteralType',
           searchContent: 'LiteralType',
+          srcTags: [],
         },
       }
 
@@ -3980,6 +4166,7 @@ describe('StorageService', () => {
         ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
           lang: 'ja',
           draftContent: 'Interface',
+          draftTags: [],
         })
 
         // Class (本文あり)
@@ -3995,6 +4182,7 @@ describe('StorageService', () => {
           lang: 'ja',
           srcContent: 'Class',
           searchContent: 'Class',
+          srcTags: [],
         })
 
         const actual = await storageService.getUserArticleTableOfContents(GeneralUserToken(), { lang: 'ja', userName: StorageUser().userName })
@@ -4516,6 +4704,90 @@ describe('StorageService', () => {
     })
   })
 
+  describe('removeDir', () => {
+    async function setupArticleTypeNodes() {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      const users = articleRootNodes[0]
+      const userRoot = articleRootNodes[1]
+      const articleRoot = articleRootNodes[2]
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${articleRootPath}`,
+        label: 'バンドル',
+        type: 'ListBundle',
+      })
+      // 記事1を作成
+      const art1 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事1',
+        type: 'Article',
+      })
+      await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+        srcTags: ['旅行', 'キャンプ'],
+      })
+      // 記事2を作成
+      const art2 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事2',
+        type: 'Article',
+      })
+      await storageService.saveArticleSrcContent(art2, {
+        lang: 'ja',
+        srcContent: '# 記事2',
+        searchContent: '記事2',
+        srcTags: ['旅行', 'ツアー'],
+      })
+
+      return { articleRoot, bundle, art1, art2 }
+    }
+
+    it('タグの使用件数が更新されることを検証 - 記事の削除', async () => {
+      const { art1 } = await setupArticleTypeNodes()
+
+      const [travelTag, campTag, tourTag] = await storageService.getArticleTags(['旅行', 'キャンプ', 'ツアー'])
+      expect(travelTag.name).toBe('旅行')
+      expect(travelTag.usedCount).toBe(2)
+      expect(campTag.name).toBe('キャンプ')
+      expect(campTag.usedCount).toBe(1)
+      expect(tourTag.name).toBe('ツアー')
+      expect(tourTag.usedCount).toBe(1)
+
+      // 記事1の削除
+      await storageService.removeDir(art1)
+
+      const [_travelTag, _campTag, _tourTag] = await storageService.getArticleTags(['旅行', 'キャンプ', 'ツアー'])
+      expect(_travelTag.name).toBe('旅行')
+      expect(_travelTag.usedCount).toBe(1)
+      expect(_campTag.name).toBe('キャンプ')
+      expect(_campTag.usedCount).toBe(0)
+      expect(_tourTag.name).toBe('ツアー')
+      expect(_tourTag.usedCount).toBe(1)
+    })
+
+    it('タグの使用件数が更新されることを検証 - 記事ルートの削除', async () => {
+      const { articleRoot } = await setupArticleTypeNodes()
+
+      // 記事ルートの削除
+      await storageService.removeDir(articleRoot)
+
+      const [_travelTag, _campTag, _tourTag] = await storageService.getArticleTags(['旅行', 'キャンプ', 'ツアー'])
+      expect(_travelTag.name).toBe('旅行')
+      expect(_travelTag.usedCount).toBe(0)
+      expect(_campTag.name).toBe('キャンプ')
+      expect(_campTag.usedCount).toBe(0)
+      expect(_tourTag.name).toBe('ツアー')
+      expect(_tourTag.usedCount).toBe(0)
+    })
+  })
+
   describe('moveDir', () => {
     let articleRootPath: string
     let users: StorageNode
@@ -5007,6 +5279,328 @@ describe('StorageService', () => {
       expect(actual[0]).toEqual({ id: ts.id, label: ts.article!.label!['ja'] })
       expect(actual[1]).toEqual({ id: ts_types.id, label: ts_types.article!.label!['ja'] })
       expect(actual[2]).toEqual({ id: ts_types_primitive.id, label: ts_types_primitive.article!.label!['ja'] })
+    })
+  })
+
+  describe('suggestArticleTags', () => {
+    const setupArticleTags = async () => {
+      await storageService.saveArticleTags([
+        { name: '日本' },
+        { name: 'Travel' },
+        { name: 'Camp' },
+        { name: 'Tourism' },
+        { name: '旅行' },
+        { name: '旅客機' },
+        { name: 'キャンプ' },
+        { name: 'ツアー' },
+      ])
+    }
+
+    it('ベーシックケース', async () => {
+      await setupArticleTags()
+
+      const actual = await storageService.suggestArticleTags('旅k')
+      console.log(JSON.stringify(actual, null, 2))
+
+      // expect(actual.length).toBe(1)
+      // expect(actual[0].name).toBe('Travel')
+    })
+  })
+
+  describe('getArticleTags', () => {
+    it('小文字で検索した場合', async () => {
+      await storageService.saveArticleTags([{ name: 'Travel' }])
+
+      const actual = await storageService.getArticleTags(['travel'])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].name).toBe('Travel')
+    })
+
+    it('存在しないタグを指定した場合', async () => {
+      await storageService.saveArticleTags([{ name: 'Travel' }, { name: 'Camp' }])
+
+      const actual = await storageService.getArticleTags(['Travel', 'Camp', 'Tourism'])
+
+      expect(actual.length).toBe(2)
+      expect(actual[0].name).toBe('Travel')
+      expect(actual[1].name).toBe('Camp')
+    })
+  })
+
+  describe('saveArticleTags', () => {
+    it('ベーシックケース', async () => {
+      await storageService.saveArticleTags([{ name: 'Travel' }, { name: 'Camp' }, { name: 'Tourism' }])
+
+      const actual = await storageService.getArticleTags(['Travel', 'Camp'])
+
+      expect(actual.length).toBe(2)
+      expect(actual[0].name).toBe('Travel')
+      expect(actual[1].name).toBe('Camp')
+    })
+
+    it('重複したタグを指定した場合', async () => {
+      await storageService.saveArticleTags([{ name: 'Travel' }, { name: 'Travel' }, { name: 'Camp' }])
+
+      const actual = await storageService.getArticleTags(['Travel', 'Camp'])
+
+      expect(actual.length).toBe(2)
+      expect(actual[0].name).toBe('Travel')
+      expect(actual[1].name).toBe('Camp')
+    })
+
+    it('同じタイミングで同じタグを登録しようとした場合', async () => {
+      await Promise.all(
+        [...Array(10)].map(async () => {
+          await storageService.saveArticleTags([{ name: 'Travel' }])
+        })
+      )
+
+      const actual = await storageService.getArticleTags(['Travel'])
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].name).toBe('Travel')
+    })
+
+    it('タグ名のバリデーション実行確認', async () => {
+      const validateTagName = td.replace(StorageService, 'validateTagName')
+
+      await storageService.saveArticleTags([{ name: 'Travel' }, { name: 'Camp' }])
+
+      const exp = td.explain(validateTagName)
+      expect(exp.calls[0].args[0]).toBe('Travel')
+      expect(exp.calls[1].args[0]).toBe('Camp')
+    })
+  })
+
+  describe('getUsedTagNames', () => {
+    async function setupArticleTypeNodes() {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      const users = articleRootNodes[0]
+      const userRoot = articleRootNodes[1]
+      const articleRoot = articleRootNodes[2]
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${articleRootPath}`,
+        label: 'バンドル',
+        type: 'ListBundle',
+      })
+      // 記事1を作成
+      const art1 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事1',
+        type: 'Article',
+      })
+      await storageService.saveArticleSrcContent(art1, {
+        lang: 'ja',
+        srcContent: '# 記事1',
+        searchContent: '記事1',
+        srcTags: ['旅行', 'キャンプ'],
+      })
+      // 記事2を作成
+      const art2 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${bundle.path}`,
+        label: '記事2',
+        type: 'Article',
+      })
+      await storageService.saveArticleSrcContent(art2, {
+        lang: 'ja',
+        srcContent: '# 記事2',
+        searchContent: '記事2',
+        srcTags: ['旅行', 'ツアー'],
+      })
+
+      return { articleRoot, bundle, art1, art2 }
+    }
+
+    it('ベーシックケース - 記事ルートを指定', async () => {
+      const { articleRoot } = await setupArticleTypeNodes()
+
+      const actual = await storageService.getUsedTagNames(articleRoot.path)
+
+      expect(actual.length).toBe(3)
+      actual.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+      const [campTag, tourTag, travelTag] = actual
+      expect(travelTag).toBe('旅行')
+      expect(campTag).toBe('キャンプ')
+      expect(tourTag).toBe('ツアー')
+    })
+
+    it('ベーシックケース - 記事を指定', async () => {
+      const { art1 } = await setupArticleTypeNodes()
+
+      const actual = await storageService.getUsedTagNames(art1.path)
+
+      expect(actual.length).toBe(2)
+      actual.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+      const [campTag, travelTag] = actual
+      expect(travelTag).toBe('旅行')
+      expect(campTag).toBe('キャンプ')
+    })
+
+    it('大量データの場合', async () => {
+      // 記事ルートの作成
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      await storageService.createHierarchicalDirs([articleRootPath])
+      // バンドルを作成
+      const bundle = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${articleRootPath}`,
+        label: 'バンドル',
+        type: 'ListBundle',
+      })
+      // 記事を作成
+      const promises: Promise<void>[] = []
+      for (let i = 1; i <= 10; i++) {
+        promises.push(
+          (async () => {
+            const art = await storageService.createArticleTypeDir({
+              lang: 'ja',
+              dir: `${bundle.path}`,
+              label: `記事${i}`,
+              type: 'Article',
+            })
+            await storageService.saveArticleSrcContent(art, {
+              lang: 'ja',
+              srcContent: `# 記事${i}`,
+              searchContent: `記事${i}`,
+              srcTags: (() => {
+                if (i <= 3) return ['タグA']
+                if (i <= 6) return ['タグB']
+                if (i <= 9) return ['タグC']
+                return ['タグD']
+              })(),
+            })
+          })()
+        )
+      }
+      await Promise.all(promises)
+
+      // 大量データを想定して検索を行う
+      const actual = await storageService.getUsedTagNames(articleRootPath, { chunkSize: 3 })
+
+      expect(actual.length).toBe(4)
+      expect(actual.includes('タグA')).toBeTruthy()
+      expect(actual.includes('タグB')).toBeTruthy()
+      expect(actual.includes('タグC')).toBeTruthy()
+      expect(actual.includes('タグD')).toBeTruthy()
+
+      const _tags = await storageService.getArticleTags(['タグA', 'タグB', 'タグC', 'タグD'])
+      const [tagA, tagB, tagC, tagD] = _tags
+      expect(_tags.length).toBe(4)
+      expect(tagA.name).toBe('タグA')
+      expect(tagA.usedCount).toBe(3)
+      expect(tagB.name).toBe('タグB')
+      expect(tagB.usedCount).toBe(3)
+      expect(tagC.name).toBe('タグC')
+      expect(tagC.usedCount).toBe(3)
+      expect(tagD.name).toBe('タグD')
+      expect(tagD.usedCount).toBe(1)
+    })
+  })
+
+  describe('validateTagName', () => {
+    it('255バイトを超えていた場合', async () => {
+      let tagName = 'tag'
+      while (Buffer.byteLength(tagName) <= 255) {
+        tagName += 'A' // 「A」は適当な文字
+      }
+
+      let actual!: AppError
+      try {
+        await StorageService.validateTagName(tagName)
+      } catch (err) {
+        actual = err
+      }
+
+      expect(actual.cause).toBe(`The specified tag name is too long.`)
+      expect(actual.data).toEqual({ 'tagName.byteLength': 256 })
+    })
+
+    it('改行、タブを含んでいる場合', async () => {
+      for (const char of ['\r\n', '\n', '\t']) {
+        const tagName = `tag${char}`
+
+        let actual!: AppError
+        try {
+          await StorageService.validateTagName(tagName)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`The specified tag name is invalid.`)
+        expect(actual.data).toEqual({ tagName })
+      }
+    })
+
+    it('スペースを含んでいる場合', async () => {
+      for (const char of [' ', '　']) {
+        const tagName = `tag${char}`
+
+        let actual!: AppError
+        try {
+          await StorageService.validateTagName(tagName)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`The specified tag name is invalid.`)
+        expect(actual.data).toEqual({ tagName })
+      }
+    })
+
+    it('禁則文字を含んでいる場合', async () => {
+      const chars = [
+        '!',
+        '"',
+        '#',
+        '$',
+        '%',
+        '&',
+        `'`,
+        '(',
+        ')',
+        '*',
+        '+',
+        ',',
+        '-',
+        '.',
+        '/',
+        ':',
+        ';',
+        '<',
+        '=',
+        '>',
+        '?',
+        '@',
+        '[',
+        '\\',
+        ']',
+        '^',
+        '`',
+        '{',
+        '|',
+        '}',
+        '~',
+      ]
+      for (const char of chars) {
+        const tagName = `tag${char}`
+
+        let actual!: AppError
+        try {
+          await StorageService.validateTagName(tagName)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`The specified tag name is invalid.`)
+        expect(actual.data).toEqual({ tagName })
+      }
     })
   })
 })

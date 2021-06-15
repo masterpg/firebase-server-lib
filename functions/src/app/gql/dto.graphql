@@ -191,6 +191,8 @@ type ArticleSrcDetail {
   srcContent: String
   draftContent: String
   searchContent: String
+  srcTags: [String!]
+  draftTags: [String!]
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -218,11 +220,13 @@ input SaveArticleSrcContentInput {
   lang: LangCode!
   srcContent: String!
   searchContent: String!
+  srcTags: [String!]
 }
 
 input SaveArticleDraftContentInput {
   lang: LangCode!
   draftContent: String
+  draftTags: [String!]
 }
 
 input GetArticleContentsNodeInput {
@@ -241,6 +245,7 @@ type ArticleListItem {
   dir: [ArticlePathDetail!]!
   path: [ArticlePathDetail!]!
   label: String!
+  srcTags: [String!]!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -269,4 +274,21 @@ type ArticleTableOfContentsItem {
 input GetUserArticleTableOfContentsInput {
   lang: LangCode!
   userName: String!
+}
+
+#--------------------------------------------------
+#  ArticleTag
+#--------------------------------------------------
+
+type ArticleTag implements TimestampEntity {
+  id: ID!
+  name: String!
+  usedCount: Int!
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input SaveArticleTagInput {
+  name: String!
 }

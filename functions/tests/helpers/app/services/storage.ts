@@ -1,8 +1,15 @@
 import * as _path from 'path'
 import * as admin from 'firebase-admin'
-import { CoreStorageNode, StorageNode, StorageService, StorageServiceDI } from '../../../../src/app/services'
+import {
+  ArticleTag,
+  ArticleTagSchema,
+  CoreStorageNode,
+  CoreStorageSchema,
+  StorageNode,
+  StorageService,
+  StorageServiceDI,
+} from '../../../../src/app/services'
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
-import { CoreStorageSchema } from '../../../../src/app/services'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
 import { newElasticClient } from '../../../../src/app/base/elastic'
@@ -24,6 +31,7 @@ type StorageTestService = StorageService &
   CoreStorageTestService & {
     validateArticleRootUnder: StorageServiceDI.type['validateArticleRootUnder']
     getBelongToArticleBundle: StorageServiceDI.type['getBelongToArticleBundle']
+    getUsedTagNames: StorageServiceDI.type['getUsedTagNames']
   }
 
 //========================================================================
@@ -265,6 +273,33 @@ class StorageTestHelper extends CoreStorageTestHelper {
       : undefined
 
     return result
+  }
+
+  newArticleTag(tagName: string): ArticleTag {
+    return {
+      id: ArticleTagSchema.generateId(),
+      name: tagName,
+      usedCount: 10,
+      version: 1,
+      createdAt: dayjs(),
+      updatedAt: dayjs(),
+    }
+  }
+
+  /**
+   * 全てのタグを削除します。
+   */
+  async removeAllTags(): Promise<void> {
+    const client = newElasticClient()
+    await client.deleteByQuery({
+      index: ArticleTagSchema.IndexAlias,
+      body: {
+        query: {
+          match_all: {},
+        },
+      },
+      refresh: true,
+    })
   }
 }
 

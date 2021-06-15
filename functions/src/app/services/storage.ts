@@ -2,12 +2,16 @@ import * as _path from 'path'
 import {
   ArticleContentFields,
   ArticleContentType,
+  ArticleDetail,
   ArticleDirLabelByLang,
   ArticleDirType,
   ArticleListItem,
   ArticlePathDetail,
   ArticleSrcByLang,
+  ArticleSrcDetail,
   ArticleTableOfContentsItem,
+  ArticleTag,
+  ArticleTagSchema,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
@@ -23,6 +27,7 @@ import {
   RenameArticleTypeDirInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
+  SaveArticleTagInput,
   StorageNode,
   StorageNodeGetKeyInput,
   StorageNodeShareDetailInput,
@@ -32,16 +37,26 @@ import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
   DeepPartial,
   LangCode,
+  LangCodes,
   RequiredAre,
   ToDeepNullable,
   arrayToDict,
+  findDuplicateItems,
   pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
   splitHierarchicalPaths,
   summarizeFamilyPaths,
 } from 'web-base-lib'
-import { ElasticMSearchAPIResponse, ElasticMSearchResponse, ElasticSearchAPIResponse, ElasticSearchResponse } from '../base/elastic'
+import {
+  ElasticMSearchAPIResponse,
+  ElasticMSearchResponse,
+  ElasticPageToken,
+  ElasticSearchAPIResponse,
+  ElasticSearchResponse,
+  openPointInTime,
+  retrieveSearchAfter,
+} from '../base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { compress, decompress } from 'lz-string'
@@ -53,6 +68,7 @@ import { config } from '../../config'
 import dayjs = require('dayjs')
 import { merge } from 'lodash'
 import DocStorageNode = StorageSchema.DocStorageNode
+import DocArticleTag = ArticleTagSchema.DocArticleTag
 
 //========================================================================
 //
@@ -153,7 +169,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       sortOrder = input.sortOrder
     } else {
       sortOrder =
-        (await this.m_getMaxArticleSortOrder({
+        (await this.getMaxArticleSortOrder({
           path: input.dir,
         })) + 1
     }
@@ -163,13 +179,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     switch (input.type) {
       case 'ListBundle':
       case 'TreeBundle':
-        result = await this.m_createArticleBundle({ ...input, sortOrder })
+        result = await this.createArticleBundle({ ...input, sortOrder })
         break
       case 'Category':
-        result = await this.m_createArticleCategory({ ...input, sortOrder })
+        result = await this.createArticleCategory({ ...input, sortOrder })
         break
       case 'Article':
-        result = await this.m_createArticle({ ...input, sortOrder })
+        result = await this.createArticle({ ...input, sortOrder })
         break
     }
     return result
@@ -518,49 +534,59 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
 
   protected async saveArticleSrcContentImpl(
     articleNode: StorageNode,
-    { lang, srcContent, searchContent }: SaveArticleSrcContentInput
+    { lang, srcContent, searchContent, srcTags }: SaveArticleSrcContentInput
   ): Promise<StorageNode> {
     if (articleNode.article?.type !== 'Article') {
       throw new AppError(`The specified node is not an article.`, { key: pickProps(articleNode, ['id', 'path']) })
     }
 
+    // 記事データを作成
     const now = dayjs()
-    const existingSrcDetail = articleNode.article?.src?.[lang]
-
-    // 記事ノードの更新データを作成
-    delete articleNode.article?.src
-    merge(articleNode, <DeepPartial<StorageNode>>{
-      article: {
-        src: {
-          [lang]: {
-            ...existingSrcDetail,
-            srcContent,
-            draftContent: null,
-            searchContent,
-            createdAt: existingSrcDetail?.createdAt ?? now,
-            updatedAt: now,
-          },
-        },
-      },
+    const oldSrcDetail = articleNode.article?.src?.[lang]
+    const newSrcDetail: ToDeepNullable<ArticleSrcDetail> = {
+      srcContent,
+      draftContent: null,
+      searchContent,
+      srcTags,
+      draftTags: null,
+      createdAt: oldSrcDetail?.createdAt ?? now,
       updatedAt: now,
-    })
+    }
 
-    // 記事ノードを更新
+    // 記事データを更新
     await this.client.update({
       index: StorageSchema.IndexAlias,
       id: articleNode.id,
       body: {
-        doc: this.toDocNode(articleNode),
+        doc: this.toDocNode({
+          article: {
+            src: {
+              [lang]: newSrcDetail,
+            },
+          },
+          updatedAt: now,
+        }),
       },
       refresh: true,
     })
-    articleNode = await this.sgetNode(articleNode, [
+
+    // タグの保存
+    // ※前のタグと今回のタグを比較し、片方にのみ存在するタグは追加か削除になるので保存対象となる。
+    //   逆に両方に存在するタグは前回と今回で変化なしということになるので保存対象外となる。
+    const oldTagNames = oldSrcDetail?.srcTags ?? []
+    const newTagNames = srcTags ?? []
+    const targetTagNames = await this.getCorrectTagNames(
+      [...oldTagNames, ...newTagNames].filter(tagName => {
+        return !(oldTagNames.includes(tagName) && newTagNames.includes(tagName))
+      })
+    )
+    await this.saveArticleTags(targetTagNames.map(tagName => ({ name: tagName })))
+
+    return this.sgetNode(articleNode, [
       ArticleContentFields[lang].SrcContent,
       ArticleContentFields[lang].DraftContent,
       ArticleContentFields[lang].SearchContent,
     ])
-
-    return articleNode
   }
 
   /**
@@ -612,7 +638,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
   }
 
-  async saveArticleDraftContentImpl(articleNode: StorageNode, { lang, draftContent }: SaveArticleDraftContentInput): Promise<StorageNode> {
+  async saveArticleDraftContentImpl(articleNode: StorageNode, { lang, draftContent, draftTags }: SaveArticleDraftContentInput): Promise<StorageNode> {
     if (articleNode.article?.type !== 'Article') {
       throw new AppError(`The specified node is not an article.`, { key: pickProps(articleNode, ['id', 'path']) })
     }
@@ -626,6 +652,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
         src: {
           [lang]: {
             draftContent,
+            draftTags,
           },
         },
       },
@@ -730,6 +757,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
         id: articleNode.id,
         label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
         srcContent: srcDetail.srcContent ?? '',
+        srcTags: srcDetail.srcTags ?? [],
         dir: ancestorNodes.map(node => ({
           id: node.id,
           label: StorageService.getArticleLangLabel(lang, node.article!.label),
@@ -857,6 +885,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
           dir: StorageService.toArticlePathDetails(lang, articleNode.dir, articleHierarchicalNodes),
           path: StorageService.toArticlePathDetails(lang, articleNode.path, articleHierarchicalNodes),
           label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
+          srcTags: srcDetail.srcTags ?? [],
           createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
           updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
         })
@@ -1118,6 +1147,179 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
   }
 
   //--------------------------------------------------
+  //  ArticleTag
+  //--------------------------------------------------
+
+  async suggestArticleTags(keyword: string): Promise<ArticleTag[]> {
+    return ArticleTagSchema.toEntities(
+      await this.client.search<ElasticSearchResponse<DocArticleTag>>({
+        index: ArticleTagSchema.IndexAlias,
+        size: 10000,
+        version: true,
+        body: {
+          query: {
+            bool: {
+              should: [
+                { match: { 'name.suggest': { query: keyword } } },
+                {
+                  match: {
+                    'name.readingform': {
+                      query: keyword,
+                      fuzziness: 'auto',
+                      operator: 'and',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      })
+    )
+  }
+
+  /**
+   * 指定されたタグを取得します。
+   * @param tagName
+   */
+  async getArticleTag(tagName: string): Promise<ArticleTag | undefined> {
+    const tags = await this.getArticleTags([tagName])
+    return tags.length ? tags[0] : undefined
+  }
+
+  /**
+   * 指定されたタグを取得します。
+   * @param tagNames
+   */
+  async getArticleTags(tagNames: string[]): Promise<ArticleTag[]> {
+    const tags = ArticleTagSchema.toEntities(
+      await this.client.search<ElasticSearchResponse<DocArticleTag>>({
+        index: ArticleTagSchema.IndexAlias,
+        size: 10000,
+        version: true,
+        body: {
+          query: {
+            bool: {
+              should: tagNames.map(tagName => ({ term: { name: tagName } })),
+            },
+          },
+        },
+      })
+    )
+
+    const result: ArticleTag[] = []
+    for (const tagName of tagNames) {
+      result.push(...tags.filter(tag => tag.name.toLowerCase() === tagName.toLowerCase()))
+    }
+
+    return result
+  }
+
+  /**
+   * タグを保存します。
+   * @param input
+   */
+  async saveArticleTag(input: SaveArticleTagInput): Promise<ArticleTag> {
+    StorageService.validateTagName(input.name)
+
+    // タグ付けされている記事の件数を取得
+    const response = await this.client.count({
+      index: StorageSchema.IndexAlias,
+      body: {
+        query: {
+          bool: {
+            should: LangCodes.map(lang => {
+              return {
+                match: {
+                  [`article.src.${lang}.srcTags`]: input.name,
+                },
+              }
+            }),
+          },
+        },
+      },
+    })
+    const usedCount = response.body.count
+
+    // 現存するタグを取得
+    const tag = await this.getArticleTag(input.name)
+
+    // タグの追加/更新
+    const id = tag?.id ?? ArticleTagSchema.generateId()
+    const now = dayjs()
+    await this.client.update({
+      index: ArticleTagSchema.IndexAlias,
+      id,
+      body: {
+        doc: {
+          id,
+          name: input.name,
+          usedCount,
+          createdAt: tag?.createdAt ?? now,
+          updatedAt: now,
+        },
+        doc_as_upsert: true,
+      },
+      refresh: true,
+    })
+
+    // 重複したタグが登録されてしまっている場合、重複タグを削除する
+    // ※非常にまれなケースだが、ほぼ同時に同名の新規タグ追加が行われると、同名のタグが重複
+    //   して追加されてしまうことがある。この対応として最初に登録されたタグ以外は削除する。
+    const tags = ArticleTagSchema.toEntities(
+      await this.client.search<ElasticSearchResponse<DocArticleTag>>({
+        index: ArticleTagSchema.IndexAlias,
+        body: {
+          query: { term: { name: input.name } },
+          sort: [{ createdAt: 'asc' }], // 古い順にソート
+        },
+      })
+    )
+    if (tags.length > 1) {
+      await this.client.deleteByQuery({
+        index: ArticleTagSchema.IndexAlias,
+        body: {
+          query: {
+            bool: {
+              must: [
+                { term: { name: input.name } },
+                {
+                  bool: { must_not: { term: { _id: tags[0].id } } },
+                },
+              ],
+            },
+          },
+        },
+        conflicts: 'proceed',
+        refresh: true,
+      })
+    }
+
+    return tags[0]
+  }
+
+  /**
+   * 記事データ保存時におけるタグの追加/更新処理を行います。
+   * @param inputs
+   */
+  async saveArticleTags(inputs: SaveArticleTagInput[]): Promise<ArticleTag[]> {
+    if (!inputs.length) return []
+
+    // 重複したタグは最後尾のものに集約
+    const _inputs = [...inputs]
+    const duplicates = findDuplicateItems(_inputs, 'name')
+    duplicates.forEach(item => !item.last && item.remove())
+    // タグの追加/更新
+    return await Promise.all(_inputs.map(input => this.saveArticleTag(input)))
+  }
+
+  //----------------------------------------------------------------------
+  //
+  //  Internal methods
+  //
+  //----------------------------------------------------------------------
+
+  //--------------------------------------------------
   //  Overridden
   //--------------------------------------------------
 
@@ -1141,6 +1343,19 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
 
     return super.createHierarchicalDirsImpl(dirPaths)
+  }
+
+  protected async removeDirImpl(dirNode: StorageNode, pagination?: { pageSize?: number }): Promise<void> {
+    // ディレクトリ削除前に使用されているタグを取得しておく
+    const tagNames = await this.getUsedTagNames(dirNode.path)
+
+    // ディレクトリ削除を実行
+    await super.removeDirImpl(dirNode, pagination)
+
+    // 削除された記事に付けられていたタグの更新を実行
+    if (tagNames.length) {
+      await this.saveArticleTags(tagNames.map(tagName => ({ name: tagName })))
+    }
   }
 
   protected async moveDirImpl(input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void> {
@@ -1227,7 +1442,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     // ※1 バンドルは移動できないので対象外
     // ※2 記事系ディレクトリ以外のディレクトリにソート順は設定されないので対象外
     if (fromArticleDirType === 'Category' || fromArticleDirType === 'Article') {
-      const sortOrder = await this.m_getNewArticleSortOrder({ path: input.toDir })
+      const sortOrder = await this.getNewArticleSortOrder({ path: input.toDir })
       await this.client.update({
         index: StorageSchema.IndexAlias,
         id: fromDirNode.id,
@@ -1251,17 +1466,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     return StorageSchema.toDoc(node)
   }
 
-  //----------------------------------------------------------------------
-  //
-  //  Internal methods
-  //
-  //----------------------------------------------------------------------
+  //--------------------------------------------------
+  //  Article
+  //--------------------------------------------------
 
   /**
    * バンドルを作成します。
    * @param input
    */
-  private async m_createArticleBundle(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
+  private async createArticleBundle(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
     StorageService.validateNodePath(input.dir)
     StorageService.validateArticleDirName(input.label)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -1278,7 +1491,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
 
     // バンドルを作成
     const dirPath = _path.join(input.dir, input.id ?? StorageSchema.generateId())
-    return this.m_createArticleTypeDir(
+    return this.createRealArticleTypeDir(
       dirPath,
       {
         ...pickProps(input, ['type', 'type', 'sortOrder']),
@@ -1297,7 +1510,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * カテゴリディレクトリを作成します。
    * @param input
    */
-  private async m_createArticleCategory(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
+  private async createArticleCategory(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
     StorageService.validateNodePath(input.dir)
     StorageService.validateArticleDirName(input.label)
     const parentPath = removeBothEndsSlash(input.dir)
@@ -1317,7 +1530,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
 
     // カテゴリを作成
     const dirPath = _path.join(input.dir, input.id ?? StorageSchema.generateId())
-    return this.m_createArticleTypeDir(
+    return this.createRealArticleTypeDir(
       dirPath,
       {
         ...pickProps(input, ['type', 'type', 'sortOrder']),
@@ -1332,7 +1545,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * ※記事のディレクトリには記事に必要なファイルが格納されることになります。
    * @param input
    */
-  private async m_createArticle(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
+  private async createArticle(input: RequiredAre<CreateArticleTypeDirInput, 'sortOrder'>): Promise<StorageNode> {
     StorageService.validateArticleDirName(input.label)
     const articlePath = _path.join(input.dir, input.id ?? StorageSchema.generateId())
     const parentPath = removeBothEndsSlash(input.dir)
@@ -1365,7 +1578,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
 
     // 記事ノードを作成
-    const articleNode = await this.m_createArticleTypeDir(
+    const articleNode = await this.createRealArticleTypeDir(
       hierarchicalNodes,
       {
         ...pickProps(input, ['type', 'type', 'sortOrder']),
@@ -1386,7 +1599,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * @param input
    * @param options
    */
-  private async m_createArticleTypeDir(
+  private async createRealArticleTypeDir(
     dirPath: string,
     input: {
       label: ArticleDirLabelByLang
@@ -1405,7 +1618,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * @param input
    * @param options
    */
-  private async m_createArticleTypeDir(
+  private async createRealArticleTypeDir(
     hierarchicalDirNodes: (StorageNode & { exists: boolean })[],
     input: {
       label: ArticleDirLabelByLang
@@ -1418,7 +1631,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
   ): Promise<StorageNode>
 
-  private async m_createArticleTypeDir(
+  private async createRealArticleTypeDir(
     dirPath_or_hierarchicalDirNodes: string | (StorageNode & { exists: boolean })[],
     input: {
       label: ArticleDirLabelByLang
@@ -1513,7 +1726,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * 指定されたノードの親ディレクトリ直下ノードの中で最大のソート順を取得し、「+1」した値を返します。
    * @param input
    */
-  async m_getNewArticleSortOrder(input: StorageNodeGetKeyInput): Promise<number> {
+  async getNewArticleSortOrder(input: StorageNodeGetKeyInput): Promise<number> {
     if (!input.id && !input.path) {
       throw new AppError(`Either the 'id' or the 'path' must be specified.`)
     }
@@ -1558,7 +1771,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * 指定されたディレクトリ直下のノードの中で、最大のソート順を取得します。
    * @param dirKey
    */
-  async m_getMaxArticleSortOrder(dirKey: StorageNodeGetKeyInput): Promise<number> {
+  async getMaxArticleSortOrder(dirKey: StorageNodeGetKeyInput): Promise<number> {
     if (!dirKey.id && !dirKey.path) {
       throw new AppError(`Either the 'id' or the 'path' must be specified.`)
     }
@@ -1618,6 +1831,93 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
 
     return bundle
+  }
+
+  //--------------------------------------------------
+  //  ArticleTag
+  //--------------------------------------------------
+
+  /**
+   * 指定されてたディレクトリとその配下で使用されているタグ名の一覧を取得します。
+   * @param dirPath
+   * @param options
+   */
+  protected async getUsedTagNames(dirPath: string, options?: { chunkSize: number }): Promise<string[]> {
+    dirPath = removeBothEndsSlash(dirPath)
+
+    // 記事ルートまたはその配下以外のディレクトリが指定された場合、
+    // タグが使用されていることはないので空配列を返して終了
+    if (!StorageService.isArticleRootFamily(dirPath)) {
+      return []
+    }
+
+    const pageToken: ElasticPageToken = {
+      pit: await openPointInTime(this.client, StorageSchema.IndexAlias),
+    }
+
+    let nodes: { article?: ArticleDetail }[]
+    let tagNames: string[] = []
+
+    do {
+      const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
+        size: options?.chunkSize ?? StorageService.ChunkSize,
+        body: {
+          query: {
+            bool: {
+              must: [
+                { term: { 'article.type': 'Article' } },
+                {
+                  bool: {
+                    should: [{ term: { path: dirPath } }, { wildcard: { path: `${dirPath}/*` } }],
+                  },
+                },
+                {
+                  bool: {
+                    should: LangCodes.map(lang => {
+                      return { exists: { field: `article.src.${lang}.srcTags` } }
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+          sort: [{ path: 'asc' }],
+          ...pageToken,
+          _source: LangCodes.map(lang => `article.src.${lang}.srcTags`),
+        },
+      })
+      nodes = this.toEntityNodes(response)
+
+      // 取得したノードからタグ名を抽出(重複タグは除去)
+      for (const node of nodes) {
+        for (const lang of LangCodes) {
+          const names = node.article?.src?.[lang]?.srcTags ?? []
+          tagNames.push(...names)
+        }
+      }
+      tagNames = Array.from(new Set(tagNames))
+
+      // 次のページングトークンを取得
+      if (nodes.length) {
+        const searchAfter = retrieveSearchAfter(response)!
+        pageToken.pit.id = searchAfter.pitId!
+        pageToken.search_after = searchAfter.sort!
+      }
+    } while (nodes.length)
+
+    return tagNames
+  }
+
+  protected async getCorrectTagNames(tagNames: string[]): Promise<string[]> {
+    const tagDict = (await this.getArticleTags(tagNames)).reduce((result, tag) => {
+      result[tag.name.toLowerCase()] = tag
+      return result
+    }, {} as { [tagName: string]: ArticleTag })
+
+    return tagNames.map(tagName => {
+      const tag = tagDict[tagName.toLowerCase()]
+      return tag ? tag.name : tagName
+    })
   }
 
   //----------------------------------------------------------------------
@@ -1812,6 +2112,42 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * @param label
    */
   static validateArticleDirName(label?: string) {}
+
+  /**
+   * タグ名の検証を行います。
+   * @param tagName
+   */
+  static validateTagName(tagName?: string): void {
+    if (!tagName) {
+      throw new AppError('The specified tag name is empty.')
+    }
+
+    if (Buffer.byteLength(tagName) > 255) {
+      throw new AppError('The specified tag name is too long.', {
+        'tagName.byteLength': Buffer.byteLength(tagName),
+      })
+    }
+
+    // 改行、タブが含まれないことを検証
+    if (/\r?\n|\t/g.test(tagName)) {
+      throw new AppError('The specified tag name is invalid.', {
+        tagName,
+      })
+    }
+
+    // スペースが含まれないことを検証
+    // eslint-disable-next-line no-irregular-whitespace
+    if (/\s|　/g.test(tagName)) {
+      throw new AppError('The specified tag name is invalid.', {
+        tagName,
+      })
+    }
+
+    // 『 ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ ` { | } ~ 』が含まれないことを検証
+    if (/[!"#$%&'()*+,-./:;<=>?@[\\\]^`{|}~]/g.test(tagName)) {
+      throw new AppError('The specified tag name is invalid.', { tagName })
+    }
+  }
 }
 
 namespace StorageServiceDI {

@@ -1,5 +1,5 @@
 import * as _path from 'path'
-import { ArticleSrcByLang, CoreStorageNode, StorageNode, StorageNodeShareDetailInput, User } from './index'
+import { ArticleSrcByLang, ArticleTag, CoreStorageNode, StorageNode, StorageNodeShareDetailInput, User } from './index'
 import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse, ElasticSearchHit } from '../../base/elastic'
 import {
   DeepPartial,
@@ -18,7 +18,7 @@ import {
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
 import { merge } from 'lodash'
-const { keyword_lowercase, kuromoji_analyzer, kuromoji_html_analyzer, TimestampEntityProps } = BaseIndexDefinitions
+const { TimestampEntityProps, keyword_lower, kuromoji_analyzer, kuromoji_html_analyzer, suggest_analysis, whitespace_remove } = BaseIndexDefinitions
 
 //========================================================================
 //
@@ -101,7 +101,7 @@ namespace UserSchema {
           kuromoji_analyzer,
         },
         normalizer: {
-          keyword_lowercase,
+          keyword_lower,
         },
       },
     },
@@ -110,7 +110,7 @@ namespace UserSchema {
         ...TimestampEntityProps,
         userName: {
           type: 'keyword',
-          normalizer: 'keyword_lowercase',
+          normalizer: 'keyword_lower',
         },
         fullName: {
           type: 'keyword',
@@ -294,6 +294,25 @@ namespace StorageSchema {
   export const IndexAlias = StorageSchema.IndexAliases[config.env.mode]
 
   export const IndexDefinition = merge(CoreStorageSchema.IndexDefinition, {
+    settings: {
+      analysis: {
+        filter: {
+          whitespace_remove,
+        },
+        analyzer: {
+          tags_index_analyzer: {
+            type: 'custom',
+            tokenizer: 'keyword',
+            filter: ['lowercase', 'whitespace_remove'],
+          },
+          tags_search_analyzer: {
+            type: 'custom',
+            tokenizer: 'whitespace',
+            filter: ['lowercase', 'whitespace_remove'],
+          },
+        },
+      },
+    },
     mappings: {
       properties: {
         article: {
@@ -342,6 +361,16 @@ namespace StorageSchema {
                       type: 'text',
                       analyzer: 'kuromoji_analyzer',
                     },
+                    srcTags: {
+                      type: 'text',
+                      analyzer: 'tags_index_analyzer',
+                      search_analyzer: 'tags_search_analyzer',
+                    },
+                    draftTags: {
+                      type: 'text',
+                      analyzer: 'tags_index_analyzer',
+                      search_analyzer: 'tags_search_analyzer',
+                    },
                     createdAt: {
                       type: 'date',
                     },
@@ -363,6 +392,16 @@ namespace StorageSchema {
                     searchContent: {
                       type: 'text',
                       analyzer: 'standard',
+                    },
+                    srcTags: {
+                      type: 'text',
+                      analyzer: 'tags_index_analyzer',
+                      search_analyzer: 'tags_search_analyzer',
+                    },
+                    draftTags: {
+                      type: 'text',
+                      analyzer: 'tags_index_analyzer',
+                      search_analyzer: 'tags_search_analyzer',
                     },
                     createdAt: {
                       type: 'date',
@@ -394,7 +433,7 @@ namespace StorageSchema {
           const srcDetail = entity.article!.src![langCode]
           if (srcDetail) {
             result[langCode] = {
-              ...pickProps(srcDetail, ['srcContent', 'draftContent', 'searchContent']),
+              ...pickProps(srcDetail, ['srcContent', 'draftContent', 'searchContent', 'srcTags', 'draftTags']),
               createdAt: toRawDate(srcDetail.createdAt),
               updatedAt: toRawDate(srcDetail.updatedAt),
             }
@@ -415,11 +454,13 @@ namespace StorageSchema {
         const srcDetail = entity.article?.src?.[langCode]
         if (srcDetail) {
           // ---> nullをundefinedに変換する
-          Object.assign(srcDetail, {
-            srcContent: srcDetail.srcContent ?? undefined,
-            draftContent: srcDetail.draftContent ?? undefined,
-            searchContent: srcDetail.searchContent ?? undefined,
-          })
+          srcDetail.srcContent = srcDetail.srcContent ?? undefined
+          srcDetail.draftContent = srcDetail.draftContent ?? undefined
+          srcDetail.searchContent = srcDetail.searchContent ?? undefined
+          // <---
+          // ---> nullまたは空配列はundefinedに変換する
+          srcDetail.srcTags = !srcDetail.srcTags || !srcDetail.srcTags.length ? undefined : srcDetail.srcTags
+          srcDetail.draftTags = !srcDetail.draftTags || !srcDetail.draftTags.length ? undefined : srcDetail.draftTags
           // <---
         }
       }
@@ -443,10 +484,78 @@ namespace StorageSchema {
   export import EmptyShareDetail = CoreStorageSchema.EmptyShareDetail
 }
 
+namespace ArticleTagSchema {
+  export const IndexAliases = {
+    prod: `${Entities.ArticleTag.Name}`,
+    dev: `${Entities.ArticleTag.Name}`,
+    test: `${Entities.ArticleTag.Name}-test`,
+  }
+
+  export const IndexAlias = IndexAliases[config.env.mode]
+
+  export const IndexDefinition = {
+    settings: {
+      analysis: merge(
+        { ...suggest_analysis },
+        {
+          normalizer: {
+            keyword_lower,
+          },
+        }
+      ),
+    },
+    mappings: {
+      properties: {
+        ...TimestampEntityProps,
+        name: {
+          type: 'keyword',
+          normalizer: 'keyword_lower',
+          fields: {
+            suggest: {
+              type: 'text',
+              analyzer: 'suggest_index_analyzer',
+              search_analyzer: 'suggest_search_analyzer',
+            },
+            readingform: {
+              type: 'text',
+              analyzer: 'readingform_index_analyzer',
+              search_analyzer: 'readingform_search_analyzer',
+            },
+          },
+        },
+        usedCount: {
+          type: 'integer',
+        },
+      },
+    },
+  }
+
+  export interface DocArticleTag extends ToDoc<ArticleTag> {}
+
+  export const toDoc = <ENTITY extends ToDocParam<ArticleTag>>(appEntity: ENTITY) => {
+    const _entity = pickProps(appEntity, ['name', 'usedCount', 'createdAt', 'updatedAt'])
+    return entityToDoc(_entity)
+  }
+
+  export const toEntity = <DOC extends DeepPartial<DocArticleTag>>(hit: ElasticSearchHit<DOC>) => {
+    return hitToEntity(hit)
+  }
+
+  export function toEntities<DOC extends DeepPartial<DocArticleTag>>(
+    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+  ): ToEntity<DOC>[] {
+    return dbResponseToEntities(dbResponse, toEntity)
+  }
+
+  export function generateId(): string {
+    return generateEntityId(IndexAlias)
+  }
+}
+
 //========================================================================
 //
 //  Exports
 //
 //========================================================================
 
-export { UserSchema, CoreStorageSchema, StorageSchema, dbResponseToEntities }
+export { UserSchema, CoreStorageSchema, StorageSchema, ArticleTagSchema, dbResponseToEntities }

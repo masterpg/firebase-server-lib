@@ -7,6 +7,8 @@ import {
   ArticleListItemFieldsName,
   ArticleTableOfContentsItemFields,
   ArticleTableOfContentsItemFieldsName,
+  ArticleTagFields,
+  ArticleTagFieldsName,
   GeneralUser,
   StorageNodeFields,
   StorageNodeFieldsName,
@@ -35,6 +37,7 @@ import {
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
+  SaveArticleTagInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -131,6 +134,8 @@ describe('Lv1 Storage Resolver', () => {
                 srcContent: '# 記事1',
                 draftContent: '# 記事下書き1',
                 searchContent: '記事1',
+                srcTags: ['旅行'],
+                draftTags: ['旅行', 'キャンプ'],
                 createdAt: dayjs('2020-01-02T00:00:00.000Z'),
                 updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
               },
@@ -1263,6 +1268,8 @@ describe('Lv1 Storage Resolver', () => {
               srcContent: '# 記事1',
               draftContent: undefined,
               searchContent: '記事1',
+              srcTags: ['旅行'],
+              draftTags: undefined,
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
@@ -1276,6 +1283,7 @@ describe('Lv1 Storage Resolver', () => {
       const { art1 } = newArticleNodes(StorageUserToken())
       const srcContent = art1.article!.src!.ja!.srcContent!
       const searchContent = art1.article!.src!.ja!.searchContent!
+      const srcTags = art1.article!.src!.ja!.srcTags!
 
       const saveArticleSrcContent = td.replace(storageService, 'saveArticleSrcContent')
       td.when(
@@ -1286,6 +1294,7 @@ describe('Lv1 Storage Resolver', () => {
             lang: 'ja',
             srcContent,
             searchContent,
+            srcTags,
           }
         )
       ).thenResolve(art1)
@@ -1300,6 +1309,7 @@ describe('Lv1 Storage Resolver', () => {
               lang: 'ja',
               srcContent,
               searchContent,
+              srcTags,
             },
           },
         },
@@ -1353,8 +1363,10 @@ describe('Lv1 Storage Resolver', () => {
           src: {
             ja: {
               srcContent: '# 記事1',
-              searchContent: '# 記事下書き1',
-              draftContent: '記事1',
+              searchContent: '# 記事1',
+              draftContent: '記事1下書き1',
+              srcTags: ['旅行'],
+              draftTags: ['旅行', 'キャンプ'],
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
@@ -1375,6 +1387,7 @@ describe('Lv1 Storage Resolver', () => {
           {
             lang: 'ja',
             draftContent: art1.article!.src!.ja!.draftContent!,
+            draftTags: art1.article!.src!.ja!.draftTags!,
           }
         )
       ).thenResolve(art1)
@@ -1388,6 +1401,7 @@ describe('Lv1 Storage Resolver', () => {
             input: <SaveArticleDraftContentInput>{
               lang: 'ja',
               draftContent: art1.article!.src!.ja!.draftContent!,
+              draftTags: art1.article!.src!.ja!.draftTags!,
             },
           },
         },
@@ -1397,7 +1411,7 @@ describe('Lv1 Storage Resolver', () => {
       expect(response.body.data.saveArticleDraftContent).toEqual(toGQLResponse(art1))
     })
 
-    it('疎通確認 - srcContentにnullを指定した場合', async () => {
+    it('疎通確認 - draftContentにnullを指定した場合', async () => {
       const { art1 } = newArticleNodes(StorageUserToken())
       art1.article!.src!.ja!.draftContent = undefined
 
@@ -1409,6 +1423,7 @@ describe('Lv1 Storage Resolver', () => {
           {
             lang: 'ja',
             draftContent: null,
+            draftTags: null,
           }
         )
       ).thenResolve(art1)
@@ -1422,6 +1437,7 @@ describe('Lv1 Storage Resolver', () => {
             input: <SaveArticleDraftContentInput>{
               lang: 'ja',
               draftContent: null,
+              draftTags: null,
             },
           },
         },
@@ -1442,6 +1458,57 @@ describe('Lv1 Storage Resolver', () => {
             lang: 'ja',
             draftContent: art1.article!.src!.ja!.draftContent!,
           },
+        },
+      })
+
+      expect(getGQLErrorStatus(response)).toBe(401)
+    })
+  })
+
+  describe('saveArticleTags', () => {
+    const gql = {
+      query: `
+        mutation SaveArticleTags($inputs: [SaveArticleTagInput!]!) {
+          saveArticleTags(inputs: $inputs) {
+            ...${ArticleTagFieldsName}
+          }
+        }
+        ${ArticleTagFields}
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const tags = [h.newArticleTag('旅行'), h.newArticleTag('旅客機')]
+      const inputs: SaveArticleTagInput[] = tags.map(tag => ({ name: tag.name }))
+
+      const saveArticleTags = td.replace(storageService, 'saveArticleTags')
+      td.when(saveArticleTags(inputs)).thenResolve(tags)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: {
+            inputs,
+          },
+        },
+        { headers: AppAdminUserHeader() }
+      )
+
+      expect(response.body.data.saveArticleTags).toEqual(toGQLResponse(tags))
+    })
+
+    it('サインインしていない場合', async () => {
+      const tags = [h.newArticleTag('旅行'), h.newArticleTag('旅客機')]
+      const inputs: SaveArticleTagInput[] = tags.map(tag => ({ name: tag.name }))
+
+      const saveArticleTags = td.replace(storageService, 'saveArticleTags')
+      td.when(saveArticleTags(inputs)).thenResolve(tags)
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: {
+          inputs,
         },
       })
 
@@ -1472,8 +1539,10 @@ describe('Lv1 Storage Resolver', () => {
           src: {
             ja: {
               srcContent: '# 記事1',
-              searchContent: '# 記事下書き1',
-              draftContent: '記事1',
+              searchContent: '# 記事1',
+              draftContent: '記事1下書き1',
+              srcTags: ['旅行'],
+              draftTags: ['旅行', 'キャンプ'],
               createdAt: dayjs('2020-01-02T00:00:00.000Z'),
               updatedAt: dayjs('2020-01-02T00:00:00.000Z'),
             },
@@ -1558,6 +1627,11 @@ describe('Lv1 Storage Resolver', () => {
           type: 'Article',
           label: { ja: '記事1' },
           sortOrder: 1,
+          src: {
+            ja: {
+              srcTags: ['旅行'],
+            },
+          },
         },
       })
 
@@ -1579,6 +1653,7 @@ describe('Lv1 Storage Resolver', () => {
         dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
         path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
         label: StorageService.getArticleLangLabel(lang, node.article!.label!),
+        srcTags: node.article?.src?.[lang]?.srcTags ?? [],
         createdAt: now,
         updatedAt: now,
       }
@@ -1742,6 +1817,36 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponse([treeBundle, cat1, art1]))
+    })
+  })
+
+  describe('suggestArticleTags', () => {
+    const gql = {
+      query: `
+        query SuggestArticleTags($keyword: String!) {
+          suggestArticleTags(keyword: $keyword) {
+            ...${ArticleTagFieldsName}
+          }
+        }
+        ${ArticleTagFields}
+      `,
+    }
+
+    it('疎通確認', async () => {
+      const tags = [h.newArticleTag('旅行'), h.newArticleTag('旅客機')]
+
+      const keyword = '旅'
+      const suggestArticleTags = td.replace(storageService, 'suggestArticleTags')
+      td.when(suggestArticleTags(keyword)).thenResolve(tags)
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: {
+          keyword,
+        },
+      })
+
+      expect(response.body.data.suggestArticleTags).toEqual(toGQLResponse(tags))
     })
   })
 })

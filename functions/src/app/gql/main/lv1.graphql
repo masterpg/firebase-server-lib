@@ -19,6 +19,7 @@ type Mutation {
   setArticleSortOrder(orderNodePaths: [String!]!): Boolean!
   saveArticleSrcContent(key: StorageNodeGetKeyInput!, input: SaveArticleSrcContentInput!): StorageNode!
   saveArticleDraftContent(key: StorageNodeGetKeyInput!, input: SaveArticleDraftContentInput!): StorageNode!
+  saveArticleTags(inputs: [SaveArticleTagInput!]!): [ArticleTag!]!
 }
 
 type Query {
@@ -32,6 +33,7 @@ type Query {
   articleContentsNode(key: StorageNodeGetKeyInput!, input: GetArticleContentsNodeInput!): StorageNode
   userArticleList(input: GetUserArticleListInput!, pagination: OffsetTokenPaginationInput): ArticleListPaginationResult!
   userArticleTableOfContents(input: GetUserArticleTableOfContentsInput!): [ArticleTableOfContentsItem!]!
+  suggestArticleTags(keyword: String!): [ArticleTag!]!
 }
 
 #--------------------------------------------------
