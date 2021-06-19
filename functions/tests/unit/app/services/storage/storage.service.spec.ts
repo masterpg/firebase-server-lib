@@ -36,6 +36,7 @@ import { Test } from '@nestjs/testing'
 import { config } from '../../../../../src/config'
 import dayjs = require('dayjs')
 const performance = require('perf_hooks').performance
+import { compress, compressToBase64, compressToUint8Array } from 'lz-string'
 
 jest.setTimeout(30000)
 initApp()
@@ -5602,5 +5603,24 @@ describe('StorageService', () => {
         expect(actual.data).toEqual({ tagName })
       }
     })
+  })
+
+  it('aaa', async () => {
+    const ids: string[] = []
+    for (let i = 0; i < 50000; i++) {
+      ids.push(StorageSchema.generateId())
+    }
+
+    // const start = performance.now()
+    // const compressed = compress(ids.join(','))
+    // console.log(`time: ${(performance.now() - start) / 1000}s, size: ${Buffer.byteLength(compressed) / 1024}kb`)
+
+    // const start = performance.now()
+    // const compressed = compressToBase64(ids.join(','))
+    // console.log(`time: ${(performance.now() - start) / 1000}s, size: ${Buffer.byteLength(compressed) / 1024}kb`)
+
+    const start = performance.now()
+    const compressed = compressToUint8Array(ids.join(','))
+    console.log(`time: ${(performance.now() - start) / 1000}s, size: ${compressed.byteLength / 1024}kb`)
   })
 })

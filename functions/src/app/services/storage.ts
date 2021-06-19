@@ -12,6 +12,7 @@ import {
   ArticleTableOfContentsItem,
   ArticleTag,
   ArticleTagSchema,
+  CoreStorageSchema,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
@@ -714,7 +715,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       }
       // 他ユーザーのノードに対する処理
       else {
-        await this.validateReadable(idToken, articleNode.path)
+        const hierarchicalNodes = await this.getHierarchicalNodes(articleNode.path)
+        this.validateReadable(idToken, articleNode.path, hierarchicalNodes)
         return articleNode
       }
     } else {
@@ -796,7 +798,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       }
 
       // リクエストユーザーに記事の読み込み権限があることを検証
-      await this.validateReadable(idToken, articleNode.path, hierarchicalNodes)
+      this.validateReadable(idToken, articleNode.path, hierarchicalNodes)
 
       // 戻り値を作成して返す
       return await _getResult(lang, hierarchicalNodes)
@@ -840,7 +842,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       }
 
       // リクエストユーザーに記事の読み込み権限があることを検証
-      await this.validateReadable(validated.idToken!, articleNode.path, hierarchicalNodes)
+      this.validateReadable(validated.idToken!, articleNode.path, hierarchicalNodes)
 
       // 戻り値を作成して返す
       const result = await _getResult(lang, hierarchicalNodes)
@@ -867,13 +869,13 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     /**
      * リクエスターが読み込み可能な記事リストを取得します。
      */
-    const getArticleList = async (allNodeDict: { [path: string]: StorageNode }, articleNodes: StorageNode[]) => {
+    const _getArticleList = async (allNodeDict: { [path: string]: StorageNode }, articleNodes: StorageNode[]) => {
       const result: ArticleListItem[] = []
       for (const articleNode of articleNodes) {
         // 記事とその階層を形成するノードを取得
         const articleHierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, articleNode.path)
         // リクエスターが指定されたノードを読み込み可能か検証
-        const validated = await this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
+        const validated = this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
         if (validated) continue
 
         // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
@@ -932,7 +934,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       const allNodeDict = arrayToDict(allNodes, 'path')
 
       // 読み込み可能な全記事リストを取得
-      const allArticleList = await getArticleList(allNodeDict, allArticleNodes)
+      const allArticleList = await _getArticleList(allNodeDict, allArticleNodes)
       // 1ページ分だけの記事リストを取得
       const articleList = allArticleList.slice(from, from + pageSize)
 
@@ -980,7 +982,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       const allNodeDict = arrayToDict(allNodes, 'path')
 
       // 次ページ分の記事リストを取得
-      const articleList = await getArticleList(allNodeDict, articleNodes)
+      const articleList = await _getArticleList(allNodeDict, articleNodes)
 
       // ページトークンを取得
       let pageToken: string | undefined
@@ -1114,7 +1116,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       if (node.article?.type !== 'Article') continue
       // リクエスターが記事を読み込み可能かを検証
       const hierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, node.path)
-      const error = await this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
+      const error = this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
       if (error) continue
       // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
       const srcDetail = node.article.src?.[lang]

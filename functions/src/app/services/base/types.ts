@@ -37,6 +37,18 @@ interface OffsetTokenPaginationResult<T = any> {
   total: number
 }
 
+interface NumberTokenPaginationInput {
+  pageToken?: string
+  pageNum?: number
+  pageSize?: number
+}
+
+interface NumberTokenPaginationResult<T = any> {
+  list: T[]
+  pageToken?: string
+  total: number
+}
+
 //--------------------------------------------------
 //  Auth
 //--------------------------------------------------
@@ -429,7 +441,16 @@ interface CartItemEditResponse extends TimestampEntity {
 //
 //========================================================================
 
-export { JSON, JSONObject }
+export {
+  JSON,
+  JSONObject,
+  NextTokenPaginationInput,
+  NextTokenPaginationResult,
+  NumberTokenPaginationInput,
+  NumberTokenPaginationResult,
+  OffsetTokenPaginationInput,
+  OffsetTokenPaginationResult,
+}
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export {
@@ -454,10 +475,6 @@ export {
   GetUserArticleTableOfContentsInput,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  NextTokenPaginationInput,
-  NextTokenPaginationResult,
-  OffsetTokenPaginationInput,
-  OffsetTokenPaginationResult,
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,

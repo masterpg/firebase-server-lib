@@ -1806,56 +1806,63 @@ describe('CoreStorageService', () => {
       await h.existsNodes(actual)
     })
 
-    it('引数ノードが存在しない場合', async () => {
-      // ディレクトリを作成
-      await storageService.createHierarchicalDirs([`d1/d11`])
-
-      const actual = await storageService.getHierarchicalNodes(`d1/d11/d111/fileA.txt`)
-
-      // 実際に存在する祖先ノードが取得される
-      expect(actual.length).toBe(2)
-      expect(actual[0].path).toBe(`d1`)
-      expect(actual[1].path).toBe(`d1/d11`)
-      await h.existsNodes(actual)
-    })
-
     it('バケットパスを指定した場合', async () => {
       // 空文字を指定
-      const actual = await storageService.getHierarchicalNodes(``)
+      const actual = await storageService.getHierarchicalNodes([``, ``])
 
       expect(actual.length).toBe(0)
     })
 
+    it('引数ノードが存在しない場合', async () => {
+      // ディレクトリを作成
+      await storageService.createHierarchicalDirs([`d1/d11`, `d2/d21`])
+
+      const actual = await storageService.getHierarchicalNodes([`d1/d11`, `d2/d21/d211/fileA.txt`])
+
+      // 実際に存在する祖先ノードが取得される
+      expect(actual.length).toBe(4)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d2`)
+      expect(actual[3].path).toBe(`d2/d21`)
+      await h.existsNodes(actual)
+    })
+
     it('階層構造の形成に必要なディレクトリが欠けている場合', async () => {
-      await storageService.createHierarchicalDirs([`d1/d11/d111`])
+      await storageService.createHierarchicalDirs([`d1/d11/d111`, `d2/d21/d211`])
       await storageService.uploadDataItems([
         {
           data: 'testA',
           contentType: 'text/plain; charset=utf-8',
           path: `d1/d11/d111/fileA.txt`,
         },
+        {
+          data: 'testB',
+          contentType: 'text/plain; charset=utf-8',
+          path: `d2/d21/d211/fileB.txt`,
+        },
       ])
 
       // 階層を形成するディレクトリの一部を削除
-      const d11 = await storageService.sgetNode({ path: `d1/d11` })
+      const d21 = await storageService.sgetNode({ path: `d2/d21` })
       const client = newElasticClient()
       await client.delete({
         index: CoreStorageSchema.IndexAlias,
-        id: d11.id,
+        id: d21.id,
         refresh: true,
       })
 
       let actual!: AppError
       try {
-        await storageService.getHierarchicalNodes(`d1/d11/d111/fileA.txt`)
+        await storageService.getHierarchicalNodes([`d1/d11/d111/fileA.txt`, `d2/d21/d211/fileB.txt`])
       } catch (err) {
         actual = err
       }
 
       expect(actual.cause).toBe(`The ancestor of the node you are trying to retrieve does not exist.`)
       expect(actual.data).toEqual({
-        node: { path: `d1/d11/d111/fileA.txt` },
-        ancestor: { path: `d1/d11` },
+        node: { path: `d2/d21/d211/fileB.txt` },
+        ancestor: { path: `d2/d21` },
       })
     })
 
@@ -1927,6 +1934,19 @@ describe('CoreStorageService', () => {
         let actual!: AppError
         try {
           await storageService.getHierarchicalNodes(GeneralUserToken(), storage.tmp.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('他ユーザーのディレクトリを含んで検索', async () => {
+        const { storage, general } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getHierarchicalNodes(GeneralUserToken(), [general.tmp.path, storage.tmp.path])
         } catch (err) {
           actual = err
         }
@@ -5900,7 +5920,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者はアクセス可能', async () => {
@@ -5911,7 +5932,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: false })
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
@@ -5924,7 +5946,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -5940,7 +5963,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは公開未設定 -> アプリケーション管理者以外はアクセス不可', async () => {
@@ -5953,7 +5977,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -5969,7 +5994,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { readUIds: [StorageUserToken().uid] })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開未設定 + ノードは公開設定 -> アプリケーション管理者以外もアクセス可能', async () => {
@@ -5982,7 +6008,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは公開未設定 -> アプリケーション管理者以外もアクセス可能', async () => {
@@ -5995,7 +6022,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは非公開設定 -> アプリケーション管理者以外はアクセス不可', async () => {
@@ -6009,7 +6037,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6027,7 +6056,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーもアクセス不可', async () => {
@@ -6042,7 +6072,8 @@ describe('CoreStorageService', () => {
         try {
           // 上位ディレクトリに設定した読み込み権限ではなく、
           // ノードに設定した読み込み権限が適用されるため、アクセス不可
-          await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6054,7 +6085,8 @@ describe('CoreStorageService', () => {
         const { d11, d12 } = await setupAppNodes()
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [``, d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([``, d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [``, d11.path, d12.path], hierarchicalNodes)
       })
 
       it('バケットを指定 -> アプリケーション管理者以外はアクセス不可', async () => {
@@ -6063,7 +6095,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateBrowsable(StorageUserToken(), [``, d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([``, d11.path, d12.path])
+          storageService.validateBrowsable(StorageUserToken(), [``, d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6087,7 +6120,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // 他ユーザーで検証
-        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> 自ユーザーはアクセス可能', async () => {
@@ -6098,7 +6132,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: false })
 
         // 自ユーザーで検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者はアクセス可能', async () => {
@@ -6109,7 +6144,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: false })
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> 他ユーザーはアクセス不可', async () => {
@@ -6122,7 +6158,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6138,7 +6175,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 自ユーザーで検証
-        await storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは公開未設定 -> アプリケーション管理者はアクセス可能', async () => {
@@ -6149,7 +6187,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは公開未設定 -> 他ユーザーはアクセス不可', async () => {
@@ -6162,7 +6201,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6178,7 +6218,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { readUIds: [GeneralUser().uid] })
 
         // 他ユーザーで検証
-        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開未設定 + ノードは公開設定 -> 他ユーザーもアクセス可能', async () => {
@@ -6191,7 +6232,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // 他ユーザーで検証
-        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは公開未設定 -> 他ユーザーもアクセス可能', async () => {
@@ -6204,7 +6246,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 他ユーザーで検証
-        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは非公開設定 -> 他ユーザーはアクセス不可', async () => {
@@ -6219,7 +6262,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6237,7 +6281,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 他ユーザーで検証
-        await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーはアクセス不可', async () => {
@@ -6252,7 +6297,8 @@ describe('CoreStorageService', () => {
         try {
           // 上位ディレクトリに設定した読み込み権限ではなく、
           // ノードに設定した読み込み権限が適用されるため、アクセス不可
-          await storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateBrowsable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6264,14 +6310,16 @@ describe('CoreStorageService', () => {
         const { userRoot, d11, d12 } = await setupUserNodes()
 
         // 自ユーザーで検証
-        await storageService.validateBrowsable(StorageUserToken(), [userRoot.path, d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+        storageService.validateBrowsable(StorageUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ユーザールートを指定 -> アプリケーション管理者はアクセス可能', async () => {
         const { userRoot, d11, d12 } = await setupUserNodes()
 
         // アプリケーション管理者で検証
-        await storageService.validateBrowsable(AppAdminUserToken(), [userRoot.path, d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+        storageService.validateBrowsable(AppAdminUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ユーザールートを指定 -> 他ユーザーはアクセス不可', async () => {
@@ -6280,7 +6328,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateBrowsable(GeneralUserToken(), [userRoot.path, d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+          storageService.validateBrowsable(GeneralUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6300,7 +6349,8 @@ describe('CoreStorageService', () => {
         const { d11 } = await setupUserNodes()
 
         // 自ユーザーで検証
-        await storageService.validateBrowsable(StorageUserToken(), d11.path)
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+        storageService.validateBrowsable(StorageUserToken(), d11.path, hierarchicalNodes)
       })
 
       it('権限なし', async () => {
@@ -6309,7 +6359,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 自ユーザー以外で検証
-          await storageService.validateBrowsable(GeneralUserToken(), d11.path)
+          const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+          storageService.validateBrowsable(GeneralUserToken(), d11.path, hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6332,7 +6383,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d11, { isPublic: true })
 
         // IDトークンなしで検証
-        await storageService.validateBrowsableImpl(undefined, d11.path)
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+        storageService.validateBrowsableImpl(undefined, d11.path, hierarchicalNodes)
       })
 
       it('権限なし', async () => {
@@ -6344,7 +6396,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // IDトークンなしで検証
-          await storageService.validateBrowsable(undefined, d11.path)
+          const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+          storageService.validateBrowsable(undefined, d11.path, hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6370,7 +6423,7 @@ describe('CoreStorageService', () => {
         const hierarchicalNodes = await storageService.getHierarchicalNodes(d111.path)
 
         // hierarchicalNodesを指定して検証
-        await storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+        storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
       })
 
       it('階層を構成するノードの一部が欠けている場合', async () => {
@@ -6387,7 +6440,7 @@ describe('CoreStorageService', () => {
         let actual!: AppError
         try {
           // hierarchicalNodesを指定して検証
-          await storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
+          storageService.validateBrowsableImpl(GeneralUserToken(), d111.path, hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6416,7 +6469,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // アプリケーション管理者で検証
-        await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者は読み込み可能', async () => {
@@ -6427,7 +6481,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: false })
 
         // アプリケーション管理者で検証
-        await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者以外は読み込み不可', async () => {
@@ -6440,7 +6495,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6456,7 +6512,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者で検証
-        await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは公開未設定 -> アプリケーション管理者以外は読み込み不可', async () => {
@@ -6469,7 +6526,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6485,7 +6543,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { readUIds: [StorageUserToken().uid] })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開未設定 + ノードは公開設定 -> アプリケーション管理者以外も読み込み可能', async () => {
@@ -6498,7 +6557,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは公開未設定 -> アプリケーション管理者以外も読み込み可能', async () => {
@@ -6511,7 +6571,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは非公開設定 -> アプリケーション管理者以外は読み込み不可', async () => {
@@ -6525,7 +6586,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6543,7 +6605,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // アプリケーション管理者以外で検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーも読み込み不可', async () => {
@@ -6558,7 +6621,8 @@ describe('CoreStorageService', () => {
         try {
           // 上位ディレクトリに設定した読み込み権限ではなく、
           // ノードに設定した読み込み権限が適用されるため、読み込み不可
-          await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6570,7 +6634,8 @@ describe('CoreStorageService', () => {
         const { d11, d12 } = await setupAppNodes()
 
         // アプリケーション管理者で検証
-        await storageService.validateReadable(AppAdminUserToken(), [``, d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([``, d11.path, d12.path])
+        await storageService.validateReadable(AppAdminUserToken(), [``, d11.path, d12.path], hierarchicalNodes)
       })
 
       it('バケットを指定 -> アプリケーション管理者以外は読み込み不可', async () => {
@@ -6579,7 +6644,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者以外で検証
-          await storageService.validateReadable(StorageUserToken(), [``, d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([``, d11.path, d12.path])
+          await storageService.validateReadable(StorageUserToken(), [``, d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6603,7 +6669,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // 他ユーザーで検証
-        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> 自ユーザーは読み込み可能', async () => {
@@ -6614,7 +6681,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: false })
 
         // 自ユーザーで検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは非公開設定 -> アプリケーション管理者は読み込み不可', async () => {
@@ -6627,7 +6695,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者ユーザーで検証
-          await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6645,7 +6714,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6661,7 +6731,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 自ユーザーで検証
-        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        await storageService.validateReadable(StorageUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ノードは公開未設定 -> アプリケーション管理者は読み込み不可', async () => {
@@ -6674,7 +6745,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者で検証
-          await storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(AppAdminUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6692,7 +6764,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6708,7 +6781,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { readUIds: [GeneralUser().uid] })
 
         // 他ユーザーで検証
-        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開未設定 + ノードは公開設定 -> 他ユーザーも読み込み可能', async () => {
@@ -6721,7 +6795,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: true })
 
         // 他ユーザーで検証
-        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは公開未設定 -> 他ユーザーも読み込み可能', async () => {
@@ -6734,7 +6809,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 他ユーザーで検証
-        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに公開設定 + ノードは非公開設定 -> 他ユーザーは読み込み不可', async () => {
@@ -6749,7 +6825,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6767,7 +6844,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d12, { isPublic: null })
 
         // 他ユーザーで検証
-        await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+        storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
       })
 
       it('上位ディレクトリに読み込み権限設定 + ノードに読み込み権限設定 -> 他ユーザーは読み込み不可', async () => {
@@ -6782,7 +6860,8 @@ describe('CoreStorageService', () => {
         try {
           // 上位ディレクトリに設定した読み込み権限ではなく、
           // ノードに設定した読み込み権限が適用されるため、読み込み不可
-          await storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([d11.path, d12.path])
+          storageService.validateReadable(GeneralUserToken(), [d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6794,7 +6873,8 @@ describe('CoreStorageService', () => {
         const { userRoot, d11, d12 } = await setupUserNodes()
 
         // 自ユーザーで検証
-        await storageService.validateReadable(StorageUserToken(), [userRoot.path, d11.path, d12.path])
+        const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+        storageService.validateReadable(StorageUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
       })
 
       it('ユーザールートを指定 -> アプリケーション管理者は読み込み不可', async () => {
@@ -6803,7 +6883,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // アプリケーション管理者で検証
-          await storageService.validateReadable(AppAdminUserToken(), [userRoot.path, d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+          storageService.validateReadable(AppAdminUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6817,7 +6898,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 他ユーザーで検証
-          await storageService.validateReadable(GeneralUserToken(), [userRoot.path, d11.path, d12.path])
+          const hierarchicalNodes = await storageService.getHierarchicalNodes([userRoot.path, d11.path, d12.path])
+          storageService.validateReadable(GeneralUserToken(), [userRoot.path, d11.path, d12.path], hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6837,7 +6919,8 @@ describe('CoreStorageService', () => {
         const { d11 } = await setupUserNodes()
 
         // 自ユーザーで検証
-        await storageService.validateReadable(StorageUserToken(), d11.path)
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+        storageService.validateReadable(StorageUserToken(), d11.path, hierarchicalNodes)
       })
 
       it('権限なし', async () => {
@@ -6846,7 +6929,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // 自ユーザー以外で検証
-          await storageService.validateReadable(GeneralUserToken(), d11.path)
+          const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+          storageService.validateReadable(GeneralUserToken(), d11.path, hierarchicalNodes)
         } catch (err) {
           actual = err
         }
@@ -6869,7 +6953,8 @@ describe('CoreStorageService', () => {
         await storageService.setDirShareDetail(d11, { isPublic: true })
 
         // IDトークンなしで検証
-        await storageService.validateReadable(undefined, d11.path)
+        const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+        storageService.validateReadable(undefined, d11.path, hierarchicalNodes)
       })
 
       it('権限なし', async () => {
@@ -6881,7 +6966,8 @@ describe('CoreStorageService', () => {
         let actual!: HttpException
         try {
           // IDトークンなしで検証
-          await storageService.validateReadable(undefined, d11.path)
+          const hierarchicalNodes = await storageService.getHierarchicalNodes(d11.path)
+          storageService.validateReadable(undefined, d11.path, hierarchicalNodes)
         } catch (err) {
           actual = err
         }

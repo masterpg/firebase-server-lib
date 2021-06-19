@@ -150,12 +150,12 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       const response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         index: CoreStorageSchema.IndexAlias,
         version: true,
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query: {
             term: id ? { _id: id } : { path },
           },
         },
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
 
       const nodes = this.toEntityNodes(response)
@@ -188,7 +188,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
 
     if (result) {
-      idToken && (await this.validateBrowsable(idToken, result.path))
+      const hierarchicalNodes = await this.getHierarchicalNodes(result.path)
+      idToken && (await this.validateBrowsable(idToken, result.path, hierarchicalNodes))
       return result as NODE
     } else {
       return
@@ -234,7 +235,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       throw new AppError(`There is no node in the specified key.`, key)
     }
 
-    idToken && (await this.validateBrowsable(idToken, node.path))
+    const hierarchicalNodes = await this.getHierarchicalNodes(node.path)
+    idToken && this.validateBrowsable(idToken, node.path, hierarchicalNodes)
 
     return node
   }
@@ -272,10 +274,10 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
           index: CoreStorageSchema.IndexAlias,
           size,
           version: true,
-          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
           body: {
             query: { terms: { _id: chunk } },
           },
+          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         })
         nodes.push(...this.toEntityNodes(response))
       }
@@ -286,10 +288,10 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
           index: CoreStorageSchema.IndexAlias,
           size,
           version: true,
-          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
           body: {
             query: { terms: { path: chunk } },
           },
+          _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         })
         nodes.push(...this.toEntityNodes(response))
       }
@@ -329,10 +331,9 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     const nodes = await _getNodes(keys, sourceIncludes)
 
     if (idToken) {
-      await this.validateBrowsable(
-        idToken,
-        nodes.map(node => node.path)
-      )
+      const nodePaths = nodes.map(node => node.path)
+      const hierarchicalNodes = await this.getHierarchicalNodes(nodePaths)
+      this.validateBrowsable(idToken, nodePaths, hierarchicalNodes)
     }
 
     return nodes as NODE[]
@@ -584,12 +585,12 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         size: pageSize,
         version: true,
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query,
           sort: [{ path: 'asc' }],
           ...pageToken,
         },
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -861,12 +862,12 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
         size: pageSize,
         version: true,
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
         body: {
           query,
-          sort: [{ path: 'asc' }],
+          sort: [{ path: 'asc' }, { _id: 'asc' }],
           ...pageToken,
         },
+        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
       })
     } catch (err) {
       if (isPaginationTimeout(err)) {
@@ -1010,75 +1011,103 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   /**
    * 指定されたノードとその階層構造を形成するノードを取得します。
    * @param idToken
-   * @param nodePath
+   * @param nodePath_or_nodePaths
    * @param sourceIncludes
    */
-  getHierarchicalNodes(idToken: IdToken, nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
+  getHierarchicalNodes(idToken: IdToken, nodePath_or_nodePaths: string | string[], sourceIncludes?: string[]): Promise<NODE[]>
 
   /**
    * 指定されたノードとその階層構造を形成するノードを取得します。
-   * @param nodePath
+   * @param nodePath_or_nodePaths
    * @param sourceIncludes
    */
-  getHierarchicalNodes(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
+  getHierarchicalNodes(nodePath_or_nodePaths: string | string[], sourceIncludes?: string[]): Promise<NODE[]>
 
-  async getHierarchicalNodes(arg1: IdToken | string, arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
+  async getHierarchicalNodes(arg1: IdToken | string | string[], arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
     let idToken: IdToken | undefined
-    let nodePath: string
+    let nodePath_or_nodePaths: string | string[]
     let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
-      nodePath = arg2 as string
+      nodePath_or_nodePaths = arg2 as string
       sourceIncludes = arg3
     } else {
-      nodePath = arg1
+      nodePath_or_nodePaths = arg1
       sourceIncludes = arg2 as string[] | undefined
     }
 
-    if (!nodePath) return []
+    let nodePaths: string[]
+    if (Array.isArray(nodePath_or_nodePaths)) {
+      nodePaths = nodePath_or_nodePaths
+    } else {
+      nodePaths = [nodePath_or_nodePaths]
+    }
 
     // 指定されたパスのバリデーションチェック
-    nodePath = removeBothEndsSlash(nodePath)
-    CoreStorageService.validateNodePath(nodePath)
+    nodePaths = nodePaths
+      .map(nodePath => {
+        nodePath = removeBothEndsSlash(nodePath)
+        CoreStorageService.validateNodePath(nodePath)
+        return nodePath
+      })
+      .filter(notEmpty) // バケットパスは無視する
+
+    if (!nodePaths.length) return []
 
     if (idToken) {
-      // 自ユーザーのノードを検索
+      // 全てのノードパスが自ユーザーのものかを取得
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
-      if (CoreStorageService.isOwnUserRootFamily(idToken, nodePath) || idToken.isAppAdmin) {
-        return this.getHierarchicalNodesImpl(nodePath, sourceIncludes)
+      const nodePathsAreAllMine = nodePaths.every(nodePath => {
+        return CoreStorageService.isOwnUserRootFamily(idToken!, nodePath) || idToken!.isAppAdmin
+      })
+
+      // 自ユーザーのノードを検索
+      if (nodePathsAreAllMine) {
+        return this.getHierarchicalNodesImpl(nodePaths, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getHierarchicalNodesImpl(nodePath, sourceIncludes)
+      return this.getHierarchicalNodesImpl(nodePaths, sourceIncludes)
     }
   }
 
-  protected async getHierarchicalNodesImpl(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]> {
+  protected async getHierarchicalNodesImpl(nodePaths: string[], sourceIncludes?: string[]): Promise<NODE[]> {
     // 指定されたパスのバリデーションチェック
-    nodePath = removeBothEndsSlash(nodePath)
-    CoreStorageService.validateNodePath(nodePath)
+    nodePaths = nodePaths
+      .map(nodePath => {
+        nodePath = removeBothEndsSlash(nodePath)
+        CoreStorageService.validateNodePath(nodePath)
+        return nodePath
+      })
+      .filter(notEmpty) // バケットパスは無視する
+
+    if (!nodePaths.length) return []
 
     // 引数ノードとその階層を取得
-    const hierarchicalPaths = splitHierarchicalPaths(nodePath)
+    const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
     const hierarchicalNodes = await this.getNodes({ paths: hierarchicalPaths }, sourceIncludes)
     if (!hierarchicalNodes.length) return []
 
-    // 引数ノードを取得
-    const node = hierarchicalNodes[hierarchicalNodes.length - 1]
-    // 引数ノードが存在する場合
-    // ※引数ノードが存在するので、祖先ノードも存在しなくてはならない
-    if (node.path === nodePath) {
-      // 欠けている祖先ノードがあった場合
-      const hierarchicalNodeDict = arrayToDict(hierarchicalNodes, 'path')
-      for (const hierarchicalPath of hierarchicalPaths) {
-        if (!hierarchicalNodeDict[hierarchicalPath]) {
-          throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
-            node: { path: nodePath },
-            ancestor: { path: hierarchicalPath },
-          })
+    // 取得した階層ノードをマップ化
+    const hierarchicalNodeDict = arrayToDict(hierarchicalNodes, 'path')
+
+    for (const nodePath of nodePaths) {
+      // 引数ノードを取得
+      const node = hierarchicalNodeDict[nodePath]
+      // 引数ノードが存在する場合
+      // ※引数ノードが存在するので、祖先ノードも存在しなくてはならない
+      if (node?.path === nodePath) {
+        // 欠けている祖先ノードがあった場合
+        for (const hierarchicalPath of splitHierarchicalPaths(nodePath)) {
+          if (!hierarchicalNodeDict[hierarchicalPath]) {
+            throw new AppError(`The ancestor of the node you are trying to retrieve does not exist.`, {
+              node: { path: nodePath },
+              ancestor: { path: hierarchicalPath },
+            })
+          }
         }
       }
     }
@@ -2394,23 +2423,18 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * リクエスターが自身のノード情報を閲覧しようとしているか検証します。
    * @param idToken リクエスターのトークン。
    * @param nodePath_or_nodePaths 検証すべきノードパスまたはノードパスリスト。
-   * @param hierarchicalNodes `nodePath_or_nodePaths`の階層ノードリスト。呼び出し側で事前に
-   *   階層ノードリストを取得している場合、引数に渡すことで処理負荷を軽減することができます。
+   * @param hierarchicalNodes `nodePath_or_nodePaths`のノードと階層を構成するノードリスト。
    */
-  async validateBrowsable(
-    idToken: IdToken | undefined,
-    nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<void> {
-    const error = await this.validateBrowsableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
+  validateBrowsable(idToken: IdToken | undefined, nodePath_or_nodePaths: string | undefined | string[], hierarchicalNodes: NODE[]): void {
+    const error = this.validateBrowsableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
     if (error) throw error
   }
 
-  protected async validateBrowsableImpl(
+  protected validateBrowsableImpl(
     idToken: IdToken | undefined,
     nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<HttpException | undefined> {
+    hierarchicalNodes: NODE[]
+  ): HttpException | undefined {
     return this.validateBaseAccessible({
       idToken,
       nodePath_or_nodePaths,
@@ -2433,23 +2457,18 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * リクエスターが指定されたノードを読み込み可能か検証します。
    * @param idToken リクエスターのトークン。
    * @param nodePath_or_nodePaths 検証すべきノードパスまたはノードパスリスト。
-   * @param hierarchicalNodes `nodePath_or_nodePaths`の階層ノードリスト。呼び出し側で事前に
-   *   階層ノードリストを取得している場合、引数に渡すことで処理負荷を軽減することができます。
+   * @param hierarchicalNodes `nodePath_or_nodePaths`のノードと階層を構成するノードリスト。
    */
-  async validateReadable(
-    idToken: IdToken | undefined,
-    nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<void> {
-    const error = await this.validateReadableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
+  validateReadable(idToken: IdToken | undefined, nodePath_or_nodePaths: string | undefined | string[], hierarchicalNodes: NODE[]): void {
+    const error = this.validateReadableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
     if (error) throw error
   }
 
-  protected async validateReadableImpl(
+  protected validateReadableImpl(
     idToken: IdToken | undefined,
     nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<HttpException | undefined> {
+    hierarchicalNodes: NODE[]
+  ): HttpException | undefined {
     return this.validateBaseAccessible({
       idToken,
       nodePath_or_nodePaths,
@@ -2475,23 +2494,18 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * リクエスターが指定されたノードを書き込み可能か検証します。
    * @param idToken リクエスターのトークン。
    * @param nodePath_or_nodePaths 検証すべきノードパスまたはノードパスリスト。
-   * @param hierarchicalNodes `nodePath_or_nodePaths`の階層ノードリスト。呼び出し側で事前に
-   *   階層ノードリストを取得している場合、引数に渡すことで処理負荷を軽減することができます。
+   * @param hierarchicalNodes `nodePath_or_nodePaths`のノードと階層を構成するノードリスト。
    */
-  async validateWritable(
-    idToken: IdToken | undefined,
-    nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<void> {
-    const error = await this.validateReadableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
+  validateWritable(idToken: IdToken | undefined, nodePath_or_nodePaths: string | undefined | string[], hierarchicalNodes: NODE[]): void {
+    const error = this.validateWritableImpl(idToken, nodePath_or_nodePaths, hierarchicalNodes)
     if (error) throw error
   }
 
-  protected async validateWritableImpl(
+  protected validateWritableImpl(
     idToken: IdToken | undefined,
     nodePath_or_nodePaths: string | undefined | string[],
-    hierarchicalNodes?: NODE[]
-  ): Promise<HttpException | undefined> {
+    hierarchicalNodes: NODE[]
+  ): HttpException | undefined {
     return this.validateBaseAccessible({
       idToken,
       nodePath_or_nodePaths,
@@ -2523,12 +2537,12 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * - validate: ノードのアクセス権限を検証する関数。`nodePath_or_nodePaths`で指定されたノード
    *   単位で呼び出されます。<br>
    */
-  protected async validateBaseAccessible(params: {
+  protected validateBaseAccessible(params: {
     idToken: IdToken | undefined
     nodePath_or_nodePaths: string | undefined | string[]
-    hierarchicalNodes?: NODE[]
+    hierarchicalNodes: NODE[]
     validate: (params: { idToken: IdToken | undefined; node: NODE; share: StorageNodeShareDetail }) => HttpException | undefined
-  }): Promise<HttpException | undefined> {
+  }): HttpException | undefined {
     const { idToken, nodePath_or_nodePaths, hierarchicalNodes, validate } = params
 
     let nodePaths: string[] = []
@@ -2538,13 +2552,12 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       nodePaths = [nodePath_or_nodePaths]
     }
 
-    // 指定されたパスをサマリー
+    // 指定されたパスを検証
     nodePaths = nodePaths.map(nodePath => {
       nodePath = removeBothEndsSlash(nodePath)
       CoreStorageService.validateNodePath(nodePath)
       return nodePath
     })
-    nodePaths = summarizeFamilyPaths(nodePaths)
 
     // アプリケーションノードのパスを含んでいるか取得
     const hasAppNodePath = nodePaths.some(nodePath => CoreStorageService.isAppNode(nodePath))
@@ -2561,26 +2574,28 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     // ※「アプリケーションノード or 他ユーザーノード」のパスを含んでないので
     if (!hasAppNodePath && !hasOtherNodePath) return undefined
 
-    // 指定されたノードと階層を構成するディレクトリを取得
-    let nodeDict: { [path: string]: NODE } = {}
-    if (hierarchicalNodes) {
-      CoreStorageService.validateHierarchicalNodes(hierarchicalNodes)
-      nodeDict = arrayToDict(hierarchicalNodes, 'path')
-    } else {
-      const hierarchicalPaths = splitHierarchicalPaths(...nodePaths)
-      const nodes = await this.getNodes({ paths: hierarchicalPaths })
-      nodeDict = arrayToDict(nodes, 'path')
-    }
+    // 指定されたノードと階層を構成するディレクトリをマップ化
+    CoreStorageService.validateHierarchicalNodes(hierarchicalNodes)
+    const nodeDict = arrayToDict(hierarchicalNodes, 'path')
 
     for (const nodePath of nodePaths) {
-      // 対象ノードを取得
-      const node = nodeDict[nodePath]
-      // 対象ノードとその上位ディレクトリを加味した共有設定を取得
-      const hierarchicalNodes = CoreStorageService.retrieveHierarchicalNodes(nodeDict, node.path)
-      const share = this.getInheritedShareDetail(hierarchicalNodes)
-      // リクエスターがノードにアクセスできるか検証
-      const error = validate({ idToken, node, share })
-      if (error) return error
+      // ノードパスがバケットの場合
+      if (nodePath === '') {
+        if (!idToken?.isAppAdmin) {
+          return new ForbiddenException(`The user cannot read to the node: ${JSON.stringify({ uid: idToken?.uid, nodePath })}`)
+        }
+      }
+      // ノードパスがバケット配下の場合
+      else {
+        // 対象ノードを取得
+        const node = nodeDict[nodePath]
+        // 対象ノードとその上位ディレクトリを加味した共有設定を取得
+        const hierarchicalNodes = CoreStorageService.retrieveHierarchicalNodes(nodeDict, node.path)
+        const share = this.getInheritedShareDetail(hierarchicalNodes)
+        // リクエスターがノードにアクセスできるか検証
+        const error = validate({ idToken, node, share })
+        if (error) return error
+      }
     }
 
     return undefined
@@ -2616,7 +2631,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     const idToken = validated.idToken!
 
     // リクエストユーザーがファイルを閲覧できるか検証
-    const error = await this.validateReadableImpl(idToken, fileNode.path, hierarchicalNodes)
+    const error = this.validateReadableImpl(idToken, fileNode.path, hierarchicalNodes)
     if (!error) {
       return this.streamFile(req, res, fileNode)
     } else {
