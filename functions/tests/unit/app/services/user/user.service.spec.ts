@@ -19,7 +19,7 @@ import {
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { Test } from '@nestjs/testing'
 import { cloneDeep } from 'lodash'
-import { newElasticClient } from '../../../../../src/app/base/elastic'
+import { newElasticClient } from '../../../../../src/app/services/base/elastic'
 import dayjs = require('dayjs')
 
 jest.setTimeout(25000)

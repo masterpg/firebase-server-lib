@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin'
-import { ElasticClient, ElasticSearchResponse } from '../../base/elastic'
+import { ElasticClient, ElasticSearchResponse } from './elastic'
 import { User, UserClaims } from './index'
 import { AppError } from '../../base'
 import { UserSchema } from './index'

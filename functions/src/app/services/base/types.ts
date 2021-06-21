@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin'
-import { LangCode, TimestampEntity } from 'web-base-lib'
+import { DeepPartial, LangCode, TimestampEntity } from 'web-base-lib'
 import { AppError } from '../../base'
 import { Dayjs } from 'dayjs'
 import { IsPositive } from 'class-validator'
+import { compressToBase64 } from 'lz-string'
 
 //========================================================================
 //
@@ -13,40 +14,42 @@ import { IsPositive } from 'class-validator'
 type JSON = any
 type JSONObject = any
 
-interface NextTokenPaginationInput {
-  pageToken?: string
-  pageSize?: number
+//--------------------------------------------------
+//  Paging
+//--------------------------------------------------
+
+type PagingInput = PagingFirstInput | PagingAfterInput
+
+interface PagingFirstInput {
+  size?: number
+  num?: number
 }
 
-interface NextTokenPaginationResult<T = any> {
+interface PagingAfterInput {
+  segment: PagingSegment
+  token?: string
+}
+
+interface PagingSegment {
+  size: number
+  search_after?: any[]
+}
+
+type PagingResult<T = any> = PagingFirstResult<T> | PagingAfterResult<T>
+
+interface PagingFirstResult<T = any> {
   list: T[]
-  nextPageToken?: string
-  total: number
-  isPaginationTimeout?: boolean
+  token?: string
+  segments: PagingSegment[]
+  size: number
+  num: number
+  totalPages: number
+  totalItems: number
 }
 
-interface OffsetTokenPaginationInput {
-  pageToken?: string
-  offset?: number
-  pageSize?: number
-}
-
-interface OffsetTokenPaginationResult<T = any> {
+interface PagingAfterResult<T = any> {
   list: T[]
-  pageToken?: string
-  total: number
-}
-
-interface NumberTokenPaginationInput {
-  pageToken?: string
-  pageNum?: number
-  pageSize?: number
-}
-
-interface NumberTokenPaginationResult<T = any> {
-  list: T[]
-  pageToken?: string
-  total: number
+  isPagingTimeout?: boolean
 }
 
 //--------------------------------------------------
@@ -118,7 +121,6 @@ interface CoreStorageNode extends TimestampEntity {
   contentType: string
   size: number
   share: StorageNodeShareDetail
-  version: number
 }
 
 interface StorageNodeKeyInput {
@@ -437,20 +439,68 @@ interface CartItemEditResponse extends TimestampEntity {
 
 //========================================================================
 //
+//  Implementation
+//
+//========================================================================
+
+//--------------------------------------------------
+//  Paging
+//--------------------------------------------------
+
+namespace PagingFirstInput {
+  export function is(value?: PagingFirstInput | PagingAfterInput): value is PagingFirstInput | undefined {
+    return !PagingAfterInput.is(value)
+  }
+}
+
+namespace PagingAfterInput {
+  export function is(value?: PagingFirstInput | PagingAfterInput): value is PagingAfterInput {
+    if (!value) return false
+
+    const segment = (value as PagingAfterInput).segment
+    if (segment && typeof segment.size === 'number') {
+      return true
+    }
+    return false
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+namespace PagingResult {
+  export function empty<T = any>(data?: DeepPartial<Omit<PagingResult, 'list' | 'segments'>>): PagingResult<T> {
+    return { list: [], token: undefined, size: 0, num: 0, segments: [], totalItems: 0, totalPages: 0, ...data }
+  }
+
+  export function toResponse<T = any>(value: PagingResult<T>, listItemType: 'StorageNode' | 'ArticleListItem'): PagingResult<T> {
+    function isFirst(value: PagingResult<T>): value is PagingFirstResult {
+      return Boolean((value as PagingFirstResult).segments)
+    }
+
+    const result = Object.assign({}, value)
+
+    if (isFirst(value)) {
+      ;(result as any).__typename = 'PagingFirstResult'
+      ;(result as any).segments = compressToBase64(JSON.stringify(value.segments))
+    } else {
+      ;(result as any).__typename = 'PagingAfterResult'
+    }
+
+    result.list.forEach(item => {
+      ;(item as any).__typename = listItemType
+    })
+
+    return result
+  }
+}
+
+//========================================================================
+//
 //  Exports
 //
 //========================================================================
 
-export {
-  JSON,
-  JSONObject,
-  NextTokenPaginationInput,
-  NextTokenPaginationResult,
-  NumberTokenPaginationInput,
-  NumberTokenPaginationResult,
-  OffsetTokenPaginationInput,
-  OffsetTokenPaginationResult,
-}
+export { JSON, JSONObject }
+export { PagingSegment, PagingAfterInput, PagingAfterResult, PagingFirstInput, PagingFirstResult, PagingInput, PagingResult }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export {

@@ -5,7 +5,7 @@ import { UserHelper, UserSchema } from './base'
 import { AppError } from '../base'
 import { AuthHelper } from './base/auth'
 import dayjs = require('dayjs')
-import { newElasticClient } from '../base/elastic'
+import { newElasticClient } from './base/elastic'
 import UserRecord = admin.auth.UserRecord
 
 //========================================================================

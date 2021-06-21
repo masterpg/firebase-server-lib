@@ -4,9 +4,9 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageNode",
-  "query": "query GetStorageNode($input: StorageNodeGetKeyInput!) { storageNode(input: $input) { id path } }",
+  "query": "query GetStorageNode($key: StorageNodeGetKeyInput!) { storageNode(key: $key) { id path } }",
   "variables": {
-    "input": { "path": "test-files/d1" }
+    "key": { "path": "test-files/d1" }
   }
 }
 
@@ -18,9 +18,9 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageNodes",
-  "query": "query GetStorageNodes($input: StorageNodeGetKeysInput!) { storageNodes(input: $input) { id path } }",
+  "query": "query GetStorageNodes($key: StorageNodeGetKeysInput!) { storageNodes(key: $key) { id path } }",
   "variables": {
-    "input": { "paths": ["test-files/d1"] }
+    "key": { "paths": ["test-files/d1"] }
   }
 }
 
@@ -32,13 +32,13 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) { storageDescendants(input: $input, pagination: $pagination) { list { id path } nextPageToken isPaginationTimeout } }",
+  "query": "query GetStorageDescendants($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageDescendants(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "path": "test-files/d1",
       "includeBase": true
     },
-    "pagination": { "pageSize": 3 }
+    "paging": { "size": 3 }
   }
 }
 
@@ -50,13 +50,13 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: PaginationInput) { storageChildren(input: $input, pagination: $pagination) { list { id path } nextPageToken isPaginationTimeout } }",
+  "query": "query GetStorageChildren($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageChildren(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "path": "test-files/d1",
       "includeBase": true
     },
-    "pagination": { "pageSize": 3 }
+    "paging": { "size": 3 }
   }
 }
 
@@ -429,14 +429,13 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetUserArticleList",
-  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $pagination: OffsetTokenPaginationInput) { userArticleList(input: $input, pagination: $pagination) { list { id name } pageToken total } }",
+  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $paging: PagingInput) { userArticleList(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on ArticleListItem { id label } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on ArticleListItem { id label } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "lang": "ja",
-      "userName": "test.general",
-      "articleTypeDirId": "12345678901234567890"
+      "articleDirId": "12345678901234567890"
     },
-    "pagination": { "pageSize": 3 }
+    "paging": { "size": 3 }
   }
 }
 

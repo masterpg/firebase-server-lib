@@ -15,7 +15,7 @@ import {
   UserHelper,
 } from './base'
 import { UserServiceDI, UserServiceModule } from './user'
-import { newElasticClient, validateBulkResponse } from '../base/elastic'
+import { newElasticClient, validateBulkResponse } from './base/elastic'
 import { pickProps, removeBothEndsSlash, splitFilePath } from 'web-base-lib'
 import { File } from '@google-cloud/storage'
 import { isISO8601 } from 'class-validator'

@@ -105,6 +105,13 @@ const ArticleTagFields = `
 //========================================================================
 
 const toGQLResponse = <T>(entity_or_entities: T) => {
+  if (Array.isArray(entity_or_entities)) {
+    entity_or_entities.forEach(entity => {
+      delete (entity as any).__typename
+    })
+  } else {
+    delete (entity_or_entities as any).__typename
+  }
   return toDeepNull(toDeepRawDate(entity_or_entities))
 }
 

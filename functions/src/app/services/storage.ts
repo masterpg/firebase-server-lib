@@ -12,7 +12,6 @@ import {
   ArticleTableOfContentsItem,
   ArticleTag,
   ArticleTagSchema,
-  CoreStorageSchema,
   CreateArticleGeneralDirInput,
   CreateArticleTypeDirInput,
   CreateStorageDirInput,
@@ -23,8 +22,11 @@ import {
   GetUserArticleTableOfContentsInput,
   IdToken,
   MoveStorageDirInput,
-  OffsetTokenPaginationInput,
-  OffsetTokenPaginationResult,
+  PagingAfterResult,
+  PagingFirstInput,
+  PagingFirstResult,
+  PagingInput,
+  PagingResult,
   RenameArticleTypeDirInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
@@ -50,26 +52,29 @@ import {
   summarizeFamilyPaths,
 } from 'web-base-lib'
 import {
-  ElasticMSearchAPIResponse,
   ElasticMSearchResponse,
-  ElasticPageToken,
+  ElasticPagingSegment,
+  ElasticPointInTime,
   ElasticSearchAPIResponse,
   ElasticSearchResponse,
-  openPointInTime,
-  retrieveSearchAfter,
-} from '../base/elastic'
+  ElasticSearchResponseOrHits,
+  generatePagingData,
+  isPagingTimeout,
+  searchAllHitsByQuery,
+} from './base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { compress, decompress } from 'lz-string'
 import { AppError } from '../base'
 import { AuthHelper } from './base/auth'
 import { CoreStorageService } from './core-storage'
 import { File } from '@google-cloud/storage'
+import { NotFoundException } from '@nestjs/common/exceptions/not-found.exception'
 import { config } from '../../config'
 import dayjs = require('dayjs')
 import { merge } from 'lodash'
 import DocStorageNode = StorageSchema.DocStorageNode
 import DocArticleTag = ArticleTagSchema.DocArticleTag
+const performance = require('perf_hooks').performance
 
 //========================================================================
 //
@@ -861,138 +866,149 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
   }
 
+  /**
+   * 指定されたユーザーの記事系ディレクトリ直下にある記事一覧を取得します。
+   * @param idToken
+   * @param lang
+   * @param articleDirId 記事系ディレクトリのIDを指定します。
+   * @param paging
+   */
   async getUserArticleList(
     idToken: IdToken | undefined,
     { lang, articleDirId }: GetUserArticleListInput,
-    pagination?: OffsetTokenPaginationInput
-  ): Promise<OffsetTokenPaginationResult<ArticleListItem>> {
-    /**
-     * リクエスターが読み込み可能な記事リストを取得します。
-     */
-    const _getArticleList = async (allNodeDict: { [path: string]: StorageNode }, articleNodes: StorageNode[]) => {
-      const result: ArticleListItem[] = []
-      for (const articleNode of articleNodes) {
-        // 記事とその階層を形成するノードを取得
-        const articleHierarchicalNodes = StorageService.retrieveHierarchicalNodes(allNodeDict, articleNode.path)
-        // リクエスターが指定されたノードを読み込み可能か検証
-        const validated = this.validateReadableImpl(idToken, articleNode.path, articleHierarchicalNodes)
-        if (validated) continue
+    paging?: PagingInput
+  ): Promise<PagingResult<ArticleListItem>> {
+    //
+    // 読み込み可能な記事かを検証します。
+    //
+    const _validateArticle = (node: StorageNode, hierarchicalNodes: StorageNode[]) => {
+      // リクエスターが指定されたノードを読み込み可能か検証
+      const error = this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
+      if (error) return false
 
-        // 指定言語の記事本文の保存が行われていなかった場合、次の記事へ移動
-        const srcDetail = articleNode.article?.src?.[lang]
-        if (!srcDetail?.createdAt) continue
+      // 指定言語の記事本文の保存が行われていなかった場合、除外
+      const srcDetail = node.article?.src?.[lang]
+      if (!srcDetail?.createdAt) return false
 
-        result.push({
-          ...pickProps(articleNode, ['id', 'name']),
-          dir: StorageService.toArticlePathDetails(lang, articleNode.dir, articleHierarchicalNodes),
-          path: StorageService.toArticlePathDetails(lang, articleNode.path, articleHierarchicalNodes),
-          label: StorageService.getArticleLangLabel(lang, articleNode.article!.label),
-          srcTags: srcDetail.srcTags ?? [],
-          createdAt: srcDetail.createdAt!, // 記事本文があるのならば作成日は設定されている
-          updatedAt: srcDetail.updatedAt!, // 記事本文があるのならば更新日は設定されている
-        })
-      }
-      return result
+      return true
     }
-
-    const pageSize = pagination?.pageSize || StorageService.PageSize
-    const from = pagination?.offset ?? 0
+    //
+    // 指定されたノードを記事一覧の形式に変換します。
+    //
+    const _toArticleList = (nodes: StorageNode[], hierarchicalNodes: StorageNode[]) => {
+      return nodes.map(node => ({
+        ...pickProps(node, ['id', 'name']),
+        dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+        path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+        label: StorageService.getArticleLangLabel(lang, node.article!.label),
+        srcTags: node.article!.src![lang]!.srcTags ?? [],
+        createdAt: node.article!.src![lang]!.createdAt!, // 記事本文があるのならば作成日は設定されている
+        updatedAt: node.article!.src![lang]!.updatedAt!, // 記事本文があるのならば更新日は設定されている
+      }))
+    }
 
     // 指定された記事系ディレクトリを取得
     const articleDir = await this.getNode({ id: articleDirId })
-    if (!articleDir || !articleDir.article) return { list: [], total: 0 }
+    if (!articleDir || !articleDir.article) throw new NotFoundException()
 
-    // 指定された記事系ディレクトリが「記事」の場合は無視
-    if (articleDir.article.type === 'Article') return { list: [], total: 0 }
+    // 指定された記事系ディレクトリが「記事」の場合
+    if (articleDir.article.type === 'Article') throw new NotFoundException()
 
-    // 指定された記事系ディレクトリとその階層を取得
-    const hierarchicalNodes = await this.getHierarchicalNodes(articleDir.path)
+    // 検索クエリの土台
+    const searchParams = {
+      body: {
+        query: {
+          bool: {
+            filter: [{ term: { dir: articleDir.path } }, { term: { 'article.type': 'Article' } }],
+          },
+        },
+        sort: [{ 'article.sortOrder': 'desc', _id: 'asc' }],
+      },
+      _source_excludes: this.sourceExcludes,
+    }
 
     //
     // 初回検索の場合
     //
-    if (!pagination?.pageToken) {
-      // 指定された記事系ディレクトリ直下の「全記事」を取得
-      const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
-        index: StorageSchema.IndexAlias,
-        size: StorageService.ChunkSize,
-        from: 0,
-        body: {
-          query: {
-            bool: {
-              filter: [{ term: { dir: articleDir.path } }, { term: { 'article.type': 'Article' } }],
-            },
-          },
-          sort: [{ 'article.sortOrder': 'desc' }],
-        },
-        _source_excludes: this.sourceExcludes,
+    if (PagingFirstInput.is(paging)) {
+      const pageSize = paging?.size ?? 20
+      const pageNum = paging?.num ?? 1
+
+      // 指定された記事系ディレクトリ直下にある記事を全て取得
+      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
+      const { hits, total } = await searchAllHitsByQuery<DocStorageNode>(this.client, pit, searchParams)
+      if (!hits.length) return PagingResult.empty()
+
+      // 取得された記事の階層を取得
+      const ancestorNodes = await this.getHierarchicalNodes(articleDir.path)
+      const hierarchicalNodes = [...ancestorNodes, ...this.toEntityNodes(hits)]
+
+      // ページングデータを生成
+      let totalItems = total
+      const { segments, totalPages, hits: validatedHits } = generatePagingData(hits, pageSize, hit => {
+        const node = this.toEntityNodes([hit])[0]
+        const validated = _validateArticle(node, hierarchicalNodes)
+        !validated && totalItems--
+        return validated
       })
-      const allArticleNodes = this.toEntityNodes(response)
 
-      // 取得された記事とその階層をマップ化
-      const allNodes = [...hierarchicalNodes, ...allArticleNodes]
-      const allNodeDict = arrayToDict(allNodes, 'path')
+      // 1ページ分のノードを切り出し
+      const startIndex = (pageNum - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      const nodes = this.toEntityNodes(validatedHits).slice(startIndex, endIndex)
+      const list = _toArticleList(nodes, hierarchicalNodes)
 
-      // 読み込み可能な全記事リストを取得
-      const allArticleList = await _getArticleList(allNodeDict, allArticleNodes)
-      // 1ページ分だけの記事リストを取得
-      const articleList = allArticleList.slice(from, from + pageSize)
-
-      // ページトークンを生成
-      let pageToken: string | undefined
-      if (articleList.length === 0 || articleList.length < pageSize) {
-        pageToken = undefined
-      } else {
-        // 全記事リストのノードIDを圧縮したものをトークンとする
-        pageToken = compress(allArticleList.map(node => node.id).join(','))
+      const result: PagingFirstResult<ArticleListItem> = {
+        list,
+        token: pit.id,
+        segments,
+        size: pageSize,
+        num: pageNum,
+        totalItems,
+        totalPages,
       }
-
-      return { list: articleList, pageToken, total: allArticleList.length }
+      return result
     }
     //
     // 2回目以降の検索の場合
     //
     else {
-      // ページトークンから全記事リストのノードIDを取得
-      const nodeIds = decompress(pagination.pageToken)!
-        .split(',')
-        .reduce((result, nodeId) => {
-          nodeId.trim() && result.push(nodeId.trim())
-          return result
-        }, [] as string[])
-      // 次ページ分の記事ノードを取得
-      const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
-        index: StorageSchema.IndexAlias,
-        size: pageSize,
-        from,
-        body: {
-          query: {
-            bool: {
-              filter: { terms: { _id: nodeIds } },
-            },
-          },
-          sort: [{ 'article.sortOrder': 'desc' }],
-        },
-        _source_excludes: this.sourceExcludes,
-      })
-      const articleNodes = this.toEntityNodes(response)
+      const { segment: pagingSegment, token } = paging
+      if (!pagingSegment) return PagingResult.empty()
 
-      // 取得された記事ノードとその階層をマップ化
-      const allNodes = [...hierarchicalNodes, ...articleNodes]
-      const allNodeDict = arrayToDict(allNodes, 'path')
-
-      // 次ページ分の記事リストを取得
-      const articleList = await _getArticleList(allNodeDict, articleNodes)
-
-      // ページトークンを取得
-      let pageToken: string | undefined
-      if (articleList.length === 0 || articleList.length < pageSize) {
-        pageToken = undefined
-      } else {
-        pageToken = pagination.pageToken
+      let pit: ElasticPointInTime | undefined
+      if (token) {
+        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
       }
 
-      return { list: articleList, pageToken, total: nodeIds.length }
+      // 指定されたページ番号の記事を取得
+      let response: ElasticSearchAPIResponse<DocStorageNode>
+      try {
+        response = await this.client.search<ElasticSearchResponse<DocStorageNode>>(
+          merge(searchParams, {
+            body: { ...pagingSegment, pit },
+          })
+        )
+      } catch (err) {
+        if (isPagingTimeout(err)) {
+          return { ...PagingResult.empty(), isPagingTimeout: true }
+        } else {
+          throw err
+        }
+      }
+      let articleNodes = this.toEntityNodes(response)
+
+      // 取得された記事の階層を取得
+      const ancestorNodes = await this.getHierarchicalNodes(articleDir.path)
+      const hierarchicalNodes = [...ancestorNodes, ...articleNodes]
+
+      // 読み込み可能な記事に絞り込み
+      articleNodes = articleNodes.filter(node => _validateArticle(node, hierarchicalNodes))
+
+      const result: PagingAfterResult = {
+        list: _toArticleList(articleNodes, hierarchicalNodes),
+      }
+      return result
     }
   }
 
@@ -1347,12 +1363,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     return super.createHierarchicalDirsImpl(dirPaths)
   }
 
-  protected async removeDirImpl(dirNode: StorageNode, pagination?: { pageSize?: number }): Promise<void> {
+  protected async removeDirImpl(dirNode: StorageNode, paging?: { size?: number }): Promise<void> {
     // ディレクトリ削除前に使用されているタグを取得しておく
     const tagNames = await this.getUsedTagNames(dirNode.path)
 
     // ディレクトリ削除を実行
-    await super.removeDirImpl(dirNode, pagination)
+    await super.removeDirImpl(dirNode, paging)
 
     // 削除された記事に付けられていたタグの更新を実行
     if (tagNames.length) {
@@ -1360,7 +1376,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
   }
 
-  protected async moveDirImpl(input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void> {
+  protected async moveDirImpl(input: MoveStorageDirInput, options?: { size?: number }): Promise<void> {
     /**
      * 指定されたノードをエラー情報用ノードに変換します。
      */
@@ -1460,8 +1476,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
   }
 
-  protected toEntityNodes<T extends DeepPartial<DocStorageNode>>(dbResponse: ElasticSearchAPIResponse<T> | ElasticMSearchAPIResponse<T>) {
-    return StorageSchema.toEntities(dbResponse)
+  protected toEntityNodes<DOC extends DeepPartial<DocStorageNode>>(response_or_hits: ElasticSearchResponseOrHits<DOC>) {
+    return StorageSchema.toEntities(response_or_hits)
   }
 
   protected toDocNode(node: ToDeepNullable<StorageNode>) {
@@ -1845,6 +1861,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
    * @param options
    */
   protected async getUsedTagNames(dirPath: string, options?: { chunkSize: number }): Promise<string[]> {
+    const MaxLoopCount = 1000
+    let loopCount = 0
+
     dirPath = removeBothEndsSlash(dirPath)
 
     // 記事ルートまたはその配下以外のディレクトリが指定された場合、
@@ -1853,14 +1872,15 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       return []
     }
 
-    const pageToken: ElasticPageToken = {
-      pit: await openPointInTime(this.client, StorageSchema.IndexAlias),
+    let pagingSegment: ElasticPagingSegment = {
+      pit: await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias),
     }
 
     let nodes: { article?: ArticleDetail }[]
     let tagNames: string[] = []
 
-    do {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       const response = await this.client.search<ElasticSearchResponse<DocStorageNode>>({
         size: options?.chunkSize ?? StorageService.ChunkSize,
         body: {
@@ -1884,11 +1904,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
             },
           },
           sort: [{ path: 'asc' }],
-          ...pageToken,
+          ...pagingSegment,
           _source: LangCodes.map(lang => `article.src.${lang}.srcTags`),
         },
       })
       nodes = this.toEntityNodes(response)
+      if (!nodes.length) break
 
       // 取得したノードからタグ名を抽出(重複タグは除去)
       for (const node of nodes) {
@@ -1899,13 +1920,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       }
       tagNames = Array.from(new Set(tagNames))
 
-      // 次のページングトークンを取得
-      if (nodes.length) {
-        const searchAfter = retrieveSearchAfter(response)!
-        pageToken.pit.id = searchAfter.pitId!
-        pageToken.search_after = searchAfter.sort!
-      }
-    } while (nodes.length)
+      // 次のページングデータを取得
+      nodes.length && (pagingSegment = ElasticPagingSegment.next(response))
+
+      loopCount++
+      if (MaxLoopCount < loopCount) break
+    }
 
     return tagNames
   }

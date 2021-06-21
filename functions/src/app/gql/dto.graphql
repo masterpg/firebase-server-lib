@@ -1,12 +1,27 @@
-input NextTokenPaginationInput {
-  pageSize: Int
-  pageToken: String
+input PagingInput {
+  size: Int
+  num: Int
+  segment: JSONObject
+  token: String
 }
 
-input OffsetTokenPaginationInput {
-  pageSize: Int
-  offset: Int
-  pageToken: String
+union PagingResult = PagingFirstResult | PagingAfterResult
+
+union PagingListItem = StorageNode | ArticleListItem
+
+type PagingFirstResult {
+  list: [PagingListItem!]!
+  token: String
+  segments: String!
+  size: Int!
+  num: Int!
+  totalPages: Int!
+  totalItems: Int!
+}
+
+type PagingAfterResult {
+  list: [PagingListItem!]!
+  isPagingTimeout: Boolean
 }
 
 enum LangCode {
@@ -163,13 +178,6 @@ type StorageNode implements TimestampEntity {
   updatedAt: DateTime!
 }
 
-type StoragePaginationResult {
-  list: [StorageNode!]!
-  nextPageToken: String
-  total: Int
-  isPaginationTimeout: Boolean
-}
-
 type ArticleDetail {
   type: ArticleDirType!
   label: ArticleDirLabelByLang!
@@ -248,12 +256,6 @@ type ArticleListItem {
   srcTags: [String!]!
   createdAt: DateTime!
   updatedAt: DateTime!
-}
-
-type ArticleListPaginationResult {
-  list: [ArticleListItem!]!
-  pageToken: String
-  total: Int
 }
 
 input GetUserArticleListInput {

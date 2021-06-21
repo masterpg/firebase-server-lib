@@ -1,6 +1,6 @@
 import * as _path from 'path'
 import { ArticleSrcByLang, ArticleTag, CoreStorageNode, StorageNode, StorageNodeShareDetailInput, User } from './index'
-import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse, ElasticSearchHit } from '../../base/elastic'
+import { BaseIndexDefinitions, ElasticMSearchAPIResponse, ElasticSearchAPIResponse, ElasticSearchHit, ElasticSearchResponseOrHits } from './elastic'
 import {
   DeepPartial,
   Entities,
@@ -28,11 +28,11 @@ const { TimestampEntityProps, keyword_lower, kuromoji_analyzer, kuromoji_html_an
 
 type OmitEntity<T> = Omit<T, 'id' | 'version'>
 
-type ToDocParam<T> = ToDeepNullable<OmitEntity<T>>
+type ToDocParam<ENTITY> = ToDeepNullable<OmitEntity<ENTITY>>
 
-type ToDoc<T> = ToDeepRawDate<OmitEntity<T>>
+type ToDoc<ENTITY> = ToDeepRawDate<OmitEntity<ENTITY>>
 
-type ToEntity<T> = ToDeepEntityDateAre<T & { id: string; version: number }, 'createdAt' | 'updatedAt'>
+type ToEntity<DOC> = ToDeepEntityDateAre<DOC & { id: string; version: number }, 'createdAt' | 'updatedAt'>
 
 //========================================================================
 //
@@ -60,16 +60,20 @@ function entityToDoc<ENTITY>(entity: ENTITY): ToDoc<ENTITY> {
 
 /**
  * データベースレスポンスから取得したエンティティデータを取り出し、アプリケーションで扱われる形式へ変換します。
- * @param apiResponse
+ * @param response_or_hits
  * @param convertor
  */
 function dbResponseToEntities<ENTITY, DOC>(
-  apiResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>,
+  response_or_hits: ElasticSearchResponseOrHits<DOC>,
   convertor: (hit: ElasticSearchHit<DOC>) => ENTITY
 ): ENTITY[] {
+  if (Array.isArray(response_or_hits)) {
+    const hits: ElasticSearchHit<DOC>[] = response_or_hits
+    return hits.map(hit => convertor(hit))
+  }
   // Multi search APIのレスポンスの場合
-  if ((apiResponse as ElasticMSearchAPIResponse<DOC>).body.responses) {
-    const multiAPIResponse = apiResponse as ElasticMSearchAPIResponse<DOC>
+  else if ((response_or_hits as ElasticMSearchAPIResponse<DOC>).body.responses) {
+    const multiAPIResponse = response_or_hits as ElasticMSearchAPIResponse<DOC>
     const nodes: ENTITY[] = []
     for (const response of multiAPIResponse.body.responses) {
       if (!response.hits.hits.length) continue
@@ -79,7 +83,7 @@ function dbResponseToEntities<ENTITY, DOC>(
   }
   // Single search APIのレスポンスの場合
   else {
-    const singleAPIResponse = apiResponse as ElasticSearchAPIResponse<DOC>
+    const singleAPIResponse = response_or_hits as ElasticSearchAPIResponse<DOC>
     if (!singleAPIResponse.body.hits.hits.length) return []
     return singleAPIResponse.body.hits.hits.map(hit => convertor(hit))
   }
@@ -142,8 +146,8 @@ namespace UserSchema {
     return hitToEntity(hit)
   }
 
-  export function toEntities<DOC extends DeepPartial<DocUser>>(dbResponse: ElasticSearchAPIResponse<DOC>): ToEntity<DOC>[] {
-    return dbResponseToEntities(dbResponse, toEntity)
+  export function toEntities<DOC extends DeepPartial<DocUser>>(response_or_hits: ElasticSearchResponseOrHits<DOC>): ToEntity<DOC>[] {
+    return dbResponseToEntities(response_or_hits, toEntity)
   }
 }
 
@@ -242,9 +246,9 @@ namespace CoreStorageSchema {
   }
 
   export function toEntities<DOC extends DeepPartial<DocCoreStorageNode>>(
-    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+    response_or_hits: ElasticSearchResponseOrHits<DOC> | ElasticMSearchAPIResponse<DOC>
   ): ToEntity<DOC>[] {
-    return dbResponseToEntities(dbResponse, toEntity)
+    return dbResponseToEntities(response_or_hits, toEntity)
   }
 
   /**
@@ -470,9 +474,9 @@ namespace StorageSchema {
   }
 
   export function toEntities<DOC extends DeepPartial<DocStorageNode>>(
-    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+    response_or_hits: ElasticSearchResponseOrHits<DOC> | ElasticMSearchAPIResponse<DOC>
   ): ToEntity<DOC>[] {
-    return dbResponseToEntities(dbResponse, toEntity)
+    return dbResponseToEntities(response_or_hits, toEntity)
   }
 
   export import generateId = CoreStorageSchema.generateId
@@ -542,9 +546,9 @@ namespace ArticleTagSchema {
   }
 
   export function toEntities<DOC extends DeepPartial<DocArticleTag>>(
-    dbResponse: ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC>
+    response_or_hits: ElasticSearchResponseOrHits<DOC> | ElasticMSearchAPIResponse<DOC>
   ): ToEntity<DOC>[] {
-    return dbResponseToEntities(dbResponse, toEntity)
+    return dbResponseToEntities(response_or_hits, toEntity)
   }
 
   export function generateId(): string {

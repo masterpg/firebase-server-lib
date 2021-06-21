@@ -12,7 +12,7 @@ import {
 import { removeBothEndsSlash, removeStartDirChars } from 'web-base-lib'
 import { CoreStorageService } from '../../../../src/app/services/core-storage'
 import dayjs = require('dayjs')
-import { newElasticClient } from '../../../../src/app/base/elastic'
+import { newElasticClient } from '../../../../src/app/services/base/elastic'
 import escapeStringRegexp = require('escape-string-regexp')
 
 //========================================================================
@@ -23,6 +23,8 @@ import escapeStringRegexp = require('escape-string-regexp')
 
 type CoreStorageTestService = CoreStorageService & {
   client: CoreStorageService['client']
+  toEntityNodes: CoreStorageService['toEntityNodes']
+  toDocNode: CoreStorageService['toDocNode']
   validateBrowsableImpl: CoreStorageService['validateBrowsableImpl']
   validateReadableImpl: CoreStorageService['validateReadableImpl']
 }

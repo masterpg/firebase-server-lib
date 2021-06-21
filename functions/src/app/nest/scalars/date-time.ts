@@ -5,7 +5,7 @@ import dayjs = require('dayjs')
 
 @Scalar('DateTime')
 export class DateTimeScalar implements CustomScalar<string, Dayjs | null> {
-  description = 'DateDime custom scalar type'
+  description = 'DateTime custom scalar type'
 
   parseValue(value: string): Dayjs {
     return dayjs(value) // value from the client

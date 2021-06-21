@@ -8,8 +8,12 @@ import {
   IdToken,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  NextTokenPaginationInput,
-  NextTokenPaginationResult,
+  Pager,
+  PagingAfterResult,
+  PagingFirstInput,
+  PagingFirstResult,
+  PagingInput,
+  PagingResult,
   RenameStorageDirInput,
   RenameStorageFileInput,
   SignedUploadUrlInput,
@@ -19,6 +23,7 @@ import {
   StorageNodeKeyInput,
   StorageNodeShareDetail,
   StorageNodeShareDetailInput,
+  StorageSchema,
   UserIdClaims,
 } from './base'
 import { CoreStorageSchema, UserHelper } from './base'
@@ -36,19 +41,17 @@ import {
   summarizeFamilyPaths,
 } from 'web-base-lib'
 import {
-  ElasticMSearchAPIResponse,
-  ElasticPageToken,
+  ElasticPagingSegment,
+  ElasticPointInTime,
   ElasticSearchAPIResponse,
   ElasticSearchResponse,
-  closePointInTime,
-  decodePageToken,
-  encodePageToken,
-  isPaginationTimeout,
+  ElasticSearchResponseOrHits,
+  generatePagingData,
+  isPagingTimeout,
   newElasticClient,
-  openPointInTime,
-  retrieveSearchAfter,
+  searchAllHitsByQuery,
   validateBulkResponse,
-} from '../base/elastic'
+} from './base/elastic'
 import { File, SaveOptions } from '@google-cloud/storage'
 import { ForbiddenException, Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
@@ -59,6 +62,7 @@ import { config } from '../../config'
 import dayjs = require('dayjs')
 import escapeStringRegexp = require('escape-string-regexp')
 import DocCoreStorageNode = CoreStorageSchema.DocCoreStorageNode
+import { merge } from 'lodash'
 
 //========================================================================
 //
@@ -130,19 +134,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたノードを取得します。
-   * @param idToken
-   * @param key
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 sourceIncludes
    */
-  getNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE | undefined>
-
-  /**
-   * @see getNode
-   * @param key
-   * @param sourceIncludes
-   */
-  getNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE | undefined>
-
   async getNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<NODE | undefined> {
     const _getNode = async (key: StorageNodeGetKeyInput, sourceIncludes?: string[]) => {
       const { id, path } = key
@@ -199,20 +200,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   /**
    * 指定されたノードを取得します。
    * 指定されたノードが見つからなかった場合、例外がスローされます。
-   * @param idToken
-   * @param key
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 sourceIncludes
    */
-  sgetNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE>
-
-  /**
-   * 指定されたノードを取得します。
-   * 指定されたノードが見つからなかった場合、例外がスローされます。
-   * @param key
-   * @param sourceIncludes
-   */
-  sgetNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<NODE>
-
   async sgetNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<NODE> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
@@ -243,19 +240,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたノードリストを取得します。
-   * @param idToken
-   * @param keys
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 keys
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 keys
+   * @param arg2 sourceIncludes
    */
-  getNodes(idToken: IdToken, keys: StorageNodeGetKeysInput, sourceIncludes?: string[]): Promise<NODE[]>
-
-  /**
-   * 指定されたノードリストを取得します。
-   * @param keys
-   * @param sourceIncludes
-   */
-  getNodes(keys: StorageNodeGetKeysInput, sourceIncludes?: string[]): Promise<NODE[]>
-
   async getNodes(arg1: IdToken | StorageNodeGetKeysInput, arg2?: StorageNodeGetKeysInput | string[], arg3?: string[]): Promise<NODE[]> {
     const _getNodes = async (keys: StorageNodeGetKeysInput, sourceIncludes?: string[]) => {
       const ids = keys.ids?.filter(notEmpty) || []
@@ -341,19 +335,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたファイルノードを取得します。
-   * @param idToken
-   * @param key
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 sourceIncludes
    */
-  getFileNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE | undefined>
-
-  /**
-   * 指定されたファイルノードを取得します。
-   * @param key
-   * @param sourceIncludes
-   */
-  getFileNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE | undefined>
-
   async getFileNode(
     arg1: IdToken | StorageNodeGetKeyInput,
     arg2?: StorageNodeGetKeyInput | string[],
@@ -400,21 +391,18 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   }
 
   /**
-   * @see sgetFileNode
-   * @param idToken
-   * @param key
-   * @param sourceIncludes
-   */
-  sgetFileNode(idToken: IdToken, key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE>
-
-  /**
    * 指定されたファイルノードを取得します。
    * 指定されたファイルノードが見つからなかった場合、例外がスローされます。
-   * @param key
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 sourceIncludes
    */
-  sgetFileNode(key: StorageNodeGetKeyInput, sourceIncludes?: string[]): Promise<FILE_NODE>
-
   async sgetFileNode(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput | string[], arg3?: string[]): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
@@ -455,48 +443,36 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたディレクトリ配下のノードを取得します。
-   * @param idToken
-   * @param input
-   * @param pagination
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   * @param arg3 paging
+   * @param arg4 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 input
+   * @param arg2 paging
+   * @param arg3 sourceIncludes
    */
-  async getDescendants(
-    idToken: IdToken,
-    input: StorageNodeGetUnderInput,
-    pagination?: NextTokenPaginationInput,
-    sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>>
-
-  /**
-   * @see getDescendants
-   * @param input
-   * @param pagination
-   * @param sourceIncludes
-   */
-  async getDescendants(
-    input: StorageNodeGetUnderInput,
-    pagination?: NextTokenPaginationInput,
-    sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>>
-
   async getDescendants(
     arg1: IdToken | StorageNodeGetUnderInput,
-    arg2?: StorageNodeGetUnderInput | NextTokenPaginationInput,
-    arg3?: NextTokenPaginationInput | string[],
+    arg2?: StorageNodeGetUnderInput | PagingInput,
+    arg3?: PagingInput | string[],
     arg4?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>> {
+  ): Promise<PagingResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
-    let pagination: NextTokenPaginationInput | undefined
+    let paging: PagingInput | undefined
     let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3 as NextTokenPaginationInput | undefined
+      paging = arg3 as PagingInput | undefined
       sourceIncludes = arg4
     } else {
       input = arg1
-      pagination = arg2 as NextTokenPaginationInput | undefined
+      paging = arg2 as PagingInput | undefined
       sourceIncludes = arg3 as string[] | undefined
     }
 
@@ -509,7 +485,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
     if (input.id) {
       const node = await this.getNode({ id: input.id })
-      if (!node) return { list: [], total: 0 }
+      if (!node) return PagingResult.empty()
       path = node.path
     } else {
       CoreStorageService.validateNodePath(input.path)
@@ -520,32 +496,25 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
-        return this.getDescendantsImpl({ path: path, includeBase }, pagination, sourceIncludes)
+        return this.getDescendantsImpl({ path: path, includeBase }, paging, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getDescendantsImpl({ path, includeBase }, pagination, sourceIncludes)
+      return this.getDescendantsImpl({ path, includeBase }, paging, sourceIncludes)
     }
   }
 
   protected async getDescendantsImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: NextTokenPaginationInput,
+    paging?: PagingInput,
     sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>> {
+  ): Promise<PagingResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
-
-    const pageSize = pagination?.pageSize || CoreStorageService.PageSize
-
-    const pageToken = decodePageToken(pagination?.pageToken)
-    if (!pageToken.pit) {
-      pageToken.pit = await openPointInTime(this.client, CoreStorageSchema.IndexAlias)
-    }
 
     let query: any
 
@@ -579,71 +548,100 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
     }
 
-    // データベースからノードを取得
-    let response!: ElasticSearchAPIResponse<DocCoreStorageNode>
-    try {
-      response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
+    const searchParams = {
+      body: {
+        query,
+        sort: [{ path: 'asc', _id: 'asc' }],
+      },
+      version: true,
+      _source_excludes: this.mergeSourceExcludes(sourceIncludes),
+    }
+
+    //
+    // 初回検索の場合
+    //
+    if (PagingFirstInput.is(paging)) {
+      const pageSize = paging?.size ?? 100
+      const pageNum = paging?.num ?? 1
+
+      // 検索対象ノードを全て取得
+      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
+      const { hits, total: totalItems } = await searchAllHitsByQuery<DocCoreStorageNode>(this.client, pit, searchParams)
+      if (!hits.length) return PagingResult.empty()
+
+      // 指定ディレクトリを含む検索だった場合
+      // ※指定ディレクトリパスがバケット以外
+      if (includeBase && path) {
+        // 指定ディレクトリパスのノードが存在しない場合
+        if (!hits.some(hit => hit._source.path === path)) {
+          return PagingResult.empty() // 検索結果なしで終了
+        }
+      }
+
+      // ページングデータを生成
+      const { segments, totalPages } = generatePagingData(hits, pageSize)
+
+      // 1ページ分のノードを切り出し
+      const startIndex = (pageNum - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      const list = this.toEntityNodes(hits).slice(startIndex, endIndex) as NODE[]
+
+      const result: PagingFirstResult<NODE> = {
+        list,
+        token: pit.id,
+        segments,
         size: pageSize,
-        version: true,
-        body: {
-          query,
-          sort: [{ path: 'asc' }],
-          ...pageToken,
-        },
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
-      })
-    } catch (err) {
-      if (isPaginationTimeout(err)) {
-        return { list: [], total: 0, isPaginationTimeout: true }
-      } else {
-        throw err
+        num: pageNum,
+        totalItems,
+        totalPages,
       }
+      return result
     }
-    const nodes = this.toEntityNodes(response)
+    //
+    // 2回目以降の検索の場合
+    //
+    else {
+      const { segment: pagingSegment, token } = paging
+      if (!pagingSegment) return PagingResult.empty()
 
-    // 指定ディレクトリを含む検索の、初回検索だった場合
-    if (includeBase && path && !pagination?.pageToken) {
-      // 指定ディレクトリパスのノードが存在しない場合
-      if (!nodes.some(node => node.path === path)) {
-        // 検索結果なしで終了
-        return { list: [], total: 0 }
+      let pit: ElasticPointInTime | undefined
+      if (token) {
+        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
       }
-    }
 
-    // 次ページのページトークンを取得
-    let nextPageToken: string | undefined
-    const searchAfter = retrieveSearchAfter(response)
-    if (nodes.length === 0 || nodes.length < pageSize) {
-      nextPageToken = undefined
-      searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
-    } else {
-      if (searchAfter?.pitId && searchAfter?.sort) {
-        nextPageToken = encodePageToken(searchAfter.pitId, searchAfter.sort)
-      } else {
-        nextPageToken = undefined
+      let response: ElasticSearchAPIResponse<DocCoreStorageNode>
+      try {
+        response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>(
+          merge(searchParams, {
+            body: { ...pagingSegment, pit },
+          })
+        )
+      } catch (err) {
+        if (isPagingTimeout(err)) {
+          return PagingResult.empty({ isPagingTimeout: true })
+        } else {
+          throw err
+        }
       }
-    }
+      const nodes = this.toEntityNodes(response)
 
-    return {
-      nextPageToken,
-      list: nodes as NODE[],
-      total: response.body.hits.total.value,
+      const result: PagingAfterResult = {
+        list: nodes as NODE[],
+      }
+      return result
     }
   }
 
   /**
    * 指定されたディレクトリ配下のノード数を取得します。
-   * @param idToken
-   * @param input
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  getDescendantsCount(idToken: IdToken, input: StorageNodeGetUnderInput): Promise<number>
-
-  /**
-   * 指定されたディレクトリ配下のノード数を取得します。
-   * @param input
-   */
-  getDescendantsCount(input: StorageNodeGetUnderInput): Promise<number>
-
   async getDescendantsCount(arg1: IdToken | StorageNodeGetUnderInput, arg2?: StorageNodeGetUnderInput): Promise<number> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
@@ -733,48 +731,36 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたディレクトリ直下のノードを取得します。
-   * @param idToken
-   * @param input
-   * @param pagination
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   * @param arg3 paging
+   * @param arg4 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 input
+   * @param arg2 paging
+   * @param arg3 sourceIncludes
    */
-  async getChildren(
-    idToken: IdToken,
-    input: StorageNodeGetUnderInput,
-    pagination?: NextTokenPaginationInput,
-    sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>>
-
-  /**
-   * 指定されたディレクトリ直下のノードを取得します。
-   * @param input
-   * @param pagination
-   * @param sourceIncludes
-   */
-  async getChildren(
-    input: StorageNodeGetUnderInput,
-    pagination?: NextTokenPaginationInput,
-    sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>>
-
   async getChildren(
     arg1: IdToken | StorageNodeGetUnderInput,
-    arg2?: StorageNodeGetUnderInput | NextTokenPaginationInput,
-    arg3?: NextTokenPaginationInput | string[],
+    arg2?: StorageNodeGetUnderInput | PagingInput,
+    arg3?: PagingInput | string[],
     arg4?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>> {
+  ): Promise<PagingResult<NODE>> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
-    let pagination: NextTokenPaginationInput | undefined
+    let paging: PagingInput | undefined
     let sourceIncludes: string[] | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as StorageNodeGetUnderInput
-      pagination = arg3 as NextTokenPaginationInput | undefined
+      paging = arg3 as PagingInput | undefined
       sourceIncludes = arg4
     } else {
       input = arg1
-      pagination = arg2 as NextTokenPaginationInput | undefined
+      paging = arg2 as PagingInput | undefined
       sourceIncludes = arg3 as string[] | undefined
     }
 
@@ -787,7 +773,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
     if (input.id) {
       const node = await this.getNode({ id: input.id })
-      if (!node) return { list: [], total: 0 }
+      if (!node) return PagingResult.empty()
       path = node.path
     } else {
       CoreStorageService.validateNodePath(input.path)
@@ -798,32 +784,25 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       // 自ユーザーのノードを検索
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootFamily(idToken, path) || idToken.isAppAdmin) {
-        return this.getChildrenImpl({ path, includeBase }, pagination, sourceIncludes)
+        return this.getChildrenImpl({ path, includeBase }, paging, sourceIncludes)
       }
       // 他ユーザーのノードを検索
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.getChildrenImpl({ path, includeBase }, pagination, sourceIncludes)
+      return this.getChildrenImpl({ path, includeBase }, paging, sourceIncludes)
     }
   }
 
   protected async getChildrenImpl(
     { path, includeBase }: Omit<StorageNodeGetUnderInput, 'id'>,
-    pagination?: NextTokenPaginationInput,
+    paging?: PagingInput,
     sourceIncludes?: string[]
-  ): Promise<NextTokenPaginationResult<NODE>> {
+  ): Promise<PagingResult<NODE>> {
     // 指定されたパスのバリデーションチェック
     CoreStorageService.validateNodePath(path)
     path = removeBothEndsSlash(path)
-
-    const pageSize = pagination?.pageSize || CoreStorageService.PageSize
-
-    const pageToken = decodePageToken(pagination?.pageToken)
-    if (!pageToken.pit) {
-      pageToken.pit = await openPointInTime(this.client, CoreStorageSchema.IndexAlias)
-    }
 
     let query: any
 
@@ -856,71 +835,100 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
     }
 
-    // データベースからノードを取得
-    let response!: ElasticSearchAPIResponse<DocCoreStorageNode>
-    try {
-      response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>({
+    const searchParams = {
+      body: {
+        query,
+        sort: [{ path: 'asc', _id: 'asc' }],
+      },
+      version: true,
+      _source_excludes: this.mergeSourceExcludes(sourceIncludes),
+    }
+
+    //
+    // 初回検索の場合
+    //
+    if (PagingFirstInput.is(paging)) {
+      const pageSize = paging?.size ?? 100
+      const pageNum = paging?.num ?? 1
+
+      // 検索対象ノードを全て取得
+      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
+      const { hits, total: totalItems } = await searchAllHitsByQuery<DocCoreStorageNode>(this.client, pit, searchParams)
+      if (!hits.length) return PagingResult.empty()
+
+      // 指定ディレクトリを含む検索だった場合
+      // ※指定ディレクトリパスがバケット以外
+      if (includeBase && path) {
+        // 指定ディレクトリパスのノードが存在しない場合
+        if (!hits.some(hit => hit._source.path === path)) {
+          return PagingResult.empty() // 検索結果なしで終了
+        }
+      }
+
+      // ページングデータを生成
+      const { segments, totalPages } = generatePagingData(hits, pageSize)
+
+      // 1ページ分のノードを切り出し
+      const startIndex = (pageNum - 1) * pageSize
+      const endIndex = startIndex + pageSize
+      const list = this.toEntityNodes(hits).slice(startIndex, endIndex) as NODE[]
+
+      const result: PagingFirstResult<NODE> = {
+        list,
+        token: pit.id,
+        segments,
         size: pageSize,
-        version: true,
-        body: {
-          query,
-          sort: [{ path: 'asc' }, { _id: 'asc' }],
-          ...pageToken,
-        },
-        _source_excludes: this.mergeSourceExcludes(sourceIncludes),
-      })
-    } catch (err) {
-      if (isPaginationTimeout(err)) {
-        return { list: [], total: 0, isPaginationTimeout: true }
-      } else {
-        throw err
+        num: pageNum,
+        totalItems,
+        totalPages,
       }
+      return result
     }
-    const nodes = this.toEntityNodes(response)
+    //
+    // 2回目以降の検索の場合
+    //
+    else {
+      const { segment: pagingSegment, token } = paging
+      if (!pagingSegment) return PagingResult.empty()
 
-    // 指定ディレクトリを含む検索の、初回検索だった場合
-    if (includeBase && path && !pagination?.pageToken) {
-      // 指定ディレクトリパスのノードが存在しない場合
-      if (!nodes.some(node => node.path === path)) {
-        // 検索結果なしで終了
-        return { list: [], total: 0 }
+      let pit: ElasticPointInTime | undefined
+      if (token) {
+        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
       }
-    }
 
-    // 次ページのページトークンを取得
-    let nextPageToken: string | undefined
-    const searchAfter = retrieveSearchAfter(response)
-    if (nodes.length === 0 || nodes.length < pageSize) {
-      nextPageToken = undefined
-      searchAfter?.pitId && (await closePointInTime(this.client, searchAfter.pitId))
-    } else {
-      if (searchAfter?.pitId && searchAfter?.sort) {
-        nextPageToken = encodePageToken(searchAfter.pitId, searchAfter.sort)
-      } else {
-        nextPageToken = undefined
+      let response: ElasticSearchAPIResponse<DocCoreStorageNode>
+      try {
+        response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>(
+          merge(searchParams, {
+            body: { ...pagingSegment, pit },
+          })
+        )
+      } catch (err) {
+        if (isPagingTimeout(err)) {
+          return PagingResult.empty({ isPagingTimeout: true })
+        } else {
+          throw err
+        }
       }
-    }
+      const nodes = this.toEntityNodes(response)
 
-    return {
-      nextPageToken,
-      list: nodes as NODE[],
-      total: response.body.hits.total.value,
+      const result: PagingAfterResult = {
+        list: nodes as NODE[],
+      }
+      return result
     }
   }
 
   /**
    * 指定されたディレクトリ直下のノード数を取得します。
-   * @param idToken
-   * @param input
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  getChildrenCount(idToken: IdToken, input: StorageNodeGetUnderInput): Promise<number>
-
-  /**
-   * 指定されたディレクトリ直下のノード数を取得します。
-   * @param input
-   */
-  getChildrenCount(input: StorageNodeGetUnderInput): Promise<number>
-
   async getChildrenCount(arg1: IdToken | StorageNodeGetUnderInput, arg2?: StorageNodeGetUnderInput): Promise<number> {
     let idToken: IdToken | undefined
     let input: StorageNodeGetUnderInput
@@ -1010,19 +1018,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたノードとその階層構造を形成するノードを取得します。
-   * @param idToken
-   * @param nodePath_or_nodePaths
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 nodePath_or_nodePaths
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 nodePath_or_nodePaths
+   * @param arg2 sourceIncludes
    */
-  getHierarchicalNodes(idToken: IdToken, nodePath_or_nodePaths: string | string[], sourceIncludes?: string[]): Promise<NODE[]>
-
-  /**
-   * 指定されたノードとその階層構造を形成するノードを取得します。
-   * @param nodePath_or_nodePaths
-   * @param sourceIncludes
-   */
-  getHierarchicalNodes(nodePath_or_nodePaths: string | string[], sourceIncludes?: string[]): Promise<NODE[]>
-
   async getHierarchicalNodes(arg1: IdToken | string | string[], arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
     let idToken: IdToken | undefined
     let nodePath_or_nodePaths: string | string[]
@@ -1117,19 +1122,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
-   * @param idToken
-   * @param nodePath
-   * @param sourceIncludes
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 nodePath
+   * @param arg3 sourceIncludes
+   *
+   * オーバーロード(2)
+   * @param arg1 nodePath
+   * @param arg2 sourceIncludes
    */
-  getAncestorDirs(idToken: IdToken, nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
-
-  /**
-   * 指定されたノードの階層構造を形成する祖先ディレクトリを取得します。
-   * @param nodePath
-   * @param sourceIncludes
-   */
-  getAncestorDirs(nodePath: string, sourceIncludes?: string[]): Promise<NODE[]>
-
   async getAncestorDirs(arg1: IdToken | string, arg2?: string | string[], arg3?: string[]): Promise<NODE[]> {
     let result: NODE[]
     let idToken: IdToken | undefined
@@ -1149,18 +1151,13 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   }
 
   /**
-   * ディレクトリを作成します。
-   * @param idToken
-   * @param input
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  createDir(idToken: IdToken, input: CreateStorageDirInput): Promise<NODE>
-
-  /**
-   * @see createDir
-   * @param input
-   */
-  createDir(input: CreateStorageDirInput): Promise<NODE>
-
   async createDir(arg1: IdToken | CreateStorageDirInput, arg2?: CreateStorageDirInput): Promise<NODE> {
     let idToken: IdToken | undefined
     let input: CreateStorageDirInput
@@ -1258,17 +1255,13 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *   + 'home/photos'
    *   + 'home/docs'
    *
-   * @param idToken
-   * @param dirs
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 dirs
+   *
+   * オーバーロード(2)
+   * @param arg1 dirs
    */
-  createHierarchicalDirs(idToken: IdToken, dirs: string[]): Promise<NODE[]>
-
-  /**
-   * @see createHierarchicalDirs
-   * @param dirs
-   */
-  createHierarchicalDirs(dirs: string[]): Promise<NODE[]>
-
   async createHierarchicalDirs(arg1: IdToken | string[], arg2?: string[]): Promise<NODE[]> {
     let idToken: IdToken | undefined
     let dirs: string[]
@@ -1359,34 +1352,30 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *   + 'home/photos/family.png'
    *   + 'home/photos/children.png'
    *
-   * @param idToken
-   * @param key
-   * @param pagination
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 paging
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 paging
    */
-  removeDir(idToken: IdToken, key: StorageNodeGetKeyInput, pagination?: { pageSize?: number }): Promise<void>
-
-  /**
-   * @see removeDir
-   * @param key
-   * @param pagination
-   */
-  removeDir(key: StorageNodeGetKeyInput, pagination?: { pageSize?: number }): Promise<void>
-
   async removeDir(
     arg1: IdToken | StorageNodeGetKeyInput,
-    arg2?: StorageNodeGetKeyInput | { pageSize?: number },
-    arg3?: { pageSize?: number }
+    arg2?: StorageNodeGetKeyInput | { size?: number },
+    arg3?: { size?: number }
   ): Promise<void> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
-    let pagination: { pageSize?: number } | undefined
+    let paging: { size?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       key = arg2 as StorageNodeGetKeyInput
-      pagination = arg3
+      paging = arg3
     } else {
       key = arg1
-      pagination = arg2 as { pageSize?: number } | undefined
+      paging = arg2 as { size?: number } | undefined
     }
 
     const dirNode = await this.getNode(key)
@@ -1396,26 +1385,27 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       // 自ユーザーのノードに対する処理
       // ※アプリケーション管理者の場合、他ユーザーのノードであっても自身のものと仮定する
       if (CoreStorageService.isOwnUserRootFamily(idToken, dirNode.path) || idToken.isAppAdmin) {
-        return this.removeDirImpl(dirNode, pagination)
+        return this.removeDirImpl(dirNode, paging)
       }
       // 他ユーザーのノードに対する処理
       else {
         throw new AppError(`Not implemented yet.`)
       }
     } else {
-      return this.removeDirImpl(dirNode, pagination)
+      return this.removeDirImpl(dirNode, paging)
     }
   }
 
-  protected async removeDirImpl(dirNode: NODE, pagination?: { pageSize?: number }): Promise<void> {
+  protected async removeDirImpl(dirNode: NODE, paging?: { size?: number }): Promise<void> {
     const bucket = admin.storage().bucket()
-    const size = pagination?.pageSize ?? CoreStorageService.ChunkSize
+    const size = paging?.size ?? CoreStorageService.ChunkSize
     let nodes: { id: string; path: string }[]
-    const pageToken: ElasticPageToken = {
-      pit: await openPointInTime(this.client, CoreStorageSchema.IndexAlias),
+    let pagingSegment: ElasticPagingSegment = {
+      pit: await ElasticPointInTime.open(this.client, CoreStorageSchema.IndexAlias),
     }
 
-    do {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       // データベースから引数ディレクトリ配下のファイルノードを取得
       const response = await this.client.search<ElasticSearchResponse<{ path: string }>>({
         size,
@@ -1433,13 +1423,14 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
             },
           },
           sort: [{ path: 'asc' }],
-          ...pageToken,
+          ...pagingSegment,
         },
         _source: ['path'],
       })
       nodes = response.body.hits.hits.map(hit => {
         return { id: hit._id, path: hit._source.path }
       })
+      if (!nodes.length) break
 
       // ストレージからファイルを削除
       for (const chunk of splitArrayChunk(nodes, size)) {
@@ -1451,13 +1442,9 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
         )
       }
 
-      // 次のページングトークンを取得
-      if (nodes.length) {
-        const searchAfter = retrieveSearchAfter(response)!
-        pageToken.pit.id = searchAfter.pitId!
-        pageToken.search_after = searchAfter.sort!
-      }
-    } while (nodes.length)
+      // 次のページングデータを取得
+      nodes.length && (pagingSegment = ElasticPagingSegment.next(response))
+    }
 
     // データベースから引数ディレクトリと配下ノードを全て削除
     await this.client.deleteByQuery({
@@ -1475,17 +1462,14 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * ファイルを削除します。
-   * @param idToken
-   * @param key
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   *
+   * オーバーロード(2)
+   * @param arg1 key
    */
-  removeFile(idToken: IdToken, key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
-
-  /**
-   * ファイルを削除します。
-   * @param key
-   */
-  removeFile(key: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined>
-
   async removeFile(arg1: IdToken | StorageNodeGetKeyInput, arg2?: StorageNodeGetKeyInput): Promise<FILE_NODE | undefined> {
     let idToken: IdToken | undefined
     let key: StorageNodeGetKeyInput
@@ -1543,36 +1527,30 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *   + 'home/archives/photos/20190101'
    *   + 'home/archives/photos/20190101/family1.png'
    *
-   * 移動元ディレクトリまたは移動先ディレクトリがない場合は例外がスローされます。
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   * @param arg3 options
    *
-   * @param idToken
-   * @param input
-   * @param options
+   * オーバーロード(2)
+   * @param arg1 input
+   * @param arg2 options
    */
-  moveDir(idToken: IdToken, input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void>
-
-  /**
-   * @see moveDir
-   * @param input
-   * @param options
-   */
-  moveDir(input: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void>
-
   async moveDir(
     arg1: IdToken | MoveStorageDirInput,
-    arg2?: MoveStorageDirInput | { pageSize?: number },
-    arg3?: { pageSize?: number } | undefined
+    arg2?: MoveStorageDirInput | { size?: number },
+    arg3?: { size?: number } | undefined
   ): Promise<void> {
     let idToken: IdToken | undefined
     let input: MoveStorageDirInput
-    let options: { pageSize?: number } | undefined
+    let options: { size?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as MoveStorageDirInput
       options = arg3
     } else {
       input = arg1
-      options = arg2 as { pageSize?: number } | undefined
+      options = arg2 as { size?: number } | undefined
     }
 
     // 指定されたパスのバリデーションチェック
@@ -1607,14 +1585,14 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
   }
 
-  protected async moveDirImpl({ fromDir: fromDirPath, toDir: toDirPath }: MoveStorageDirInput, options?: { pageSize?: number }): Promise<void> {
+  protected async moveDirImpl({ fromDir: fromDirPath, toDir: toDirPath }: MoveStorageDirInput, options?: { size?: number }): Promise<void> {
     // 指定されたパスのバリデーションチェック
     fromDirPath = removeBothEndsSlash(fromDirPath)
     CoreStorageService.validateNodePath(fromDirPath)
     toDirPath = removeBothEndsSlash(toDirPath)
     CoreStorageService.validateNodePath(toDirPath)
 
-    const pageSize = options?.pageSize ?? 1000
+    const size = options?.size ?? 1000
 
     // 移動元と移動先が同じでないことを確認
     if (fromDirPath === toDirPath) {
@@ -1649,21 +1627,21 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
     }
 
-    let pagination: NextTokenPaginationResult<NODE> = { nextPageToken: undefined, list: [], total: 0 }
+    const pager = new Pager(this, this.getDescendantsImpl, { size })
     do {
-      pagination = await this.getDescendantsImpl(
-        { path: fromDirPath, includeBase: true },
-        {
-          pageSize,
-          pageToken: pagination.nextPageToken,
-        }
-      )
+      const targetNodes = pager.notStarted
+        ? await pager.start({
+            path: fromDirPath,
+            includeBase: true,
+          })
+        : await pager.next()
+      if (!targetNodes.length) break
 
       // 移動元ノードのパスを移動先のパスへ変換するための正規表現
       const reg = new RegExp(`^${escapeStringRegexp(fromDirPath)}`)
 
       // 以降の処理を行いやすくするためにデータ加工
-      const { toNodes, toFileNodes } = pagination.list.reduce(
+      const { toNodes, toFileNodes } = targetNodes.reduce(
         (result, node) => {
           const toNodePath = node.path.replace(reg, toDirPath)
           const toNode = {
@@ -1730,7 +1708,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
         },
         refresh: true,
       })
-    } while (pagination.nextPageToken)
+    } while (pager.hasNext())
   }
 
   /**
@@ -1746,17 +1724,13 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *
    * 移動元ファイルまたは移動先ディレクトリがない場合、移動は行われず、戻り値は何も返しません。
    *
-   * @param idToken
-   * @param input
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  moveFile(idToken: IdToken, input: MoveStorageFileInput): Promise<FILE_NODE>
-
-  /**
-   * @see moveFile
-   * @param input
-   */
-  moveFile(input: MoveStorageFileInput): Promise<FILE_NODE>
-
   async moveFile(arg1: IdToken | MoveStorageFileInput, arg2?: MoveStorageFileInput): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
     let input: MoveStorageFileInput
@@ -1859,34 +1833,26 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *
    * リネームするディレクトリがない場合、リネームは行われず、空配列が返されます。
    *
-   * @param idToken
-   * @param input
-   * @param options
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   * @param arg3 options
+   *
+   * オーバーロード(2)
+   * @param arg1 input
+   * @param arg2 options
    */
-  renameDir(idToken: IdToken, input: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void>
-
-  /**
-   * @see renameDir
-   * @param input
-   * @param options
-   */
-  renameDir(input: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void>
-
-  async renameDir(
-    arg1: IdToken | RenameStorageDirInput,
-    arg2?: RenameStorageDirInput | { pageSize?: number },
-    arg3?: { pageSize?: number }
-  ): Promise<void> {
+  async renameDir(arg1: IdToken | RenameStorageDirInput, arg2?: RenameStorageDirInput | { size?: number }, arg3?: { size?: number }): Promise<void> {
     let idToken: IdToken | undefined
     let input: RenameStorageDirInput
-    let options: { pageSize?: number } | undefined
+    let options: { size?: number } | undefined
     if (AuthHelper.isIdToken(arg1)) {
       idToken = arg1
       input = arg2 as RenameStorageDirInput
       options = arg3
     } else {
       input = arg1
-      options = arg2 as { pageSize?: number } | undefined
+      options = arg2 as { size?: number } | undefined
     }
 
     // 指定されたパスのバリデーションチェック
@@ -1919,7 +1885,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
   }
 
-  protected async renameDirImpl({ dir: fromDirPath, name: newName }: RenameStorageDirInput, options?: { pageSize?: number }): Promise<void> {
+  protected async renameDirImpl({ dir: fromDirPath, name: newName }: RenameStorageDirInput, options?: { size?: number }): Promise<void> {
     // 指定されたパスのバリデーションチェック
     fromDirPath = removeBothEndsSlash(fromDirPath)
     CoreStorageService.validateNodePath(fromDirPath)
@@ -1952,17 +1918,13 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    *
    * リネームするファイルがない場合、移動行われず、戻り値は何も返しません。
    *
-   * @param idToken
-   * @param input
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  renameFile(idToken: IdToken, input: RenameStorageFileInput): Promise<FILE_NODE>
-
-  /**
-   * @see renameFile
-   * @param input
-   */
-  renameFile(input: RenameStorageFileInput): Promise<FILE_NODE>
-
   async renameFile(arg1: IdToken | RenameStorageFileInput, arg2?: RenameStorageFileInput): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
     let input: RenameStorageFileInput
@@ -2096,19 +2058,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * ファイルに対して共有設定を行います。
-   * @param idToken
-   * @param key
-   * @param input
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 key
+   * @param arg3 input
+   *
+   * オーバーロード(2)
+   * @param arg1 key
+   * @param arg2 input
    */
-  setFileShareDetail(idToken: IdToken, key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<FILE_NODE>
-
-  /**
-   * @see setFileShareDetail
-   * @param key
-   * @param input
-   */
-  setFileShareDetail(key: StorageNodeGetKeyInput, input: StorageNodeShareDetailInput | null): Promise<FILE_NODE>
-
   async setFileShareDetail(
     arg1: IdToken | StorageNodeGetKeyInput,
     arg2: StorageNodeGetKeyInput | StorageNodeShareDetailInput | null,
@@ -2167,17 +2126,14 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * ファイルアップロードの後に必要な処理を行います。
-   * @param idToken
-   * @param input
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 input
+   *
+   * オーバーロード(2)
+   * @param arg1 input
    */
-  handleUploadedFile(idToken: IdToken, input: StorageNodeKeyInput): Promise<FILE_NODE>
-
-  /**
-   * @see handleUploadedFile
-   * @param input
-   */
-  handleUploadedFile(input: StorageNodeKeyInput): Promise<FILE_NODE>
-
   async handleUploadedFile(arg1: IdToken | StorageNodeKeyInput, arg2?: StorageNodeKeyInput): Promise<FILE_NODE> {
     let idToken: IdToken | undefined
     let input: StorageNodeKeyInput
@@ -2242,19 +2198,16 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
   /**
    * 署名付きのアップロードURLを取得します。
-   * @param idToken
-   * @param requestOrigin
-   * @param inputs
+   *
+   * オーバーロード(1)
+   * @param arg1 idToken
+   * @param arg2 requestOrigin
+   * @param arg3 inputs
+   *
+   * オーバーロード(2)
+   * @param arg1 requestOrigin
+   * @param arg2 inputs
    */
-  getSignedUploadUrls(idToken: IdToken, requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]>
-
-  /**
-   * @see getSignedUploadUrls
-   * @param requestOrigin
-   * @param inputs
-   */
-  getSignedUploadUrls(requestOrigin: string, inputs: SignedUploadUrlInput[]): Promise<string[]>
-
   async getSignedUploadUrls(arg1: IdToken | string, arg2: string | SignedUploadUrlInput[], arg3?: SignedUploadUrlInput[]): Promise<string[]> {
     let idToken: IdToken | undefined
     let requestOrigin: string
@@ -2412,9 +2365,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
    * 指定されたユーザーのディレクトリを削除します。
    * このメソッドはユーザーの削除時に使用されることを想定しています。
    * @param uid
-   * @param pageSize
    */
-  async deleteUserDir(uid: string, pageSize = CoreStorageService.PageSize): Promise<void> {
+  async deleteUserDir(uid: string): Promise<void> {
     const userRootPath = CoreStorageService.toUserRootPath({ uid })
     await this.removeDir({ path: userRootPath })
   }
@@ -2695,7 +2647,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     }
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
-    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.PageSize)) {
+    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.GCSChunk)) {
       await Promise.all(
         chunk.map(async uploadItem => {
           const fileNode = await this.saveGCSFileAndFileNode(
@@ -2734,7 +2686,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
 
     const uploadedFileDict: { [path: string]: FILE_NODE } = {}
     const bucket = admin.storage().bucket()
-    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.PageSize)) {
+    for (const chunk of splitArrayChunk(uploadList, CoreStorageService.GCSChunk)) {
       await Promise.all(
         chunk.map(async uploadItem => {
           const { localFilePath, fileNodePath } = uploadItem
@@ -2953,11 +2905,11 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   }
 
   /**
-   * データベースのレスポンスデータからノードリストを取得します。
-   * @param dbResponse
+   * データベースのドキュメントをノードに変換します。
+   * @param response_or_hits
    */
-  protected toEntityNodes<T extends DeepPartial<DocCoreStorageNode>>(dbResponse: ElasticSearchAPIResponse<T> | ElasticMSearchAPIResponse<T>) {
-    return CoreStorageSchema.toEntities(dbResponse)
+  protected toEntityNodes<DOC extends DeepPartial<DocCoreStorageNode>>(response_or_hits: ElasticSearchResponseOrHits<DOC>) {
+    return CoreStorageSchema.toEntities(response_or_hits)
   }
 
   /**
@@ -2976,13 +2928,11 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     dir = removeBothEndsSlash(dir)
 
     return {
-      id: '',
       nodeType: 'Dir',
       ...CoreStorageSchema.toPathData(dir),
       contentType: '',
       size: 0,
       share: {},
-      version: 0,
       createdAt: dayjs(0),
       updatedAt: dayjs(0),
     } as NODE
@@ -3046,9 +2996,9 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
   //
   //----------------------------------------------------------------------
 
-  static readonly PageSize = 50
-
   static readonly ChunkSize = 3000
+
+  static readonly GCSChunk = 50
 
   /**
    * ノードパスの検証を行います。

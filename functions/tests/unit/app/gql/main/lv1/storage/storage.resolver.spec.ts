@@ -32,7 +32,8 @@ import {
   GetArticleContentsNodeInput,
   GetUserArticleListInput,
   MoveStorageFileInput,
-  NextTokenPaginationResult,
+  PagingAfterResult,
+  PagingFirstResult,
   RenameArticleTypeDirInput,
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
@@ -52,6 +53,7 @@ import {
 import { LangCode, arrayToDict, pickProps } from 'web-base-lib'
 import { Test, TestingModule } from '@nestjs/testing'
 import Lv1GQLContainerModule from '../../../../../../../src/app/gql/main/lv1'
+import { compressToBase64 } from 'lz-string'
 import { config } from '../../../../../../../src/config'
 import dayjs = require('dayjs')
 import { initApp } from '../../../../../../../src/app/base'
@@ -272,31 +274,55 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageDescendants', () => {
     const gql = {
       query: `
-        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $pagination: NextTokenPaginationInput) {
-          storageDescendants(input: $input, pagination: $pagination) {
-            list {
-              ...${StorageNodeFieldsName}
+        query GetStorageDescendants($input: StorageNodeGetUnderInput!, $paging: PagingInput) {
+          storageDescendants(input: $input, paging: $paging) {
+            ... on PagingFirstResult {
+              list {
+                ... on StorageNode {
+                  ...${StorageNodeFieldsName}
+                }
+              }
+              token
+              segments
+              size
+              num
+              totalPages
+              totalItems
             }
-            nextPageToken
-            total
-            isPaginationTimeout
+            ... on PagingAfterResult {
+              list {
+                ... on StorageNode {
+                  ...${StorageNodeFieldsName}
+                }
+              }
+              isPagingTimeout
+            }
           }
         }
         ${StorageNodeFields}
       `,
     }
 
-    it('疎通確認', async () => {
+    it('疎通確認 - 初回', async () => {
       const d1 = h.newDirNode(`d1`)
       const d11 = h.newDirNode(`d1/d11`)
       const input = { path: d1.path, includeBase: true }
+      const original: PagingFirstResult = {
+        list: [d1, d11],
+        token: 'abcdefg',
+        segments: [{ size: 2 }],
+        size: 10,
+        num: 1,
+        totalPages: 1,
+        totalItems: 2,
+      }
 
       const getDescendants = td.replace(storageService, 'getDescendants')
-      td.when(getDescendants(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve(<NextTokenPaginationResult>{
-        list: [d1, d11],
-        nextPageToken: 'abcdefg',
-        total: 10,
-      })
+      td.when(
+        getDescendants(AppAdminUserToken(), input, {
+          size: original.size,
+        })
+      ).thenResolve(original)
 
       const response = await requestGQL(
         app,
@@ -304,16 +330,52 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            pagination: { pageSize: 3 },
+            paging: { size: original.size },
           },
         },
         { headers: AppAdminUserHeader() }
       )
+      const actual: PagingFirstResult = response.body.data.storageDescendants
 
-      expect(response.body.data.storageDescendants.list).toEqual(toGQLResponse([d1, d11]))
-      expect(response.body.data.storageDescendants.nextPageToken).toBe('abcdefg')
-      expect(response.body.data.storageDescendants.total).toBe(10)
-      expect(response.body.data.storageDescendants.isPaginationTimeout).toBeNull()
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
+      expect(actual.num).toBe(original.num)
+      expect(actual.size).toBe(original.size)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
+    })
+
+    it('疎通確認 - 2回目以降', async () => {
+      const d1 = h.newDirNode(`d1`)
+      const d11 = h.newDirNode(`d1/d11`)
+      const input = { path: d1.path, includeBase: true }
+      const original: PagingAfterResult = {
+        list: [d1, d11],
+      }
+
+      const getDescendants = td.replace(storageService, 'getDescendants')
+      td.when(
+        getDescendants(AppAdminUserToken(), input, {
+          size: 10,
+        })
+      ).thenResolve(original)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: {
+            input,
+            paging: { size: 10 },
+          },
+        },
+        { headers: AppAdminUserHeader() }
+      )
+      const actual: PagingAfterResult = response.body.data.storageDescendants
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.isPagingTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -324,7 +386,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          pagination: { pageSize: 3 },
+          paging: { size: 3 },
         },
       })
 
@@ -335,31 +397,55 @@ describe('Lv1 Storage Resolver', () => {
   describe('storageChildren', () => {
     const gql = {
       query: `
-        query GetStorageChildren($input: StorageNodeGetUnderInput!, $pagination: NextTokenPaginationInput) {
-          storageChildren(input: $input, pagination: $pagination) {
-            list {
-              ...${StorageNodeFieldsName}
+        query GetStorageChildren($input: StorageNodeGetUnderInput!, $paging: PagingInput) {
+          storageChildren(input: $input, paging: $paging) {
+            ... on PagingFirstResult {
+              list {
+                ... on StorageNode {
+                  ...${StorageNodeFieldsName}
+                }
+              }
+              token
+              segments
+              size
+              num
+              totalPages
+              totalItems
             }
-            nextPageToken
-            total
-            isPaginationTimeout
+            ... on PagingAfterResult {
+              list {
+                ... on StorageNode {
+                  ...${StorageNodeFieldsName}
+                }
+              }
+              isPagingTimeout
+            }
           }
         }
         ${StorageNodeFields}
       `,
     }
 
-    it('疎通確認', async () => {
+    it('疎通確認 - 初回', async () => {
       const d1 = h.newDirNode(`d1`)
       const d11 = h.newDirNode(`d1/d11`)
       const input = { path: d1.path, includeBase: true }
+      const original: PagingFirstResult = {
+        list: [d1, d11],
+        token: 'abcdefg',
+        segments: [{ size: 2 }],
+        size: 10,
+        num: 1,
+        totalPages: 1,
+        totalItems: 2,
+      }
 
       const getChildren = td.replace(storageService, 'getChildren')
-      td.when(getChildren(AppAdminUserToken(), input, { pageSize: 3 })).thenResolve({
-        list: [d1, d11],
-        nextPageToken: 'abcdefg',
-        total: 10,
-      })
+      td.when(
+        getChildren(AppAdminUserToken(), input, {
+          size: original.size,
+        })
+      ).thenResolve(original)
 
       const response = await requestGQL(
         app,
@@ -367,16 +453,52 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            pagination: { pageSize: 3 },
+            paging: { size: original.size },
           },
         },
         { headers: AppAdminUserHeader() }
       )
+      const actual: PagingFirstResult = response.body.data.storageChildren
 
-      expect(response.body.data.storageChildren.list).toEqual(toGQLResponse([d1, d11]))
-      expect(response.body.data.storageChildren.nextPageToken).toBe('abcdefg')
-      expect(response.body.data.storageChildren.total).toBe(10)
-      expect(response.body.data.storageChildren.isPaginationTimeout).toBeNull()
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
+      expect(actual.num).toBe(original.num)
+      expect(actual.size).toBe(original.size)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
+    })
+
+    it('疎通確認 - 2回目以降', async () => {
+      const d1 = h.newDirNode(`d1`)
+      const d11 = h.newDirNode(`d1/d11`)
+      const input = { path: d1.path, includeBase: true }
+      const original: PagingAfterResult = {
+        list: [d1, d11],
+      }
+
+      const getChildren = td.replace(storageService, 'getChildren')
+      td.when(
+        getChildren(AppAdminUserToken(), input, {
+          size: 10,
+        })
+      ).thenResolve(original)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: {
+            input,
+            paging: { size: 10 },
+          },
+        },
+        { headers: AppAdminUserHeader() }
+      )
+      const actual: PagingAfterResult = response.body.data.storageChildren
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.isPagingTimeout).toBeNull()
     })
 
     it('サインインしていない場合', async () => {
@@ -387,7 +509,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          pagination: { pageSize: 3 },
+          paging: { size: 3 },
         },
       })
 
@@ -1600,13 +1722,29 @@ describe('Lv1 Storage Resolver', () => {
   describe('userArticleList', () => {
     const gql = {
       query: `
-        query GetUserArticleList($input: GetUserArticleListInput!, $pagination: OffsetTokenPaginationInput) {
-          userArticleList(input: $input, pagination: $pagination) {
-            list {
-              ...${ArticleListItemFieldsName}
+        query GetUserArticleList($input: GetUserArticleListInput!, $paging: PagingInput) {
+          userArticleList(input: $input, paging: $paging) {
+            ... on PagingFirstResult {
+              list {
+                ... on ArticleListItem {
+                  ...${ArticleListItemFieldsName}
+                }
+              }
+              token
+              segments
+              size
+              num
+              totalPages
+              totalItems
             }
-            pageToken
-            total
+            ... on PagingAfterResult {
+              list {
+                ... on ArticleListItem {
+                  ...${ArticleListItemFieldsName}
+                }
+              }
+              isPagingTimeout
+            }
           }
         }
         ${ArticleListItemFields}
@@ -1659,58 +1797,123 @@ describe('Lv1 Storage Resolver', () => {
       }
     }
 
-    it('疎通確認', async () => {
+    it('疎通確認 - 初回', async () => {
       const { blog, art1 } = createTestData()
-
       const input: GetUserArticleListInput = {
         lang: 'ja',
         articleDirId: blog.id,
       }
-      const pagination = { pageSize: 3 }
-      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
-      td.when(getUserArticleList(StorageUserToken(), input, pagination)).thenResolve({
+      const original: PagingFirstResult = {
         list: [art1],
-        pageToken: 'abcdefg',
-        total: 10,
-      })
+        token: 'abcdefg',
+        segments: [{ size: 1 }],
+        size: 10,
+        num: 1,
+        totalPages: 1,
+        totalItems: 1,
+      }
+
+      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
+      td.when(
+        getUserArticleList(StorageUserToken(), input, {
+          size: original.size,
+        })
+      ).thenResolve(original)
 
       const response = await requestGQL(
         app,
         {
           ...gql,
-          variables: { input, pagination },
+          variables: {
+            input,
+            paging: { size: original.size },
+          },
         },
         { headers: StorageUserHeader() }
       )
+      const actual: PagingFirstResult = response.body.data.userArticleList
 
-      expect(response.body.data.userArticleList.list).toEqual(toGQLResponse([art1]))
-      expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
-      expect(response.body.data.userArticleList.total).toBe(10)
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
+      expect(actual.num).toBe(original.num)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
     })
 
-    it('サインインしていない場合', async () => {
+    it('疎通確認 - 2回目以降', async () => {
       const { blog, art1 } = createTestData()
-
       const input: GetUserArticleListInput = {
         lang: 'ja',
         articleDirId: blog.id,
       }
-      const pagination = { pageSize: 3 }
-      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
-      td.when(getUserArticleList(undefined, input, pagination)).thenResolve({
+      const original: PagingAfterResult = {
         list: [art1],
-        pageToken: 'abcdefg',
-        total: 10,
-      })
+      }
+
+      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
+      td.when(
+        getUserArticleList(StorageUserToken(), input, {
+          size: 10,
+        })
+      ).thenResolve(original)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: {
+            input,
+            paging: { size: 10 },
+          },
+        },
+        { headers: StorageUserHeader() }
+      )
+      const actual: PagingAfterResult = response.body.data.userArticleList
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.isPagingTimeout).toBeNull()
+    })
+
+    it('サインインしていない場合', async () => {
+      const { blog, art1 } = createTestData()
+      const input: GetUserArticleListInput = {
+        lang: 'ja',
+        articleDirId: blog.id,
+      }
+      const original: PagingFirstResult = {
+        list: [art1],
+        token: 'abcdefg',
+        segments: [{ size: 1 }],
+        size: 10,
+        num: 1,
+        totalPages: 1,
+        totalItems: 1,
+      }
+
+      const getUserArticleList = td.replace(storageService, 'getUserArticleList')
+      td.when(
+        getUserArticleList(undefined, input, {
+          size: original.size,
+        })
+      ).thenResolve(original)
 
       const response = await requestGQL(app, {
         ...gql,
-        variables: { input, pagination },
+        variables: {
+          input,
+          paging: { size: original.size },
+        },
       })
+      const actual: PagingFirstResult = response.body.data.userArticleList
 
-      expect(response.body.data.userArticleList.list).toEqual(toGQLResponse([art1]))
-      expect(response.body.data.userArticleList.pageToken).toBe('abcdefg')
-      expect(response.body.data.userArticleList.total).toBe(10)
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
+      expect(actual.num).toBe(original.num)
+      expect(actual.size).toBe(original.size)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
     })
   })
 

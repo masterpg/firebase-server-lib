@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, Mutation, Query, ResolveField, Resolver } from '@nestjs/graphql'
 import {
   ArticleListItem,
   ArticleTableOfContentsItem,
@@ -15,10 +15,9 @@ import {
   IdToken,
   MoveStorageDirInput,
   MoveStorageFileInput,
-  NextTokenPaginationInput,
-  NextTokenPaginationResult,
-  OffsetTokenPaginationInput,
-  OffsetTokenPaginationResult,
+  PagingFirstResult,
+  PagingInput,
+  PagingResult,
   RenameArticleTypeDirInput,
   RenameStorageDirInput,
   RenameStorageFileInput,
@@ -43,6 +42,25 @@ import { Inject, Module, UseGuards } from '@nestjs/common'
 //  Implementation
 //
 //========================================================================
+
+@Resolver('PagingResult')
+export class PagingResultResolver {
+  @ResolveField()
+  __resolveType(value: any) {
+    function isFirst(value: PagingResult): value is PagingFirstResult {
+      return Boolean((value as PagingFirstResult).segments)
+    }
+    return isFirst(value) ? 'PagingFirstResult' : 'PagingAfterResult'
+  }
+}
+
+@Resolver('PagingListItem')
+export class PagingListItemResolver {
+  @ResolveField()
+  __resolveType(value: any) {
+    return 'StorageNode'
+  }
+}
 
 //========================================================================
 //  Base
@@ -82,9 +100,10 @@ class StorageResolver {
   async storageDescendants(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: NextTokenPaginationInput
-  ): Promise<NextTokenPaginationResult<StorageNode>> {
-    return this.storageService.getDescendants(idToken, input, pagination)
+    @Args('paging') paging?: PagingInput
+  ): Promise<PagingResult<StorageNode>> {
+    const result = await this.storageService.getDescendants(idToken, input, paging)
+    return PagingResult.toResponse(result, 'StorageNode')
   }
 
   @Query()
@@ -92,9 +111,10 @@ class StorageResolver {
   async storageChildren(
     @UserArg() idToken: IdToken,
     @Args('input') input: StorageNodeGetUnderInput,
-    @Args('pagination') pagination?: NextTokenPaginationInput
-  ): Promise<NextTokenPaginationResult<StorageNode>> {
-    return this.storageService.getChildren(idToken, input, pagination)
+    @Args('paging') paging?: PagingInput
+  ): Promise<PagingResult<StorageNode>> {
+    const result = await this.storageService.getChildren(idToken, input, paging)
+    return PagingResult.toResponse(result, 'StorageNode')
   }
 
   @Query()
@@ -254,9 +274,10 @@ class StorageResolver {
   async userArticleList(
     @UserArg() idToken: IdToken | undefined,
     @Args('input') input: GetUserArticleListInput,
-    @Args('pagination') pagination?: OffsetTokenPaginationInput
-  ): Promise<OffsetTokenPaginationResult<ArticleListItem>> {
-    return this.storageService.getUserArticleList(idToken, input, pagination)
+    @Args('paging') paging?: PagingInput
+  ): Promise<PagingResult<ArticleListItem>> {
+    const result = await this.storageService.getUserArticleList(idToken, input, paging)
+    return PagingResult.toResponse(result, 'ArticleListItem')
   }
 
   @Query()

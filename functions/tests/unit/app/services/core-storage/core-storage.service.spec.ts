@@ -16,6 +16,8 @@ import {
   CoreStorageSchema,
   DevUtilsServiceDI,
   DevUtilsServiceModule,
+  Pager,
+  PagingFirstResult,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeShareDetail,
@@ -26,8 +28,8 @@ import {
   UserHelper,
 } from '../../../../../src/app/services'
 import { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule, StorageFileNode } from '../../../../../src/app/services/core-storage'
+import { ElasticPointInTime, newElasticClient } from '../../../../../src/app/services/base/elastic'
 import { Test, TestingModule } from '@nestjs/testing'
-import { closePointInTime, decodePageToken, newElasticClient } from '../../../../../src/app/base/elastic'
 import { pickProps, removeBothEndsSlash } from 'web-base-lib'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../../../../src/config'
@@ -579,6 +581,30 @@ describe('CoreStorageService', () => {
       return { users, userRoot, d1 }
     }
 
+    it('ベーシックケース', async () => {
+      const [d1, d11, d111, d12, d121] = await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12/d121`])
+
+      const pager = new Pager(storageService, storageService.getDescendants, { size: 3 })
+
+      const actual1 = await pager.start({ id: d1.id, includeBase: true })
+      expect(pager.token).toBeDefined()
+      expect(pager.num).toBe(1)
+      expect(pager.totalPages).toBe(2)
+      expect(pager.totalItems).toBe(5)
+      expect(pager.hasNext()).toBeTruthy()
+      expect(actual1.length).toBe(3)
+      expect(actual1[0]).toEqual(d1)
+      expect(actual1[1]).toEqual(d11)
+      expect(actual1[2]).toEqual(d111)
+
+      const actual2 = await pager.next()
+      expect(pager.num).toBe(2)
+      expect(pager.hasNext()).toBeFalsy()
+      expect(actual2.length).toBe(2)
+      expect(actual2[0]).toEqual(d12)
+      expect(actual2[1]).toEqual(d121)
+    })
+
     it('ベーシックケース - ID検索', async () => {
       const [d1, d11, d111, d12] = await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12`])
       await storageService.uploadDataItems([
@@ -599,16 +625,15 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      const actual = await storageService.getDescendants({ id: d11.id, includeBase: true })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ id: d11.id, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(4)
-      expect(actual.list[0].path).toBe(`d1/d11`)
-      expect(actual.list[1].path).toBe(`d1/d11/d111`)
-      expect(actual.list[2].path).toBe(`d1/d11/d111/fileB.txt`)
-      expect(actual.list[3].path).toBe(`d1/d11/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(4)
+      expect(actual[0].path).toBe(`d1/d11`)
+      expect(actual[1].path).toBe(`d1/d11/d111`)
+      expect(actual[2].path).toBe(`d1/d11/d111/fileB.txt`)
+      expect(actual[3].path).toBe(`d1/d11/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('ベーシックケース - パス検索', async () => {
@@ -631,25 +656,22 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      const actual = await storageService.getDescendants({ path: `d1/d11`, includeBase: true })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ path: `d1/d11`, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(4)
-      expect(actual.list[0].path).toBe(`d1/d11`)
-      expect(actual.list[1].path).toBe(`d1/d11/d111`)
-      expect(actual.list[2].path).toBe(`d1/d11/d111/fileB.txt`)
-      expect(actual.list[3].path).toBe(`d1/d11/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(4)
+      expect(actual[0].path).toBe(`d1/d11`)
+      expect(actual[1].path).toBe(`d1/d11/d111`)
+      expect(actual[2].path).toBe(`d1/d11/d111/fileB.txt`)
+      expect(actual[3].path).toBe(`d1/d11/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('ベースノードを含める場合', async () => {
       const [d1, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
 
-      const actual = await storageService.getDescendants({ id: d1.id, includeBase: true })
+      const actual = (await storageService.getDescendants({ id: d1.id, includeBase: true })) as PagingFirstResult
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
       expect(actual.list.length).toBe(2)
       expect(actual.list[0].path).toBe(`d1`)
       expect(actual.list[1].path).toBe(`d1/d11`)
@@ -659,13 +681,12 @@ describe('CoreStorageService', () => {
     it('ベースノードを含めない場合', async () => {
       const [d1, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
 
-      const actual = await storageService.getDescendants({ id: d1.id, includeBase: false })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ id: d1.id, includeBase: false })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(1)
-      expect(actual.list[0].path).toBe(`d1/d11`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`d1/d11`)
+      await h.existsNodes(actual)
     })
 
     it('バケット配下の検索', async () => {
@@ -684,15 +705,14 @@ describe('CoreStorageService', () => {
       ])
 
       // バケット直下の検索
-      const actual = await storageService.getDescendants({ path: `` })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ path: `` })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/fileA.txt`)
-      expect(actual.list[2].path).toBe(`fileB.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(3)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      expect(actual[2].path).toBe(`fileB.txt`)
+      await h.existsNodes(actual)
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
@@ -711,14 +731,13 @@ describe('CoreStorageService', () => {
       ])
 
       // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
-      const actual = await storageService.getDescendants({ path: `d1`, includeBase: true })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ path: `d1`, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('対象ディレクトリにファイルパスを指定した場合', async () => {
@@ -732,10 +751,10 @@ describe('CoreStorageService', () => {
       ])
 
       // dirPathにファイルパスを指定
-      const actual = await storageService.getDescendants({ path: 'd1/fileA.txt', includeBase: true })
+      const pager = new Pager(storageService, storageService.getDescendants)
+      const actual = await pager.start({ path: 'd1/fileA.txt', includeBase: true })
 
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(0)
+      expect(actual.length).toBe(0)
     })
 
     it('ページングがタイムアウトした場合', async () => {
@@ -751,28 +770,24 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 強制的にページングをタイムアウトさせる
-      const pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3 })
-      const pageToken = decodePageToken(pagination.nextPageToken)
-      await closePointInTime(storageService.client, pageToken.pit.id)
+      const pager = new Pager(storageService, storageService.getDescendants)
+      await pager.start({ path: `d1`, includeBase: true })
+      await ElasticPointInTime.close(storageService.client, pager.token!)
 
       // ページングがタイムアウトした状態で検索実行
-      const actual = await storageService.getDescendants(
-        { path: `d1`, includeBase: true },
-        {
-          pageSize: 3,
-          pageToken: pagination.nextPageToken,
-        }
-      )
+      const actual = await pager.fetch(1)
 
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(0)
-      expect(actual.isPaginationTimeout).toBeTruthy()
+      // 取得ノードは0件
+      expect(actual.length).toBe(0)
+      // ページングがタイムアウトしていたことを検証
+      expect(pager.isPagingTimeout).toBeTruthy()
     })
 
     it('IDとパス両方指定しなかった場合', async () => {
       let actual!: AppError
       try {
-        await storageService.getDescendants({})
+        const pager = new Pager(storageService, storageService.getDescendants)
+        await pager.start({})
       } catch (err) {
         actual = err
       }
@@ -805,15 +820,11 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 大量データを想定して検索を行う
-      const actual: CoreStorageNode[] = []
-      let pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3 })
-      actual.push(...pagination.list)
-      while (pagination.nextPageToken) {
-        pagination = await storageService.getDescendants({ path: `d1`, includeBase: true }, { pageSize: 3, pageToken: pagination.nextPageToken })
-        actual.push(...pagination.list)
-      }
+      const actual = await new Pager(storageService, storageService.getDescendants, { size: 3 }).fetchAll({
+        path: `d1`,
+        includeBase: true,
+      })
 
-      CoreStorageService.sortNodes(actual)
       expect(actual.length).toBe(14)
       expect(actual[0].path).toBe(`d1`)
       expect(actual[1].path).toBe(`d1/d11`)
@@ -876,17 +887,19 @@ describe('CoreStorageService', () => {
       it('自ユーザーのディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getDescendants(StorageUserToken(), { path: storage.tmp.path })
+        const pager = new Pager(storageService, storageService.getDescendants)
+        const actual = await pager.start({ path: storage.tmp.path })
 
-        expect(actual.list[0].path).toBe(storage.fileA.path)
+        expect(actual[0].path).toBe(storage.fileA.path)
       })
 
       it('自ユーザーのルートディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getDescendants(StorageUserToken(), { path: storage.root.path, includeBase: true })
+        const pager = new Pager(storageService, storageService.getDescendants)
+        const actual = await pager.start(StorageUserToken(), { path: storage.root.path, includeBase: true })
 
-        expect(actual.list[0].path).toBe(storage.root.path)
+        expect(actual[0].path).toBe(storage.root.path)
       })
 
       it('他ユーザーのディレクトリを検索', async () => {
@@ -894,7 +907,8 @@ describe('CoreStorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.getDescendants(GeneralUserToken(), { path: storage.tmp.path })
+          const pager = new Pager(storageService, storageService.getDescendants)
+          await pager.start(GeneralUserToken(), { path: storage.tmp.path })
         } catch (err) {
           actual = err
         }
@@ -907,7 +921,8 @@ describe('CoreStorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.getDescendants(GeneralUserToken(), { path: app.tmp.path })
+          const pager = new Pager(storageService, storageService.getDescendants)
+          await pager.start(GeneralUserToken(), { path: app.tmp.path })
         } catch (err) {
           actual = err
         }
@@ -918,9 +933,10 @@ describe('CoreStorageService', () => {
       it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getDescendants(AppAdminUserToken(), { path: storage.tmp.path })
+        const pager = new Pager(storageService, storageService.getDescendants)
+        const actual = await pager.start(AppAdminUserToken(), { path: storage.tmp.path })
 
-        expect(actual.list[0].path).toBe(storage.fileA.path)
+        expect(actual[0].path).toBe(storage.fileA.path)
       })
     })
   })
@@ -1167,6 +1183,30 @@ describe('CoreStorageService', () => {
       return { users, userRoot, d1 }
     }
 
+    it('ベーシックケース', async () => {
+      const [d1, d11, d12, d13, d14] = await storageService.createHierarchicalDirs([`d1/d11`, `d1/d12`, `d1/d13`, `d1/d14`])
+
+      const pager = new Pager(storageService, storageService.getChildren, { size: 3 })
+
+      const actual1 = await pager.start({ id: d1.id, includeBase: true })
+      expect(pager.token).toBeDefined()
+      expect(pager.num).toBe(1)
+      expect(pager.totalPages).toBe(2)
+      expect(pager.totalItems).toBe(5)
+      expect(pager.hasNext()).toBeTruthy()
+      expect(actual1.length).toBe(3)
+      expect(actual1[0]).toEqual(d1)
+      expect(actual1[1]).toEqual(d11)
+      expect(actual1[2]).toEqual(d12)
+
+      const actual2 = await pager.next()
+      expect(pager.num).toBe(2)
+      expect(pager.hasNext()).toBeFalsy()
+      expect(actual2.length).toBe(2)
+      expect(actual2[0]).toEqual(d13)
+      expect(actual2[1]).toEqual(d14)
+    })
+
     it('ベーシックケース - ID検索', async () => {
       const [d1, d11, d2] = await storageService.createHierarchicalDirs([`d1/d11`, `d2`])
       await storageService.uploadDataItems([
@@ -1187,15 +1227,14 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      const actual = await storageService.getChildren({ id: d1.id, includeBase: true })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ id: d1.id, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/d11`)
-      expect(actual.list[2].path).toBe(`d1/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(3)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d1/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('ベーシックケース - パス検索', async () => {
@@ -1218,40 +1257,37 @@ describe('CoreStorageService', () => {
         },
       ])
 
-      const actual = await storageService.getChildren({ path: `d1`, includeBase: true })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ path: `d1`, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(3)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/d11`)
-      expect(actual.list[2].path).toBe(`d1/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(3)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      expect(actual[2].path).toBe(`d1/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('ベースノードを含める場合', async () => {
       const [d1, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
 
-      const actual = await storageService.getChildren({ id: d1.id, includeBase: true })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ id: d1.id, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/d11`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/d11`)
+      await h.existsNodes(actual)
     })
 
     it('ベースノードを含めない場合', async () => {
       const [d1, d11] = await storageService.createHierarchicalDirs([`d1/d11`])
 
-      const actual = await storageService.getChildren({ id: d1.id, includeBase: false })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ id: d1.id, includeBase: false })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(1)
-      expect(actual.list[0].path).toBe(`d1/d11`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(1)
+      expect(actual[0].path).toBe(`d1/d11`)
+      await h.existsNodes(actual)
     })
 
     it('バケット直下の検索', async () => {
@@ -1270,14 +1306,13 @@ describe('CoreStorageService', () => {
       ])
 
       // バケット直下の検索
-      const actual = await storageService.getChildren({ path: `` })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ path: `` })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`fileB.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`fileB.txt`)
+      await h.existsNodes(actual)
     })
 
     it('検索対象のディレクトリ名に付け加える形のディレクトリが存在する場合', async () => {
@@ -1296,14 +1331,13 @@ describe('CoreStorageService', () => {
       ])
 
       // 'd1'を検索した場合、'd1-bk'は含まれないことを検証
-      const actual = await storageService.getChildren({ path: `d1`, includeBase: true })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ path: `d1`, includeBase: true })
 
-      CoreStorageService.sortNodes(actual.list)
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(2)
-      expect(actual.list[0].path).toBe(`d1`)
-      expect(actual.list[1].path).toBe(`d1/fileA.txt`)
-      await h.existsNodes(actual.list)
+      expect(actual.length).toBe(2)
+      expect(actual[0].path).toBe(`d1`)
+      expect(actual[1].path).toBe(`d1/fileA.txt`)
+      await h.existsNodes(actual)
     })
 
     it('対象ディレクトリにファイルパスを指定した場合', async () => {
@@ -1317,10 +1351,10 @@ describe('CoreStorageService', () => {
       ])
 
       // dirPathにファイルパスを指定
-      const actual = await storageService.getChildren({ path: 'd1/fileA.txt', includeBase: true })
+      const pager = new Pager(storageService, storageService.getChildren)
+      const actual = await pager.start({ path: 'd1/fileA.txt', includeBase: true })
 
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(0)
+      expect(actual.length).toBe(0)
     })
 
     it('ページングがタイムアウトした場合', async () => {
@@ -1336,28 +1370,24 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 強制的にページングをタイムアウトさせる
-      const pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3 })
-      const pageToken = decodePageToken(pagination.nextPageToken)
-      await closePointInTime(storageService.client, pageToken.pit.id)
+      const pager = new Pager(storageService, storageService.getChildren)
+      await pager.start({ path: `d1`, includeBase: true })
+      await ElasticPointInTime.close(storageService.client, pager.token!)
 
       // ページングがタイムアウトした状態で検索実行
-      const actual = await storageService.getChildren(
-        { path: `d1`, includeBase: true },
-        {
-          pageSize: 3,
-          pageToken: pagination.nextPageToken,
-        }
-      )
+      const actual = await pager.fetch(1)
 
-      expect(actual.nextPageToken).toBeUndefined()
-      expect(actual.list.length).toBe(0)
-      expect(actual.isPaginationTimeout).toBeTruthy()
+      // 取得ノードは0件
+      expect(actual.length).toBe(0)
+      // ページングがタイムアウトしていたことを検証
+      expect(pager.isPagingTimeout).toBeTruthy()
     })
 
     it('IDとパス両方指定しなかった場合', async () => {
       let actual!: AppError
       try {
-        await storageService.getChildren({})
+        const pager = new Pager(storageService, storageService.getChildren)
+        await pager.start({})
       } catch (err) {
         actual = err
       }
@@ -1388,15 +1418,11 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 大量データを想定して検索を行う
-      const actual: CoreStorageNode[] = []
-      let pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3 })
-      actual.push(...pagination.list)
-      while (pagination.nextPageToken) {
-        pagination = await storageService.getChildren({ path: `d1`, includeBase: true }, { pageSize: 3, pageToken: pagination.nextPageToken })
-        actual.push(...pagination.list)
-      }
+      const actual = await new Pager(storageService, storageService.getChildren, { size: 3 }).fetchAll({
+        path: `d1`,
+        includeBase: true,
+      })
 
-      CoreStorageService.sortNodes(actual)
       expect(actual.length).toBe(12)
       expect(actual[0].path).toBe(`d1`)
       expect(actual[1].path).toBe(`d1/d11`)
@@ -1457,17 +1483,19 @@ describe('CoreStorageService', () => {
       it('自ユーザーのディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getChildren(StorageUserToken(), { path: storage.tmp.path })
+        const pager = new Pager(storageService, storageService.getChildren)
+        const actual = await pager.start(StorageUserToken(), { path: storage.tmp.path })
 
-        expect(actual.list[0].path).toBe(storage.fileA.path)
+        expect(actual[0].path).toBe(storage.fileA.path)
       })
 
       it('自ユーザーのルートディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getChildren(StorageUserToken(), { path: storage.root.path, includeBase: true })
+        const pager = new Pager(storageService, storageService.getChildren)
+        const actual = await pager.start(StorageUserToken(), { path: storage.root.path, includeBase: true })
 
-        expect(actual.list[0].path).toBe(storage.root.path)
+        expect(actual[0].path).toBe(storage.root.path)
       })
 
       it('他ユーザーのディレクトリを検索', async () => {
@@ -1475,7 +1503,8 @@ describe('CoreStorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.getChildren(GeneralUserToken(), { path: storage.tmp.path })
+          const pager = new Pager(storageService, storageService.getChildren)
+          await pager.start(GeneralUserToken(), { path: storage.tmp.path })
         } catch (err) {
           actual = err
         }
@@ -1488,7 +1517,8 @@ describe('CoreStorageService', () => {
 
         let actual!: AppError
         try {
-          await storageService.getChildren(GeneralUserToken(), { path: app.tmp.path })
+          const pager = new Pager(storageService, storageService.getChildren)
+          await pager.start(GeneralUserToken(), { path: app.tmp.path })
         } catch (err) {
           actual = err
         }
@@ -1499,9 +1529,10 @@ describe('CoreStorageService', () => {
       it('アプリケーション管理者で他ユーザーのディレクトリを検索', async () => {
         const { storage } = await setupUserNodes()
 
-        const actual = await storageService.getChildren(AppAdminUserToken(), { path: storage.tmp.path })
+        const pager = new Pager(storageService, storageService.getChildren)
+        const actual = await pager.start(AppAdminUserToken(), { path: storage.tmp.path })
 
-        expect(actual.list[0].path).toBe(storage.fileA.path)
+        expect(actual[0].path).toBe(storage.fileA.path)
       })
     })
   })
@@ -1934,6 +1965,19 @@ describe('CoreStorageService', () => {
         let actual!: AppError
         try {
           await storageService.getHierarchicalNodes(GeneralUserToken(), storage.tmp.path)
+        } catch (err) {
+          actual = err
+        }
+
+        expect(actual.cause).toBe(`Not implemented yet.`)
+      })
+
+      it('他ユーザーのディレクトリを含んで検索', async () => {
+        const { storage, general } = await setupUserNodes()
+
+        let actual!: AppError
+        try {
+          await storageService.getHierarchicalNodes(GeneralUserToken(), [general.tmp.path, storage.tmp.path])
         } catch (err) {
           actual = err
         }
@@ -2420,7 +2464,7 @@ describe('CoreStorageService', () => {
 
       // テスト対象実行
       // 大量データを想定して分割で削除を行う
-      await storageService.removeDir({ path: `d1` }, { pageSize: 3 })
+      await storageService.removeDir({ path: `d1` }, { size: 3 })
 
       // 削除後の対象ノードを検証
       const removedNodes = await storageService.getDescendants({ path: `d1`, includeBase: true })
@@ -3118,7 +3162,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割で移動を行う
       // 'd1'を'dA/d1'へ移動
-      await storageService.moveDir({ fromDir: `d1`, toDir: `dA/d1` }, { pageSize: 3 })
+      await storageService.moveDir({ fromDir: `d1`, toDir: `dA/d1` }, { size: 3 })
 
       // 移動後の'dA'＋配下ノードを検証
       const { list: toNodes } = await storageService.getDescendants({ path: `dA/d1`, includeBase: true })
@@ -3771,7 +3815,7 @@ describe('CoreStorageService', () => {
 
       // 大量データを想定して分割でリネームを行う
       // 'dA'を'dB'へリネーム
-      await storageService.renameDir({ dir: `dA`, name: `dB` }, { pageSize: 3 })
+      await storageService.renameDir({ dir: `dA`, name: `dB` }, { size: 3 })
 
       // 移動後の'dB'＋配下ノードを検証
       const renamedNodes = (await storageService.getDescendants({ path: `dB`, includeBase: true })).list
@@ -5898,7 +5942,7 @@ describe('CoreStorageService', () => {
       const user1Nodes = (await storageService.getDescendants({ path: user1Dir, includeBase: true })).list
 
       // ユーザーディレクトリを削除
-      await storageService.deleteUserDir('user1', 3)
+      await storageService.deleteUserDir('user1')
 
       // ユーザーノードが全て削除されたことを検証
       await h.notExistsNodes(user1Nodes)
@@ -7169,7 +7213,7 @@ describe('大量データのテスト', () => {
       await storageService.createHierarchicalDirs([ToDirPath])
 
       const start = performance.now()
-      await storageService.moveDir({ fromDir: FromDirPath, toDir: ToDirPath }, { pageSize: 100 })
+      await storageService.moveDir({ fromDir: FromDirPath, toDir: ToDirPath }, { size: 100 })
       const end = performance.now()
       console.log(`removeDir: ${(end - start) / 1000}s`)
 

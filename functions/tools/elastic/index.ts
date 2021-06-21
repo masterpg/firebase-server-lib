@@ -1,7 +1,7 @@
 import * as chalk from 'chalk'
 import * as inquirer from 'inquirer'
 import { ArticleTagSchema, StorageSchema, UserSchema } from '../../src/app/services'
-import { newElasticClient } from '../../src/app/base/elastic'
+import { newElasticClient } from '../../src/app/services/base/elastic'
 import { program } from 'commander'
 
 inquirer.registerPrompt('checkbox-plus', require('inquirer-checkbox-plus-prompt'))
