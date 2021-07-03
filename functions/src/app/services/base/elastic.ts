@@ -1,12 +1,8 @@
-import * as RequestParams from '@elastic/elasticsearch/api/requestParams'
 import { ApiResponse, Client as ElasticClient } from '@elastic/elasticsearch'
 import { AppError } from '../../base'
 import { Context } from '@elastic/elasticsearch/lib/Transport'
-import { DeepPartial } from 'web-base-lib'
-import { PagingSegment } from './types'
 import { ResponseError } from '@elastic/elasticsearch/lib/errors'
 import { config } from '../../../config'
-import { merge } from 'lodash'
 
 //========================================================================
 //
@@ -14,7 +10,10 @@ import { merge } from 'lodash'
 //
 //========================================================================
 
-const ElasticChunkSize = 3000
+namespace ElasticConstants {
+  export const MaxResultSize = 10000
+  export const ChunkSize = 3000
+}
 
 namespace BaseIndexDefinitions {
   /**
@@ -489,14 +488,19 @@ type ElasticBulkAPIResponse<DOC = any> = ApiResponse<Record<string, any>, Contex
 
 type ElasticSearchResponseOrHits<DOC> = ElasticSearchAPIResponse<DOC> | ElasticMSearchAPIResponse<DOC> | ElasticSearchHit<DOC>[]
 
-interface ElasticPagingSegment {
+interface ElasticPageSegment {
   pit?: ElasticPointInTime
   search_after?: string[]
+  from?: number
 }
 
 interface ElasticPointInTime {
   id: string
   keep_alive: string
+}
+
+namespace ElasticPointInTime {
+  export const DefaultKeepAlive = '1m'
 }
 
 //========================================================================
@@ -509,43 +513,17 @@ function newElasticClient(): ElasticClient {
   return new ElasticClient(config.elastic)
 }
 
-namespace ElasticPointInTime {
-  export const DefaultKeepAlive = '1m'
-
-  export async function open(client: ElasticClient, index: string, keepAlive?: string): Promise<ElasticPointInTime> {
-    const keep_alive = keepAlive || DefaultKeepAlive
-    const res = await client.openPointInTime({ index, keep_alive })
-    return { id: res.body.id, keep_alive }
-  }
-
-  export async function close(client: ElasticClient, pitId: string): Promise<boolean> {
-    const res = await client.closePointInTime({
-      body: { id: pitId },
-    })
-    return res.body.succeeded
-  }
+async function openPointInTime(client: ElasticClient, index: string, keepAlive?: string): Promise<ElasticPointInTime> {
+  const keep_alive = keepAlive || ElasticPointInTime.DefaultKeepAlive
+  const res = await client.openPointInTime({ index, keep_alive })
+  return { id: res.body.id, keep_alive }
 }
 
-namespace ElasticPagingSegment {
-  export function next<T>(response: ElasticSearchAPIResponse<T>): ElasticPagingSegment {
-    const length = response.body.hits.hits.length
-    if (!length) return {}
-
-    let pit: ElasticPointInTime | undefined
-    if (response.body.pit_id) {
-      pit = { id: response.body.pit_id, keep_alive: ElasticPointInTime.DefaultKeepAlive }
-    }
-
-    let search_after: any[] | undefined
-    if (response.body.hits.hits.length) {
-      const lastHit = response.body.hits.hits[length - 1]
-      if (lastHit.sort) {
-        search_after = lastHit.sort
-      }
-    }
-
-    return { pit, search_after }
-  }
+async function closePointInTime(client: ElasticClient, pitId: string): Promise<boolean> {
+  const res = await client.closePointInTime({
+    body: { id: pitId },
+  })
+  return res.body.succeeded
 }
 
 function isPagingTimeout(error: ResponseError): boolean {
@@ -559,147 +537,6 @@ function validateBulkResponse(response: ElasticBulkAPIResponse): void {
   throw new AppError('Elasticsearch Bulk API Error', response.body.items)
 }
 
-/**
- * Elasticsearchから取得したドキュメントにページ付けを行い、ページングデータを生成します。
- * @param hits
- * @param size 1ページ内のアイテム数を指定します。
- * @param validate
- */
-function generatePagingData<DOC extends DeepPartial<DOC>>(
-  hits: ElasticSearchHit<DOC>[],
-  size: number,
-  validate?: (hit: ElasticSearchHit<DOC>) => boolean
-): {
-  segments: PagingSegment[]
-  hits: ElasticSearchHit<DOC>[]
-  totalPages: number
-} {
-  const result: {
-    token?: string
-    segments: PagingSegment[]
-    hits: ElasticSearchHit<DOC>[]
-    totalPages: number
-  } = { token: undefined, segments: [], hits: [], totalPages: 0 }
-
-  if (!hits.length) return result
-
-  let excludeCount = 0
-  let chunkCount = 0
-  const segments: PagingSegment[] = []
-
-  // 1ページ目のページデータに仮データを設定
-  segments.push({ size: 0 })
-
-  for (let n = 1; n <= hits.length; n++) {
-    const hit = hits[n - 1]
-
-    // 呼び出し元でドキュメントに対する検証を行い、
-    // 結果がfalseの場合そのドキュメントは除外する
-    const validated = validate ? validate(hit) : true
-    if (validated) {
-      result.hits.push(hit)
-      chunkCount++
-    } else {
-      excludeCount++
-    }
-
-    // チャンクカウンタが指定チャンクサイズに到達する、
-    // またはカウンタ「n」が最後尾のドキュメントに到達した場合
-    if (size === chunkCount || n === hits.length) {
-      // チャンクカウンタが1件でもカウントされている場合
-      if (chunkCount) {
-        // 1つ前のページングセグメントにsizeを設定
-        segments[segments.length - 1].size = chunkCount + excludeCount
-      }
-      // 最後尾のドキュメントではない場合
-      if (n < hits.length) {
-        // 新しいページングセグメントを追加 ※この段階ではsizeは仮設定
-        segments.push({ size: 0, search_after: hit.sort })
-      }
-      // 次のチャンクにむけてカウンタをクリア
-      chunkCount = 0
-      excludeCount = 0
-    }
-  }
-
-  // 対象データがなかった場合
-  if (segments[0].size === 0) {
-    segments.splice(0, 1)
-    return result
-  }
-  // 対象データがあった場合
-  else {
-    result.segments = segments
-    result.totalPages = segments.length
-    return result
-  }
-}
-
-/**
- * Elasticsearchの`max_result_window`で設定されている件数を超えて、
- * 指定されたクエリに該当するドキュメントを全て取得します。
- * @param client
- * @param index_or_pit
- * @param params
- * @param options
- */
-async function searchAllHitsByQuery<DOC = any>(
-  client: ElasticClient,
-  index_or_pit: string | ElasticPointInTime,
-  params: RequestParams.Search,
-  options?: { size?: number; chunkSize?: number }
-): Promise<{ hits: ElasticSearchHit<DOC>[]; total: number }> {
-  const ChunkSize = options?.chunkSize ?? ElasticChunkSize
-  const MaxLoopCount = Math.ceil(1000000 / ChunkSize)
-  let loopCount = 0
-
-  const result: ElasticSearchHit<DOC>[] = []
-  let total = 0
-  let hits: ElasticSearchHit<DOC>[] = []
-  let size = ChunkSize
-
-  let segment: ElasticPagingSegment
-  if (typeof index_or_pit === 'string') {
-    segment = { pit: await ElasticPointInTime.open(client, index_or_pit) }
-  } else {
-    segment = { pit: index_or_pit }
-  }
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const response = await client.search<ElasticSearchResponse<DOC>>(
-      merge({}, params, {
-        size,
-        track_total_hits: true,
-        body: {
-          ...segment,
-        },
-      })
-    )
-    total = response.body.hits.total.value
-    hits = response.body.hits.hits
-    if (!hits.length) break
-
-    result.push(...hits)
-
-    // 次のページングセグメントを取得
-    segment = ElasticPagingSegment.next(response)
-
-    // ドキュメントの取得上限が指定されている場合
-    if (typeof options?.size === 'number') {
-      // 次回のドキュメント取得で、総取得件数が取得上限を上回る場合
-      if (result.length + ChunkSize > options.size) {
-        size = options.size - result.length
-      }
-    }
-
-    loopCount++
-    if (MaxLoopCount < loopCount) break
-  }
-
-  return { hits: result, total }
-}
-
 //========================================================================
 //
 //  Exports
@@ -710,18 +547,19 @@ export {
   BaseIndexDefinitions,
   ElasticBulkAPIResponse,
   ElasticClient,
+  ElasticConstants,
   ElasticMSearchAPIResponse,
   ElasticMSearchResponse,
-  ElasticPagingSegment,
+  ElasticPageSegment,
   ElasticPointInTime,
-  ElasticSearchResponseOrHits,
   ElasticSearchAPIResponse,
   ElasticSearchHit,
   ElasticSearchResponse,
+  ElasticSearchResponseOrHits,
   SearchBody,
-  generatePagingData,
+  closePointInTime,
   isPagingTimeout,
   newElasticClient,
-  searchAllHitsByQuery,
+  openPointInTime,
   validateBulkResponse,
 }

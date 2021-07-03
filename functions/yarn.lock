@@ -9536,7 +9536,7 @@ wcwidth@^1.0.1:
 
 "web-base-lib@https://github.com/masterpg/web-base-lib.git":
   version "0.0.46"
-  resolved "https://github.com/masterpg/web-base-lib.git#1252016c2c0ecc6b94946e7f06404f52a95ad5ce"
+  resolved "https://github.com/masterpg/web-base-lib.git#26544ea47d8545f43243aeae89bbffb77d46745d"
   dependencies:
     dayjs "^1.10.4"
 

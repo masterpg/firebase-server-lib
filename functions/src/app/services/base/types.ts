@@ -21,35 +21,37 @@ type JSONObject = any
 type PagingInput = PagingFirstInput | PagingAfterInput
 
 interface PagingFirstInput {
-  size?: number
-  num?: number
+  pageSize?: number
+  pageNum?: number
 }
 
 interface PagingAfterInput {
-  segment: PagingSegment
+  pageSegment: PageSegment
   token?: string
-}
-
-interface PagingSegment {
-  size: number
-  search_after?: any[]
 }
 
 type PagingResult<T = any> = PagingFirstResult<T> | PagingAfterResult<T>
 
 interface PagingFirstResult<T = any> {
   list: T[]
-  token?: string
-  segments: PagingSegment[]
-  size: number
-  num: number
+  token: string
+  pageSegments: PageSegment[]
+  pageSize: number
+  pageNum: number
   totalPages: number
   totalItems: number
+  maxItems: number
 }
 
 interface PagingAfterResult<T = any> {
   list: T[]
   isPagingTimeout?: boolean
+}
+
+interface PageSegment {
+  size: number
+  from?: number
+  search_after?: any[]
 }
 
 //--------------------------------------------------
@@ -457,8 +459,8 @@ namespace PagingAfterInput {
   export function is(value?: PagingFirstInput | PagingAfterInput): value is PagingAfterInput {
     if (!value) return false
 
-    const segment = (value as PagingAfterInput).segment
-    if (segment && typeof segment.size === 'number') {
+    const pageSegment = (value as PagingAfterInput).pageSegment
+    if (pageSegment && typeof pageSegment.size === 'number') {
       return true
     }
     return false
@@ -467,20 +469,30 @@ namespace PagingAfterInput {
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 namespace PagingResult {
-  export function empty<T = any>(data?: DeepPartial<Omit<PagingResult, 'list' | 'segments'>>): PagingResult<T> {
-    return { list: [], token: undefined, size: 0, num: 0, segments: [], totalItems: 0, totalPages: 0, ...data }
+  export function empty<T = any>(data?: DeepPartial<Omit<PagingResult, 'list' | 'pageSegments'>>): PagingResult<T> {
+    return {
+      list: [],
+      token: undefined,
+      pageSize: 0,
+      pageNum: 0,
+      pageSegments: [],
+      maxItems: 0,
+      totalItems: 0,
+      totalPages: 0,
+      ...data,
+    }
   }
 
   export function toResponse<T = any>(value: PagingResult<T>, listItemType: 'StorageNode' | 'ArticleListItem'): PagingResult<T> {
     function isFirst(value: PagingResult<T>): value is PagingFirstResult {
-      return Boolean((value as PagingFirstResult).segments)
+      return Boolean((value as PagingFirstResult).pageSegments)
     }
 
     const result = Object.assign({}, value)
 
     if (isFirst(value)) {
       ;(result as any).__typename = 'PagingFirstResult'
-      ;(result as any).segments = compressToBase64(JSON.stringify(value.segments))
+      ;(result as any).pageSegments = compressToBase64(JSON.stringify(value.pageSegments))
     } else {
       ;(result as any).__typename = 'PagingAfterResult'
     }
@@ -500,7 +512,7 @@ namespace PagingResult {
 //========================================================================
 
 export { JSON, JSONObject }
-export { PagingSegment, PagingAfterInput, PagingAfterResult, PagingFirstInput, PagingFirstResult, PagingInput, PagingResult }
+export { PageSegment, PagingAfterInput, PagingAfterResult, PagingFirstInput, PagingFirstResult, PagingInput, PagingResult }
 export { AuthStatus, UserClaims, UserIdClaims, IdToken, AuthRoleType }
 export { User, UserInput, SetUserInfoResult, SetUserInfoResultStatus, AuthDataResult }
 export {

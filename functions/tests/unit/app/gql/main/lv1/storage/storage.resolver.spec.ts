@@ -283,11 +283,12 @@ describe('Lv1 Storage Resolver', () => {
                 }
               }
               token
-              segments
-              size
-              num
+              pageSegments
+              pageSize
+              pageNum
               totalPages
               totalItems
+              maxItems
             }
             ... on PagingAfterResult {
               list {
@@ -310,17 +311,18 @@ describe('Lv1 Storage Resolver', () => {
       const original: PagingFirstResult = {
         list: [d1, d11],
         token: 'abcdefg',
-        segments: [{ size: 2 }],
-        size: 10,
-        num: 1,
+        pageSegments: [{ size: 2 }],
+        pageSize: 10,
+        pageNum: 1,
         totalPages: 1,
         totalItems: 2,
+        maxItems: 2,
       }
 
       const getDescendants = td.replace(storageService, 'getDescendants')
       td.when(
         getDescendants(AppAdminUserToken(), input, {
-          size: original.size,
+          pageSize: original.pageSize,
         })
       ).thenResolve(original)
 
@@ -330,7 +332,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: original.size },
+            paging: { pageSize: original.pageSize },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -339,9 +341,9 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(actual.list).toEqual(toGQLResponse(original.list))
       expect(actual.token).toBe(original.token)
-      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
-      expect(actual.num).toBe(original.num)
-      expect(actual.size).toBe(original.size)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
       expect(actual.totalPages).toBe(original.totalPages)
       expect(actual.totalItems).toBe(original.totalItems)
     })
@@ -357,7 +359,7 @@ describe('Lv1 Storage Resolver', () => {
       const getDescendants = td.replace(storageService, 'getDescendants')
       td.when(
         getDescendants(AppAdminUserToken(), input, {
-          size: 10,
+          pageSize: 10,
         })
       ).thenResolve(original)
 
@@ -367,7 +369,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: 10 },
+            paging: { pageSize: 10 },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -386,7 +388,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          paging: { size: 3 },
+          paging: { pageSize: 3 },
         },
       })
 
@@ -406,11 +408,12 @@ describe('Lv1 Storage Resolver', () => {
                 }
               }
               token
-              segments
-              size
-              num
+              pageSegments
+              pageSize
+              pageNum
               totalPages
               totalItems
+              maxItems
             }
             ... on PagingAfterResult {
               list {
@@ -433,17 +436,18 @@ describe('Lv1 Storage Resolver', () => {
       const original: PagingFirstResult = {
         list: [d1, d11],
         token: 'abcdefg',
-        segments: [{ size: 2 }],
-        size: 10,
-        num: 1,
+        pageSegments: [{ size: 2 }],
+        pageSize: 10,
+        pageNum: 1,
         totalPages: 1,
         totalItems: 2,
+        maxItems: 2,
       }
 
       const getChildren = td.replace(storageService, 'getChildren')
       td.when(
         getChildren(AppAdminUserToken(), input, {
-          size: original.size,
+          pageSize: original.pageSize,
         })
       ).thenResolve(original)
 
@@ -453,7 +457,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: original.size },
+            paging: { pageSize: original.pageSize },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -462,9 +466,9 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(actual.list).toEqual(toGQLResponse(original.list))
       expect(actual.token).toBe(original.token)
-      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
-      expect(actual.num).toBe(original.num)
-      expect(actual.size).toBe(original.size)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
       expect(actual.totalPages).toBe(original.totalPages)
       expect(actual.totalItems).toBe(original.totalItems)
     })
@@ -480,7 +484,7 @@ describe('Lv1 Storage Resolver', () => {
       const getChildren = td.replace(storageService, 'getChildren')
       td.when(
         getChildren(AppAdminUserToken(), input, {
-          size: 10,
+          pageSize: 10,
         })
       ).thenResolve(original)
 
@@ -490,7 +494,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: 10 },
+            paging: { pageSize: 10 },
           },
         },
         { headers: AppAdminUserHeader() }
@@ -509,7 +513,7 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          paging: { size: 3 },
+          paging: { pageSize: 3 },
         },
       })
 
@@ -1731,11 +1735,12 @@ describe('Lv1 Storage Resolver', () => {
                 }
               }
               token
-              segments
-              size
-              num
+              pageSegments
+              pageSize
+              pageNum
               totalPages
               totalItems
+              maxItems
             }
             ... on PagingAfterResult {
               list {
@@ -1806,17 +1811,18 @@ describe('Lv1 Storage Resolver', () => {
       const original: PagingFirstResult = {
         list: [art1],
         token: 'abcdefg',
-        segments: [{ size: 1 }],
-        size: 10,
-        num: 1,
+        pageSegments: [{ size: 1 }],
+        pageSize: 10,
+        pageNum: 1,
         totalPages: 1,
         totalItems: 1,
+        maxItems: 1,
       }
 
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(
         getUserArticleList(StorageUserToken(), input, {
-          size: original.size,
+          pageSize: original.pageSize,
         })
       ).thenResolve(original)
 
@@ -1826,7 +1832,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: original.size },
+            paging: { pageSize: original.pageSize },
           },
         },
         { headers: StorageUserHeader() }
@@ -1835,10 +1841,12 @@ describe('Lv1 Storage Resolver', () => {
 
       expect(actual.list).toEqual(toGQLResponse(original.list))
       expect(actual.token).toBe(original.token)
-      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
-      expect(actual.num).toBe(original.num)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
       expect(actual.totalPages).toBe(original.totalPages)
       expect(actual.totalItems).toBe(original.totalItems)
+      expect(actual.maxItems).toBe(original.maxItems)
     })
 
     it('疎通確認 - 2回目以降', async () => {
@@ -1854,7 +1862,7 @@ describe('Lv1 Storage Resolver', () => {
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(
         getUserArticleList(StorageUserToken(), input, {
-          size: 10,
+          pageSize: 10,
         })
       ).thenResolve(original)
 
@@ -1864,7 +1872,7 @@ describe('Lv1 Storage Resolver', () => {
           ...gql,
           variables: {
             input,
-            paging: { size: 10 },
+            paging: { pageSize: 10 },
           },
         },
         { headers: StorageUserHeader() }
@@ -1884,17 +1892,18 @@ describe('Lv1 Storage Resolver', () => {
       const original: PagingFirstResult = {
         list: [art1],
         token: 'abcdefg',
-        segments: [{ size: 1 }],
-        size: 10,
-        num: 1,
+        pageSegments: [{ size: 1 }],
+        pageSize: 10,
+        pageNum: 1,
         totalPages: 1,
         totalItems: 1,
+        maxItems: 1,
       }
 
       const getUserArticleList = td.replace(storageService, 'getUserArticleList')
       td.when(
         getUserArticleList(undefined, input, {
-          size: original.size,
+          pageSize: original.pageSize,
         })
       ).thenResolve(original)
 
@@ -1902,16 +1911,16 @@ describe('Lv1 Storage Resolver', () => {
         ...gql,
         variables: {
           input,
-          paging: { size: original.size },
+          paging: { pageSize: original.pageSize },
         },
       })
       const actual: PagingFirstResult = response.body.data.userArticleList
 
       expect(actual.list).toEqual(toGQLResponse(original.list))
       expect(actual.token).toBe(original.token)
-      expect(actual.segments).toEqual(compressToBase64(JSON.stringify(original.segments)))
-      expect(actual.num).toBe(original.num)
-      expect(actual.size).toBe(original.size)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
       expect(actual.totalPages).toBe(original.totalPages)
       expect(actual.totalItems).toBe(original.totalItems)
     })

@@ -35,6 +35,11 @@ import {
   StorageNodeGetKeyInput,
   StorageNodeShareDetailInput,
   StorageSchema,
+  createPagingData,
+  executeAfterPagingQuery,
+  executeAllDocumentsQuery,
+  extractPageItems,
+  getNextExceedPageSegment,
 } from './base'
 import { AuthServiceDI, AuthServiceModule } from './base-services/auth'
 import {
@@ -51,17 +56,7 @@ import {
   splitHierarchicalPaths,
   summarizeFamilyPaths,
 } from 'web-base-lib'
-import {
-  ElasticMSearchResponse,
-  ElasticPagingSegment,
-  ElasticPointInTime,
-  ElasticSearchAPIResponse,
-  ElasticSearchResponse,
-  ElasticSearchResponseOrHits,
-  generatePagingData,
-  isPagingTimeout,
-  searchAllHitsByQuery,
-} from './base/elastic'
+import { ElasticMSearchResponse, ElasticPageSegment, ElasticSearchResponse, ElasticSearchResponseOrHits, openPointInTime } from './base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { AppError } from '../base'
@@ -931,21 +926,22 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     // 初回検索の場合
     //
     if (PagingFirstInput.is(paging)) {
-      const pageSize = paging?.size ?? 20
-      const pageNum = paging?.num ?? 1
+      const pageSize = paging?.pageSize ?? 20
+      const pageNum = paging?.pageNum ?? 1
+      const exceed = false
 
       // 指定された記事系ディレクトリ直下にある記事を全て取得
-      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
-      const { hits, total } = await searchAllHitsByQuery<DocStorageNode>(this.client, pit, searchParams)
+      const { hits, total, pit } = await executeAllDocumentsQuery<DocStorageNode>(this.client, StorageSchema.IndexAlias, searchParams, exceed)
       if (!hits.length) return PagingResult.empty()
 
       // 取得された記事の階層を取得
+      const nodes = this.toEntityNodes(hits)
       const ancestorNodes = await this.getHierarchicalNodes(articleDir.path)
-      const hierarchicalNodes = [...ancestorNodes, ...this.toEntityNodes(hits)]
+      const hierarchicalNodes = [...ancestorNodes, ...nodes]
 
       // ページングデータを生成
       let totalItems = total
-      const { segments, totalPages, hits: validatedHits } = generatePagingData(hits, pageSize, hit => {
+      const { pageSegments, totalPages, filteredHits } = createPagingData(hits, pageSize, exceed, hit => {
         const node = this.toEntityNodes([hit])[0]
         const validated = _validateArticle(node, hierarchicalNodes)
         !validated && totalItems--
@@ -953,19 +949,18 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       })
 
       // 1ページ分のノードを切り出し
-      const startIndex = (pageNum - 1) * pageSize
-      const endIndex = startIndex + pageSize
-      const nodes = this.toEntityNodes(validatedHits).slice(startIndex, endIndex)
-      const list = _toArticleList(nodes, hierarchicalNodes)
+      const pageNodes = this.toEntityNodes(extractPageItems(filteredHits, pageNum, pageSize))
+      const list = _toArticleList(pageNodes, hierarchicalNodes)
 
       const result: PagingFirstResult<ArticleListItem> = {
         list,
         token: pit.id,
-        segments,
-        size: pageSize,
-        num: pageNum,
+        pageSegments,
+        pageSize,
+        pageNum,
         totalItems,
         totalPages,
+        maxItems: filteredHits.length,
       }
       return result
     }
@@ -973,29 +968,9 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     // 2回目以降の検索の場合
     //
     else {
-      const { segment: pagingSegment, token } = paging
-      if (!pagingSegment) return PagingResult.empty()
+      const { response, isPagingTimeout } = await executeAfterPagingQuery<DocStorageNode>(this.client, paging, searchParams)
+      if (!response || isPagingTimeout) return PagingResult.empty({ isPagingTimeout })
 
-      let pit: ElasticPointInTime | undefined
-      if (token) {
-        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
-      }
-
-      // 指定されたページ番号の記事を取得
-      let response: ElasticSearchAPIResponse<DocStorageNode>
-      try {
-        response = await this.client.search<ElasticSearchResponse<DocStorageNode>>(
-          merge(searchParams, {
-            body: { ...pagingSegment, pit },
-          })
-        )
-      } catch (err) {
-        if (isPagingTimeout(err)) {
-          return { ...PagingResult.empty(), isPagingTimeout: true }
-        } else {
-          throw err
-        }
-      }
       let articleNodes = this.toEntityNodes(response)
 
       // 取得された記事の階層を取得
@@ -1872,8 +1847,8 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       return []
     }
 
-    let pagingSegment: ElasticPagingSegment = {
-      pit: await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias),
+    let pageSegment: ElasticPageSegment = {
+      pit: await openPointInTime(this.client, StorageSchema.IndexAlias),
     }
 
     let nodes: { article?: ArticleDetail }[]
@@ -1904,7 +1879,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
             },
           },
           sort: [{ path: 'asc' }],
-          ...pagingSegment,
+          ...pageSegment,
           _source: LangCodes.map(lang => `article.src.${lang}.srcTags`),
         },
       })
@@ -1921,7 +1896,7 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       tagNames = Array.from(new Set(tagNames))
 
       // 次のページングデータを取得
-      nodes.length && (pagingSegment = ElasticPagingSegment.next(response))
+      pageSegment = getNextExceedPageSegment(response)
 
       loopCount++
       if (MaxLoopCount < loopCount) break

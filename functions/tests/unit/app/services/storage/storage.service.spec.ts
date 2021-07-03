@@ -3380,16 +3380,17 @@ describe('StorageService', () => {
       // 対象バンドルを公開設定
       await storageService.setDirShareDetail(js, { isPublic: true })
 
-      const pager = new Pager(storageService, storageService.getUserArticleList, { size: 3 })
+      const pager = new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 })
 
       const actual1 = await pager.start(
         GeneralUserToken(), // 他ユーザーを指定
         { lang: 'ja', articleDirId: js.id }
       )
       expect(pager.token).toBeDefined()
-      expect(pager.num).toBe(1)
+      expect(pager.pageNum).toBe(1)
       expect(pager.totalPages).toBe(2)
       expect(pager.totalItems).toBe(4)
+      expect(pager.maxItems).toBe(4)
       expect(pager.hasNext()).toBeTruthy()
       expect(actual1.length).toBe(3)
       expect(actual1[0].label).toEqual('art08')
@@ -3397,7 +3398,7 @@ describe('StorageService', () => {
       expect(actual1[2].label).toEqual('art04')
 
       const actual2 = await pager.next()
-      expect(pager.num).toBe(2)
+      expect(pager.pageNum).toBe(2)
       expect(pager.hasNext()).toBeFalsy()
       expect(actual2.length).toBe(1)
       expect(actual2[0].label).toEqual('art03')
@@ -3605,6 +3606,44 @@ describe('StorageService', () => {
       await verifyArticleListItem('ja', actual[0], ts_class)
     })
 
+    it('取得上限より記事リストが多い場合', async () => {
+      // この設定により、1回の検索で取得上限の記事リストが取得されることになる
+      const elastic = require('../../../../../src/app/services/base/elastic')
+      // - Elasticsearchの取得上限を変更
+      td.replace(elastic.ElasticConstants, 'MaxResultSize', 5)
+      // - 1回の検索で取得する件数を変更
+      td.replace(elastic.ElasticConstants, 'ChunkSize', 5)
+
+      // 記事リストを10件作成
+      await setupArticleTypeNodes('ja')
+      await setupArticleNodes(10)
+
+      // 記事リストを1ページ3件で分割する
+      const pager = new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 })
+
+      const actual1 = await pager.start(
+        StorageUserToken(), // 自ユーザーを指定
+        { lang: 'ja', articleDirId: js.id }
+      )
+      expect(pager.token).toBeDefined()
+      expect(pager.pageNum).toBe(1)
+      expect(pager.totalPages).toBe(2)
+      expect(pager.totalItems).toBe(10) // 実際に存在する記事リストは10件
+      expect(pager.maxItems).toBe(5) // 取得可能な記事リストは5件
+      expect(pager.hasNext()).toBeTruthy()
+      expect(actual1.length).toBe(3) // 1ページ目で3件取得
+      expect(actual1[0].label).toEqual('art10')
+      expect(actual1[1].label).toEqual('art09')
+      expect(actual1[2].label).toEqual('art08')
+
+      const actual2 = await pager.next()
+      expect(pager.pageNum).toBe(2)
+      expect(pager.hasNext()).toBeFalsy()
+      expect(actual2.length).toBe(2) // 2ページ目で2件取得
+      expect(actual2[0].label).toEqual('art07')
+      expect(actual2[1].label).toEqual('art06')
+    })
+
     it('日本語', async () => {
       await setupArticleTypeNodes('ja')
 
@@ -3639,7 +3678,7 @@ describe('StorageService', () => {
         await setupArticleNodes(10)
 
         // 大量データを想定して検索を行う
-        const actual = await new Pager(storageService, storageService.getUserArticleList, { size: 3 }).fetchAll(
+        const actual = await new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 }).fetchAll(
           StorageUserToken(), // 自ユーザーを指定
           { lang: 'ja', articleDirId: js.id }
         )
@@ -3666,7 +3705,7 @@ describe('StorageService', () => {
         await storageService.setDirShareDetail(js, { isPublic: true })
 
         // 大量データを想定して検索を行う
-        const actual = await new Pager(storageService, storageService.getUserArticleList, { size: 3 }).fetchAll(
+        const actual = await new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 }).fetchAll(
           GeneralUserToken(), // 他ユーザーを指定
           { lang: 'ja', articleDirId: js.id }
         )

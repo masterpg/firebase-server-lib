@@ -32,7 +32,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageDescendants",
-  "query": "query GetStorageDescendants($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageDescendants(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
+  "query": "query GetStorageDescendants($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageDescendants(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token pageSegments pageSize pageNum totalPages totalItems, maxItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "path": "test-files/d1",
@@ -50,7 +50,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetStorageChildren",
-  "query": "query GetStorageChildren($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageChildren(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
+  "query": "query GetStorageChildren($input: StorageNodeGetUnderInput!, $paging: PagingInput) { storageChildren(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on StorageNode { id path } } token pageSegments pageSize pageNum totalPages totalItems, maxItems } ... on PagingAfterResult { list { ... on StorageNode { id path } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "path": "test-files/d1",
@@ -429,7 +429,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
 
 {
   "operationName": "GetUserArticleList",
-  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $paging: PagingInput) { userArticleList(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on ArticleListItem { id label } } token segments size num totalPages totalItems } ... on PagingAfterResult { list { ... on ArticleListItem { id label } } isPagingTimeout } } }",
+  "query": "query GetUserArticleList($input: GetUserArticleListInput!, $paging: PagingInput) { userArticleList(input: $input, paging: $paging) { ... on PagingFirstResult { list { ... on ArticleListItem { id label } } token pageSegments pageSize pageNum totalPages totalItems, maxItems } ... on PagingAfterResult { list { ... on ArticleListItem { id label } } isPagingTimeout } } }",
   "variables": {
     "input": {
       "lang": "ja",

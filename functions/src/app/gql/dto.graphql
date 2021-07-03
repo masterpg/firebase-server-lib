@@ -1,7 +1,16 @@
+enum LangCode {
+  ja
+  en
+}
+
+#--------------------------------------------------
+#  Paging
+#--------------------------------------------------
+
 input PagingInput {
-  size: Int
-  num: Int
-  segment: JSONObject
+  pageSize: Int
+  pageNum: Int
+  pageSegment: JSONObject
   token: String
 }
 
@@ -12,21 +21,17 @@ union PagingListItem = StorageNode | ArticleListItem
 type PagingFirstResult {
   list: [PagingListItem!]!
   token: String
-  segments: String!
-  size: Int!
-  num: Int!
+  pageSegments: String!
+  pageSize: Int!
+  pageNum: Int!
   totalPages: Int!
   totalItems: Int!
+  maxItems: Int!
 }
 
 type PagingAfterResult {
   list: [PagingListItem!]!
   isPagingTimeout: Boolean
-}
-
-enum LangCode {
-  ja
-  en
 }
 
 #--------------------------------------------------

@@ -48,7 +48,7 @@ export class PagingResultResolver {
   @ResolveField()
   __resolveType(value: any) {
     function isFirst(value: PagingResult): value is PagingFirstResult {
-      return Boolean((value as PagingFirstResult).segments)
+      return Boolean((value as PagingFirstResult).pageSegments)
     }
     return isFirst(value) ? 'PagingFirstResult' : 'PagingAfterResult'
   }

@@ -28,8 +28,8 @@ import {
   UserHelper,
 } from '../../../../../src/app/services'
 import { CoreStorageService, CoreStorageServiceDI, CoreStorageServiceModule, StorageFileNode } from '../../../../../src/app/services/core-storage'
-import { ElasticPointInTime, newElasticClient } from '../../../../../src/app/services/base/elastic'
 import { Test, TestingModule } from '@nestjs/testing'
+import { closePointInTime, newElasticClient } from '../../../../../src/app/services/base/elastic'
 import { pickProps, removeBothEndsSlash } from 'web-base-lib'
 import { HttpException } from '@nestjs/common/exceptions/http.exception'
 import { config } from '../../../../../src/config'
@@ -584,13 +584,14 @@ describe('CoreStorageService', () => {
     it('ベーシックケース', async () => {
       const [d1, d11, d111, d12, d121] = await storageService.createHierarchicalDirs([`d1/d11/d111`, `d1/d12/d121`])
 
-      const pager = new Pager(storageService, storageService.getDescendants, { size: 3 })
+      const pager = new Pager(storageService, storageService.getDescendants, { pageSize: 3 })
 
       const actual1 = await pager.start({ id: d1.id, includeBase: true })
       expect(pager.token).toBeDefined()
-      expect(pager.num).toBe(1)
+      expect(pager.pageNum).toBe(1)
       expect(pager.totalPages).toBe(2)
       expect(pager.totalItems).toBe(5)
+      expect(pager.maxItems).toBe(5)
       expect(pager.hasNext()).toBeTruthy()
       expect(actual1.length).toBe(3)
       expect(actual1[0]).toEqual(d1)
@@ -598,7 +599,7 @@ describe('CoreStorageService', () => {
       expect(actual1[2]).toEqual(d111)
 
       const actual2 = await pager.next()
-      expect(pager.num).toBe(2)
+      expect(pager.pageNum).toBe(2)
       expect(pager.hasNext()).toBeFalsy()
       expect(actual2.length).toBe(2)
       expect(actual2[0]).toEqual(d12)
@@ -772,7 +773,7 @@ describe('CoreStorageService', () => {
       // 強制的にページングをタイムアウトさせる
       const pager = new Pager(storageService, storageService.getDescendants)
       await pager.start({ path: `d1`, includeBase: true })
-      await ElasticPointInTime.close(storageService.client, pager.token!)
+      await closePointInTime(storageService.client, pager.token!)
 
       // ページングがタイムアウトした状態で検索実行
       const actual = await pager.fetch(1)
@@ -820,7 +821,7 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 大量データを想定して検索を行う
-      const actual = await new Pager(storageService, storageService.getDescendants, { size: 3 }).fetchAll({
+      const actual = await new Pager(storageService, storageService.getDescendants, { pageSize: 3 }).fetchAll({
         path: `d1`,
         includeBase: true,
       })
@@ -1186,11 +1187,11 @@ describe('CoreStorageService', () => {
     it('ベーシックケース', async () => {
       const [d1, d11, d12, d13, d14] = await storageService.createHierarchicalDirs([`d1/d11`, `d1/d12`, `d1/d13`, `d1/d14`])
 
-      const pager = new Pager(storageService, storageService.getChildren, { size: 3 })
+      const pager = new Pager(storageService, storageService.getChildren, { pageSize: 3 })
 
       const actual1 = await pager.start({ id: d1.id, includeBase: true })
       expect(pager.token).toBeDefined()
-      expect(pager.num).toBe(1)
+      expect(pager.pageNum).toBe(1)
       expect(pager.totalPages).toBe(2)
       expect(pager.totalItems).toBe(5)
       expect(pager.hasNext()).toBeTruthy()
@@ -1200,7 +1201,7 @@ describe('CoreStorageService', () => {
       expect(actual1[2]).toEqual(d12)
 
       const actual2 = await pager.next()
-      expect(pager.num).toBe(2)
+      expect(pager.pageNum).toBe(2)
       expect(pager.hasNext()).toBeFalsy()
       expect(actual2.length).toBe(2)
       expect(actual2[0]).toEqual(d13)
@@ -1372,7 +1373,7 @@ describe('CoreStorageService', () => {
       // 強制的にページングをタイムアウトさせる
       const pager = new Pager(storageService, storageService.getChildren)
       await pager.start({ path: `d1`, includeBase: true })
-      await ElasticPointInTime.close(storageService.client, pager.token!)
+      await closePointInTime(storageService.client, pager.token!)
 
       // ページングがタイムアウトした状態で検索実行
       const actual = await pager.fetch(1)
@@ -1418,7 +1419,7 @@ describe('CoreStorageService', () => {
       await storageService.uploadDataItems(uploadItems)
 
       // 大量データを想定して検索を行う
-      const actual = await new Pager(storageService, storageService.getChildren, { size: 3 }).fetchAll({
+      const actual = await new Pager(storageService, storageService.getChildren, { pageSize: 3 }).fetchAll({
         path: `d1`,
         includeBase: true,
       })

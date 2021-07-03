@@ -25,6 +25,11 @@ import {
   StorageNodeShareDetailInput,
   StorageSchema,
   UserIdClaims,
+  createPagingData,
+  executeAfterPagingQuery,
+  executeAllDocumentsQuery,
+  extractPageItems,
+  getNextExceedPageSegment,
 } from './base'
 import { CoreStorageSchema, UserHelper } from './base'
 import {
@@ -41,15 +46,11 @@ import {
   summarizeFamilyPaths,
 } from 'web-base-lib'
 import {
-  ElasticPagingSegment,
-  ElasticPointInTime,
-  ElasticSearchAPIResponse,
+  ElasticPageSegment,
   ElasticSearchResponse,
   ElasticSearchResponseOrHits,
-  generatePagingData,
-  isPagingTimeout,
   newElasticClient,
-  searchAllHitsByQuery,
+  openPointInTime,
   validateBulkResponse,
 } from './base/elastic'
 import { File, SaveOptions } from '@google-cloud/storage'
@@ -561,12 +562,17 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     // 初回検索の場合
     //
     if (PagingFirstInput.is(paging)) {
-      const pageSize = paging?.size ?? 100
-      const pageNum = paging?.num ?? 1
+      const pageSize = paging?.pageSize ?? 100
+      const pageNum = paging?.pageNum ?? 1
+      const exceed = true
 
       // 検索対象ノードを全て取得
-      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
-      const { hits, total: totalItems } = await searchAllHitsByQuery<DocCoreStorageNode>(this.client, pit, searchParams)
+      const { hits, total: totalItems, pit } = await executeAllDocumentsQuery<DocCoreStorageNode>(
+        this.client,
+        StorageSchema.IndexAlias,
+        searchParams,
+        exceed
+      )
       if (!hits.length) return PagingResult.empty()
 
       // 指定ディレクトリを含む検索だった場合
@@ -579,21 +585,20 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
 
       // ページングデータを生成
-      const { segments, totalPages } = generatePagingData(hits, pageSize)
+      const { pageSegments, totalPages } = createPagingData(hits, pageSize, exceed)
 
       // 1ページ分のノードを切り出し
-      const startIndex = (pageNum - 1) * pageSize
-      const endIndex = startIndex + pageSize
-      const list = this.toEntityNodes(hits).slice(startIndex, endIndex) as NODE[]
+      const list = this.toEntityNodes(extractPageItems(hits, pageNum, pageSize)) as NODE[]
 
       const result: PagingFirstResult<NODE> = {
         list,
         token: pit.id,
-        segments,
-        size: pageSize,
-        num: pageNum,
+        pageSegments,
+        pageSize,
+        pageNum,
         totalItems,
         totalPages,
+        maxItems: totalItems,
       }
       return result
     }
@@ -601,32 +606,11 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     // 2回目以降の検索の場合
     //
     else {
-      const { segment: pagingSegment, token } = paging
-      if (!pagingSegment) return PagingResult.empty()
+      const { response, isPagingTimeout } = await executeAfterPagingQuery<DocCoreStorageNode>(this.client, paging, searchParams)
+      if (!response || isPagingTimeout) return PagingResult.empty({ isPagingTimeout })
 
-      let pit: ElasticPointInTime | undefined
-      if (token) {
-        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
-      }
-
-      let response: ElasticSearchAPIResponse<DocCoreStorageNode>
-      try {
-        response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>(
-          merge(searchParams, {
-            body: { ...pagingSegment, pit },
-          })
-        )
-      } catch (err) {
-        if (isPagingTimeout(err)) {
-          return PagingResult.empty({ isPagingTimeout: true })
-        } else {
-          throw err
-        }
-      }
-      const nodes = this.toEntityNodes(response)
-
-      const result: PagingAfterResult = {
-        list: nodes as NODE[],
+      const result: PagingAfterResult<NODE> = {
+        list: this.toEntityNodes(response) as NODE[],
       }
       return result
     }
@@ -848,12 +832,17 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     // 初回検索の場合
     //
     if (PagingFirstInput.is(paging)) {
-      const pageSize = paging?.size ?? 100
-      const pageNum = paging?.num ?? 1
+      const pageSize = paging?.pageSize ?? 100
+      const pageNum = paging?.pageNum ?? 1
+      const exceed = true
 
       // 検索対象ノードを全て取得
-      const pit = await ElasticPointInTime.open(this.client, StorageSchema.IndexAlias)
-      const { hits, total: totalItems } = await searchAllHitsByQuery<DocCoreStorageNode>(this.client, pit, searchParams)
+      const { hits, total: totalItems, pit } = await executeAllDocumentsQuery<DocCoreStorageNode>(
+        this.client,
+        StorageSchema.IndexAlias,
+        searchParams,
+        exceed
+      )
       if (!hits.length) return PagingResult.empty()
 
       // 指定ディレクトリを含む検索だった場合
@@ -866,21 +855,20 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
 
       // ページングデータを生成
-      const { segments, totalPages } = generatePagingData(hits, pageSize)
+      const { pageSegments, totalPages } = createPagingData(hits, pageSize, exceed)
 
       // 1ページ分のノードを切り出し
-      const startIndex = (pageNum - 1) * pageSize
-      const endIndex = startIndex + pageSize
-      const list = this.toEntityNodes(hits).slice(startIndex, endIndex) as NODE[]
+      const list = this.toEntityNodes(extractPageItems(hits, pageNum, pageSize)) as NODE[]
 
       const result: PagingFirstResult<NODE> = {
         list,
         token: pit.id,
-        segments,
-        size: pageSize,
-        num: pageNum,
+        pageSegments,
+        pageSize,
+        pageNum,
         totalItems,
         totalPages,
+        maxItems: totalItems,
       }
       return result
     }
@@ -888,32 +876,11 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     // 2回目以降の検索の場合
     //
     else {
-      const { segment: pagingSegment, token } = paging
-      if (!pagingSegment) return PagingResult.empty()
+      const { response, isPagingTimeout } = await executeAfterPagingQuery<DocCoreStorageNode>(this.client, paging, searchParams)
+      if (!response || isPagingTimeout) return PagingResult.empty({ isPagingTimeout })
 
-      let pit: ElasticPointInTime | undefined
-      if (token) {
-        pit = { id: token, keep_alive: ElasticPointInTime.DefaultKeepAlive }
-      }
-
-      let response: ElasticSearchAPIResponse<DocCoreStorageNode>
-      try {
-        response = await this.client.search<ElasticSearchResponse<DocCoreStorageNode>>(
-          merge(searchParams, {
-            body: { ...pagingSegment, pit },
-          })
-        )
-      } catch (err) {
-        if (isPagingTimeout(err)) {
-          return PagingResult.empty({ isPagingTimeout: true })
-        } else {
-          throw err
-        }
-      }
-      const nodes = this.toEntityNodes(response)
-
-      const result: PagingAfterResult = {
-        list: nodes as NODE[],
+      const result: PagingAfterResult<NODE> = {
+        list: this.toEntityNodes(response) as NODE[],
       }
       return result
     }
@@ -1400,8 +1367,8 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     const bucket = admin.storage().bucket()
     const size = paging?.size ?? CoreStorageService.ChunkSize
     let nodes: { id: string; path: string }[]
-    let pagingSegment: ElasticPagingSegment = {
-      pit: await ElasticPointInTime.open(this.client, CoreStorageSchema.IndexAlias),
+    let pageSegment: ElasticPageSegment = {
+      pit: await openPointInTime(this.client, CoreStorageSchema.IndexAlias),
     }
 
     // eslint-disable-next-line no-constant-condition
@@ -1423,7 +1390,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
             },
           },
           sort: [{ path: 'asc' }],
-          ...pagingSegment,
+          ...pageSegment,
         },
         _source: ['path'],
       })
@@ -1443,7 +1410,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
 
       // 次のページングデータを取得
-      nodes.length && (pagingSegment = ElasticPagingSegment.next(response))
+      pageSegment = getNextExceedPageSegment(response)
     }
 
     // データベースから引数ディレクトリと配下ノードを全て削除
@@ -1592,7 +1559,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
     toDirPath = removeBothEndsSlash(toDirPath)
     CoreStorageService.validateNodePath(toDirPath)
 
-    const size = options?.size ?? 1000
+    const pageSize = options?.size ?? 1000
 
     // 移動元と移動先が同じでないことを確認
     if (fromDirPath === toDirPath) {
@@ -1627,7 +1594,7 @@ class CoreStorageService<NODE extends CoreStorageNode = CoreStorageNode, FILE_NO
       }
     }
 
-    const pager = new Pager(this, this.getDescendantsImpl, { size })
+    const pager = new Pager(this, this.getDescendantsImpl, { pageSize })
     do {
       const targetNodes = pager.notStarted
         ? await pager.start({
