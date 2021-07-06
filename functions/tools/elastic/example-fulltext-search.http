@@ -1,0 +1,350 @@
+### インデックス削除
+
+DELETE {{elasticHost}}/example-fulltext-search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+### インデックス作成
+
+# ■ icu_nfkc_normalizer
+# 次のような変換を行ってくれる機能です。
+#   ウ゛ェ → ヴェ
+#   ＡＢＣ → ABC
+#   ① → 1
+#   ㊤ → 上
+#   ㌶ → ヘクタール
+#   ﾊﾝｶｸｶﾅ → ハンカクカナ
+
+# ■ ja_kuromoji_tokenizer
+# ・discard_compound_token
+#   同義語展開時に生成された元々の複合語の存在により発生する同義語展開処理の失敗を回避するために設定。
+#   (例: 東京大学の分割結果は「東京、大学、東京大学」となり、そのうち「東京大学」は元々の複合語)
+#   このオプションはバージョン7.9 (>=7.9) から使用可能。これより前のバージョンの場合、後に登場する
+#   「ja_index_synonym, ja_search_synonym」でlenientをtrueにし、同義語展開の失敗を無視するといった
+#   対応が必要。
+
+# ■ ja_ngram_tokenizer
+# 指定した範囲の文字列を1文字ずつ分割します。
+# ※ { "min_gram": 2, max_gram: 4 } と指定した場合、
+#   「sushi」は「su、sus、sush」に分割されます。
+#
+# ・"token_chars": [ "letter", "digit" ]
+#   分割されるトークンからより意味のあるものを取得できるよう、letter(文字)とdigit(数字)のみを対象とし
+#   ます。
+
+# ■ ja_index_synonym, ja_search_synonym
+# 読み方が2種類以上ある単語を定義し吸収する機能です。
+# ※「アメリカ」は「米国」と呼ばれることがある。
+#
+# ここではインデックス用と検索用で別のsynonymを定義し、検索側のみ同義語辞書を配置しています。インデッ
+# クス側に同義語辞書を配置しない理由として、インデックスサイズを抑えられたり、同義語のメンテナンス時
+# にドキュメントの再インデックスが必要にならないなど、総合的なメリットが大きいためです。
+
+# ■ ja_kuromoji_index_analyzer, ja_kuromoji_search_analyzer
+# ここではインデックス用と検索用のanalyzerを定義しています。両者の違いはsynonym(ja_index_synonymとja_search_synonym)になります。
+#
+#・kuromoji_iteration_mark
+#  日本語の踊り字 (々、ヽ、ゝ など) を正規化するフィルタです。
+#  (例: "常々" → "常常")
+#・kuromoji_baseform
+#  動詞や形容詞などの活用で語尾が変わっている単語をすべて基本形に揃えるフィルタです。
+#  (例: "大きく" → "大きい")
+#・kuromoji_part_of_speech
+#  助詞などの不要な品詞を指定に基づいて削除するフィルタです。
+#  (例: "東京の紅葉情報" → 助詞の"の"を削除)
+#・kuromoji_stemmer
+#  語尾の長音を削除するフィルタです。
+#  (例: "コンピューター" → "コンピュータ")
+#・cjk_width
+#  半角・全角などを統一するフィルターです。
+#・ja_stop
+#  日本語用のストップワード除去フィルタです。デフォルトのままでも"あれ"、"それ"などを除去してくれます。
+#・lowercase
+#  トークンの文字を全て小文字に変換するフィルタです。
+
+PUT {{elasticHost}}/example-fulltext-search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "settings": {
+    "analysis": {
+      "char_filter": {
+        "icu_nfkc_normalizer": {
+          "type": "icu_normalizer",
+          "name": "nfkc",
+          "mode": "compose"
+        }
+      },
+      "tokenizer": {
+        "ja_kuromoji_tokenizer": {
+          "mode": "search",
+          "type": "kuromoji_tokenizer",
+          "discard_compound_token": true,
+          "user_dictionary_rules": [
+            "東京スカイツリー,東京 スカイツリー,トウキョウ スカイツリー,カスタム名詞"
+          ]
+        },
+        "ja_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 2,
+          "max_gram": 2,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
+      },
+      "filter": {
+        "ja_index_synonym": {
+          "type": "synonym",
+          "lenient": false,
+          "synonyms": []
+        },
+        "ja_search_synonym": {
+          "type": "synonym_graph",
+          "lenient": false,
+          "synonyms": [
+            "米国, アメリカ",
+            "東京大学, 東大"
+          ]
+        }
+      },
+      "analyzer": {
+        "ja_kuromoji_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "kuromoji_iteration_mark",
+            "icu_nfkc_normalizer"
+          ],
+          "tokenizer": "ja_kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "cjk_width",
+            "ja_stop",
+            "lowercase",
+            "ja_index_synonym"
+          ]
+        },
+        "ja_kuromoji_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "kuromoji_iteration_mark",
+            "icu_nfkc_normalizer"
+          ],
+          "tokenizer": "ja_kuromoji_tokenizer",
+          "filter": [
+            "kuromoji_baseform",
+            "kuromoji_part_of_speech",
+            "kuromoji_stemmer",
+            "cjk_width",
+            "ja_stop",
+            "lowercase",
+            "ja_search_synonym"
+          ]
+        },
+        "ja_ngram_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "icu_nfkc_normalizer"
+          ],
+          "tokenizer": "ja_ngram_tokenizer",
+          "filter": [
+            "lowercase"
+          ]
+        },
+        "ja_ngram_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "icu_nfkc_normalizer"
+          ],
+          "tokenizer": "ja_ngram_tokenizer",
+          "filter": [
+            "ja_search_synonym",
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "my_field": {
+        "type": "text",
+        "search_analyzer": "ja_kuromoji_search_analyzer",
+        "analyzer": "ja_kuromoji_index_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "search_analyzer": "ja_ngram_search_analyzer",
+            "analyzer": "ja_ngram_index_analyzer"
+          }
+        }
+      }
+    }
+  }
+}
+
+###
+
+POST {{elasticHost}}/example-fulltext-search/_open
+
+### テストデータ投入
+
+# ※IntelliJでは実行できないためスニペットとして利用することを想定
+
+POST /example-fulltext-search/_bulk
+{"index": {"_index": "example-fulltext-search", "_id": 1}}
+{"my_field": "アメリカ"}
+{"index": {"_index": "example-fulltext-search", "_id": 2}}
+{"my_field": "米国"}
+{"index": {"_index": "example-fulltext-search", "_id": 3}}
+{"my_field": "アメリカの大学"}
+{"index": {"_index": "example-fulltext-search", "_id": 4}}
+{"my_field": "東京大学"}
+{"index": {"_index": "example-fulltext-search", "_id": 5}}
+{"my_field": "帝京大学"}
+{"index": {"_index": "example-fulltext-search", "_id": 6}}
+{"my_field": "東京で夢の大学生活"}
+{"index": {"_index": "example-fulltext-search", "_id": 7}}
+{"my_field": "東京大学で夢の生活"}
+{"index": {"_index": "example-fulltext-search", "_id": 8}}
+{"my_field": "東大で夢の生活"}
+{"index": {"_index": "example-fulltext-search", "_id": 9}}
+{"my_field": "首都圏の大学　東京"}
+
+### 検索クエリ A
+
+# このクエリでは、次の理由で同時に形態素解析とn-gram解析の両方のフィールドに対して検索を行っています。
+#  ・n-gram では、インデックス肥大化しがち。品詞情報に基づく処理が不可能なので、無意味な分割が多い。
+#    (検索漏れは少ないが、ノイズが多い)
+#  ・形態素解析では、新語(未知語)に弱い。また、辞書ベースの場合、辞書にない単語は検出不能。
+#    (ノイズは少ないが、検索漏れが多い)
+#
+# n-gram解析でboolクエリのmustを使用しているのは、n-gramクエリで関連性の低い結果を除外することにより、
+# 適合率(検索ノイズの少ない検索率)を保たせるためです。
+#
+# ブーストのスコア設定ですが、スコア設定は特に調整せず、my_field.ngram^1, my_field^1を使用しています。
+#
+# 複数のフィールドをまたぐ検索(例えば、タイトルと本文を一度に検索)のユースケースもよくあります。
+# その場合は、multi_matchクエリのfieldsに対象フィールドを追加してください。
+
+GET {{elasticHost}}/example-fulltext-search/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "multi_match": {
+            "query": "東京大学 夢 生活",
+            "fields": [
+              "my_field.ngram^1"
+            ]
+          }
+        },
+        {
+          "multi_match": {
+            "query": "東京大学 夢 生活",
+            "fields": [
+              "my_field^1"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "fields": {
+      "my_field": {},
+      "my_field.ngram": {}
+    }
+  }
+}
+
+### 検索クエリ B
+
+GET {{elasticHost}}/example-fulltext-search/_search
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "multi_match": {
+            "query": "米国",
+            "fields": [
+              "my_field.ngram^1"
+            ]
+          }
+        }
+      ],
+      "should": [
+        {
+          "multi_match": {
+            "query": "米国",
+            "fields": [
+              "my_field^1"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "fields": {
+      "my_field": {},
+      "my_field.ngram": {}
+    }
+  }
+}
+
+### ja_kuromoji_index_analyzer の解析
+
+GET {{elasticHost}}/example-fulltext-search/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "ja_kuromoji_index_analyzer",
+  "text": "東京大学で夢の生活"
+}
+
+### ja_kuromoji_search_analyzer の解析
+
+GET {{elasticHost}}/example-fulltext-search/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "ja_kuromoji_search_analyzer",
+  "text": "東京大学で夢の生活"
+}
+
+### ja_ngram_index_analyzer の解析
+
+GET {{elasticHost}}/example-fulltext-search/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "ja_ngram_index_analyzer",
+  "text": "東京大学で夢の生活"
+}
+
+### ja_ngram_search_analyzer の解析
+
+GET {{elasticHost}}/example-fulltext-search/_analyze
+Content-Type: application/json
+Authorization: Basic {{elasticToken}}
+
+{
+  "analyzer": "ja_ngram_search_analyzer",
+  "text": "東京大学で夢の生活"
+}

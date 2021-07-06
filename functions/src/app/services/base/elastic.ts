@@ -22,7 +22,7 @@ namespace BaseIndexDefinitions {
   export const keyword_lower = {
     type: 'custom',
     filter: ['lowercase'],
-  }
+  } as const
 
   /**
    * 次のような変換を行ってくれる機能です。
@@ -37,7 +37,7 @@ namespace BaseIndexDefinitions {
     type: 'icu_normalizer',
     name: 'nfkc',
     mode: 'compose',
-  }
+  } as const
 
   /**
    * 仮名をローマ字に変換する機能です。
@@ -321,7 +321,7 @@ namespace BaseIndexDefinitions {
       'ュ=>yu',
       'ョ=>yo',
     ],
-  }
+  } as const
 
   /**
    * 空白文字を除去する機能です。
@@ -330,7 +330,7 @@ namespace BaseIndexDefinitions {
     type: 'pattern_replace',
     pattern: '(\\s|　)',
     replacement: '',
-  }
+  } as const
 
   /**
    * 読み方が2種類以上ある単語を定義し吸収する機能です。
@@ -340,10 +340,10 @@ namespace BaseIndexDefinitions {
     type: 'synonym',
     lenient: true,
     synonyms: ['nippon, nihon'],
-  }
+  } as const
 
   /**
-   * サジェスト検索に必要なものを定義したAnalysisです。
+   * サジェスト検索に必要なものを定義したanalysisです。
    */
   export const suggest_analysis = {
     char_filter: {
@@ -399,21 +399,89 @@ namespace BaseIndexDefinitions {
         filter: ['lowercase', 'readingform', 'asciifolding', 'synonym'],
       },
     },
-  }
+  } as const
 
-  export const kuromoji_analyzer = {
-    type: 'custom',
-    char_filter: ['kuromoji_iteration_mark'],
-    tokenizer: 'kuromoji_tokenizer',
-    filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
-  }
-
-  export const kuromoji_html_analyzer = {
-    type: 'custom',
-    char_filter: ['html_strip', 'kuromoji_iteration_mark'],
-    tokenizer: 'kuromoji_tokenizer',
-    filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'kuromoji_number'],
-  }
+  /**
+   * 日本語検索用analysis
+   *
+   * ■ kuromoji_search_tokenizer
+   * ・discard_compound_token
+   *   同義語展開時に生成された元々の複合語の存在により発生する同義語展開処理の失敗を回避するために設定。
+   *   (例: 東京大学の分割結果は「東京、大学、東京大学」となり、そのうち「東京大学」は元々の複合語)
+   *   このオプションはバージョン7.9 (>=7.9) から使用可能。これより前のバージョンの場合、後に登場する
+   *   「kuromoji_index_synonym, kuromoji_search_synonym」でlenientをtrueにし、同義語展開の失敗を無視
+   *   するといった対応が必要。
+   *
+   * ■ ja_index_synonym, ja_search_synonym
+   *   読み方が2種類以上ある単語を定義し吸収する機能です。
+   *   ※「アメリカ」は「米国」と呼ばれることがある。
+   *
+   *   ここではインデックス用と検索用で別のsynonymを定義し、検索側のみ同義語辞書を配置しています。イン
+   *   デックス側に同義語辞書を配置しない理由として、インデックスサイズを抑えられたり、同義語のメンテ
+   *   ナンス時にドキュメントの再インデックスが必要にならないなど、総合的なメリットが大きいためです。
+   *
+   * ■ kuromoji_index_analyzer, kuromoji_search_analyzer
+   *   ここではインデックス用と検索用のanalyzerを定義しています。両者の違いはsynonymのみになります。
+   *
+   *  ・kuromoji_iteration_mark
+   *    日本語の踊り字 (々、ヽ、ゝ など) を正規化するフィルタです。
+   *    (例: "常々" → "常常")
+   *  ・kuromoji_baseform
+   *    動詞や形容詞などの活用で語尾が変わっている単語をすべて基本形に揃えるフィルタです。
+   *    (例: "大きく" → "大きい")
+   *  ・kuromoji_part_of_speech
+   *    助詞などの不要な品詞を指定に基づいて削除するフィルタです。
+   *    (例: "東京の紅葉情報" → 助詞の"の"を削除)
+   *  ・kuromoji_stemmer
+   *    語尾の長音を削除するフィルタです。
+   *    (例: "コンピューター" → "コンピュータ")
+   *  ・cjk_width
+   *    半角・全角などを統一するフィルターです。
+   *  ・ja_stop
+   *    日本語用のストップワード除去フィルタです。デフォルトのままでも"あれ"、"それ"などを除去してくれます。
+   *  ・lowercase
+   *    トークンの文字を全て小文字に変換するフィルタです。
+   */
+  export const kuromoji_search_analysis = {
+    char_filter: {
+      icu_nfkc_normalizer,
+    },
+    tokenizer: {
+      kuromoji_search_tokenizer: {
+        mode: 'search',
+        type: 'kuromoji_tokenizer',
+        discard_compound_token: true,
+        // "単語,分割されてほしい単語列,読みの単語列,品詞名"
+        user_dictionary_rules: ['東京スカイツリー,東京 スカイツリー,トウキョウ スカイツリー,カスタム名詞'],
+      },
+    },
+    filter: {
+      kuromoji_index_synonym: {
+        type: 'synonym',
+        lenient: false,
+        synonyms: [],
+      },
+      kuromoji_search_synonym: {
+        type: 'synonym_graph',
+        lenient: false,
+        synonyms: ['米国,アメリカ', '英国,イギリス', '東京大学,東大'],
+      },
+    },
+    analyzer: {
+      kuromoji_index_analyzer: {
+        type: 'custom',
+        char_filter: ['kuromoji_iteration_mark', 'icu_nfkc_normalizer'],
+        tokenizer: 'kuromoji_search_tokenizer',
+        filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'cjk_width', 'ja_stop', 'lowercase', 'kuromoji_index_synonym'],
+      },
+      kuromoji_search_analyzer: {
+        type: 'custom',
+        char_filter: ['kuromoji_iteration_mark', 'icu_nfkc_normalizer'],
+        tokenizer: 'kuromoji_search_tokenizer',
+        filter: ['kuromoji_baseform', 'kuromoji_part_of_speech', 'kuromoji_stemmer', 'cjk_width', 'ja_stop', 'lowercase', 'kuromoji_search_synonym'],
+      },
+    },
+  } as const
 
   export const TimestampEntityProps = {
     createdAt: {
@@ -422,7 +490,7 @@ namespace BaseIndexDefinitions {
     updatedAt: {
       type: 'date',
     },
-  }
+  } as const
 }
 
 interface SearchBody {

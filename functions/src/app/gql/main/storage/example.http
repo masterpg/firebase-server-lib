@@ -420,7 +420,6 @@ Authorization: Bearer {"uid": "test.general", "authStatus": "Available"}
   }
 }
 
-
 ###
 
 POST {{apiHost}}/gql_lv1
@@ -435,7 +434,7 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
       "lang": "ja",
       "articleDirId": "12345678901234567890"
     },
-    "paging": { "size": 3 }
+    "paging": { "pageSize": 3 }
   }
 }
 
@@ -452,6 +451,23 @@ Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmi
     "input": {
       "lang": "ja",
       "userName": "test.general"
+    }
+  }
+}
+
+###
+
+POST {{apiHost}}/gql_lv1
+Content-Type: application/json
+Authorization: Bearer {"uid": "app.admin", "authStatus": "Available", "isAppAdmin": true}
+
+{
+  "operationName": "SearchArticleList",
+  "query": "query SearchArticleList($criteria: String!, $paging: PagingInput) { searchArticleList(criteria: $criteria, paging: $paging) { ... on PagingFirstResult { list { ... on ArticleListItem { id label } } token pageSegments pageSize pageNum totalPages totalItems maxItems } ... on PagingAfterResult { list { ... on ArticleListItem { id label } } isPagingTimeout } } }",
+  "variables": {
+    "criteria": "lan:ja user:test.general 漫画",
+    "paging": {
+      "pageSize": 3
     }
   }
 }

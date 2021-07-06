@@ -333,7 +333,8 @@ interface ArticleListItem {
   dir: ArticlePathDetail[]
   path: ArticlePathDetail[]
   label: string
-  srcTags: string[]
+  tags: string[]
+  content?: string
   createdAt: Dayjs
   updatedAt: Dayjs
 }
@@ -542,7 +543,6 @@ export {
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
   SaveArticleSrcContentInput,
-  StorageNodeShareDetailInput,
   SignedUploadUrlInput,
   StorageNode,
   StorageNodeGetKeyInput,
@@ -550,6 +550,7 @@ export {
   StorageNodeGetUnderInput,
   StorageNodeKeyInput,
   StorageNodeShareDetail,
+  StorageNodeShareDetailInput,
   StorageNodeType,
 }
 export { ArticleTag, SaveArticleTagInput }

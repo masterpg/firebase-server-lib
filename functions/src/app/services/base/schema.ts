@@ -18,7 +18,7 @@ import {
 import { config } from '../../../config'
 import { generateEntityId } from '../../base'
 import { merge } from 'lodash'
-const { TimestampEntityProps, keyword_lower, kuromoji_analyzer, kuromoji_html_analyzer, suggest_analysis, whitespace_remove } = BaseIndexDefinitions
+const { TimestampEntityProps, keyword_lower, kuromoji_search_analysis, suggest_analysis, whitespace_remove } = BaseIndexDefinitions
 
 //========================================================================
 //
@@ -100,14 +100,11 @@ namespace UserSchema {
 
   export const IndexDefinition = {
     settings: {
-      analysis: {
-        analyzer: {
-          kuromoji_analyzer,
-        },
+      analysis: merge({}, kuromoji_search_analysis, {
         normalizer: {
           keyword_lower,
         },
-      },
+      }),
     },
     mappings: {
       properties: {
@@ -121,7 +118,8 @@ namespace UserSchema {
           fields: {
             text: {
               type: 'text',
-              analyzer: 'kuromoji_analyzer',
+              search_analyzer: 'kuromoji_search_analyzer',
+              analyzer: 'kuromoji_index_analyzer',
             },
           },
         },
@@ -162,12 +160,7 @@ namespace CoreStorageSchema {
 
   export const IndexDefinition = {
     settings: {
-      analysis: {
-        analyzer: {
-          kuromoji_analyzer,
-          kuromoji_html_analyzer,
-        },
-      },
+      analysis: merge({}, kuromoji_search_analysis),
     },
     mappings: {
       properties: {
@@ -180,7 +173,8 @@ namespace CoreStorageSchema {
           fields: {
             text: {
               type: 'text',
-              analyzer: 'kuromoji_analyzer',
+              search_analyzer: 'kuromoji_search_analyzer',
+              analyzer: 'kuromoji_index_analyzer',
             },
           },
         },
@@ -189,7 +183,8 @@ namespace CoreStorageSchema {
           fields: {
             text: {
               type: 'text',
-              analyzer: 'kuromoji_analyzer',
+              search_analyzer: 'kuromoji_search_analyzer',
+              analyzer: 'kuromoji_index_analyzer',
             },
           },
         },
@@ -198,7 +193,8 @@ namespace CoreStorageSchema {
           fields: {
             text: {
               type: 'text',
-              analyzer: 'kuromoji_analyzer',
+              search_analyzer: 'kuromoji_search_analyzer',
+              analyzer: 'kuromoji_index_analyzer',
             },
           },
         },
@@ -331,7 +327,8 @@ namespace StorageSchema {
                   fields: {
                     text: {
                       type: 'text',
-                      analyzer: 'kuromoji_analyzer',
+                      search_analyzer: 'kuromoji_search_analyzer',
+                      analyzer: 'kuromoji_index_analyzer',
                     },
                   },
                 },
@@ -340,7 +337,7 @@ namespace StorageSchema {
                   fields: {
                     text: {
                       type: 'text',
-                      analyzer: 'standard',
+                      analyzer: 'english',
                     },
                   },
                 },
@@ -355,15 +352,16 @@ namespace StorageSchema {
                   properties: {
                     srcContent: {
                       type: 'text',
-                      analyzer: 'kuromoji_analyzer',
+                      analyzer: 'standard',
                     },
                     draftContent: {
                       type: 'text',
-                      analyzer: 'kuromoji_analyzer',
+                      analyzer: 'standard',
                     },
                     searchContent: {
                       type: 'text',
-                      analyzer: 'kuromoji_analyzer',
+                      search_analyzer: 'kuromoji_search_analyzer',
+                      analyzer: 'kuromoji_index_analyzer',
                     },
                     srcTags: {
                       type: 'text',
@@ -395,7 +393,7 @@ namespace StorageSchema {
                     },
                     searchContent: {
                       type: 'text',
-                      analyzer: 'standard',
+                      analyzer: 'english',
                     },
                     srcTags: {
                       type: 'text',
@@ -499,14 +497,11 @@ namespace ArticleTagSchema {
 
   export const IndexDefinition = {
     settings: {
-      analysis: merge(
-        { ...suggest_analysis },
-        {
-          normalizer: {
-            keyword_lower,
-          },
-        }
-      ),
+      analysis: merge({}, suggest_analysis, {
+        normalizer: {
+          keyword_lower,
+        },
+      }),
     },
     mappings: {
       properties: {

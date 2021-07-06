@@ -34,6 +34,7 @@ import {
   MoveStorageFileInput,
   PagingAfterResult,
   PagingFirstResult,
+  PagingInput,
   RenameArticleTypeDirInput,
   RenameStorageFileInput,
   SaveArticleDraftContentInput,
@@ -1757,6 +1758,24 @@ describe('Lv1 Storage Resolver', () => {
     }
 
     function createTestData() {
+      function newArticleListItem(lang: LangCode, nodePath: string, hierarchicalNodes: StorageNode[]): ArticleListItem {
+        const nodeDict = arrayToDict(hierarchicalNodes, 'path')
+        const node = nodeDict[nodePath]
+        const now = dayjs()
+
+        return {
+          id: node.id,
+          name: node.name,
+          dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+          path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+          label: StorageService.getArticleLangLabel(lang, node.article!.label!),
+          tags: node.article?.src?.[lang]?.srcTags ?? [],
+          content: undefined,
+          createdAt: now,
+          updatedAt: now,
+        }
+      }
+
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const blog = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
         article: {
@@ -1782,23 +1801,6 @@ describe('Lv1 Storage Resolver', () => {
       return {
         blog: newArticleListItem('ja', blog.path, allNodes),
         art1: newArticleListItem('ja', art1.path, allNodes),
-      }
-    }
-
-    function newArticleListItem(lang: LangCode, nodePath: string, hierarchicalNodes: StorageNode[]): ArticleListItem {
-      const nodeDict = arrayToDict(hierarchicalNodes, 'path')
-      const node = nodeDict[nodePath]
-      const now = dayjs()
-
-      return {
-        id: node.id,
-        name: node.name,
-        dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
-        path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
-        label: StorageService.getArticleLangLabel(lang, node.article!.label!),
-        srcTags: node.article?.src?.[lang]?.srcTags ?? [],
-        createdAt: now,
-        updatedAt: now,
       }
     }
 
@@ -2029,6 +2031,183 @@ describe('Lv1 Storage Resolver', () => {
       })
 
       expect(response.body.data.userArticleTableOfContents).toEqual(toGQLResponse([treeBundle, cat1, art1]))
+    })
+  })
+
+  describe('searchArticleList', () => {
+    const gql = {
+      query: `
+        query SearchArticleList($criteria: String!, $paging: PagingInput) {
+          searchArticleList(criteria: $criteria, paging: $paging) {
+            ... on PagingFirstResult {
+              list {
+                ... on ArticleListItem {
+                  ...${ArticleListItemFieldsName}
+                }
+              }
+              token
+              pageSegments
+              pageSize
+              pageNum
+              totalPages
+              totalItems
+              maxItems
+            }
+            ... on PagingAfterResult {
+              list {
+                ... on ArticleListItem {
+                  ...${ArticleListItemFieldsName}
+                }
+              }
+              isPagingTimeout
+            }
+          }
+        }
+        ${ArticleListItemFields}
+      `,
+    }
+
+    function createTestData() {
+      function newArticleListItem(
+        lang: LangCode,
+        hierarchicalNodes: StorageNode[],
+        node: StorageNode,
+        highlight: { label: string; tags: string[]; content: string }
+      ): ArticleListItem {
+        const now = dayjs()
+        return {
+          id: node.id,
+          name: node.name,
+          dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+          path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+          ...highlight,
+          createdAt: now,
+          updatedAt: now,
+        }
+      }
+
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const blog = h.newDirNode(`${articleRootPath}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'ListBundle',
+          label: { ja: 'リストバンドル1' },
+          sortOrder: 1,
+        },
+      })
+      const art1 = h.newDirNode(`${blog.path}/${StorageSchema.generateId()}`, {
+        article: {
+          type: 'Article',
+          label: { ja: '「ドラゴンボール」の感想' },
+          sortOrder: 1,
+        },
+      })
+
+      const allNodes = [blog, art1]
+
+      return {
+        comic1: newArticleListItem('ja', allNodes, art1, {
+          label: '「==ドラゴン==ボール」の感想',
+          tags: ['少年==漫画==', '冒険', 'バトル'],
+          content: '概要 鳥山明による日本の==漫画==作品とその作中に登場するアイテムの名称。',
+        }),
+      }
+    }
+
+    it('疎通確認 - 初回', async () => {
+      const { comic1 } = createTestData()
+      const criteria = `lan:ja user:test.general 漫画 ドラゴン`
+      const paging: PagingInput = { pageSize: 10 }
+      const original: PagingFirstResult = {
+        list: [comic1],
+        token: 'abcdefg',
+        pageSegments: [{ size: 10 }, { size: 1, from: 10 }],
+        pageSize: paging.pageSize!,
+        pageNum: 1,
+        totalPages: 1,
+        totalItems: 1,
+        maxItems: 1,
+      }
+
+      const searchArticleList = td.replace(storageService, 'searchArticleList')
+      td.when(searchArticleList(StorageUserToken(), criteria, paging)).thenResolve(original)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { criteria, paging },
+        },
+        { headers: StorageUserHeader() }
+      )
+      const actual: PagingFirstResult = response.body.data.searchArticleList
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
+      expect(actual.maxItems).toBe(original.maxItems)
+    })
+
+    it('疎通確認 - 2回目以降', async () => {
+      const { comic1 } = createTestData()
+      const criteria = `lan:ja user:test.general 漫画 ドラゴン`
+      const paging: PagingInput = { pageSegment: { size: 1, from: 10 } }
+      const original: PagingAfterResult = {
+        list: [comic1],
+      }
+
+      const searchArticleList = td.replace(storageService, 'searchArticleList')
+      td.when(searchArticleList(StorageUserToken(), criteria, paging)).thenResolve(original)
+
+      const response = await requestGQL(
+        app,
+        {
+          ...gql,
+          variables: { criteria, paging },
+        },
+        { headers: StorageUserHeader() }
+      )
+      const actual: PagingAfterResult = response.body.data.searchArticleList
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.isPagingTimeout).toBeNull()
+    })
+
+    it('サインインしていない場合', async () => {
+      const { comic1 } = createTestData()
+      const criteria = `lan:ja user:test.general 漫画 ドラゴン`
+      const paging: PagingInput = { pageSize: 10 }
+      const original: PagingFirstResult = {
+        list: [comic1],
+        token: 'abcdefg',
+        pageSegments: [{ size: 10 }, { size: 1, from: 10 }],
+        pageSize: paging.pageSize!,
+        pageNum: 1,
+        totalPages: 1,
+        totalItems: 1,
+        maxItems: 1,
+      }
+
+      const searchArticleList = td.replace(storageService, 'searchArticleList')
+      td.when(searchArticleList(undefined, criteria, paging)).thenResolve(original)
+
+      const response = await requestGQL(app, {
+        ...gql,
+        variables: { criteria, paging },
+      })
+      const actual: PagingFirstResult = response.body.data.searchArticleList
+
+      expect(actual.list).toEqual(toGQLResponse(original.list))
+      expect(actual.token).toBe(original.token)
+      expect(actual.pageSegments).toEqual(compressToBase64(JSON.stringify(original.pageSegments)))
+      expect(actual.pageNum).toBe(original.pageNum)
+      expect(actual.pageSize).toBe(original.pageSize)
+      expect(actual.totalPages).toBe(original.totalPages)
+      expect(actual.totalItems).toBe(original.totalItems)
+      expect(actual.maxItems).toBe(original.maxItems)
     })
   })
 

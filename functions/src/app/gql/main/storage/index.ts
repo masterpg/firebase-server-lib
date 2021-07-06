@@ -289,6 +289,16 @@ class StorageResolver {
   }
 
   @Query()
+  async searchArticleList(
+    @UserArg() idToken: IdToken | undefined,
+    @Args('criteria') criteria: string,
+    @Args('paging') paging?: PagingInput
+  ): Promise<PagingResult<ArticleListItem>> {
+    const result = await this.storageService.searchArticleList(idToken, criteria, paging)
+    return PagingResult.toResponse(result, 'ArticleListItem')
+  }
+
+  @Query()
   async suggestArticleTags(@Args('keyword') keyword: string): Promise<ArticleTag[]> {
     return this.storageService.suggestArticleTags(keyword)
   }

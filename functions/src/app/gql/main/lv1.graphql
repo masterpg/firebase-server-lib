@@ -34,6 +34,7 @@ type Query {
   userArticleList(input: GetUserArticleListInput!, paging: PagingInput): PagingResult!
   userArticleTableOfContents(input: GetUserArticleTableOfContentsInput!): [ArticleTableOfContentsItem!]!
   suggestArticleTags(keyword: String!): [ArticleTag!]!
+  searchArticleList(criteria: String!, paging: PagingInput): PagingResult!
 }
 
 #--------------------------------------------------

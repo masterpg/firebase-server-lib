@@ -3246,15 +3246,6 @@ describe('StorageService', () => {
   })
 
   describe('getUserArticleList', () => {
-    let users: StorageNode
-    let userRoot: StorageNode
-    let articleRoot: StorageNode
-    let ts: StorageNode
-    let ts_interface: StorageNode
-    let ts_class: StorageNode
-    let ts_types: StorageNode
-    let js: StorageNode
-
     beforeAll(async () => {
       await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
     })
@@ -3264,14 +3255,14 @@ describe('StorageService', () => {
 
       expect(actual.id).toBe(expected.id)
       expect(actual.name).toBe(expected.name)
-      expect(actual.dir).toEqual(StorageService.toArticlePathDetails('ja', expected.dir, allNodes))
-      expect(actual.path).toEqual(StorageService.toArticlePathDetails('ja', expected.path, allNodes))
+      expect(actual.dir).toEqual(StorageService.toArticlePathDetails(lang, expected.dir, allNodes))
+      expect(actual.path).toEqual(StorageService.toArticlePathDetails(lang, expected.path, allNodes))
       expect(actual.label).toBe(expected.article!.label![lang])
       expect(actual.createdAt).toEqual(expected.article!.src![lang]!.createdAt)
       expect(actual.updatedAt).toEqual(expected.article!.src![lang]!.updatedAt)
     }
 
-    async function setupArticleTypeNodes(lang: LangCode): Promise<void> {
+    async function setupArticleTypeNodes(lang: LangCode) {
       // users
       // └test.storage
       //   ├articles
@@ -3286,12 +3277,12 @@ describe('StorageService', () => {
 
       const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
       const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
-      users = articleRootNodes[0]
-      userRoot = articleRootNodes[1]
-      articleRoot = articleRootNodes[2]
+      const users = articleRootNodes[0]
+      const userRoot = articleRootNodes[1]
+      const articleRoot = articleRootNodes[2]
 
       // TypeScript
-      ts = await storageService.createArticleTypeDir({
+      const ts = await storageService.createArticleTypeDir({
         lang,
         dir: `${articleRoot.path}`,
         label: 'TypeScript',
@@ -3300,7 +3291,7 @@ describe('StorageService', () => {
       })
 
       // Interface
-      ts_interface = await storageService.createArticleTypeDir({
+      let ts_interface = await storageService.createArticleTypeDir({
         lang,
         dir: `${ts.path}`,
         label: 'Interface',
@@ -3315,7 +3306,7 @@ describe('StorageService', () => {
       })
 
       // Class
-      ts_class = await storageService.createArticleTypeDir({
+      let ts_class = await storageService.createArticleTypeDir({
         lang,
         dir: `${ts.path}`,
         label: 'Class',
@@ -3330,7 +3321,7 @@ describe('StorageService', () => {
       })
 
       // Types
-      ts_types = await storageService.createArticleTypeDir({
+      const ts_types = await storageService.createArticleTypeDir({
         lang,
         dir: `${ts.path}`,
         label: 'Types',
@@ -3339,22 +3330,24 @@ describe('StorageService', () => {
       })
 
       // JavaScript
-      js = await storageService.createArticleTypeDir({
+      const js = await storageService.createArticleTypeDir({
         lang,
         dir: `${articleRoot.path}`,
         label: 'JavaScript',
         type: 'TreeBundle',
         sortOrder: 1,
       })
+
+      return { users, userRoot, articleRoot, ts, ts_interface, ts_class, ts_types, js }
     }
 
-    async function setupArticleNodes(num: number, privateNumbers: number[] = []) {
+    async function setupArticleNodes(dirNode: StorageNode, num: number, privateNumbers: number[] = []) {
       const articleNodes = await Promise.all(
         [...Array(num)].map(async (_, i) => {
           const label = `art${(i + 1).toString().padStart(num.toString().length, '0')}`
           const articleNode = await storageService.createArticleTypeDir({
             lang: 'ja',
-            dir: `${js.path}`,
+            dir: `${dirNode.path}`,
             label,
             type: 'Article',
             sortOrder: i + 1,
@@ -3373,9 +3366,9 @@ describe('StorageService', () => {
     }
 
     it('ベーシックケース', async () => {
-      await setupArticleTypeNodes('ja')
+      const { js } = await setupArticleTypeNodes('ja')
       // 以下配列の番号の記事を非公開にする
-      await setupArticleNodes(10, [1, 2, 5, 6, 9, 10])
+      await setupArticleNodes(js, 10, [1, 2, 5, 6, 9, 10])
 
       // 対象バンドルを公開設定
       await storageService.setDirShareDetail(js, { isPublic: true })
@@ -3404,9 +3397,37 @@ describe('StorageService', () => {
       expect(actual2[0].label).toEqual('art03')
     })
 
+    it('日本語', async () => {
+      const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('ja')
+
+      const pager = new Pager(storageService, storageService.getUserArticleList)
+      const actual = await pager.start(StorageUserToken(), {
+        lang: 'ja',
+        articleDirId: ts.id,
+      })
+
+      expect(actual.length).toBe(2)
+      await verifyArticleListItem('ja', actual[0], ts_interface)
+      await verifyArticleListItem('ja', actual[1], ts_class)
+    })
+
+    it('英語', async () => {
+      const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('en')
+
+      const pager = new Pager(storageService, storageService.getUserArticleList)
+      const actual = await pager.start(StorageUserToken(), {
+        lang: 'en',
+        articleDirId: ts.id,
+      })
+
+      expect(actual.length).toBe(2)
+      await verifyArticleListItem('en', actual[0], ts_interface)
+      await verifyArticleListItem('en', actual[1], ts_class)
+    })
+
     describe('他ユーザーによる記事リスト取得', () => {
       it('対象カテゴリを公開設定', async () => {
-        await setupArticleTypeNodes('ja')
+        const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('ja')
 
         // 対象カテゴリを公開設定
         await storageService.setDirShareDetail(ts, { isPublic: true })
@@ -3423,7 +3444,7 @@ describe('StorageService', () => {
       })
 
       it('対象カテゴリを公開設定 - 記事の一部を非公開設定', async () => {
-        await setupArticleTypeNodes('ja')
+        const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('ja')
 
         // 対象カテゴリを公開設定
         await storageService.setDirShareDetail(ts, { isPublic: true })
@@ -3441,7 +3462,7 @@ describe('StorageService', () => {
       })
 
       it('対象カテゴリを公開設定 - 記事の一部に読み込み権限設定', async () => {
-        await setupArticleTypeNodes('ja')
+        const { ts, ts_interface } = await setupArticleTypeNodes('ja')
 
         // 対象カテゴリを非公開設定
         await storageService.setDirShareDetail(ts, { isPublic: false })
@@ -3460,7 +3481,7 @@ describe('StorageService', () => {
     })
 
     it('自ユーザーによる記事リスト取得', async () => {
-      await setupArticleTypeNodes('ja')
+      const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('ja')
 
       const pager = new Pager(storageService, storageService.getUserArticleList)
       const actual = await pager.start(StorageUserToken(), {
@@ -3474,7 +3495,7 @@ describe('StorageService', () => {
     })
 
     it('サインインしていないユーザーによる記事リスト取得', async () => {
-      await setupArticleTypeNodes('ja')
+      const { ts, ts_interface, ts_class } = await setupArticleTypeNodes('ja')
 
       // 対象カテゴリを公開設定
       await storageService.setDirShareDetail(ts, { isPublic: true })
@@ -3508,7 +3529,7 @@ describe('StorageService', () => {
     })
 
     it('対象カテゴリに記事を指定した場合', async () => {
-      await setupArticleTypeNodes('ja')
+      const { ts_interface } = await setupArticleTypeNodes('ja')
 
       let actual!: HttpException
       try {
@@ -3525,18 +3546,12 @@ describe('StorageService', () => {
     })
 
     it('対象カテゴリに記事がない場合', async () => {
-      // 記事ルートを作成
-      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
-      users = articleRootNodes[0]
-      userRoot = articleRootNodes[1]
-      articleRoot = articleRootNodes[2]
+      const { articleRoot } = await setupArticleTypeNodes('ja')
 
-      // TypeScript
-      ts = await storageService.createArticleTypeDir({
+      const travel = await storageService.createArticleTypeDir({
         lang: 'ja',
         dir: `${articleRoot.path}`,
-        label: 'TypeScript',
+        label: '旅行',
         type: 'TreeBundle',
         sortOrder: 1,
       })
@@ -3544,66 +3559,60 @@ describe('StorageService', () => {
       const pager = new Pager(storageService, storageService.getUserArticleList)
       const actual = await pager.start(StorageUserToken(), {
         lang: 'ja',
-        articleDirId: ts.id,
+        articleDirId: travel.id,
       })
 
       expect(actual.length).toBe(0)
     })
 
     it('記事に下書きしかない場合', async () => {
-      // 記事ルートを作成
-      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
-      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
-      users = articleRootNodes[0]
-      userRoot = articleRootNodes[1]
-      articleRoot = articleRootNodes[2]
+      const { articleRoot } = await setupArticleTypeNodes('ja')
 
-      // TypeScript
-      ts = await storageService.createArticleTypeDir({
+      const travel = await storageService.createArticleTypeDir({
         lang: 'ja',
         dir: `${articleRoot.path}`,
-        label: 'TypeScript',
+        label: '旅行',
         type: 'TreeBundle',
         sortOrder: 1,
       })
 
-      // Interface (下書きのみ)
-      ts_interface = await storageService.createArticleTypeDir({
+      // 旅行記1 (下書きのみ)
+      let travel1 = await storageService.createArticleTypeDir({
         lang: 'ja',
-        dir: `${ts.path}`,
-        label: 'Interface',
+        dir: `${travel.path}`,
+        label: '旅行記1',
         type: 'Article',
         sortOrder: 2,
       })
-      ts_interface = await storageService.saveArticleDraftContent(ts_interface, {
+      travel1 = await storageService.saveArticleDraftContent(travel1, {
         lang: 'ja',
-        draftContent: 'Interface',
+        draftContent: '# 旅行記1',
         draftTags: [],
       })
 
-      // Class (本文あり)
-      ts_class = await storageService.createArticleTypeDir({
+      // 旅行記2 (本文あり)
+      let travel2 = await storageService.createArticleTypeDir({
         lang: 'ja',
-        dir: `${ts.path}`,
-        label: 'Class',
+        dir: `${travel.path}`,
+        label: '旅行記2',
         type: 'Article',
         sortOrder: 1,
       })
-      ts_class = await storageService.saveArticleSrcContent(ts_class, {
+      travel2 = await storageService.saveArticleSrcContent(travel2, {
         lang: 'ja',
-        srcContent: 'Class',
-        searchContent: 'Class',
+        srcContent: '# 旅行記2',
+        searchContent: '旅行記2',
         srcTags: [],
       })
 
       const pager = new Pager(storageService, storageService.getUserArticleList)
       const actual = await pager.start(StorageUserToken(), {
         lang: 'ja',
-        articleDirId: ts.id,
+        articleDirId: travel.id,
       })
 
       expect(actual.length).toBe(1)
-      await verifyArticleListItem('ja', actual[0], ts_class)
+      await verifyArticleListItem('ja', actual[0], travel2)
     })
 
     it('取得上限より記事リストが多い場合', async () => {
@@ -3615,8 +3624,8 @@ describe('StorageService', () => {
       td.replace(elastic.ElasticConstants, 'ChunkSize', 5)
 
       // 記事リストを10件作成
-      await setupArticleTypeNodes('ja')
-      await setupArticleNodes(10)
+      const { js } = await setupArticleTypeNodes('ja')
+      await setupArticleNodes(js, 10)
 
       // 記事リストを1ページ3件で分割する
       const pager = new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 })
@@ -3632,50 +3641,17 @@ describe('StorageService', () => {
       expect(pager.maxItems).toBe(5) // 取得可能な記事リストは5件
       expect(pager.hasNext()).toBeTruthy()
       expect(actual1.length).toBe(3) // 1ページ目で3件取得
-      expect(actual1[0].label).toEqual('art10')
-      expect(actual1[1].label).toEqual('art09')
-      expect(actual1[2].label).toEqual('art08')
 
       const actual2 = await pager.next()
       expect(pager.pageNum).toBe(2)
       expect(pager.hasNext()).toBeFalsy()
       expect(actual2.length).toBe(2) // 2ページ目で2件取得
-      expect(actual2[0].label).toEqual('art07')
-      expect(actual2[1].label).toEqual('art06')
-    })
-
-    it('日本語', async () => {
-      await setupArticleTypeNodes('ja')
-
-      const pager = new Pager(storageService, storageService.getUserArticleList)
-      const actual = await pager.start(StorageUserToken(), {
-        lang: 'ja',
-        articleDirId: ts.id,
-      })
-
-      expect(actual.length).toBe(2)
-      await verifyArticleListItem('ja', actual[0], ts_interface)
-      await verifyArticleListItem('ja', actual[1], ts_class)
-    })
-
-    it('英語', async () => {
-      await setupArticleTypeNodes('en')
-
-      const pager = new Pager(storageService, storageService.getUserArticleList)
-      const actual = await pager.start(StorageUserToken(), {
-        lang: 'en',
-        articleDirId: ts.id,
-      })
-
-      expect(actual.length).toBe(2)
-      await verifyArticleListItem('en', actual[0], ts_interface)
-      await verifyArticleListItem('en', actual[1], ts_class)
     })
 
     describe('大量データの場合', () => {
       it('ベーシックケース', async () => {
-        await setupArticleTypeNodes('ja')
-        await setupArticleNodes(10)
+        const { js } = await setupArticleTypeNodes('ja')
+        await setupArticleNodes(js, 10)
 
         // 大量データを想定して検索を行う
         const actual = await new Pager(storageService, storageService.getUserArticleList, { pageSize: 3 }).fetchAll(
@@ -3697,9 +3673,9 @@ describe('StorageService', () => {
       })
 
       it('読み込みできない記事が含まれている場合', async () => {
-        await setupArticleTypeNodes('ja')
+        const { js } = await setupArticleTypeNodes('ja')
         // 以下の番号の記事を非公開にする
-        await setupArticleNodes(20, [3, 5, 6, 12, 13, 15, 16, 19, 20])
+        await setupArticleNodes(js, 20, [3, 5, 6, 12, 13, 15, 16, 19, 20])
 
         // 対象バンドルを公開設定
         await storageService.setDirShareDetail(js, { isPublic: true })
@@ -4338,6 +4314,466 @@ describe('StorageService', () => {
       expect(actual.length).toBe(2)
       await verifyArticleTableOfContentsItem('en', actual[0], js)
       await verifyArticleTableOfContentsItem('en', actual[1], js_variable)
+    })
+  })
+
+  describe('searchArticleList', () => {
+    beforeAll(async () => {
+      await devUtilsService.setTestUsers(AppAdminUser(), GeneralUser(), StorageUser())
+    })
+
+    async function setupArticleTypeNodes() {
+      // users
+      // └test.storage
+      //   └articles
+      //     ├漫画
+      //     │├「ドラゴンボール」の感想
+      //     │└「Dr.スランプ」の感想
+      //     ├ゲーム
+      //     │├「ドラゴンボールZ カカロット」のレビュー
+      //     │└「ドラゴンクエスト」のレビュー
+      //     └旅行
+
+      const articleRootPath = StorageService.toArticleRootPath(StorageUserToken())
+      const articleRootNodes = await storageService.createHierarchicalDirs([articleRootPath])
+      const users = articleRootNodes[0]
+      const userRoot = articleRootNodes[1]
+      const articleRoot = articleRootNodes[2]
+
+      let comics!: StorageNode
+      let comic1!: StorageNode
+      let comic2!: StorageNode
+      let games!: StorageNode
+      let game1!: StorageNode
+      let game2!: StorageNode
+      let travel!: StorageNode
+
+      // eslint-disable-next-line no-async-promise-executor
+      const comicsPromise = new Promise<void>(async resolve => {
+        comics = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${articleRoot.path}`,
+          label: '漫画',
+          type: 'TreeBundle',
+          sortOrder: 2,
+        })
+        comics = await storageService.renameArticleTypeDir({
+          lang: 'en',
+          dir: `${comics.path}`,
+          label: 'Comics',
+        })
+        comic1 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${comics.path}`,
+          label: '「ドラゴンボール」の感想',
+          type: 'Article',
+          sortOrder: 2,
+        })
+        comic1 = await storageService.saveArticleSrcContent(comic1, {
+          lang: 'ja',
+          srcContent: `# 概要\n鳥山明による日本の漫画作品とその作中に登場するアイテムの名称。`,
+          searchContent: `概要 鳥山明による日本の漫画作品とその作中に登場するアイテムの名称。`,
+          srcTags: ['少年漫画', '冒険', 'バトル'],
+        })
+        comic2 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${comics.path}`,
+          label: '「Dr.スランプ」の感想',
+          type: 'Article',
+          sortOrder: 1,
+        })
+        comic2 = await storageService.saveArticleSrcContent(comic2, {
+          lang: 'ja',
+          srcContent: `# 概要\n鳥山明による日本のギャグ漫画作品。`,
+          searchContent: `概要 鳥山明による日本のギャグ漫画作品。`,
+          srcTags: ['少年漫画', 'ギャグ'],
+        })
+
+        comic1 = await storageService.renameArticleTypeDir({
+          lang: 'en',
+          dir: `${comic1.path}`,
+          label: 'Impression of DRAGON BALL',
+        })
+        comic1 = await storageService.saveArticleSrcContent(comic1, {
+          lang: 'en',
+          srcContent: `# Overview\nThe name of a Japanese manga work by Akira Toriyama and the items that appear in it.`,
+          searchContent: `Overview The name of a Japanese manga work by Akira Toriyama and the items that appear in it.`,
+          srcTags: ['BoysComic', 'Adventure', 'Battle'],
+        })
+
+        resolve()
+      })
+
+      // eslint-disable-next-line no-async-promise-executor
+      const gamesPromise = new Promise<void>(async resolve => {
+        games = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${articleRoot.path}`,
+          label: 'ゲーム',
+          type: 'TreeBundle',
+          sortOrder: 1,
+        })
+        game1 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${games.path}`,
+          label: '「ドラゴンボールZ カカロット」のレビュー',
+          type: 'Article',
+          sortOrder: 2,
+        })
+        game1 = await storageService.saveArticleSrcContent(game1, {
+          lang: 'ja',
+          srcContent: `# 概要\n鳥山明の漫画およびアニメ「ドラゴンボール」を題材にしたアクションRPG。`,
+          searchContent: `概要 鳥山明の漫画およびアニメ「ドラゴンボール」を題材にしたアクションRPG。`,
+          srcTags: ['アクション', 'RPG'],
+        })
+        game2 = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${games.path}`,
+          label: '「ドラゴンクエスト」のレビュー',
+          type: 'Article',
+          sortOrder: 1,
+        })
+        game2 = await storageService.saveArticleSrcContent(game2, {
+          lang: 'ja',
+          srcContent: `# 概要\nエニックスより発売されたファミコン用ロールプレイングゲーム。キャラクターデザインは鳥山明が担当。`,
+          searchContent: `概要 エニックスより発売されたファミコン用ロールプレイングゲーム。キャラクターデザインは鳥山明が担当。`,
+          srcTags: ['RPG'],
+        })
+
+        resolve()
+      })
+
+      // eslint-disable-next-line no-async-promise-executor
+      const travelPromise = new Promise<void>(async resolve => {
+        travel = await storageService.createArticleTypeDir({
+          lang: 'ja',
+          dir: `${articleRoot.path}`,
+          label: '旅行',
+          type: 'TreeBundle',
+          sortOrder: 1,
+        })
+
+        resolve()
+      })
+
+      await Promise.all([comicsPromise, gamesPromise])
+
+      return { users, userRoot, articleRoot, comics, comic1, comic2, games, game1, game2, travel }
+    }
+
+    async function setupArticleNodes(dirNode: StorageNode, num: number, privateNumbers: number[] = []) {
+      const articleNodes = await Promise.all(
+        [...Array(num)].map(async (_, i) => {
+          const label = `記事${(i + 1).toString().padStart(num.toString().length, '0')}`
+          const articleNode = await storageService.createArticleTypeDir({
+            lang: 'ja',
+            dir: `${dirNode.path}`,
+            label,
+            type: 'Article',
+            sortOrder: i + 1,
+            share: { isPublic: !privateNumbers.includes(i + 1) },
+          })
+          return await storageService.saveArticleSrcContent(articleNode, {
+            lang: 'ja',
+            srcContent: label,
+            searchContent: label,
+            srcTags: [],
+          })
+        })
+      )
+      articleNodes.sort((a, b) => b.article!.sortOrder - a.article!.sortOrder)
+
+      return articleNodes
+    }
+
+    async function verifyArticleListItem(lang: LangCode, actual: ArticleListItem, expected: StorageNode): Promise<void> {
+      const allNodes = (await storageService.getDescendants({ path: '' })).list
+
+      expect(actual.id).toBe(expected.id)
+      expect(actual.name).toBe(expected.name)
+      expect(actual.dir).toEqual(StorageService.toArticlePathDetails(lang, expected.dir, allNodes))
+      expect(actual.path).toEqual(StorageService.toArticlePathDetails(lang, expected.path, allNodes))
+      expect(actual.createdAt).toEqual(expected.article!.src![lang]!.createdAt)
+      expect(actual.updatedAt).toEqual(expected.article!.src![lang]!.updatedAt)
+    }
+
+    it('ベーシックケース', async () => {
+      await setupArticleTypeNodes()
+
+      const pager = new Pager(storageService, storageService.searchArticleList, { pageSize: 3, useToken: false })
+
+      const actual1 = await pager.start(StorageUserToken(), `lang:ja 鳥山`)
+      expect(pager.token).toBeDefined()
+      expect(pager.pageNum).toBe(1)
+      expect(pager.totalPages).toBe(2)
+      expect(pager.totalItems).toBe(4)
+      expect(pager.maxItems).toBe(4)
+      expect(pager.hasNext()).toBeTruthy()
+      expect(actual1.length).toBe(3)
+      expect(actual1[0].label).toEqual('「Dr.スランプ」の感想')
+      expect(actual1[1].label).toEqual('「ドラゴンボール」の感想')
+      expect(actual1[2].label).toEqual('「ドラゴンボールZ カカロット」のレビュー')
+
+      const actual2 = await pager.next()
+      expect(pager.pageNum).toBe(2)
+      expect(pager.hasNext()).toBeFalsy()
+      expect(actual2.length).toBe(1)
+      expect(actual2[0].label).toEqual('「ドラゴンクエスト」のレビュー')
+    })
+
+    it('日本語', async () => {
+      const { comics, comic1 } = await setupArticleTypeNodes()
+
+      const pager = new Pager(storageService, storageService.searchArticleList, { pageSize: 3, useToken: false })
+      const actual = await pager.fetchAll(
+        StorageUserToken(),
+        `lang:ja user:${StorageUser().userName} title:ドラゴンボール tag:冒険 dir:${comics.id} 鳥山 漫画`
+      )
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].label).toBe(`「<mark>ドラゴン</mark><mark>ボール</mark>」の感想`)
+      expect(actual[0].tags).toEqual(['少年漫画', '<mark>冒険</mark>', 'バトル'])
+      expect(actual[0].content).toEqual(`概要 <mark>鳥山</mark>明による日本の<mark>漫画</mark>作品とその作中に登場するアイテムの名称。`)
+      await verifyArticleListItem('ja', actual[0], comic1)
+    })
+
+    it('英語', async () => {
+      const { comics, comic1 } = await setupArticleTypeNodes()
+
+      const pager = new Pager(storageService, storageService.searchArticleList, { pageSize: 3, useToken: false })
+      const actual = await pager.fetchAll(
+        StorageUserToken(),
+        `lang:en user:${StorageUser().userName} title:"DRAGON BALL" tag:Adventure dir:${comics.id} Toriyama manga`
+      )
+
+      expect(actual.length).toBe(1)
+      expect(actual[0].label).toBe(`Impression of <mark>DRAGON</mark> <mark>BALL</mark>`)
+      expect(actual[0].tags).toEqual(['BoysComic', '<mark>Adventure</mark>', 'Battle'])
+      expect(actual[0].content).toEqual(
+        `Overview The name of a Japanese <mark>manga</mark> work by Akira <mark>Toriyama</mark> and the items that appear in it.`
+      )
+      await verifyArticleListItem('en', actual[0], comic1)
+    })
+
+    describe('他ユーザーによる記事リスト取得', () => {
+      it('対象カテゴリを公開設定', async () => {
+        const { comics, comic1, comic2 } = await setupArticleTypeNodes()
+
+        // 対象カテゴリを公開設定
+        await storageService.setDirShareDetail(comics, { isPublic: true })
+
+        const pager = new Pager(storageService, storageService.searchArticleList)
+        const actual = await pager.start(GeneralUserToken(), '鳥山')
+
+        expect(actual.length).toBe(2)
+        await verifyArticleListItem('ja', actual[0], comic2)
+        await verifyArticleListItem('ja', actual[1], comic1)
+      })
+
+      it('対象カテゴリを公開設定 - 記事の一部を非公開設定', async () => {
+        const { comics, comic1, comic2 } = await setupArticleTypeNodes()
+
+        // 対象カテゴリを公開設定
+        await storageService.setDirShareDetail(comics, { isPublic: true })
+        // 対象カテゴリ直下の記事を一部非公開設定
+        await storageService.setDirShareDetail(comic1, { isPublic: false })
+
+        const pager = new Pager(storageService, storageService.searchArticleList)
+        const actual = await pager.start(GeneralUserToken(), '鳥山')
+
+        expect(actual.length).toBe(1)
+        await verifyArticleListItem('ja', actual[0], comic2)
+      })
+
+      it('対象カテゴリを公開設定 - 記事の一部に読み込み権限設定', async () => {
+        const { comics, comic1 } = await setupArticleTypeNodes()
+
+        // 対象カテゴリを非公開設定
+        await storageService.setDirShareDetail(comics, { isPublic: false })
+        // 対象カテゴリ直下の記事を一部読み込み権限設定
+        await storageService.setDirShareDetail(comic1, { readUIds: [GeneralUserToken().uid] })
+
+        const pager = new Pager(storageService, storageService.searchArticleList)
+        const actual = await pager.start(GeneralUserToken(), '鳥山')
+
+        expect(actual.length).toBe(1)
+        await verifyArticleListItem('ja', actual[0], comic1)
+      })
+    })
+
+    it('自ユーザーによる記事リスト取得', async () => {
+      const { comic1, comic2, game1, game2 } = await setupArticleTypeNodes()
+
+      const pager = new Pager(storageService, storageService.searchArticleList)
+      const actual = await pager.start(StorageUserToken(), '鳥山')
+
+      expect(actual.length).toBe(4)
+      await verifyArticleListItem('ja', actual[0], comic2)
+      await verifyArticleListItem('ja', actual[1], game1)
+      await verifyArticleListItem('ja', actual[2], comic1)
+      await verifyArticleListItem('ja', actual[3], game2)
+    })
+
+    it('サインインしていないユーザーによる記事リスト取得', async () => {
+      const { comics, comic1, comic2 } = await setupArticleTypeNodes()
+
+      // 対象カテゴリを公開設定
+      await storageService.setDirShareDetail(comics, { isPublic: true })
+
+      const pager = new Pager(storageService, storageService.searchArticleList)
+      const actual = await pager.start(undefined, '鳥山')
+
+      expect(actual.length).toBe(2)
+      await verifyArticleListItem('ja', actual[0], comic2)
+      await verifyArticleListItem('ja', actual[1], comic1)
+    })
+
+    it('検索条件に記事がマッチしない場合', async () => {
+      await setupArticleTypeNodes()
+
+      const pager = new Pager(storageService, storageService.searchArticleList)
+      const actual = await pager.start(StorageUserToken(), '漢人')
+
+      expect(actual.length).toBe(0)
+    })
+
+    it('記事に下書きしかない場合', async () => {
+      const { articleRoot } = await setupArticleTypeNodes()
+
+      const travel = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${articleRoot.path}`,
+        label: '旅行',
+        type: 'TreeBundle',
+        sortOrder: 1,
+      })
+
+      // 旅行記1 (下書きのみ)
+      let travel1 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${travel.path}`,
+        label: '旅行記1',
+        type: 'Article',
+        sortOrder: 2,
+      })
+      travel1 = await storageService.saveArticleDraftContent(travel1, {
+        lang: 'ja',
+        draftContent: '# 旅行記1',
+        draftTags: [],
+      })
+
+      // 旅行記2 (本文あり)
+      let travel2 = await storageService.createArticleTypeDir({
+        lang: 'ja',
+        dir: `${travel.path}`,
+        label: '旅行記2',
+        type: 'Article',
+        sortOrder: 1,
+      })
+      travel2 = await storageService.saveArticleSrcContent(travel2, {
+        lang: 'ja',
+        srcContent: '# 旅行記2',
+        searchContent: '旅行記2',
+        srcTags: [],
+      })
+
+      const pager = new Pager(storageService, storageService.searchArticleList)
+      const actual = await pager.start(StorageUserToken(), `lang:ja dir:${travel.id}`)
+
+      expect(actual.length).toBe(1)
+      await verifyArticleListItem('ja', actual[0], travel2)
+    })
+
+    it('取得上限より記事リストが多い場合', async () => {
+      // この設定により、1回の検索で取得上限の記事リストが取得されることになる
+      const elastic = require('../../../../../src/app/services/base/elastic')
+      // - Elasticsearchの取得上限を変更
+      td.replace(elastic.ElasticConstants, 'MaxResultSize', 5)
+      // - 1回の検索で取得する件数を変更
+      td.replace(elastic.ElasticConstants, 'ChunkSize', 5)
+
+      // 記事リストを10件作成
+      const { travel } = await setupArticleTypeNodes()
+      await setupArticleNodes(travel, 10)
+
+      // 記事リストを1ページ3件で分割する
+      const pager = new Pager(storageService, storageService.searchArticleList, { pageSize: 3 })
+
+      const actual1 = await pager.start(
+        StorageUserToken(), // 自ユーザーを指定
+        `記事`
+      )
+      expect(pager.token).toBeDefined()
+      expect(pager.pageNum).toBe(1)
+      expect(pager.totalPages).toBe(2)
+      expect(pager.totalItems).toBe(10) // 実際に存在する記事リストは10件
+      expect(pager.maxItems).toBe(5) // 取得可能な記事リストは5件
+      expect(pager.hasNext()).toBeTruthy()
+      expect(actual1.length).toBe(3) // 1ページ目で3件取得
+
+      const actual2 = await pager.next()
+      expect(pager.pageNum).toBe(2)
+      expect(pager.hasNext()).toBeFalsy()
+      expect(actual2.length).toBe(2) // 2ページ目で2件取得
+    })
+
+    describe('大量データの場合', () => {
+      it('ベーシックケース', async () => {
+        const { travel } = await setupArticleTypeNodes()
+        await setupArticleNodes(travel, 10)
+
+        // 大量データを想定して検索を行う
+        const actual = await new Pager(storageService, storageService.searchArticleList, { pageSize: 3 }).fetchAll(
+          StorageUserToken(), // 自ユーザーを指定
+          `dir:${travel.id} 記事`
+        )
+
+        actual.sort((a, b) => {
+          return a.label > b.label ? -1 : a.label < b.label ? 1 : 0
+        })
+        expect(actual.length).toBe(10)
+        expect(actual[0].label).toBe(`<mark>記事</mark>10`)
+        expect(actual[1].label).toBe(`<mark>記事</mark>09`)
+        expect(actual[2].label).toBe(`<mark>記事</mark>08`)
+        expect(actual[3].label).toBe(`<mark>記事</mark>07`)
+        expect(actual[4].label).toBe(`<mark>記事</mark>06`)
+        expect(actual[5].label).toBe(`<mark>記事</mark>05`)
+        expect(actual[6].label).toBe(`<mark>記事</mark>04`)
+        expect(actual[7].label).toBe(`<mark>記事</mark>03`)
+        expect(actual[8].label).toBe(`<mark>記事</mark>02`)
+        expect(actual[9].label).toBe(`<mark>記事</mark>01`)
+      })
+
+      it('読み込みできない記事が含まれている場合', async () => {
+        const { travel } = await setupArticleTypeNodes()
+        // 以下の番号の記事を非公開にする
+        await setupArticleNodes(travel, 20, [3, 5, 6, 12, 13, 15, 16, 19, 20])
+
+        // 対象バンドルを公開設定
+        await storageService.setDirShareDetail(travel, { isPublic: true })
+
+        // 大量データを想定して検索を行う
+        const actual = await new Pager(storageService, storageService.searchArticleList, { pageSize: 3 }).fetchAll(
+          GeneralUserToken(), // 他ユーザーを指定
+          `dir:${travel.id} 記事`
+        )
+
+        actual.sort((a, b) => {
+          return a.label > b.label ? -1 : a.label < b.label ? 1 : 0
+        })
+        expect(actual.length).toBe(11)
+        expect(actual[0].label).toBe(`<mark>記事</mark>18`)
+        expect(actual[1].label).toBe(`<mark>記事</mark>17`)
+        expect(actual[2].label).toBe(`<mark>記事</mark>14`)
+        expect(actual[3].label).toBe(`<mark>記事</mark>11`)
+        expect(actual[4].label).toBe(`<mark>記事</mark>10`)
+        expect(actual[5].label).toBe(`<mark>記事</mark>09`)
+        expect(actual[6].label).toBe(`<mark>記事</mark>08`)
+        expect(actual[7].label).toBe(`<mark>記事</mark>07`)
+        expect(actual[8].label).toBe(`<mark>記事</mark>04`)
+        expect(actual[9].label).toBe(`<mark>記事</mark>02`)
+        expect(actual[10].label).toBe(`<mark>記事</mark>01`)
+      })
     })
   })
 
@@ -5526,6 +5962,75 @@ describe('StorageService', () => {
       expect(tagC.usedCount).toBe(3)
       expect(tagD.name).toBe('タグD')
       expect(tagD.usedCount).toBe(1)
+    })
+  })
+
+  describe('parseSearchCriteria', () => {
+    it('ベーシックケース', async () => {
+      const actual = storageService.parseSearchCriteria(
+        `lang:ja user:TaroYamada title:"DRAGON BALL" tag:冒険 dir:3v9dUUsX4wOxUjo6w2pPoYbAdtE3 鳥山 漫画`
+      )
+
+      expect(Object.keys(actual).length).toBe(6)
+      expect(actual.lang).toBe('ja')
+      expect(actual.user).toBe('TaroYamada')
+      expect(actual.title).toBe('DRAGON BALL')
+      expect(actual.tag).toBe('冒険')
+      expect(actual.dir).toBe('3v9dUUsX4wOxUjo6w2pPoYbAdtE3')
+      expect(actual.words).toBe('鳥山 漫画')
+    })
+
+    it('条件が1つの場合', async () => {
+      const actual = storageService.parseSearchCriteria(`title:ドラゴンボール`)
+
+      expect(Object.keys(actual).length).toBe(1)
+      expect(actual.title).toBe('ドラゴンボール')
+    })
+
+    it('同じキーの条件が複数ある場合', async () => {
+      const actual = storageService.parseSearchCriteria(`title:ドラゴンボール title:"Dragon Ball" title:"DRAGON BALL"`)
+
+      expect(Object.keys(actual).length).toBe(1)
+      expect(actual.title).toBe('DRAGON BALL') // 後ろ条件の方が優先度が高い
+    })
+
+    describe('「"」で囲われた条件', () => {
+      it('条件が並びの先頭にある場合', async () => {
+        const actual = storageService.parseSearchCriteria(`title:"DRAGON BALL" lang:ja 鳥山 漫画`)
+
+        expect(Object.keys(actual).length).toBe(3)
+        expect(actual.lang).toBe('ja')
+        expect(actual.title).toBe('DRAGON BALL')
+        expect(actual.words).toBe('鳥山 漫画')
+      })
+
+      it('条件が並びの中央にある場合', async () => {
+        const actual = storageService.parseSearchCriteria(`lang:ja title:"DRAGON BALL" 鳥山 漫画`)
+
+        expect(Object.keys(actual).length).toBe(3)
+        expect(actual.lang).toBe('ja')
+        expect(actual.title).toBe('DRAGON BALL')
+        expect(actual.words).toBe('鳥山 漫画')
+      })
+
+      it('条件が並びの最後にある場合', async () => {
+        const actual = storageService.parseSearchCriteria(`lang:ja 鳥山 漫画 title:"DRAGON BALL"`)
+
+        expect(Object.keys(actual).length).toBe(3)
+        expect(actual.lang).toBe('ja')
+        expect(actual.title).toBe('DRAGON BALL')
+        expect(actual.words).toBe('鳥山 漫画')
+      })
+
+      it('「"」が閉じられていない場合', async () => {
+        const actual = storageService.parseSearchCriteria(`lang:ja title:"DRAGON BALL 鳥山 漫画`)
+
+        expect(Object.keys(actual).length).toBe(1)
+        expect(actual.lang).toBe('ja')
+        // 囲みが閉じられていない以降の条件が無効になる
+        expect(actual.title).toBeUndefined()
+        expect(actual.words).toBeUndefined()
+      })
     })
   })
 

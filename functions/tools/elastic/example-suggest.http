@@ -30,6 +30,14 @@ Authorization: Basic {{elasticToken}}
 # 指定した範囲の文字列を1文字ずつ分割します。
 # ※ { "min_gram": 2, max_gram: 4 } と指定した場合、
 #   「sushi」は「su、sus、sush」に分割されます。
+#
+# edge_ngramはngramと非常に似ていますが、edge_ngramはトークンの先頭から始まるn-gramのみを保持します。
+#
+# curl '…/_analyze?pretty=1&analyzer=my_ngram_analyzer' -d 'FC Schalke 04'
+#   # FC, Sc, Sch, ch, cha, ha, hal, al, alk, lk, lke, ke, 04
+#
+# curl '…/_analyze?pretty=1&analyzer=my_edge_ngram_analyzer' -d 'FC Schalke 04'
+#   # FC, Sc, Sch, Scha, Schal, 04
 
 # ■ synonym
 # 読み方が2種類以上ある単語を定義し吸収する機能です。

@@ -65,7 +65,8 @@ const ArticleListItemFields = `
     dir { id label }
     path { id label }
     label
-    srcTags
+    tags
+    content
     createdAt
     updatedAt
   }

@@ -34,6 +34,7 @@ type StorageTestService = StorageService &
     validateArticleRootUnder: StorageServiceDI.type['validateArticleRootUnder']
     getBelongToArticleBundle: StorageServiceDI.type['getBelongToArticleBundle']
     getUsedTagNames: StorageServiceDI.type['getUsedTagNames']
+    parseSearchCriteria: StorageServiceDI.type['parseSearchCriteria']
   }
 
 //========================================================================

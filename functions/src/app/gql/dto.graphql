@@ -258,7 +258,8 @@ type ArticleListItem {
   dir: [ArticlePathDetail!]!
   path: [ArticlePathDetail!]!
   label: String!
-  srcTags: [String!]!
+  tags: [String!]!
+  content: String
   createdAt: DateTime!
   updatedAt: DateTime!
 }

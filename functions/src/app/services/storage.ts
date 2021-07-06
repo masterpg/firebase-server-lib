@@ -50,13 +50,21 @@ import {
   ToDeepNullable,
   arrayToDict,
   findDuplicateItems,
+  notEmpty,
   pickProps,
   removeBothEndsSlash,
   removeStartDirChars,
   splitHierarchicalPaths,
   summarizeFamilyPaths,
 } from 'web-base-lib'
-import { ElasticMSearchResponse, ElasticPageSegment, ElasticSearchResponse, ElasticSearchResponseOrHits, openPointInTime } from './base/elastic'
+import {
+  ElasticMSearchResponse,
+  ElasticPageSegment,
+  ElasticSearchHit,
+  ElasticSearchResponse,
+  ElasticSearchResponseOrHits,
+  openPointInTime,
+} from './base/elastic'
 import { Inject, Module } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { AppError } from '../base'
@@ -85,6 +93,22 @@ interface TreeStorageNode<NODE extends StorageNode = StorageNode> {
   item: NODE
   parent?: TreeStorageNode<NODE>
   children: TreeStorageNode<NODE>[]
+}
+
+interface SearchCriteria {
+  lang?: LangCode
+  user?: string
+  title?: string
+  tag?: string
+  dir?: string
+  words?: string
+}
+
+type HighlightStorageNode = StorageNode & {
+  highlight: {
+    ja?: { label?: string; content?: string; tags?: string[] }
+    en?: { label?: string; content?: string; tags?: string[] }
+  }
 }
 
 //========================================================================
@@ -891,12 +915,12 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     // 指定されたノードを記事一覧の形式に変換します。
     //
     const _toArticleList = (nodes: StorageNode[], hierarchicalNodes: StorageNode[]) => {
-      return nodes.map(node => ({
+      return nodes.map<ArticleListItem>(node => ({
         ...pickProps(node, ['id', 'name']),
         dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
         path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
         label: StorageService.getArticleLangLabel(lang, node.article!.label),
-        srcTags: node.article!.src![lang]!.srcTags ?? [],
+        tags: node.article!.src![lang]!.srcTags ?? [],
         createdAt: node.article!.src![lang]!.createdAt!, // 記事本文があるのならば作成日は設定されている
         updatedAt: node.article!.src![lang]!.updatedAt!, // 記事本文があるのならば更新日は設定されている
       }))
@@ -971,17 +995,17 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
       const { response, isPagingTimeout } = await executeAfterPagingQuery<DocStorageNode>(this.client, paging, searchParams)
       if (!response || isPagingTimeout) return PagingResult.empty({ isPagingTimeout })
 
-      let articleNodes = this.toEntityNodes(response)
+      const nodes = this.toEntityNodes(response)
 
       // 取得された記事の階層を取得
       const ancestorNodes = await this.getHierarchicalNodes(articleDir.path)
-      const hierarchicalNodes = [...ancestorNodes, ...articleNodes]
+      const hierarchicalNodes = [...ancestorNodes, ...nodes]
 
       // 読み込み可能な記事に絞り込み
-      articleNodes = articleNodes.filter(node => _validateArticle(node, hierarchicalNodes))
+      const pageNodes = nodes.filter(node => _validateArticle(node, hierarchicalNodes))
 
       const result: PagingAfterResult = {
-        list: _toArticleList(articleNodes, hierarchicalNodes),
+        list: _toArticleList(pageNodes, hierarchicalNodes),
       }
       return result
     }
@@ -1137,6 +1161,221 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     StorageService.sortNodes(allAccessibleNodes)
 
     return toArticleTableOfContentsItems(lang, allAccessibleNodes)
+  }
+
+  /**
+   * 記事を検索します。
+   * @param idToken
+   * @param criteria
+   * @param paging
+   */
+  async searchArticleList(idToken: IdToken | undefined, criteria: string, paging?: PagingInput): Promise<PagingResult<ArticleListItem>> {
+    //
+    // 読み込み可能な記事かを検証します。
+    //
+    const _validateArticle = (lang: LangCode, node: StorageNode, hierarchicalNodes: StorageNode[]) => {
+      // リクエスターが指定されたノードを読み込み可能か検証
+      const error = this.validateReadableImpl(idToken, node.path, hierarchicalNodes)
+      if (error) return false
+
+      // 指定言語の記事本文の保存が行われていなかった場合、除外
+      const srcDetail = node.article?.src?.[lang]
+      if (!srcDetail?.createdAt) return false
+
+      return true
+    }
+    //
+    // 指定されたノードを記事一覧の形式に変換します。
+    //
+    const _toArticleList = (lang: LangCode, nodes: HighlightStorageNode[], hierarchicalNodes: StorageNode[]) => {
+      return nodes.map<ArticleListItem>(node => {
+        return {
+          ...pickProps(node, ['id', 'name']),
+          dir: StorageService.toArticlePathDetails(lang, node.dir, hierarchicalNodes),
+          path: StorageService.toArticlePathDetails(lang, node.path, hierarchicalNodes),
+          label: node.highlight[lang]!.label ?? StorageService.getArticleLangLabel(lang, node.article!.label),
+          tags: (node.article!.src![lang]!.srcTags ?? []).map(tag => {
+            const highlightTags = node.highlight[lang]!.tags ?? []
+            return highlightTags.includes(tag) ? `<mark>${tag}</mark>` : tag
+          }),
+          content: node.highlight[lang]!.content,
+          createdAt: node.article!.src![lang]!.createdAt!, // 記事本文があるのならば作成日は設定されている
+          updatedAt: node.article!.src![lang]!.updatedAt!, // 記事本文があるのならば更新日は設定されている
+        }
+      })
+    }
+    //
+    // データベースから取得した記事を拡張ノードに変換します。
+    //
+    const _toStorageNodes = (hits: ElasticSearchHit<DocStorageNode>[]) => {
+      return hits.map<HighlightStorageNode>(hit => {
+        const node = this.toEntityNodes([hit])[0]
+        return {
+          ...node,
+          highlight: LangCodes.reduce((result, lang) => {
+            const titleArray: string[] = hit.highlight?.[`article.label.${lang}.text`] ?? []
+            const label = titleArray.length ? titleArray[0] : undefined
+            const contentArray: string[] = hit.highlight?.[`article.src.${lang}.searchContent`] ?? []
+            const content = contentArray.length ? contentArray.join('...') : undefined
+            const tags = hit.highlight?.[`article.src.${lang}.srcTags`] as string[] | undefined
+            result[lang] = { label, content, tags }
+            return result
+          }, {} as HighlightStorageNode['highlight']),
+        }
+      })
+    }
+
+    const query: any = {
+      bool: {
+        must: [],
+      },
+    }
+
+    const _criteria = this.parseSearchCriteria(criteria) as RequiredAre<SearchCriteria, 'lang'>
+
+    _criteria.lang ??= 'ja'
+
+    if (_criteria.user) {
+      const user = await this.userHelper.getUser({ userName: _criteria.user })
+      if (user) {
+        const articleRootPath = StorageService.toArticleRootPath({ uid: user.id })
+        query.bool.must.push({ wildcard: { path: `${articleRootPath}/*` } })
+      } else {
+        return PagingResult.empty()
+      }
+    }
+
+    if (_criteria.title) {
+      query.bool.must.push({
+        match: {
+          [`article.label.${_criteria.lang}.text`]: {
+            query: _criteria.title,
+            fuzziness: 'auto',
+          },
+        },
+      })
+    }
+
+    if (_criteria.tag) {
+      query.bool.must.push({
+        match: {
+          [`article.src.${_criteria.lang}.srcTags`]: {
+            query: _criteria.tag,
+            operator: 'and',
+          },
+        },
+      })
+    }
+
+    if (_criteria.dir) {
+      const dirNode = await this.getNode({ id: _criteria.dir })
+      if (dirNode) {
+        this.validateArticleRootUnder(dirNode.path)
+        query.bool.must.push({
+          wildcard: { path: `${dirNode.path}/*` },
+        })
+      } else {
+        return PagingResult.empty()
+      }
+    }
+
+    if (_criteria.words) {
+      query.bool.must.push({
+        multi_match: {
+          query: _criteria.words,
+          fields: [`article.label.${_criteria.lang}.text`, `article.src.${_criteria.lang}.searchContent`],
+        },
+      })
+    }
+
+    const searchParams = {
+      body: {
+        query,
+        sort: { _score: 'desc', _id: 'asc' },
+        highlight: {
+          fields: {
+            [`article.label.${_criteria.lang}.text`]: {
+              pre_tags: ['<mark>'],
+              post_tags: ['</mark>'],
+              fragment_size: 255 * 3,
+            },
+            [`article.src.${_criteria.lang}.searchContent`]: {
+              pre_tags: ['<mark>'],
+              post_tags: ['</mark>'],
+            },
+            [`article.src.${_criteria.lang}.srcTags`]: {
+              pre_tags: [''],
+              post_tags: [''],
+            },
+          },
+        },
+      },
+      _source_excludes: this.sourceExcludes,
+    }
+
+    //
+    // 初回検索の場合
+    //
+    if (PagingFirstInput.is(paging)) {
+      const pageSize = paging?.pageSize ?? 20
+      const pageNum = paging?.pageNum ?? 1
+      const exceed = false
+
+      // 検索条件にマッチする記事を全て取得
+      const { hits, total, pit } = await executeAllDocumentsQuery<DocStorageNode>(this.client, StorageSchema.IndexAlias, searchParams, exceed)
+      if (!hits.length) return PagingResult.empty()
+
+      // 取得された記事の階層を取得
+      const nodes = this.toEntityNodes(hits)
+      const ancestorNodes = await this.getHierarchicalNodes(nodes.map(node => node.dir))
+      const hierarchicalNodes = [...ancestorNodes, ...nodes]
+
+      // ページングデータを生成
+      let totalItems = total
+      const { pageSegments, totalPages, filteredHits } = createPagingData(hits, pageSize, exceed, hit => {
+        const node = this.toEntityNodes([hit])[0]
+        const validated = _validateArticle(_criteria.lang, node, hierarchicalNodes)
+        !validated && totalItems--
+        return validated
+      })
+
+      // 1ページ分のノードを切り出し
+      const pageNodes = _toStorageNodes(extractPageItems(filteredHits, pageNum, pageSize))
+      const list = _toArticleList(_criteria.lang, pageNodes, hierarchicalNodes)
+
+      const result: PagingFirstResult<ArticleListItem> = {
+        list,
+        token: pit.id,
+        pageSegments,
+        pageSize,
+        pageNum,
+        totalItems,
+        totalPages,
+        maxItems: filteredHits.length,
+      }
+      return result
+    }
+    //
+    // 2回目以降の検索の場合
+    //
+    else {
+      const { response, isPagingTimeout } = await executeAfterPagingQuery<DocStorageNode>(this.client, paging, searchParams)
+      if (!response || isPagingTimeout) return PagingResult.empty({ isPagingTimeout })
+
+      const nodes = _toStorageNodes(response.body.hits.hits)
+
+      // 取得された記事の階層を取得
+      const ancestorNodes = await this.getHierarchicalNodes(nodes.map(node => node.dir))
+      const hierarchicalNodes = [...nodes, ...ancestorNodes]
+
+      // 読み込み可能な記事に絞り込み
+      const pageNodes = nodes.filter(node => _validateArticle(_criteria.lang, node, hierarchicalNodes))
+
+      const result: PagingAfterResult = {
+        list: _toArticleList(_criteria.lang, pageNodes, hierarchicalNodes),
+      }
+      return result
+    }
   }
 
   //--------------------------------------------------
@@ -1824,6 +2063,91 @@ class StorageService extends CoreStorageService<StorageNode, StorageFileNode> {
     }
 
     return bundle
+  }
+
+  /**
+   * 検索条件文字列を解析します。
+   * @param criteria
+   */
+  protected parseSearchCriteria(criteria: string): SearchCriteria {
+    type CriterionKey = 'lang' | 'user' | 'title' | 'tag' | 'dir'
+
+    function setCriteriaValue(criteria: SearchCriteria, key: CriterionKey, value: string): void {
+      if (key === 'lang') {
+        if (LangCodes.includes(value as any)) {
+          criteria[key] = value as LangCode
+        }
+      } else {
+        criteria[key] = value
+      }
+    }
+
+    const result: SearchCriteria = {}
+
+    const keys: CriterionKey[] = ['lang', 'user', 'title', 'tag', 'dir']
+    for (const key of keys) {
+      const reg = new RegExp(`^${key}:"?|\\s${key}:"?`)
+      let matched: RegExpExecArray | null = null
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        matched = reg.exec(criteria)
+        if (!matched) break
+
+        let startIndex: number
+        let endIndex: number | undefined
+        let value: string | undefined
+
+        // 条件キーに対する値が「"」で始まっている場合
+        if (matched[0].charAt(matched[0].length - 1) === '"') {
+          // 閉じる「"」の位置を検索
+          startIndex = matched.index + matched[0].length
+          for (let i = startIndex; i < criteria.length; i++) {
+            if (criteria.charAt(i) === '"') {
+              endIndex = i
+              break
+            }
+          }
+
+          // 閉じる「"」が見つかった場合、条件キーに対する値を戻り値に設定
+          if (typeof endIndex === 'number') {
+            value = criteria.slice(startIndex, endIndex)
+            setCriteriaValue(result, key, value)
+          }
+
+          // 今回の条件キーと値を検索条件文字列から除去
+          // ※閉じる「"」が見つからなかった場合、以降の条件は無効とする
+          const before = criteria.substring(0, matched.index)
+          const after = endIndex ? criteria.substring(endIndex + 1) : ''
+          criteria = before + after
+        }
+        // 条件キーに対する値が「"」で始まっていない場合
+        else {
+          // 次の「スペース」または文字列の終端の位置を検索
+          startIndex = matched.index + matched[0].length
+          for (endIndex = startIndex; endIndex < criteria.length; endIndex++) {
+            if (/\s/.test(criteria.charAt(endIndex))) {
+              break
+            }
+          }
+
+          // 見つかったスペースまたは終端位置までを条件キーに対する値とし、戻り値に設定
+          value = criteria.slice(startIndex, endIndex)
+          setCriteriaValue(result, key, value)
+
+          // 今回の条件キーと値を検索条件文字列から除去
+          const before = criteria.substring(0, matched.index)
+          const after = endIndex ? criteria.substring(endIndex) : ''
+          criteria = before + after
+        }
+      }
+    }
+
+    // ここまでに残った検索条件文字列を記事コンテンツの検索単語とし、戻り値に設定
+    const wordsArray = criteria.split(/\s/).filter(notEmpty)
+    wordsArray.length && (result.words = wordsArray.join(' '))
+
+    return result
   }
 
   //--------------------------------------------------
