@@ -1,10 +1,18 @@
 import * as _path from 'path'
-import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, DateTimeScalar, GQLContext, HTTPLoggingAppInterceptorDI, LongScalar } from '../../nest'
-import { AuthServiceModule, CORSServiceModule } from '../../services'
+import {
+  APIMiddleware,
+  AuthMiddleware,
+  CORSAppGuardDI,
+  CORSMiddleware,
+  DateTimeScalar,
+  GQLContext,
+  HTTPLoggingAppInterceptorDI,
+  LongScalar,
+} from '../../nest'
+import { AuthServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { loadSchemaFiles, mergeTypeDefs } from 'graphql-toolkit'
 import { GqlModuleOptions } from '@nestjs/graphql'
-import { LoggingServiceModule } from '../../services/base-services/logging'
 import { config } from '../../../config'
 import { merge } from 'lodash'
 import { print } from 'graphql/language/printer'
@@ -94,6 +102,7 @@ class BaseGQLContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
     consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+    consumer.apply(APIMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
 

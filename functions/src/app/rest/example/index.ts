@@ -1,9 +1,8 @@
-import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
-import { AuthServiceModule, CORSServiceModule } from '../../services'
+import { APIMiddleware, AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { AuthServiceModule, CORSServiceModule, LoggingServiceModule } from '../../services'
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { ExampleShopRESTModule } from './shop'
 import KeepAliveRESTModule from '../base/keepalive'
-import { LoggingServiceModule } from '../../services/base-services/logging'
 
 //========================================================================
 //
@@ -21,6 +20,7 @@ class RESTContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
     consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+    consumer.apply(APIMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
 

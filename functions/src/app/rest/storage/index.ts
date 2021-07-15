@@ -1,4 +1,4 @@
-import { AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
+import { APIMiddleware, AuthMiddleware, CORSAppGuardDI, CORSMiddleware, HTTPLoggingAppInterceptorDI } from '../../nest'
 import { AuthServiceModule, CORSServiceModule, LoggingServiceModule, StorageServiceDI, StorageServiceModule } from '../../services'
 import { Controller, Get, Inject, MiddlewareConsumer, Module, Param, Query, Req, RequestMethod, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
@@ -56,6 +56,7 @@ class StorageContainerModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CORSMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
     consumer.apply(AuthMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
+    consumer.apply(APIMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL })
   }
 }
 
