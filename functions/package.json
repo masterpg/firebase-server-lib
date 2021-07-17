@@ -49,7 +49,7 @@
     "graphql-subscriptions": "^1.1.0",
     "graphql-toolkit": "^0.7.5",
     "graphql-type-json": "^0.3.2",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "lz-string": "^1.4.4",
     "on-finished": "^2.3.0",
     "reflect-metadata": "^0.1.13",
